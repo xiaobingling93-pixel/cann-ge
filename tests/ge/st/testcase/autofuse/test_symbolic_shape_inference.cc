@@ -2457,13 +2457,15 @@ TEST_F(SymbolicShapeInferenceST, test_guard_check_graph1) {
   const std::vector<SymbolCheckInfo> guard_infos = shape_env_attr->GetAllSymbolCheckInfos();
   ASSERT_EQ(guard_infos.size(), 15);
   const std::set<std::string> expect_guard =
-      {"ExpectNe(1, (Rational(1 , 9) * s5 * s6))", "ExpectNe(1, s1)",
+      {"ExpectNe((Rational(1 , 9) * s5 * s6), 1)", "ExpectNe(1, s1)",
        "ExpectEq(3, s3)", "ExpectNe(1, s3)", "ExpectNe(1, s0)",
        "ExpectNe(s1, s4)", "ExpectEq(1, s4)", "ExpectEq(3, s2)", "ExpectNe(0, s0)",
        "ExpectNe(0, s1)", "ExpectNe(0, s2)", "ExpectNe(0, s3)", "ExpectNe(0, s4)",
        "ExpectNe(0, s5)", "ExpectNe(0, s6)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
 }
 
@@ -2743,11 +2745,13 @@ TEST_F(SymbolicShapeInferenceST, test_guard_check_graph2) {
 
   const std::vector<SymbolCheckInfo> assert_guard_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_guard_infos.size(), 6);
-  const std::set<std::string> expect_guard = {"ExpectEq(8, (s1 + s2))", "ExpectLe(0, s0)",
-                                              "ExpectEq(2, s4)", "ExpectEq(s3, (s1 + s2))",
-                                              "ExpectLe(s0, 8)", "ExpectEq(s5, (s1 + s2))"};
+  const std::set<std::string> expect_guard = {"ExpectEq((s1 + s2), 8)", "ExpectLe(0, s0)",
+                                              "ExpectEq(2, s4)", "ExpectEq((s1 + s2), s3)",
+                                              "ExpectLe(s0, 8)", "ExpectEq((s1 + s2), s5)"};
   for (auto &iter : assert_guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
 }
 
@@ -4168,11 +4172,13 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_NHWC) {
   const std::set<std::string> expect_guard = {"ExpectNe(0, s7)", "ExpectNe(0, s1)",
                                               "ExpectNe(s2, s5)", "ExpectNe(0, s0)",
                                               "ExpectNe(0, s3)", "ExpectNe(s1, s4)",
-                                              "ExpectNe(0, s2)", "ExpectNe(0, (s3 / (s6)))",
+                                              "ExpectNe(0, s2)", "ExpectNe((s3 / (s6)), 0)",
                                               "ExpectEq(0, Mod(s3, s6))",
                                               "ExpectNe(0, s6)", "ExpectNe(0, s5)", "ExpectNe(0, s4)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
   const std::vector<SymbolCheckInfo> assert_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_infos.size(), 5);
@@ -4266,10 +4272,12 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_NCHW) {
   const std::set<std::string> expect_guard = {"ExpectNe(0, s4)", "ExpectNe(0, s1)",
                                               "ExpectNe(s3, s7)", "ExpectNe(0, s0)",
                                               "ExpectNe(0, s3)", "ExpectNe(s2, s6)",
-                                              "ExpectNe(0, s2)", "ExpectNe(0, (s1 / (s5)))",
+                                              "ExpectNe(0, s2)", "ExpectNe((s1 / (s5)), 0)",
                                               "ExpectEq(0, Mod(s1, s5))", "ExpectNe(0, s5)", "ExpectNe(0, s6)", "ExpectNe(0, s7)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
   const std::vector<SymbolCheckInfo> assert_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_infos.size(), 5);
@@ -4363,7 +4371,7 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_zero) {
   const std::set<std::string> expect_guard = {"ExpectEq(0, s0)",
                                               "ExpectNe(0, s3)",
                                               "ExpectNe(s1, s4)",
-                                              "ExpectNe(0, (s3 / (s6)))",
+                                              "ExpectNe((s3 / (s6)), 0)",
                                               "ExpectEq(0, Mod(s3, s6))",
                                               "ExpectNe(0, s6)",
                                               "ExpectNe(s2, s5)",
@@ -4371,7 +4379,9 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_zero) {
                                               "ExpectNe(0, s4)", "ExpectNe(0, s5)",
                                               "ExpectNe(0, s7)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
   const std::vector<SymbolCheckInfo> assert_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_infos.size(), 6);
@@ -4471,12 +4481,12 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_padding_same) {
   ASSERT_EQ(guard_infos.size(), 15);
   const std::set<std::string> expect_guard = {"ExpectNe(0, s7)",
                                               "ExpectNe(0, s1)",
-                                              "ExpectNe((Rational(1 , 2) * s4), ((Mod((-2 + s4), 2) * Rational(1 , 2)) + (Rational(1 , 2) * s1) + Floor(((-2 + s4) * Rational(1 , 2)))))",
+                                              "ExpectNe(((Mod((-2 + s4), 2) * Rational(1 , 2)) + (Rational(1 , 2) * s1) + Floor(((-2 + s4) * Rational(1 , 2)))), (Rational(1 , 2) * s4))",
                                               "ExpectNe(0, s0)",
                                               "ExpectNe(0, s3)",
-                                              "ExpectNe((Rational(1 , 2) * s5), ((Mod((-2 + s5), 2) * Rational(1 , 2)) + (Rational(1 , 2) * s2) + Floor(((-2 + s5) * Rational(1 , 2)))))",
+                                              "ExpectNe(((Mod((-2 + s5), 2) * Rational(1 , 2)) + (Rational(1 , 2) * s2) + Floor(((-2 + s5) * Rational(1 , 2)))), (Rational(1 , 2) * s5))",
                                               "ExpectNe(0, s2)",
-                                              "ExpectNe(0, (s3 / (s6)))",
+                                              "ExpectNe((s3 / (s6)), 0)",
                                               "ExpectEq(0, Mod(s3, s6))",
                                               "ExpectLt(2, s5)",
                                               "ExpectLe(Mod(s1, 2), 0)",
@@ -4485,7 +4495,9 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_padding_same) {
                                               "ExpectNe(0, s4)",
                                               "ExpectNe(0, s5)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
   const std::vector<SymbolCheckInfo> assert_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_infos.size(), 9);
@@ -4588,10 +4600,12 @@ TEST_F(SymbolicShapeInferenceST, test_conv2d_padding_valid) {
   const std::set<std::string> expect_guard = {
     "ExpectNe(0, s7)", "ExpectNe(0, s1)", "ExpectNe((Rational(1 , 2) * s2), (Rational(1 , 2) * s5))",
     "ExpectNe(0, s0)", "ExpectNe(0, s3)", "ExpectNe((Rational(1 , 2) * s1), (Rational(1 , 2) * s4))",
-    "ExpectNe(0, s2)", "ExpectNe(0, (s3 / (s6)))", "ExpectEq(0, Mod(s3, s6))",
+    "ExpectNe(0, s2)", "ExpectNe((s3 / (s6)), 0)", "ExpectEq(0, Mod(s3, s6))",
     "ExpectNe(0, s6)", "ExpectNe(0, s4)", "ExpectNe(0, s5)"};
   for (auto &iter : guard_infos) {
-    EXPECT_NE(expect_guard.find(std::string(iter.expr.Serialize().get())), expect_guard.end());
+    const std::string guard_str = std::string(iter.expr.Serialize().get());
+    std::cout << "guard info: " << guard_str << std::endl;
+    EXPECT_NE(expect_guard.find(guard_str), expect_guard.end());
   }
   const std::vector<SymbolCheckInfo> assert_infos = shape_env_attr->GetAllSymbolAssertInfos();
   ASSERT_EQ(assert_infos.size(), 5);

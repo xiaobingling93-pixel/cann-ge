@@ -244,16 +244,15 @@ REGISTER_EXPR_DEFAULT_PRINTER(kOpLog, DefaultLogPrinter);
 std::string DefaultEqualPrinter(const std::vector<SymEngineExprPtr> &args, StrType type) {
   GE_ASSERT_TRUE(args.size() == kRelationArgsNum,
       "Equal operator args size should be 2, but get %zu", args.size());
-  return kPrintEq + kPrintBracket_L + ExpressionImpl::SymExprToExpressionImplRef(args[0]).Str(type) +
-      kPrintDelim + ExpressionImpl::SymExprToExpressionImplRef(args[1]).Str(type) + kPrintBracket_R;
+  
+  return kPrintEq + kPrintBracket_L + PrintArgs(args, kPrintDelim, type) + kPrintBracket_R;
 }
 REGISTER_EXPR_DEFAULT_PRINTER(kOpEq, DefaultEqualPrinter);
 
 std::string DefaultUnEqualPrinter(const std::vector<SymEngineExprPtr> &args, StrType type) {
   GE_ASSERT_TRUE(args.size() == kRelationArgsNum,
       "Unequal operator args size should be 2, but get %zu", args.size());
-  return kPrintNe + kPrintBracket_L + ExpressionImpl::SymExprToExpressionImplRef(args[0]).Str(type) +
-      kPrintDelim + ExpressionImpl::SymExprToExpressionImplRef(args[1]).Str(type) + kPrintBracket_R;
+  return kPrintNe + kPrintBracket_L + PrintArgs(args, kPrintDelim, type) + kPrintBracket_R;
 }
 REGISTER_EXPR_DEFAULT_PRINTER(kOpNe, DefaultUnEqualPrinter);
 
