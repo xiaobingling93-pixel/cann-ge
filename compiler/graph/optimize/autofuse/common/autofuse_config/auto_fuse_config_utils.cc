@@ -9,6 +9,7 @@
  */
 
 #include "auto_fuse_config_utils.h"
+#include <algorithm>
 namespace ge {
 namespace {
 bool IsForceTagValid(const std::string &tag) {

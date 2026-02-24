@@ -15,6 +15,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include <algorithm>
 #include "common/checker.h"
 #include "ge_common/ge_api_types.h"
 #include "ascgen_log.h"
