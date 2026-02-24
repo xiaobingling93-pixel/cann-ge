@@ -598,7 +598,7 @@ TEST_F(TestCanfusePass, test_canfuse_red_and_red_vertical_fusion_1) {
   Session session(options);
   auto ret = session.AddGraph(1, *graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  InputTensorInfo input1{0, {2, 2, 2}, nullptr, 0};
+  InputTensorInfo input1{0, {2, 2, 16}, nullptr, 0};
   std::vector<InputTensorInfo> inputs{input1};
   // 当前测试框架还不支持 BuildGraph 接口端到端编译、加载, 仅测试编译流程
   session.BuildGraph(1, inputs);
@@ -701,7 +701,7 @@ TEST_F(TestCanfusePass, test_canfuse_red_and_ele_vertical_fusion) {
   Session session(options);
   auto ret = session.AddGraph(1, *graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  InputTensorInfo input1{0, {2, 2, 2}, nullptr, 0};
+  InputTensorInfo input1{0, {2, 2, 16}, nullptr, 0};
   std::vector<InputTensorInfo> inputs{input1};
   // 当前测试框架还不支持 BuildGraph 接口端到端编译、加载, 仅测试编译流程
   EXPECT_EQ(session.BuildGraph(1, inputs), SUCCESS);
@@ -882,7 +882,7 @@ TEST_F(TestCanfusePass, test_canfuse_ele_and_red_vertical_fusion) {
   Session session(options);
   auto ret = session.AddGraph(1, *graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  InputTensorInfo input1{0, {2, 2, 2}, nullptr, 0};
+  InputTensorInfo input1{0, {2, 2, 16}, nullptr, 0};
   std::vector<InputTensorInfo> inputs{input1};
   DUMP_GRAPH_WHEN("After_AutoFusePass");
   // 当前测试框架还不支持 BuildGraph 接口端到端编译、加载, 仅测试编译流程
@@ -1007,8 +1007,8 @@ TEST_F(TestCanfusePass, test_canfuse_bro_and_red_vertical_fusion) {
   Session session(options);
   auto ret = session.AddGraph(1, *graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  InputTensorInfo input1{0, {2, 2, 2}, nullptr, 0};
-  InputTensorInfo input2{0, {2, 2, 2, 2}, nullptr, 0};
+  InputTensorInfo input1{0, {16, 16, 16}, nullptr, 0};
+  InputTensorInfo input2{0, {16, 16, 16, 16}, nullptr, 0};
   std::vector<InputTensorInfo> inputs{input1, input2};
   DUMP_GRAPH_WHEN("After_AutoFusePass");
   // 当前测试框架还不支持 BuildGraph 接口端到端编译、加载, 仅测试编译流程
@@ -1195,7 +1195,7 @@ TEST_F(TestCanfusePass, test_canfuse_red_and_red_vertical_fusion_2) {
   Session session(options);
   auto ret = session.AddGraph(1, *graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  InputTensorInfo input1{0, {2, 2, 2}, nullptr, 0};
+  InputTensorInfo input1{0, {16, 16, 16}, nullptr, 0};
   std::vector<InputTensorInfo> inputs{input1};
   // 当前测试框架还不支持 BuildGraph 接口端到端编译、加载, 仅测试编译流程
   EXPECT_EQ(session.BuildGraph(1, inputs), SUCCESS);

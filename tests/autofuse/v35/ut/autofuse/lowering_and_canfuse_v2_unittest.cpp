@@ -1023,15 +1023,15 @@ TEST_F(UTestLoweringAndCanfuseV2, CubeAndReduceLoweringCanfuseV2CanNotFuseReduce
   RuntimeStub::SetInstance(stub_v2);
   [this]() {
     auto data0 = es_graph_->CreateInput(0, "data0", nullptr);
-    data0.SetSymbolShape({"4", "4"});
+    data0.SetSymbolShape({"4", "16"});
     auto data1 = es_graph_->CreateInput(1, "data1", nullptr);
-    data1.SetSymbolShape({"4", "4"});
+    data1.SetSymbolShape({"4", "16"});
     auto data2 = es_graph_->CreateInput(2, "data2", nullptr);
-    data2.SetSymbolShape({"4", "4"});
+    data2.SetSymbolShape({"4", "16"});
     auto matmul = es::MatMulV3(data0, data1);
-    matmul.SetSymbolShape({"4", "4"});
+    matmul.SetSymbolShape({"4", "16"});
     auto add = es::Add(matmul, data2);
-    add.SetSymbolShape({"4", "4"});
+    add.SetSymbolShape({"4", "16"});
     auto sum = es::ReduceSumD(add, {1}, true);
     sum.SetSymbolShape({"4", "1"});
     es_graph_->SetOutput(sum, 0);
