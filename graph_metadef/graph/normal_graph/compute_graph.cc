@@ -1579,6 +1579,7 @@ graphStatus ComputeGraphImpl::CreateNetOutputNode(ge::OpDescPtr &net_output_desc
   GE_ASSERT_NOTNULL(net_output_desc, "New OpDesc failed");
   (void)AttrUtils::SetListStr(net_output_desc, ATTR_NAME_DATA_DUMP_ORIGIN_OP_NAMES,
                               std::move(std::vector<std::string>()));
+  (void)AttrUtils::SetBool(net_output_desc, "_inner_net_output", true);
   return GRAPH_SUCCESS;
 }
 
@@ -1642,9 +1643,6 @@ graphStatus ComputeGraphImpl::CollectOutputNode(const ComputeGraphPtr &compute_g
 
     auto op_desc = ele.first->GetOpDesc();
     GE_CHECK_NOTNULL(op_desc);
-    if (op_desc->HasAttr(ATTR_ATC_USER_DEFINE_OUTPUT_NODES)) {
-      is_user_define_output_nodes_ = true;
-    }
     int32_t parent_index = -1;
     auto output_desc = op_desc->MutableOutputDesc(ele.second);
     GE_ASSERT_NOTNULL(output_desc, "[Get][OutputDesc]Can not find output tensor desc from node:%s, index %d",
@@ -1679,31 +1677,6 @@ graphStatus ComputeGraphImpl::CheckOutputNodeInfo(const std::vector<ge::ComputeG
   return GRAPH_SUCCESS;
 }
 
-graphStatus ComputeGraphImpl::AddCtrlEdgesBetweenLeafAndNetOutput(const ComputeGraphPtr &compute_graph,
-                                                                  const ge::NodePtr &net_out_node) const {
-  GE_CHECK_NOTNULL(net_out_node);
-  if (is_user_define_output_nodes_) {
-    GELOGI("No need to add ctrl edge to netoutput because user out nodes have been set.");
-    return SUCCESS;
-  }
-  bool graph_has_only_one_node_except_netoutput = (GetDirectNodesSize() == kNodesCount);
-  for (const auto &node : GetDirectNode(compute_graph)) {
-    if (node->GetOpDesc() == nullptr || node->GetOpDesc()->GetType() == NETOUTPUT) {
-      continue;
-    }
-    if ((node->GetInControlNodesSize() != 0 || node->GetInDataNodesSize() != 0 ||
-         graph_has_only_one_node_except_netoutput) &&
-        node->GetOutDataNodesSize() == 0 && node->GetOutControlNodesSize() == 0) {
-      GE_CHK_GRAPH_STATUS_RET(GraphUtils::AddEdge(node->GetOutControlAnchor(), net_out_node->GetInControlAnchor()),
-                              "[Add][ControlEdge] between %s and %s failed", node->GetName().c_str(),
-                              net_out_node->GetName().c_str());
-      GELOGD("Add ctrl edge success. src name: %s, dst name: %s", node->GetName().c_str(),
-             net_out_node->GetName().c_str());
-    }
-  }
-  return GRAPH_SUCCESS;
-}
-
 graphStatus ComputeGraphImpl::AddCtrlEdgeForTargets(const ge::NodePtr &net_out_node) {
   GE_ASSERT_NOTNULL(net_out_node, "Param net_out_node is nullptr, check invalid");
   // Add ctrl edge for targets
@@ -1729,7 +1702,6 @@ graphStatus ComputeGraphImpl::AddInOutForNetOutputOp(const ge::OpDescPtr &net_ou
     if (src_node == nullptr) {
       continue;
     }
-    int32_t src_index = iter->node_output_index;
     // if src_node is in targets_, no need to Add in and out for netoutput
     const auto it = targets_.find(src_node);
     if (it != targets_.end()) {
@@ -1737,16 +1709,9 @@ graphStatus ComputeGraphImpl::AddInOutForNetOutputOp(const ge::OpDescPtr &net_ou
       GELOGD("node [%s] is in processed targets, do not add inout for netoutput!", src_node->GetName().c_str());
       continue;
     }
-    /// Get the output attribute of src_node,
-    /// and set to the input/output of net_out_node.
     GE_ASSERT_TRUE((src_node != nullptr) && (src_node->GetOpDesc() != nullptr) && (net_output_desc != nullptr),
                    "Param output_nodes_info has RetvalInfo item, which src_node is invalid; "
                    "or Param net_output_desc is nullptr, check invalid");
-
-    ge::GeTensorDesc out_desc = src_node->GetOpDesc()->GetOutputDesc(src_index);
-    out_desc.SetFormat(FORMAT_ND);
-    out_desc.SetOriginFormat(FORMAT_ND);
-
     is_input_const.push_back(ConstantUtils::IsRealConst(src_node->GetOpDesc()));
     ++iter;
   }
@@ -1795,16 +1760,6 @@ graphStatus ComputeGraphImpl::AddDataEdgesForNetOutput(
 
     GELOGD("AddEdge to output node, src name:%s, src index:%d, dst index:%d.", src_node->GetName().c_str(),
            item.node_output_index, net_input_index);
-    if (item.parent_node_index >= 0) {
-      GELOGI("Add parent node index %d for the netoutput input %d on graph %s", item.parent_node_index, net_input_index,
-             GetName().c_str());
-      auto input_desc = net_out_node->GetOpDesc()->MutableInputDesc(net_input_index);
-      GE_ASSERT_NOTNULL(input_desc, "Node:%s(%s) has no input desc index is %d, check invalid",
-                        net_out_node->GetName().c_str(), net_out_node->GetType().c_str(), net_input_index);
-      GE_ASSERT_TRUE(AttrUtils::SetInt(input_desc, ATTR_NAME_PARENT_NODE_INDEX, item.parent_node_index),
-                     "Set Attr:%s to input:%d tensor of op:%s(%s) failed", ATTR_NAME_PARENT_NODE_INDEX.c_str(),
-                     net_input_index, net_out_node->GetName().c_str(), net_out_node->GetType().c_str());
-    }
     net_input_index++;
   }
 
@@ -1872,8 +1827,6 @@ graphStatus ComputeGraphImpl::AddNetOutputNodeToGraph(const ComputeGraphPtr &com
     GELOGI("Both output, target and special nodes are empty! add net output node");
     output_node = AddNode(net_output_desc, compute_graph);
     GE_CHECK_NOTNULL(output_node);
-    GE_CHK_STATUS_RET(AddCtrlEdgesBetweenLeafAndNetOutput(compute_graph, output_node),
-                      "[Add][CtrlEdges] between leaf and netoutput in graph:%s failed", GetName().c_str());
     GE_ASSERT_TRUE(ge::AttrUtils::SetInt(output_node->GetOpDesc(), ATTR_NAME_TRUE_BRANCH_STREAM, 0),
                    "Set Attr:%s to op:%s(%s) failed", ATTR_NAME_TRUE_BRANCH_STREAM.c_str(),
                    output_node->GetName().c_str(), output_node->GetType().c_str());
@@ -1905,10 +1858,10 @@ graphStatus ComputeGraphImpl::AddNetOutputNodeToGraph(const ComputeGraphPtr &com
                     net_output_desc->GetType().c_str(), GetName().c_str());
   GE_ASSERT_SUCCESS(AddDataEdgesForNetOutput(compute_graph, output_node, output_nodes_info),
                     "[Add][Edges] for net output node in graph:%s failed.", GetName().c_str());
+  GE_ASSERT_SUCCESS(UpdateNetOutputParentNodeIndex(output_node, output_nodes_info),
+                    "[Update][NetOutputInputDesc] for node %s failed", output_node->GetNamePtr());
   GE_ASSERT_SUCCESS(AddCtrlEdgeForTargets(output_node), "[Add][CtrlEdge] for targets failed, net_out_node:%s.",
                     output_node->GetName().c_str());
-  GE_ASSERT_SUCCESS(AddCtrlEdgesBetweenLeafAndNetOutput(compute_graph, output_node),
-                    "[Add][CtrlEdges] between leaf and netoutput in graph:%s failed.", GetName().c_str());
 
   GELOGI("Add NetOutput node success.");
   return GRAPH_SUCCESS;
@@ -1916,21 +1869,55 @@ graphStatus ComputeGraphImpl::AddNetOutputNodeToGraph(const ComputeGraphPtr &com
 
 graphStatus ComputeGraphImpl::UpdateNetOutput(const ComputeGraphPtr &compute_graph, const ge::NodePtr &output_node,
                                               bool update_data_edge) {
+  // update subgraph NetOutput name
+  if ((output_node->GetName() == NODE_NAME_NET_OUTPUT) && (GetParentGraph() != nullptr)) {
+    std::string node_name = GetName() + "_" + NODE_NAME_NET_OUTPUT;
+    output_node->GetOpDesc()->SetName(node_name);
+  }
+
+  std::vector<RetvalInfo> output_nodes_info;
+  GE_ASSERT_SUCCESS(CollectOutputNode(compute_graph, output_nodes_info), "[Get][OutputNode] in graph:%s failed.",
+                    GetName().c_str());
+
   GE_ASSERT_SUCCESS(UnLinkAnchorsOfNetoutput(output_node),
                     "[UnLink][Connection] between netoutput node:%s and user set target node",
                     output_node->GetName().c_str());
-
   if (update_data_edge) {
-    std::vector<RetvalInfo> output_nodes_info;
-    GE_ASSERT_SUCCESS(CollectOutputNode(compute_graph, output_nodes_info), "[Get][OutputNode] in graph:%s failed.",
-                      GetName().c_str());
     GE_ASSERT_SUCCESS(AddDataEdgesForNetOutput(compute_graph, output_node, output_nodes_info),
                       "[Add][Edges] for net output node in graph:%s failed.", GetName().c_str());
   }
   GE_ASSERT_SUCCESS(AddCtrlEdgeForTargets(output_node), "[Add][CtrlEdge] for targets failed, net_out_node:%s.",
                     output_node->GetName().c_str());
+  GE_ASSERT_SUCCESS(UpdateNetOutputParentNodeIndex(output_node, output_nodes_info),
+                    "[Update][NetOutputInputDesc] for node %s failed", output_node->GetNamePtr());
   GE_ASSERT_SUCCESS(UpdateNetOutputDesc(output_node), "[Update][NetOutputDesc] for node:%s failed.",
                     output_node->GetName().c_str());
+  return GRAPH_SUCCESS;
+}
+
+graphStatus ComputeGraphImpl::UpdateNetOutputParentNodeIndex(const ge::NodePtr &net_output, const std::vector<RetvalInfo> &output_nodes_info) const {
+  int32_t net_input_index = 0;
+  for (auto &item : output_nodes_info) {
+    NodePtr src_node = item.output_node;
+    GE_CHECK_NOTNULL(src_node);
+
+    if (item.parent_node_index >= 0) {
+      auto input_desc = net_output->GetOpDesc()->MutableInputDesc(net_input_index);
+      GE_ASSERT_NOTNULL(input_desc, "Node:%s(%s) has no input desc index is %d, check invalid",
+                        net_output->GetName().c_str(), net_output->GetType().c_str(), net_input_index);
+      int32_t parent_node_index = -1;
+      if (AttrUtils::GetInt(input_desc, ATTR_NAME_PARENT_NODE_INDEX, parent_node_index) && (parent_node_index >= 0)) {
+        net_input_index++;
+        continue;
+      }
+      GE_ASSERT_TRUE(AttrUtils::SetInt(input_desc, ATTR_NAME_PARENT_NODE_INDEX, item.parent_node_index),
+                     "Set Attr:%s to input:%d tensor of op:%s(%s) failed", ATTR_NAME_PARENT_NODE_INDEX.c_str(),
+                     net_input_index, net_output->GetName().c_str(), net_output->GetType().c_str());
+      GELOGI("Add parent node index %d for the netoutput input %d on graph %s", item.parent_node_index, net_input_index,
+             GetName().c_str());
+    }
+    net_input_index++;
+  }
   return GRAPH_SUCCESS;
 }
 

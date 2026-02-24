@@ -642,6 +642,21 @@ TEST_F(UtestGraph, SetTargetsAndSetOutputs) {
   ASSERT_EQ(net_output->GetInControlNodes().size(), 1U);
 }
 
+TEST_F(UtestGraph, MultiSetOutputs) {
+  auto compute_graph = BuildComputeGraphWithoutNetOutput();
+  Graph graph = ge::GraphUtilsEx::CreateGraphFromComputeGraph(compute_graph);
+  auto transdata1 = compute_graph->FindNode("Transdata1");
+  auto transdata2 = compute_graph->FindNode("Transdata2");
+  auto transdata1_op = OpDescUtils::CreateOperatorFromNode(transdata1);
+  auto transdata2_op = OpDescUtils::CreateOperatorFromNode(transdata2);
+
+  graph.SetOutputs({transdata1_op, transdata2_op}).SetOutputs({transdata1_op});
+  auto net_output = compute_graph->FindFirstNodeMatchType(NETOUTPUT);
+  ASSERT_NE(net_output, nullptr);
+  ASSERT_EQ(net_output->GetInDataNodesSize(), 1U);
+  ASSERT_EQ(net_output->GetInDataNodes().at(0)->GetName(), "Transdata1");
+}
+
 TEST_F(UtestGraph, SetOutputs_string) {
   using std::make_pair;
   ge::OpDescPtr add_op(new ge::OpDesc("add_0", "add"));
