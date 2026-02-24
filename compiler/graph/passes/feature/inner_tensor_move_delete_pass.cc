@@ -29,11 +29,16 @@ bool IsInnerTensorMove(const NodePtr &node) {
   return is_inner_tensor_move;
 }
 
+bool IsRefNode(const NodePtr &node) {
+  bool is_ref = false;
+  (void)AttrUtils::GetBool(node->GetOpDesc(), ATTR_NAME_REFERENCE, is_ref);
+  return is_ref;
+}
+
 NodePtr FindRefNode(const NodePtr &node) {
   NodePtr ref_node = nullptr;
   for (const auto &out_node : node->GetOutDataNodes()) {
-    bool is_ref = false;
-    (void)AttrUtils::GetBool(out_node->GetOpDesc(), ATTR_NAME_REFERENCE, is_ref);
+    bool is_ref = IsRefNode(out_node);
     if (is_ref) {
       ref_node = out_node;
       break;
@@ -91,6 +96,16 @@ Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
     GELOGI(
         "TensorMove %s 's input has multi output, and it self has one output, topo sort mode is StableRDFS, can be deleted",
         node->GetNamePtr());
+    return IsolateAndDeleteTensorMoveNode(node);
+  }
+
+  // 如果inner tensormove后面连的不是ref算子，则可以删除
+  bool is_all_out_not_ref = true;
+  for (const auto &out_node : node->GetOutDataNodes()) {
+    is_all_out_not_ref = (is_all_out_not_ref && !IsRefNode(out_node));
+  }
+  if (is_all_out_not_ref) {
+    GELOGI("TensorMove %s 's output is not ref, can be deleted", node->GetNamePtr());
     return IsolateAndDeleteTensorMoveNode(node);
   }
 
