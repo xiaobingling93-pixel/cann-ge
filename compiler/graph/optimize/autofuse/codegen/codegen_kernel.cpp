@@ -1701,12 +1701,14 @@ Status ApiCall::PreProcess(const TPipe &tpipe, const std::vector<ascir::AxisId> 
                            const std::vector<std::reference_wrapper<const Tensor>> &outputs,
                            std::string &result) const {
   stringstream ss;
-  const auto &ub = outputs[0].get();
-  if (ub.is_ub_scalar && !current_axis.empty()) {
-    GE_ASSERT_TRUE((outputs.size() == 1U), "ub_scalar support one output, actual %zu output", outputs.size());
-    const auto loop_axis = tpipe.tiler.GetAxis(current_axis.back());
-    GELOGD("t_name:%s, loop_axis_name:%s", ub.Str().c_str(), loop_axis.Str().c_str());
-    ss << "if (" << loop_axis << " < 1) {" << std::endl;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &ub = outputs[i].get();
+    if (ub.is_ub_scalar && !current_axis.empty()) {
+      const auto loop_axis = tpipe.tiler.GetAxis(current_axis.back());
+      GELOGD("t_name:%s, loop_axis_name:%s", ub.Str().c_str(), loop_axis.Str().c_str());
+      ss << "if (" << loop_axis << " < 1) {" << std::endl;
+      break;
+    }
   }
 
   result = ss.str();
@@ -1718,36 +1720,41 @@ Status ApiCall::PostProcess(const TPipe &tpipe, const std::vector<ascir::AxisId>
                             std::string &result) const {
   (void)tpipe;
   stringstream ss;
-  const auto &ub = outputs[0].get();
-  if (ub.is_ub_scalar && !current_axis.empty()) {
-    GE_ASSERT_TRUE((outputs.size() == 1U), "ub_scalar support one output, actual %zu output", outputs.size());
-    GELOGD("t_name:%s, need_gen_get_value_of_ub_scalar:%d", ub.Str().c_str(),
-           static_cast<int32_t>(ub.need_gen_get_value_of_ub_scalar));
-    // 生成ub_scalar的变量初始化定义
-    if (ub.need_gen_get_value_of_ub_scalar) {
-      std::string sync_type = (this->type == Load::Type) ? "MTE2_S" : "V_S";
-      ss << "event_t eventID = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::";
-      ss << sync_type;
-      ss << "));" << std::endl;
+  bool first_set = true;
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto &ub = outputs[i].get();
+    if (ub.is_ub_scalar && !current_axis.empty()) {
+      GELOGD("t_name:%s, need_gen_get_value_of_ub_scalar:%d", ub.Str().c_str(),
+            static_cast<int32_t>(ub.need_gen_get_value_of_ub_scalar));
+      // 生成ub_scalar的变量初始化定义
+      if (ub.need_gen_get_value_of_ub_scalar) {
+        if (first_set) {
+          std::string sync_type = (this->type == Load::Type) ? "MTE2_S" : "V_S";
+          ss << "event_t eventID = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::";
+          ss << sync_type;
+          ss << "));" << std::endl;
 
-      ss << "SetFlag<HardEvent::";
-      ss << sync_type;
-      ss << ">(eventID);" << std::endl;
+          ss << "SetFlag<HardEvent::";
+          ss << sync_type;
+          ss << ">(eventID);" << std::endl;
 
-      ss << "WaitFlag<HardEvent::";
-      ss << sync_type;
-      ss << ">(eventID);" << std::endl;
+          ss << "WaitFlag<HardEvent::";
+          ss << sync_type;
+          ss << ">(eventID);" << std::endl;
 
-      std::string tmp;
-      GE_CHK_STATUS_RET(ub.InitUbScalar(tmp));
-      ss << tmp;
-      if (ub.need_duplicate_value_of_ub_scalar) {
-        GE_CHK_STATUS_RET(ub.GenDuplicateValueOfUbScalar(tmp));
+          first_set = false;
+        }
+        std::string tmp;
+        GE_CHK_STATUS_RET(ub.InitUbScalar(tmp));
         ss << tmp;
+        if (ub.need_duplicate_value_of_ub_scalar) {
+          GE_CHK_STATUS_RET(ub.GenDuplicateValueOfUbScalar(tmp));
+          ss << tmp;
+        }
       }
-    }
 
-    ss << "}" << std::endl;
+      ss << "}" << std::endl;
+    }
   }
 
   result = ss.str();
