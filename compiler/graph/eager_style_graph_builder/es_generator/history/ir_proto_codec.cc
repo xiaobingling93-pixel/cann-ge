@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "graph/utils/attr_utils.h"
-#include "utils.h"
+#include "../utils.h"
 
 namespace ge {
 namespace es {
@@ -269,7 +269,7 @@ IrOpProto IrProtoCodec::FromOpDesc(const OpDescPtr &op_desc) {
     proto.subgraphs.emplace_back(std::move(subgraph));
   }
 
-  const auto ir_attrs = ge::es::GetAllIrAttrsNamesAndTypeInOrder(op_desc);
+  const auto ir_attrs = ge::es::GetAllIrAttrsNamesAndTypeInIrOrder(op_desc);
   proto.attrs.reserve(ir_attrs.size());
   for (const auto &ir_attr : ir_attrs) {
     IrAttr attr;

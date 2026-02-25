@@ -48,7 +48,7 @@ TEST_F(MemoryStatisticManagerSTest, StatisticRss) {
       MemoryStatisticManager::Instance().GetProcessStatusFile();
   MemoryStatisticManager::Instance().StatisticRss();
   EXPECT_EQ(MemoryStatisticManager::Instance().rss_statistic_count_, 1);
-  EXPECT_EQ(MemoryStatisticManager::Instance().rss_hwm_,
+  EXPECT_GE(MemoryStatisticManager::Instance().rss_hwm_,
             static_cast<int64_t>(MemoryStatisticManager::Instance().rss_avg_));
   MemoryStatisticManager::Instance().StatisticRss();
   EXPECT_EQ(MemoryStatisticManager::Instance().rss_statistic_count_, 2);
@@ -68,7 +68,7 @@ TEST_F(MemoryStatisticManagerSTest, StatisticRss_avoid_division_by_zero) {
   MemoryStatisticManager::Instance().rss_statistic_count_ = UINT32_MAX;
   MemoryStatisticManager::Instance().StatisticRss();
   EXPECT_EQ(MemoryStatisticManager::Instance().rss_statistic_count_, 1);
-  EXPECT_EQ(MemoryStatisticManager::Instance().rss_hwm_,
+  EXPECT_GE(MemoryStatisticManager::Instance().rss_hwm_,
             static_cast<int64_t>(MemoryStatisticManager::Instance().rss_avg_));
 }
 

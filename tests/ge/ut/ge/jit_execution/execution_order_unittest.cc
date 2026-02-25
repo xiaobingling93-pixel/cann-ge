@@ -10,9 +10,7 @@
 
 #include <gtest/gtest.h>
 #include "ge_graph_dsl/graph_dsl.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "framework/common/types.h"
 #include "jit_execution/exe_points/execution_order.h"
@@ -24,10 +22,10 @@ using namespace ge;
 class ExecutionOrderUT : public testing::Test {
  protected:
   void SetUp() override {
-    es_graph_ = std::unique_ptr<es::Graph>(new es::Graph("Hi Lowering graph"));
+    es_graph_ = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("Hi Lowering graph"));
   }
   void TearDown() override {}
-  std::unique_ptr<es::Graph> es_graph_;
+  std::unique_ptr<es::EsGraphBuilder> es_graph_;
 };
 
 /**
@@ -46,9 +44,9 @@ TEST_F(ExecutionOrderUT, no_slice_tests) {
     data.SetShape({-1,-1,-1,-1});
     auto relu = es::Relu(data);
     auto relu1 = es::Relu(relu);
-    es_graph_->SetOutput(relu1, 0);
+    es::EsGraphBuilder::SetOutput(relu1, 0);
   }();
-  auto graph = es_graph_->Build();
+  auto graph = es_graph_->BuildAndReset();
   auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph.get());
 
   compute_graph->SetOutputSize(2); // make a wrong output size
@@ -84,9 +82,9 @@ TEST_F(ExecutionOrderUT, test_has_next_ep) {
     data.SetShape({-1,-1,-1,-1});
     auto relu = es::Relu(data);
     auto relu1 = es::Relu(relu);
-    es_graph_->SetOutput(relu1, 0);
+    es::EsGraphBuilder::SetOutput(relu1, 0);
   }();
-  auto graph = es_graph_->Build();
+  auto graph = es_graph_->BuildAndReset();
   auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph.get());
   compute_graph->SetOutputSize(1);
 

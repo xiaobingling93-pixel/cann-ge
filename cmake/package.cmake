@@ -319,8 +319,7 @@ elseif("${BUILD_COMPONENT}" STREQUAL "ge-executor")
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/attr_value.h
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/operator.h
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/operator_factory.h
-        ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/resource_context.h 
-        ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/tensor.h 
+        ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/resource_context.h
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/kernel_launch_info.h 
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/arg_desc_info.h
         ${CMAKE_SOURCE_DIR}/inc/graph_metadef/external/graph/custom_op.h

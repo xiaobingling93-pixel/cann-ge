@@ -12,9 +12,7 @@
 #define protected public
 #include "jit_execution/cache/compiled_model_cache.h"
 #include "jit_execution/utils/guarded_execution_point_util.h"
-#include "eager_style_graph_builder/esb_funcs.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
+#include "es_ge_test_ops.h"
 #include "ge_running_env/dir_env.h"
 #include "stub/gert_runtime_stub.h"
 #include "common_setup.h"
@@ -107,8 +105,8 @@ TEST_F(CompiledModelCacheUT, check_get_gep_graph_key) {
 
   int64_t slice_graph_id = 1;
   std::string gep_graph_key_prefix_gt = user_graph_key_ + "_" + std::to_string(slice_graph_id) + "_";
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("Hello"), EsDestroyGraph);
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("Hello"), EsDestroyGraphBuilder);
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
 
   EXPECT_EQ(graph_manager.AddGraph(user_graph_id_,
     *ge_graph, {{"ge.graph_key", user_graph_key_},
@@ -139,8 +137,8 @@ TEST_F(CompiledModelCacheUT, check_emplace_gep_option) {
 
   constexpr int64_t slice_graph_id = 1;
   const std::string gep_graph_key_prefix_gt = user_graph_key_ + "_" + std::to_string(slice_graph_id) + "_";
-  const auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("Hello"), EsDestroyGraph);
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("Hello"), EsDestroyGraphBuilder);
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
 
   EXPECT_EQ(graph_manager.AddGraph(user_graph_id_, *ge_graph,
     {{"ge.graph_key", user_graph_key_},

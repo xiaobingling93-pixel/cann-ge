@@ -11,8 +11,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <memory>
-
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "ge/fusion/pattern.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -28,12 +27,13 @@ class UtestPatternGraph : public testing::Test {
   }
 };
 TEST_F(UtestPatternGraph, CreatePattern) {
-  es::Graph graph_builder("pattern");
-  auto input0 = graph_builder.CreateInput(0);
-  auto input1 = graph_builder.CreateInput(1);
-  auto y = input0 + input1;
-  graph_builder.SetOutput(y, 0);
-  auto graph = graph_builder.Build();
+  es::EsGraphBuilder graph_builder("pattern");
+  auto esb_graph = graph_builder.GetCGraphBuilder();
+  auto input0 = EsCreateGraphInput(esb_graph, 0);
+  auto input1 = EsCreateGraphInput(esb_graph, 1);
+  auto y = EsAdd(input0, input1);
+  esb_graph->SetGraphOutput(y, 0);
+  auto graph = graph_builder.BuildAndReset();
 
   auto pattern = std::make_shared<Pattern>(std::move(*graph));
   auto pattern_graph = pattern->GetGraph();
@@ -42,13 +42,14 @@ TEST_F(UtestPatternGraph, CreatePattern) {
 }
 
 TEST_F(UtestPatternGraph, CaptrueTensor) {
-  es::Graph graph_builder("pattern");
-  auto input0 = graph_builder.CreateInput(0);
-  auto input1 = graph_builder.CreateInput(1);
-  auto y = input0 + input1;
-  auto x = y - input1;
-  graph_builder.SetOutput(x, 0);
-  auto graph = graph_builder.Build();
+  es::EsGraphBuilder graph_builder("pattern");
+  auto esb_graph = graph_builder.GetCGraphBuilder();
+  auto input0 = EsCreateGraphInput(esb_graph, 0);
+  auto input1 = EsCreateGraphInput(esb_graph, 1);
+  auto y = EsAdd(input0, input1);
+  auto x = EsSub(y, input1);
+  esb_graph->SetGraphOutput(x, 0);
+  auto graph = graph_builder.BuildAndReset();
   auto pattern_compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
 
   auto y_producer = pattern_compute_graph->FindFirstNodeMatchType("Add");

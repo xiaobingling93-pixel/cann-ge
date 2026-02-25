@@ -1668,7 +1668,7 @@ target_link_libraries(ut_libge_multiparts_utest
     flow_graph
     ${AIR_COMMON_LINK_OPTION}
     -Wl,--whole-archive
-    gert gert_op_impl ge_davinci_model eager_graph_builder ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common
+    gert gert_op_impl ge_davinci_model es_ge_test ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common
     -Wl,--no-whole-archive
     ge_running_env ge_runtime_stub st_stubs  GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
@@ -1715,7 +1715,7 @@ target_link_libraries(ut_libge_symbol_infer_utest
         intf_pub
         -Wl,--whole-archive
         rt2_registry_static
-        ge_davinci_model eager_graph_builder ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common
+        ge_davinci_model es_ge_test ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common
         -Wl,--no-whole-archive
         ge_runtime_stub st_stubs GTest::gtest_main GTest::gmock_main -lrt -ldl -lgcov
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
@@ -1754,10 +1754,9 @@ target_link_libraries(ut_libge_common_utest
     metadef_headers
     ascendcl_stub
     -Wl,--whole-archive
-    eager_graph_builder
+    es_ge_test
     ge_davinci_model ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common ge_runtime_stub
-    gert eager_graph_builder_lib
-    gert_op_impl_static rt2_registry_static
+    gert    gert_op_impl_static rt2_registry_static
     -Wl,--no-whole-archive
     ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
@@ -1813,7 +1812,7 @@ target_link_libraries(ut_libge_others_utest
     ascendcl_stub
     ${AIR_COMMON_LINK_OPTION}
     -Wl,--whole-archive
-    ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format eager_graph_builder_lib
+    ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format es_ge_test
     rt2_registry_static
     -Wl,--no-whole-archive
     ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
@@ -1852,7 +1851,7 @@ target_link_libraries(ut_libge_label_maker_utest
     metadef_headers
     ascendcl_stub
     -Wl,--whole-archive
-    ge_common_base eager_graph_builder_lib
+    ge_common_base    es_ge_test
     ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format
     -Wl,--no-whole-archive
     ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
@@ -1888,7 +1887,7 @@ target_link_libraries(ut_libge_kernel_utest
         metadef_headers
         -Wl,--whole-archive
         ascendcl_stub
-        ge_common_base eager_graph_builder_lib
+        ge_common_base        es_ge_test
         ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format
         -Wl,--no-whole-archive
         ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
@@ -1949,7 +1948,7 @@ target_link_libraries(ut_libge_distinct_load_utest
     -Wl,--whole-archive
     ge_common_base
     ge_single_op ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_ut_common ge_ut_common_format ge_graph_dsl ge_runtime_stub
-    profiler_stub eager_graph_builder_lib gert_op_impl_static rt2_registry_static
+    profiler_stub es_ge_test gert_op_impl_static rt2_registry_static
     -Wl,--no-whole-archive
     ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lpthread -lgcov
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
@@ -2049,7 +2048,7 @@ target_link_libraries(ut_jit_execution
         ge_common_base
         ge_graph_dsl
         rt2_registry_static
-        eager_graph_builder ge_davinci_model gert ge_single_op ge_build_common ge_prepare_common ge_pass_common ge_ut_common_format
+        es_ge_test ge_davinci_model gert ge_single_op ge_build_common ge_prepare_common ge_pass_common ge_ut_common_format
         -Wl,--no-whole-archive
         ge_ut_common
         ge_running_env ge_runtime_stub st_stubs GTest::gtest GTest::gtest_main GTest::gmock_main -lrt -ldl -lgcov
@@ -2065,6 +2064,10 @@ add_test(NAME ut_jit_execution COMMAND ut_jit_execution --gtest_output=xml:${CMA
 set_tests_properties(ut_jit_execution PROPERTIES LABELS "ut;ge_common" DEPENDS ut_libge_multiparts_utest)
 add_test(NAME ut_jit_execution_st COMMAND ut_jit_execution --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/ut_jit_execution.xml)
 set_tests_properties(ut_jit_execution_st PROPERTIES LABELS "st;st_hetero")
+
+set(ES_HISTORY_REGISTRY_FIXTURE_SRC_DIR
+        ${AIR_CODE_DIR}/tests/ge/ut/ge/graph/eager_style_graph_builder/es_generator/history/fixtures/history_registry)
+file(COPY ${ES_HISTORY_REGISTRY_FIXTURE_SRC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/fixtures)
 
 add_executable(ut_eager_style_builder
         ${ES_GRAPH_BUILDER_TEST_SRCS}

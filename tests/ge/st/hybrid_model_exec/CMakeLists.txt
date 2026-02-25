@@ -35,7 +35,7 @@ target_link_libraries(hybrid_model_async_exec_test PUBLIC
         gert_op_impl_static
         ascendcl_stub
         -Wl,--no-whole-archive
-        GTest::gtest GTest::gtest_main st_stubs ge_graph_dsl ge_running_env eager_graph_builder_lib ge_runtime_stub gert_op_impl)
+        GTest::gtest GTest::gtest_main st_stubs ge_graph_dsl ge_running_env es_ge_test ge_runtime_stub gert_op_impl)
 
 include(CTest)
 enable_testing()

@@ -197,20 +197,6 @@ class ModelRelationTest : public testing::Test {
     return builder.GetGraph();
   }
 
-  ComputeGraphPtr BuildGraphWithQueueData() {
-    auto builder = ut::GraphBuilder("g1");
-    auto partitioned_call_1 = builder.AddNode("PartitionedCall1", PARTITIONEDCALL, 0, 1);
-    auto net_output = builder.AddNode("NetOutput", NETOUTPUT, 1, 1);
-
-    auto subbuilder = ut::GraphBuilder("subgraph-1");
-    auto queue_data = subbuilder.AddNode("QueueData", QUEUE_DATA, 0, 0);
-    AttrUtils::SetStr(queue_data->GetOpDesc(), "queue_name", "some_name");
-    SetSubGraph(builder.GetGraph(), subbuilder.GetGraph(), *partitioned_call_1->GetOpDesc(), "subgraph-1");
-
-    builder.AddDataEdge(partitioned_call_1, 0, net_output, 0);
-    return builder.GetGraph();
-  }
-
   ComputeGraphPtr BuildGraphWithNoInput() {
     auto builder = ut::GraphBuilder("g1");
     auto partitioned_call_1 = builder.AddNode("PartitionedCall1", PARTITIONEDCALL, 0, 1);
@@ -270,24 +256,6 @@ TEST_F(ModelRelationTest, TestBuildFromRootGraph) {
   EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
   EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
   EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-}
-
-/**
- *      NetOutput
- *         |
- *       PC_1
- */
-TEST_F(ModelRelationTest, TestBuildFromRootGraphWithQueueData) {
-  ComputeGraphPtr graph = BuildGraphWithQueueData();
-  std::unique_ptr<ModelRelation> model_relation;
-  auto ret = ModelRelationBuilder().BuildFromRootGraph(*graph, model_relation);
-  ASSERT_EQ(ret, SUCCESS);
-  auto queue_defs = model_relation->endpoints;
-  ASSERT_EQ(queue_defs.size(), 2);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 0);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.external_input_queue_names.size(), 1);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 1);
 }
 
 /**

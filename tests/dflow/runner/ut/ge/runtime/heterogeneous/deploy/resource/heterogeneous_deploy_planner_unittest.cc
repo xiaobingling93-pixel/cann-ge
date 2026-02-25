@@ -388,27 +388,6 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanInputsFusion) {
 }
 
 /**
- *       NetOutput
- *          |
- *        PC_1
- */
-TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithQueueData) {
-  auto flow_model = StubModels::BuildFlowModel(StubModels::BuildGraphWithQueueData());
-  EXPECT_EQ(flow_model->GetSubmodels().size(), 1);
-  auto model_relation = flow_model->GetModelRelation();
-  ASSERT_TRUE(model_relation != nullptr);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 0);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.external_input_queue_names.size(), 1);
-  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 1);
-  DeployPlan deploy_plan;
-  BuildDeviceInfos(single_device_list);
-  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
-  ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 5);
-}
-
-/**
  *  NetOutput
  *     |
  *    PC_2

@@ -37,12 +37,18 @@ ASCEND_PATH = os.path.join(PYF_PATH, "..", "..", "..")
 timestamp_list = []
 CV_COMMON_MIX_WHITE_LIST = [
     4096, 4097, 4112, 4113, 4160, 4161, 4176, 4177,
+    8192, 8208, 8256, 8272,
     1114113, 1114129, 1114177, 1114193,
-    2097409, 2097425, 2097473, 2097489,
     2162689, 2162705, 2162753, 2162769,
     4194304, 4194305, 4194320, 4194321, 4194368, 4194369, 4194384, 4194385,
     4198400, 4198401, 4198416, 4198417, 4198464, 4198465, 4198480, 4198481,
     8388608, 8388609, 8388624, 8388625, 8388672, 8388673, 8388688, 8388689
+]
+
+CV_COMMON_BMM_MIX_WHITE_LIST = [
+    513, 529, 577, 593,
+    8192, 8208, 8256, 8272,
+    2097409, 2097425, 2097473, 2097489
 ]
 
 
@@ -938,6 +944,13 @@ def _process_tiling_info(is_batch, compile_info, origin_inputs, origin_outputs, 
     return tiling_info, cube_block_dim
 
 
+def is_matmul_relu_fixpip(tiling_info, cube_info):
+    has_relu = cube_info[4]
+    tiling_key_transpose_and_full_load_mask = 0xF10F0  # transpose/全载模式/基础或者切k模板
+    cube_tiling_key_fixpip = tiling_info.tiling_key & ~tiling_key_transpose_and_full_load_mask
+    return has_relu and (cube_tiling_key_fixpip == 1)
+
+
 def template_decider(kernel_name, temp_dir, graph_name, tiling_info, cube_info):
     _, is_batch, cube_block_dim, use_cv_common, has_relu = cube_info[:5]
     tiling_key = static_shape_cv_compile(kernel_name=kernel_name, temp_dir=temp_dir,
@@ -945,14 +958,14 @@ def template_decider(kernel_name, temp_dir, graph_name, tiling_info, cube_info):
     logger.info("CV fusion op, get vector tilingkey(%s)", tiling_key)
     use_cv_common = use_cv_common or [False]
     tiling_key_transpose_mask = 0xF0
-    tiling_key_transpose_and_full_load_mask = 0xF10F0 # transpose/全载模式/基础或者切k模板
     cube_tiling_key_ub = tiling_info.tiling_key & ~tiling_key_transpose_mask
-    cube_tiling_key_fixpip = tiling_info.tiling_key & ~tiling_key_transpose_and_full_load_mask
-    if (has_relu and cube_tiling_key_fixpip == 1):
+    if (is_matmul_relu_fixpip(tiling_info, cube_info)):
         logger.info("CV fusion op, entering fixpip fusion mode.")
         tiling_info.file_content += "\n#define CV_UB_NO_DB 1\n" # 防止编译问题
     elif (tiling_key == -1 or cube_tiling_key_ub != 1):
-        if tiling_info.tiling_key in CV_COMMON_MIX_WHITE_LIST:
+        is_in_mix_white_list = (is_batch and tiling_info.tiling_key in CV_COMMON_BMM_MIX_WHITE_LIST) or (
+                not is_batch and tiling_info.tiling_key in CV_COMMON_MIX_WHITE_LIST)
+        if is_in_mix_white_list:
             tiling_info.file_content += "\n#define CV_SAFETY_FUSION_MIX_MODE 1\n"
         logger.info("CV fusion op, entering safety fusion mode. vector_tiling_key=%s, is_batch=%s, cube_tiling_key=%s",
                     tiling_key, is_batch, tiling_info.tiling_key)
@@ -1008,6 +1021,8 @@ GET_TILING_DATA_WITH_STRUCT({struct_name}, tmpTilingData, tmpTilingGM);
     class_body += f"const int32_t basen_basem_align = ({data_prefix}.baseM * basen_align) / 2 + basen_align;\n"
     class_body += f"int32_t get_g_basen_basem_align();\n"
     class_body += f"void set_g_basen_basem_align(int32_t value);\n"
+    if (is_matmul_relu_fixpip(tiling_info, cube_info)):
+        class_body += f"#define CV_RELU_FIXPIP_MODE 1\n"
 
     # 写入host端文件
     host_tiling_content = tiling_info.file_content + host_tiling_data + class_body

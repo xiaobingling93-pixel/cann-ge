@@ -87,6 +87,22 @@ struct IrAttrInfo {
   }
 };
 std::string GetDefaultValueString(const OpDescPtr &op_desc, const std::string &attr_name, const std::string &av_type);
+inline IrAttrInfo GetIrAttrInfoForName(const OpDescPtr &op_desc,
+                                       const std::map<AscendString, AscendString> &ir_names_to_type,
+                                       const std::string &ir_name) {
+  const std::string av_type = ir_names_to_type.at(AscendString(ir_name.c_str())).GetString();
+  const bool is_required = op_desc->GetRequiredAttrWithType().count(ir_name) > 0;
+  if (av_type.compare("VT_TENSOR") == 0) {
+    ge::ConstGeTensorPtr default_value;
+    ge::AttrUtils::GetTensor(op_desc, ir_name, default_value);
+    if (!is_required && default_value->IsTensorDataValid()) {
+      throw NotSupportException("Only support 'Tensor()' as default value for Tensor attr, which current op's attr is not using.");
+    }
+  }
+  return {ir_name, is_required, GetTypeInfoByAvType(av_type)};
+}
+
+// 返回属性信息：先 required 后 optional，各自内部与 GetIrAttrNames() 顺序一致
 inline std::vector<IrAttrInfo> GetAllIrAttrsNamesAndTypeInOrder(const OpDescPtr &op_desc) {
   const auto op = OpDescUtils::CreateOperatorFromOpDesc(op_desc);
 
@@ -98,21 +114,11 @@ inline std::vector<IrAttrInfo> GetAllIrAttrsNamesAndTypeInOrder(const OpDescPtr 
   std::vector<IrAttrInfo> req_attrs;
   std::vector<IrAttrInfo> optional_attrs;
   for (const auto &ir_name : op_desc->GetIrAttrNames()) {
-    const std::string av_type = ir_names_to_type.at(AscendString(ir_name.c_str())).GetString();
-    const bool is_required = op_desc->GetRequiredAttrWithType().count(ir_name) > 0;
-    // if attr type is Tensor and default value is not Tensor(), return exception,
-    // using GeTensor->IsTensorDataValid to check data, if data is valid means NOT using Tensor() as default value, return exception
-    if (av_type.compare("VT_TENSOR") == 0) {
-      ge::ConstGeTensorPtr default_value;
-      ge::AttrUtils::GetTensor(op_desc, ir_name, default_value);
-      if (!is_required && default_value->IsTensorDataValid()) {
-        throw NotSupportException("Only support 'Tensor()' as default value for Tensor attr, which current op's attr is not using.");
-      }
-    }
-    if (is_required) {
-      req_attrs.push_back({ir_name, is_required, GetTypeInfoByAvType(av_type)});
+    IrAttrInfo info = GetIrAttrInfoForName(op_desc, ir_names_to_type, ir_name);
+    if (info.is_required) {
+      req_attrs.push_back(std::move(info));
     } else {
-      optional_attrs.push_back({ir_name, is_required, GetTypeInfoByAvType(av_type)});
+      optional_attrs.push_back(std::move(info));
     }
   }
 
@@ -121,6 +127,22 @@ inline std::vector<IrAttrInfo> GetAllIrAttrsNamesAndTypeInOrder(const OpDescPtr 
     ir_name_dts.emplace_back(std::move(op_attr));
   }
   return ir_name_dts;
+}
+
+// 按 GetIrAttrNames() 的 IR 顺序返回属性信息
+inline std::vector<IrAttrInfo> GetAllIrAttrsNamesAndTypeInIrOrder(const OpDescPtr &op_desc) {
+  const auto op = OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  std::map<AscendString, AscendString> ir_names_to_type;
+  if (op.GetAllIrAttrNamesAndTypes(ir_names_to_type) != GRAPH_SUCCESS) {
+    throw std::runtime_error("Failed to get ir names and types");
+  }
+
+  std::vector<IrAttrInfo> result;
+  result.reserve(op_desc->GetIrAttrNames().size());
+  for (const auto &ir_name : op_desc->GetIrAttrNames()) {
+    result.push_back(GetIrAttrInfoForName(op_desc, ir_names_to_type, ir_name));
+  }
+  return result;
 }
 
 inline bool IsDupNameInInputs(const std::string &name, const OpDescPtr &op_desc) {

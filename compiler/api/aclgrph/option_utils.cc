@@ -137,8 +137,8 @@ Status ConstructShapeFromStr(const std::string &shape_str, GeShape &shape) {
     }
     int64_t dim = -1;
     GE_ASSERT_SUCCESS(ConvertToInt64(ge::StringUtils::Trim(str), dim),
-        "Shape: %s is invalid in option %s", shape_str.front(), kHintInputShape);
-    GE_ASSERT_TRUE(dim >= 0L, "Shape in ge.inputHintOption must larger than 0, but get: %lld.", dim);
+        "Shape: %s is invalid in option %s", shape_str.c_str(), kHintInputShape);
+    GE_ASSERT_TRUE(dim >= 0L, "Shape in ge.inputHintOption should not less than 0, but get: %lld.", dim);
     shape.AppendDim(dim);
   }
   return GRAPH_SUCCESS;

@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -27,9 +25,9 @@
 
 namespace ge {
 namespace fusion {
-using namespace es;
+using namespace ge::es;
 class UtestDecomposePass : public testing::Test {
- public:
+public:
   static void SetUpTestSuite() {
   }
   static void TearDownTestSuite() {}
@@ -45,15 +43,15 @@ class UtestDecomposePass : public testing::Test {
 TEST_F(UtestDecomposePass, SingleNode_1Input_1Output) {
   // define pass
   class TransDataToReluPass : public DecomposePass {
-   TransDataToReluPass(const std::vector<AscendString> &op_types): DecomposePass(op_types) {}
-   protected:
+  TransDataToReluPass(const std::vector<AscendString> &op_types): DecomposePass(op_types) {}
+  protected:
     std::unique_ptr<Graph> Replacement(const GNode &matched_node) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -113,12 +111,12 @@ TEST_F(UtestDecomposePass, NotMeetRequirement_NOT_CHANGE) {
       return false;
     }
     std::unique_ptr<Graph> Replacement(const GNode &matched_node) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -143,14 +141,14 @@ TEST_F(UtestDecomposePass, ReplacementInvalid_Failed) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const GNode &matched_node) override { // WRONG REPLACEMENT
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
       esb_graph->SetGraphOutput(data1, 1);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 

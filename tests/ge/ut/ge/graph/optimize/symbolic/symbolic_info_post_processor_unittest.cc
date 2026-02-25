@@ -14,8 +14,7 @@
 #include <gtest/gtest.h>
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_inference.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_symbolizer.h"
 #include "compiler/graph/passes/feature/auto_fuse_pass.h"
@@ -39,6 +38,7 @@
 #include "graph/optimize/symbolic/symbolic_kernel_factory.h"
 #include "graph/optimize/symbolic/codegen/guard_codegen.h"
 #include "attribute_group/attr_group_shape_env.h"
+#include "attribute_group/attr_group_symbolic_desc.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/op_impl_infer_symbol_shape.h"
 #include "graph/operator_reg.h"
 #include "graph/optimize/symbolic/shape_env_guarder.h"
@@ -120,9 +120,9 @@ TEST_F(SymbolicInfoPostProcessorUT, run_test) {
 
   auto foo1_node = graph->FindNode("foo1");
   auto op_desc = foo1_node->GetOpDesc();
-  auto sym_attr0 = op_desc->MutableOutputDesc(0U)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto sym_attr0 = op_desc->MutableOutputDesc(0U)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   sym_attr0->symbolic_tensor.MutableOriginSymbolShape() = {s0, s1, s2, s3};
-  auto sym_attr1 = op_desc->MutableOutputDesc(1U)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto sym_attr1 = op_desc->MutableOutputDesc(1U)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   sym_attr1->symbolic_tensor.MutableOriginSymbolShape() = {s0, s1, s2, s3};
 
   ASSERT_EQ(SymbolicInfoPostProcessor::Run(graph), SUCCESS);

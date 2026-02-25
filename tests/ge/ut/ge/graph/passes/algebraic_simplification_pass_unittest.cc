@@ -12,33 +12,20 @@
 #include <string>
 
 #include "compiler/graph/passes/feature/algebraic_simplification_pass.h"
-#include "all_ops_cpp.h"
-#include "compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "graph_utils_ex.h"
 #include "tensor_adapter.h"
 #include "common/types.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
 #include "graph/operator_reg.h"
 
 namespace ge {
 class AlgebraicSimplificationPassTest : public testing::Test {
  protected:
   template <typename T>
-  static es::Tensor CreateConst(es::Graph &graph, ge::DataType dtype, const std::vector<int64_t> &dims,
+  static EsCTensorHolder* CreateConst(es::EsGraphBuilder &graph_builder, ge::DataType dtype, const std::vector<int64_t> &dims,
                                 const std::vector<T> &value) {
-    GeTensorDesc desc(GeShape(dims), ge::FORMAT_ND, dtype);
-    const GeTensorPtr tensor =
-        std::make_shared<GeTensor>(desc, reinterpret_cast<const uint8_t *>(value.data()), sizeof(T) * value.size());
-    const auto c = ge::CompliantOpDescBuilder()
-                       .OpType("Const")
-                       .Name(("Const" + std::to_string(graph.GetEsbGraph()->NextNodeIndex())).c_str())
-                       .IrDefOutputs({{"y", ge::kIrOutputRequired, ""}})
-                       .IrDefAttrs({{"value", ge::kAttrOptional, "Tensor", ge::AnyValue::CreateFrom(*tensor)}})
-                       .InstanceOutputShape("y", dims)
-                       .Build();
-    auto ge_graph = graph.GetEsbGraph()->GetComputeGraph();
-    return graph.GetEsbGraph()->GetEsbTensorFromNode(ge_graph->AddNode(c), 0);
+    EsCGraphBuilder* esb_graph = graph_builder.GetCGraphBuilder();
+    return ge::es::EsCreateConst<T>(esb_graph, value.data(), dims.data(), static_cast<int64_t>(dims.size()), dtype, FORMAT_ND);
   }
 
   template <typename T>
@@ -49,33 +36,31 @@ class AlgebraicSimplificationPassTest : public testing::Test {
                                     const std::vector<int64_t> &data_shape = {8, 16}) {
     GeTensorDesc const_desc(GeShape(const_shape), FORMAT_ND, dtype);
     std::vector<T> buffer(GeShape(const_shape).GetShapeSize(), value);
-    ::es::Graph es_graph("graph");
+    ge::es::EsGraphBuilder es_graph("graph");
     {
-      auto data_0 = es_graph.CreateInput(0, "data_0", nullptr);
-      data_0.SetShape({data_shape});
-      auto abs_0 = es::Abs(data_0);
-      auto const_0 = CreateConst(es_graph, dtype, GeShape(const_shape).GetDims(), buffer);
-      const_0.SetShape({const_shape});
-      const ::es::Tensor &lhs = lhs_is_data ? abs_0 : const_0;
-      const ::es::Tensor &rhs = lhs_is_data ? const_0 : abs_0;
+      auto data_0 = EsCreateGraphInput(es_graph.GetCGraphBuilder(), 0);
+      auto abs_0 = EsAbs(data_0);
+      auto const_0 = es::EsTensorHolder(CreateConst(es_graph, dtype, GeShape(const_shape).GetDims(), buffer));
+      const ge::es::EsTensorHolder &lhs = lhs_is_data ? abs_0 : const_0;
+      const ge::es::EsTensorHolder &rhs = lhs_is_data ? const_0 : abs_0;
       if (op_type == ADD) {
         const auto out_0 = es::Add(lhs, rhs);
-        es_graph.SetOutput(out_0, 0);
+        es::EsGraphBuilder::SetOutput(out_0, 0);
       } else if (op_type == MUL) {
         const auto out_0 = es::Mul(lhs, rhs);
-        es_graph.SetOutput(out_0, 0);
+        es::EsGraphBuilder::SetOutput(out_0, 0);
       } else if (op_type == SUB) {
         const auto out_0 = es::Sub(lhs, rhs);
-        es_graph.SetOutput(out_0, 0);
+        es::EsGraphBuilder::SetOutput(out_0, 0);
       } else if (op_type == "Div") {
         const auto out_0 = es::Div(lhs, rhs);
-        es_graph.SetOutput(out_0, 0);
+        es::EsGraphBuilder::SetOutput(out_0, 0);
       }
       if (ref_const) {
-        es_graph.SetOutput(const_0, 1);
+        es::EsGraphBuilder::SetOutput(const_0, 1);
       }
     }
-    const auto test_graph = es_graph.Build();
+    const auto test_graph = es_graph.BuildAndReset();
     const auto graph = GraphUtilsEx::GetComputeGraph(*test_graph);
     std::vector<int64_t> output_shape(data_shape.size());
     for (size_t i = 0; i < data_shape.size(); ++i) {

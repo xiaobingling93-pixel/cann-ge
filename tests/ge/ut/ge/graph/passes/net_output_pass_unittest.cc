@@ -571,6 +571,9 @@ TEST_F(UtestGraphPassesNetOutputPass, net_output_node_and_output_nodes_and_targe
   }
   // construct targets
   ge::NodePtr mul1 = compute_graph->FindNode("Mul1");
+  for (size_t i = 0U; i < mul1->GetOpDesc()->GetAllOutputsDescPtr().size(); i++) {
+    mul1->GetOpDesc()->MutableOutputDesc(i)->SetFormat(FORMAT_NCHW);
+  }
   ge::NodePtr mul2 = compute_graph->FindNode("Mul2");
   std::vector<ge::NodePtr> target_nodes = {mul2};
   compute_graph->SetGraphTargetNodesInfo(target_nodes);
@@ -595,6 +598,15 @@ TEST_F(UtestGraphPassesNetOutputPass, net_output_node_and_output_nodes_and_targe
     if (iter != expect_input_data_result.end()) {
       expect_input_data_result.erase(iter);
     }
+  }
+
+  for (size_t i = 0U; i < mul1->GetOpDesc()->GetAllOutputsDescPtr().size(); i++) {
+    EXPECT_EQ(mul1->GetOpDesc()->GetOutputDesc(i).GetFormat(), FORMAT_NCHW);
+  }
+
+  for (const auto &input_desc : net_out_node->GetOpDesc()->GetAllInputsDescPtr()) {
+    EXPECT_EQ(input_desc->GetFormat(), FORMAT_ND);
+    EXPECT_EQ(input_desc->GetOriginFormat(), FORMAT_ND);
   }
   input_data_node_num = expect_input_data_result.size();
   EXPECT_EQ(input_data_node_num, 0);

@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -24,7 +22,7 @@ namespace fusion {
 
 using namespace es;
 class UtestMatchResult : public testing::Test {
- public:
+public:
   static void SetUpTestSuite() {
   }
   static void TearDownTestSuite() {}
@@ -46,20 +44,20 @@ class UtestMatchResult : public testing::Test {
 */
 TEST_F(UtestMatchResult, GetCapturedTensor) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto abs1 = EsAbs(data);
   auto exp = EsExp(abs1, 0 , 0, 0);
   auto relu = EsRelu(abs1);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // capture
-  pattern->CaptureTensor({NodeAdapter::Node2GNode(abs1->GetProducer()), 0})
-      .CaptureTensor({NodeAdapter::Node2GNode(exp->GetProducer()), 0});
+  pattern->CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(abs1->GetProducer())), 0})
+      .CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(exp->GetProducer())), 0});
 
   auto target_graph = GraphUtilsEx::CreateGraphFromComputeGraph(gert::ShareGraph::BuildStaticAbsReluExpAddNodeGraph());
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph));

@@ -1,0 +1,14 @@
+{
+  "operators": [
+    {
+      "op_type": "phony_1i_1o",
+      "inputs": [
+        {"name": "x", "type": "INPUT"},
+        {"name": "dx", "type": "DYNAMIC_INPUT"}
+      ],
+      "outputs": [{"name": "y", "type": "OUTPUT"}],
+      "attrs": [{"name": "index", "type": "Int", "required": false, "default_value": "0"}],
+      "subgraphs": []
+    }
+  ]
+}

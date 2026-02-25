@@ -15,7 +15,6 @@
 #include <utility>
 #include "graph/utils/graph_utils.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/symbolic_infer_util.h"
-#include "eager_style_graph_builder/esb_graph.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_inference.h"
 #include "graph/optimize/symbolic/shape_env_guarder.h"
 

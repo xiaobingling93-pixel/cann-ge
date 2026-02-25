@@ -209,7 +209,7 @@ ge::Status StaticModelOutputAllocator::ParseModelOutputReuseInfo(ParseParam &par
     }
   }
   if (param.output_reuse_infos.size() == origin_size) {
-    OutputReuseInfo no_reuse_info;
+    OutputReuseInfo no_reuse_info{};
     no_reuse_info.is_reuse = false;
     param.output_reuse_infos.emplace_back(std::move(no_reuse_info));
   }

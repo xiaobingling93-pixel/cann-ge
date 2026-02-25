@@ -13,8 +13,7 @@
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/graph_utils.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "faker/space_registry_faker.h"
 #include "graph/utils/tensor_adapter.h"
 #include "common/env_path.h"
@@ -38,25 +37,26 @@ public:
     auto ascend_install_path = EnvPath().GetAscendInstallPath();
     setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
     setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
-    graph_ = EsCreateGraph("Hello");
+    graph_ = EsCreateGraphBuilder("Hello");
   }
 
   void TearDown() override {
-    EsDestroyGraph(graph_);
+    EsDestroyGraphBuilder(graph_);
     graph_ = nullptr;
     unsetenv("ASCEND_OPP_PATH");
     unsetenv("LD_LIBRARY_PATH");
   }
 
-  EsbGraph *graph_{nullptr};
+  EsCGraphBuilder *graph_{nullptr};
 };
 int memfd_create(const char *name, unsigned int flags) {
   return syscall(__NR_memfd_create, name, flags);
 }
 TEST_F(GuardCodeGenUT, GenGuardCodeAndSimpleTest) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
   auto symbol0 = attr->CreateSymbol(3, MakeShared<InputShapeSource>(0, 0));
@@ -122,8 +122,9 @@ TEST_F(GuardCodeGenUT, GenGuardCodeAndSimpleTest) {
 
 TEST_F(GuardCodeGenUT, GenGuardCodeWithValue) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
   auto symbol0 = attr->CreateSymbol(12, MakeShared<InputValueSumSource>(0, DT_INT32));
@@ -206,8 +207,9 @@ TEST_F(GuardCodeGenUT, GenGuardCodeWithValue) {
 TEST_F(GuardCodeGenUT, GenGuardCodeFloat) {
   // dlog_setlevel(0, 1, 0);
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
   auto symbol0 = attr->CreateSymbol(3, MakeShared<InputShapeSource>(0, 0));
@@ -250,8 +252,9 @@ TEST_F(GuardCodeGenUT, GenGuardCodeFloat) {
 
 TEST_F(GuardCodeGenUT, GenGuardCodeWithInvalidIncludePath) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
 
@@ -309,8 +312,9 @@ TEST_F(GuardCodeGenUT, GenGuardCodeWithInvalidIncludePath) {
 
 TEST_F(GuardCodeGenUT, Guard_Miss_Has_Dfx_Info_When_Set_Guard_Context) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
   GuardDfxContext dfx_context("Test Dfx For UT");
@@ -370,8 +374,9 @@ TEST_F(GuardCodeGenUT, Guard_Miss_Has_Dfx_Info_When_Set_Guard_Context) {
 
 TEST_F(GuardCodeGenUT, Guard_Miss_Has_No_Dfx_Info_When_Clear_Guard_Context) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
 
@@ -445,8 +450,9 @@ TEST_F(GuardCodeGenUT, Guard_Miss_Has_No_Dfx_Info_When_Clear_Guard_Context) {
 
 TEST_F(GuardCodeGenUT, Guard_Miss_Has_New_Dfx_Info_When_Set_Guard_Context_Twice) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
-  auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
+  auto attr = compute_graph->template GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
   GuardDfxContext dfx_context("Test Dfx For UT");

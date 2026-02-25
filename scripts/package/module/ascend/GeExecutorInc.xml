@@ -44,7 +44,6 @@
         <file value="operator_factory.h"/>
         <file value="custom_op.h"/>
         <file value="resource_context.h"/>
-        <file value="tensor.h"/>
         <file value="kernel_launch_info.h"/>
         <file value="arg_desc_info.h"/>
         <file value="hcom_executor.h"/>

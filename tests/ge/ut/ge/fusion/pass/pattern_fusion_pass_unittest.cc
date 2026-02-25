@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -31,7 +29,7 @@
 
 namespace ge {
 namespace fusion {
-using namespace es;
+using namespace ge::es;
 class UtestPatternFusionPass : public testing::Test {
  public:
   static void SetUpTestSuite() {}
@@ -52,22 +50,22 @@ TEST_F(UtestPatternFusionPass, SingleNode_1Input_1Output) {
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -116,22 +114,22 @@ TEST_F(UtestPatternFusionPass, SingleNode_1Input_1Output_AfterInfershape) {
    protected:
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph_builder = es::Graph("replacement");
-      auto esb_graph = replace_graph_builder.GetEsbGraph();
+      auto replace_graph_builder = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph_builder.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      auto repalcement_graph = replace_graph_builder.Build();
+      auto repalcement_graph = replace_graph_builder.BuildAndReset();
       // mock infer func
       const auto stub_infer_func = [](Operator &op) {
         auto input_shape = op.GetInputDesc(0).GetShape();
@@ -146,7 +144,7 @@ TEST_F(UtestPatternFusionPass, SingleNode_1Input_1Output_AfterInfershape) {
 
       std::vector<SubgraphInput> subgraph_inputs;
       match_result->ToSubgraphBoundary()->GetAllInputs(subgraph_inputs);
-      std::vector<Shape> input_shapes;
+      std::vector<ge::Shape> input_shapes;
       for (const auto &subgraph_input : subgraph_inputs) {
         auto boundary_input = subgraph_input.GetAllInputs();
 
@@ -225,12 +223,12 @@ TEST_F(UtestPatternFusionPass, NotMeetRequirement) {
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -238,12 +236,12 @@ TEST_F(UtestPatternFusionPass, NotMeetRequirement) {
       return false;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -261,12 +259,12 @@ TEST_F(UtestPatternFusionPass, RepalceFailed) {
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -274,14 +272,14 @@ TEST_F(UtestPatternFusionPass, RepalceFailed) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
       esb_graph->SetGraphOutput(data1, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -311,22 +309,22 @@ TEST_F(UtestPatternFusionPass, SingleNode_1Input_1Output_EnableIrAttrMatch_NotCh
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -351,8 +349,8 @@ TEST_F(UtestPatternFusionPass, SingleNode_1Input_1Output_EnableIrAttrMatch_NotCh
 //          netoutput
 TEST_F(UtestPatternFusionPass, CycleMakerPass_NotChange) {
   // define target graph
-  auto target_graph_builder = es::Graph("target");
-  auto esb_target_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = ge::es::EsGraphBuilder("target");
+  auto esb_target_graph = target_graph_builder.GetCGraphBuilder();
   auto data0 = EsCreateGraphInput(esb_target_graph, 0);
   auto data1 = EsCreateGraphInput(esb_target_graph, 1);
   auto abs = EsAbs(data0);
@@ -360,10 +358,10 @@ TEST_F(UtestPatternFusionPass, CycleMakerPass_NotChange) {
   auto abs1 = EsAbs(relu);
   auto relu1 = EsRelu(data1);
   auto add = EsAdd(abs1, relu1);
-  GraphUtils::AddEdge(abs->GetProducer()->GetOutControlAnchor(), relu1->GetProducer()->GetInControlAnchor());
-  GraphUtils::AddEdge(relu1->GetProducer()->GetOutControlAnchor(), abs1->GetProducer()->GetInControlAnchor());
+  GraphUtils::AddEdge(NodeAdapter::GNode2Node(abs->GetProducer())->GetOutControlAnchor(), NodeAdapter::GNode2Node(relu1->GetProducer())->GetInControlAnchor());
+  GraphUtils::AddEdge(NodeAdapter::GNode2Node(relu1->GetProducer())->GetOutControlAnchor(), NodeAdapter::GNode2Node(abs1->GetProducer())->GetInControlAnchor());
   esb_target_graph->SetGraphOutput(add, 0);
-  auto target_graph = std::make_shared<Graph>(*target_graph_builder.Build());
+  auto target_graph = std::make_shared<Graph>(*target_graph_builder.BuildAndReset());
 
   class CycleMakerPass : public PatternFusionPass {
    public:
@@ -371,22 +369,22 @@ TEST_F(UtestPatternFusionPass, CycleMakerPass_NotChange) {
    protected:
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto abs1 = EsAbs(EsRelu(EsAbs(data)));
       esb_graph->SetGraphOutput(abs1, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -402,17 +400,17 @@ TEST_F(UtestPatternFusionPass, CaptureTensors) {
     std::vector<PatternUniqPtr> Patterns() override {
       // build pattern graph
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = ::es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ::ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto add_tensor = EsAdd(data, data1);
       esb_graph->SetGraphOutput(add_tensor, 0);
-      auto graph = pattern_graph.Build();
+      auto graph = pattern_graph.BuildAndReset();
       auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
-      pattern->CaptureTensor({NodeAdapter::Node2GNode(data->GetProducer()), 0})
-          .CaptureTensor({NodeAdapter::Node2GNode(data1->GetProducer()), 0});
+      pattern->CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(data->GetProducer())), 0})
+          .CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(data1->GetProducer())), 0});
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -424,11 +422,11 @@ TEST_F(UtestPatternFusionPass, CaptureTensors) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = ::es::Graph("pattern");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ::ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       esb_graph->SetGraphOutput(data, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -446,8 +444,8 @@ TEST_F(UtestPatternFusionPass, CaptureData) {
     std::vector<PatternUniqPtr> Patterns() override {
       // build pattern graph
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = ::es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ::ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
       std::vector<int64_t> x_reshape_shape({3});
@@ -455,10 +453,10 @@ TEST_F(UtestPatternFusionPass, CaptureData) {
           EsCreateConstInt64(esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
       auto reshape = EsReshape(data, shape_const, 0, 0);
       esb_graph->SetGraphOutput(reshape, 0);
-      auto graph = pattern_graph.Build();
+      auto graph = pattern_graph.BuildAndReset();
       auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
-      pattern->CaptureTensor({NodeAdapter::Node2GNode(shape_const->GetProducer()), 0});
+      pattern->CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(shape_const->GetProducer())), 0});
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -471,11 +469,11 @@ TEST_F(UtestPatternFusionPass, CaptureData) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = ::es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ::ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       esb_graph->SetGraphOutput(data, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -493,8 +491,8 @@ TEST_F(UtestPatternFusionPass, GetPatternName) {
     std::vector<PatternUniqPtr> Patterns() override {
       // build pattern graph
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = ::es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ::ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
       std::vector<int64_t> x_reshape_shape({3});
@@ -502,10 +500,10 @@ TEST_F(UtestPatternFusionPass, GetPatternName) {
           EsCreateConstInt64(esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
       auto reshape = EsReshape(data, shape_const, 0, 0);
       esb_graph->SetGraphOutput(reshape, 0);
-      auto graph = pattern_graph.Build();
+      auto graph = pattern_graph.BuildAndReset();
       auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
-      pattern->CaptureTensor({NodeAdapter::Node2GNode(shape_const->GetProducer()), 0});
+      pattern->CaptureTensor({NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(shape_const->GetProducer())), 0});
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -515,11 +513,11 @@ TEST_F(UtestPatternFusionPass, GetPatternName) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = ::es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ::ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       esb_graph->SetGraphOutput(data, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
 
@@ -537,14 +535,13 @@ TEST_F(UtestPatternFusionPass, ReplaceOutput_AutoUpdateOutput) {
     std::vector<PatternUniqPtr> Patterns() override {
       // build pattern graph
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data_1 = EsCreateGraphInput(esb_graph, 0);
       auto data_2 = EsCreateGraphInput(esb_graph, 1);
       auto add = EsAdd(data_1, data_2);
       esb_graph->SetGraphOutput(add, 0);
-      auto graph = pattern_graph.Build();
-      auto pattern = std::make_unique<Pattern>(std::move(*graph));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
 
       patterns.emplace_back(std::move(pattern));
       return patterns;
@@ -555,13 +552,13 @@ TEST_F(UtestPatternFusionPass, ReplaceOutput_AutoUpdateOutput) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph_builder = es::Graph("replace");
-      auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+      auto replace_graph_builder = ge::es::EsGraphBuilder("replace");
+      auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
       auto data_r_1 = EsCreateGraphInput(replace_esb_graph, 0);
       auto data_r_2 = EsCreateGraphInput(replace_esb_graph, 1);
       auto sub_r = EsSub(data_r_1, data_r_2);
       replace_esb_graph->SetGraphOutput(sub_r, 0);
-      return replace_graph_builder.Build();
+      return replace_graph_builder.BuildAndReset();
     }
   };
 
@@ -596,14 +593,13 @@ TEST_F(UtestPatternFusionPass, ReplceTarget_AutoUpdateTarget) {
     std::vector<PatternUniqPtr> Patterns() override {
       // build pattern graph
       std::vector<PatternUniqPtr> patterns;
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data_1 = EsCreateGraphInput(esb_graph, 0);
       auto data_2 = EsCreateGraphInput(esb_graph, 1);
       auto add = EsAdd(data_1, data_2);
       esb_graph->SetGraphOutput(add, 0);
-      auto graph = pattern_graph.Build();
-      auto pattern = std::make_unique<Pattern>(std::move(*graph));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
 
       patterns.emplace_back(std::move(pattern));
       return patterns;
@@ -614,13 +610,13 @@ TEST_F(UtestPatternFusionPass, ReplceTarget_AutoUpdateTarget) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph_builder = es::Graph("replace");
-      auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+      auto replace_graph_builder = ge::es::EsGraphBuilder("replace");
+      auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
       auto data_r_1 = EsCreateGraphInput(replace_esb_graph, 0);
       auto data_r_2 = EsCreateGraphInput(replace_esb_graph, 1);
       auto sub_r = EsSub(data_r_1, data_r_2);
       replace_esb_graph->SetGraphOutput(sub_r, 0);
-      return replace_graph_builder.Build();
+      return replace_graph_builder.BuildAndReset();
     }
   };
 

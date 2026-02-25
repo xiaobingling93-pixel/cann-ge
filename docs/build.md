@@ -90,7 +90,11 @@ bash Ascend-cann-A3-ops_${cann_version}_linux-${arch}.run --install --quiet --in
 
 ### 4. 编译
 
-`GE`提供一键式编译能力，进入代码仓根目录，可通过如下命令进行编译：
+> [!NOTE] 注意
+> 若您的编译环境无法访问网络，由于无法通过`git`指令下载代码，须在联网环境中下载源码及三方库依赖后，手动上传至目标环境，参见[离线编译指导](offline_compile.md)。 
+> 若您的编译环境可以访问网络，通过`git`指令下载代码后，编译过程中将自动下载开源第三方软件
+
+若您的编译环境可以访问网络，或已经完成[离线编译指导](offline_compile.md)，`GE`提供一键式编译能力，进入代码仓根目录，可通过如下命令进行编译：
 
   ```bash
   bash build.sh --<pkg_type>
@@ -116,7 +120,10 @@ bash Ascend-cann-A3-ops_${cann_version}_linux-${arch}.run --install --quiet --in
 
 ### 5. 本地验证（UT/ST）
 
-编译完成后，用户可以进行开发者测试。
+> [!NOTE] 注意
+> 若您的编译环境无法访问网络，请确保已经完成了[4. 编译](#4-编译)章节中的[离线编译指导](offline_compile.md)。
+
+编译完成后，用户可以进行开发者测试。 
 
 - 编译执行`UT`测试用例：
 

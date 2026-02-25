@@ -20,7 +20,7 @@
 #include "graph/operator_factory_impl.h"
 #include "graph/passes/graph_builder_utils.h"
 #include "graph/manager/graph_manager.h"
-#include "all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "api/gelib/gelib.h"
 #include "engines/manager/opskernel_manager/ops_kernel_builder_manager.h"
 #include "register/ops_kernel_builder_registry.h"

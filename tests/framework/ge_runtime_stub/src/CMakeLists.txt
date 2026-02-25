@@ -43,5 +43,5 @@ target_link_libraries(ge_runtime_stub PRIVATE
         ge_graph_dsl
         ge_common
         ge_common_base
-        eager_graph_builder_lib
+        es_ge_test
         )

@@ -1,0 +1,24 @@
+{
+  "operators": [
+    {
+      "op_type": "phony_1i_1o",
+      "inputs": [{"name": "x", "type": "INPUT"}],
+      "outputs": [{"name": "y", "type": "OUTPUT"}],
+      "attrs": [{"name": "index", "type": "Int", "required": false, "default_value": "0"}],
+      "subgraphs": []
+    },
+    {
+      "op_type": "phony_op",
+      "inputs": [
+        {"name": "input", "type": "INPUT"},
+        {"name": "dy_input", "type": "DYNAMIC_INPUT"}
+      ],
+      "outputs": [{"name": "output", "type": "DYNAMIC_OUTPUT"}],
+      "attrs": [{"name": "index", "type": "Int", "required": false, "default_value": "0"}],
+      "subgraphs": [
+        {"name": "branch_a", "type": "STATIC"},
+        {"name": "branch_b", "type": "STATIC"}
+      ]
+    }
+  ]
+}

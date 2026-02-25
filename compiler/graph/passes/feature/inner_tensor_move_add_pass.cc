@@ -21,9 +21,10 @@
 namespace ge {
 namespace {
 const std::string kInnerTensorMoveAttr = "_inner_tensor_move";
-bool IsV1ControlNode(const NodePtr &node) {
+// 这些算子需要被后续的ref算子修改输出
+bool IsChangedByRefNode(const NodePtr &node) {
   const auto &type = NodeUtils::GetNodeType(node);
-  return (type == REFSWITCH) || (type == REFMERGE);
+  return (type == REFSWITCH) || (type == REFMERGE) || (type == READVARIABLEOP);
 }
 
 bool IsNoNeedInsertTensorMove(const NodePtr &node) {
@@ -34,7 +35,7 @@ bool IsNoNeedInsertTensorMove(const NodePtr &node) {
       real_node = in_node;
     }
   }
-  return OpTypeUtils::IsVarLikeNode(real_node->GetType()) || IsV1ControlNode(real_node);
+  return OpTypeUtils::IsVarLikeNode(real_node->GetType()) || IsChangedByRefNode(real_node);
 }
 }
 Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
@@ -67,9 +68,16 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
       GE_ASSERT_NOTNULL(in_data_anchor);
       auto peer_out_data_anchor = in_data_anchor->GetPeerOutAnchor();
       GE_ASSERT_NOTNULL(peer_out_data_anchor);
+
       auto ref_input_node = peer_out_data_anchor->GetOwnerNode();
+      if ((ref_input_node->GetType() == TENSORMOVE) && (peer_out_data_anchor->GetPeerInDataNodesSize() == 1U)) {
+        GELOGD("ref node %s input is TensorMove %s, this Tensormove has only one output, skip insert inner Tensormove",
+               node->GetNamePtr(), ref_input_node->GetNamePtr());
+        continue;
+      }
+
       if (IsNoNeedInsertTensorMove(ref_input_node)) {
-        GELOGD("ref node %s input is %s, skip insert Tensormove", node->GetNamePtr(), ref_input_node->GetNamePtr());
+        GELOGD("ref node %s input is %s, skip insert inner Tensormove", node->GetNamePtr(), ref_input_node->GetNamePtr());
         continue;
       }
       std::vector<InDataAnchorPtr> target_in_data_anchors; // 记录ref_input_node多引用时需要重新连边的输入inanchor

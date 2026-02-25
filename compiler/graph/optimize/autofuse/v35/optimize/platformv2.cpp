@@ -76,7 +76,7 @@ std::unique_ptr<BackendSpec> PlatformV2::GetBackendSpec() const {
       ret->gather_spec.enable_gather_elementwise_forward_fusion, ret->max_load_num, ret->max_input_nums_after_fuse);
   ret->transpose_mode = static_cast<uint32_t>(TransposeMode::TRANSPOSE_MODE_UNNORMAL);
   // 256*1024是UB size
-  ret->set_local_memory_size = 256 * 1024 - 8 * 1024 - 32 * 1024;
+  ret->set_local_memory_size = 248 * 1024 - 8 * 1024 - 32 * 1024;
   ret->pgo_spec = {false};
   return ret;
 }

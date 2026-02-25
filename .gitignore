@@ -1,7 +1,9 @@
 /build
 /build_ut
 /build_st
+/build_out
 /output
+/build_out
 /cov
 /cov_fe_ut
 /cov_fe_st

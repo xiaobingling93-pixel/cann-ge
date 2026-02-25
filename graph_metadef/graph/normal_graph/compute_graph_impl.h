@@ -281,8 +281,7 @@ class ComputeGraphImpl {
   graphStatus CollectOutputNode(const ComputeGraphPtr &compute_graph, std::vector<RetvalInfo> &output_nodes_info);
   graphStatus GetRetvalOutputInfo(const ge::NodePtr &node, std::map<int32_t, RetvalInfo> &retval_node_index_map);
   graphStatus CheckOutputNodeInfo(const std::vector<RetvalInfo> &outputs) const;
-  graphStatus AddCtrlEdgesBetweenLeafAndNetOutput(const ComputeGraphPtr &compute_graph,
-                                                  const ge::NodePtr &net_out_node) const;
+
   graphStatus AddCtrlEdgeForTargets(const ge::NodePtr &net_out_node);
   graphStatus AddInOutForNetOutputOp(const OpDescPtr &net_output_desc, std::vector<RetvalInfo> &output_nodes_info);
   graphStatus AddDataEdgesForNetOutput(const ComputeGraphPtr &compute_graph, const ge::NodePtr &net_out_node,
@@ -290,6 +289,7 @@ class ComputeGraphImpl {
   graphStatus RemoveUnusedRetvalNode(const ComputeGraphPtr &compute_graph);
   graphStatus UpdateNetOutput(const ComputeGraphPtr &compute_graph, const ge::NodePtr &output_node, bool update_data_edge);
   graphStatus UpdateNetOutputDesc(const ge::NodePtr &net_output) const;
+  graphStatus UpdateNetOutputParentNodeIndex(const ge::NodePtr &net_output, const std::vector<RetvalInfo> &output_nodes_info) const;
   graphStatus UnLinkAnchorsOfNetoutput(const ge::NodePtr &net_out_node);
   graphStatus UnLinkDataAnchorOfNetoutput(const ge::NodePtr &net_out_node);
   graphStatus UnLinkControlAnchorOfNetoutput(const ge::NodePtr &net_out_node);
@@ -298,7 +298,6 @@ class ComputeGraphImpl {
   bool is_include_special_node_ = false;
   std::set<NodePtr> targets_;
   std::set<NodePtr> old_targets_; // 在多次SetGraphTargetNodesInfo中保存上一次的信息，用于删除上一次的控制边
-  bool is_user_define_output_nodes_ = false;
 
  private:
   friend class ModelSerializeImp;

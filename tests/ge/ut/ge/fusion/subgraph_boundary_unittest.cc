@@ -11,8 +11,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <memory>
-
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
 #include "ge/fusion/subgraph_boundary.h"
 
 #include "graph/utils/graph_utils_ex.h"

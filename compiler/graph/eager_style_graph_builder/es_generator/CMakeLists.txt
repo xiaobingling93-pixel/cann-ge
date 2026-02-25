@@ -33,9 +33,13 @@ target_link_libraries(geir_collector PRIVATE
 
 add_library(gen_esb_impl STATIC
         gen_esb.cc
-        ir_proto_codec.cc
         utils.cc
         generator_manager.cc
+        history/history_registry_interface.cc
+        history/history_registry_reader.cc
+        history/history_registry_writer.cc
+        history/history_registry_utils.cc
+        history/ir_proto_codec.cc
         )
 
 target_compile_options(gen_esb_impl PRIVATE ${AIR_COMMON_COMPILE_OPTION})

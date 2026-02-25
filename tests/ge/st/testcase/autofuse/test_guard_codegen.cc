@@ -11,8 +11,7 @@
 #include <gtest/gtest.h>
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_inference.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_symbolizer.h"
 #include "compiler/graph/passes/feature/auto_fuse_pass.h"
@@ -74,18 +73,18 @@ class GuardCodeGenST : public testing::Test {
     (void)mmGetEnv("LD_LIBRARY_PATH", old_ld_path_env_, MMPA_MAX_PATH);
     setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
     setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
-    graph_ = EsCreateGraph("Hello");
+    graph_ = EsCreateGraphBuilder("Hello");
   }
 
   void TearDown() override {
-    EsDestroyGraph(graph_);
+    EsDestroyGraphBuilder(graph_);
     graph_ = nullptr;
     unsetenv("LD_LIBRARY_PATH");
     mmSetEnv("ASCEND_OPP_PATH", old_opp_path_env_, 1);
     mmSetEnv("LD_LIBRARY_PATH", old_ld_path_env_, 1);
   }
  protected:
-  EsbGraph *graph_{nullptr};
+  EsCGraphBuilder *graph_{nullptr};
  private:
   char old_opp_path_env_[MMPA_MAX_PATH] = {'\0'};
   char old_ld_path_env_[MMPA_MAX_PATH] = {'\0'};
@@ -192,7 +191,8 @@ TEST_F(GuardCodeGenST, GenGuardCodeAndSimpleTest1) {
 
 TEST_F(GuardCodeGenST, GenGuardCodeAndSimpleTest) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  std::unique_ptr<Graph> graph(reinterpret_cast<Graph*>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -256,7 +256,8 @@ TEST_F(GuardCodeGenST, GenGuardCodeAndSimpleTest) {
 
 TEST_F(GuardCodeGenST, GenGuardCodeWithInvalidIncludePath) {
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  std::unique_ptr<Graph> graph(reinterpret_cast<Graph*>(EsBuildGraphAndReset(graph_)));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);

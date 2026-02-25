@@ -195,6 +195,18 @@ TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveDelete6) {
   EXPECT_EQ(relu2->GetInDataNodes().at(0), relu1);
 }
 
+TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveDelete7) {
+  DEF_GRAPH(g1) {
+    auto tensormove = OP_CFG(TENSORMOVE).InCnt(1).OutCnt(1).Attr("_inner_tensor_move", true).Build("tensormove");
+    CHAIN(NODE("data1", DATA)->NODE("relu", RELU)->NODE(tensormove)->NODE("relu2", RELU)->NODE("netoutput", NETOUTPUT));
+  };
+  auto compute_graph = ToComputeGraph(g1);
+  InnerTensorMoveDeletePass pass;
+  ASSERT_EQ(pass.Run(compute_graph), SUCCESS);
+  auto tensor_move = compute_graph->FindFirstNodeMatchType(TENSORMOVE);
+  EXPECT_EQ(tensor_move, nullptr);
+}
+
 /**
  *        data1      data2
  *          |           |

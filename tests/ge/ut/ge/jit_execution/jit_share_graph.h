@@ -11,6 +11,7 @@
 #ifndef CANN_GRAPH_ENGINE_JIT_SHARE_GRAPH_H
 #define CANN_GRAPH_ENGINE_JIT_SHARE_GRAPH_H
 #include "graph/graph.h"
+#include "graph/node.h"
 namespace ge {
 using UniqueGraphPtr = std::unique_ptr<Graph>;
 struct JitShareGraph {

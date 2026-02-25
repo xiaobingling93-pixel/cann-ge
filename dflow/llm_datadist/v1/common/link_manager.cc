@@ -9,6 +9,7 @@
  */
 
 #include "common/link_manager.h"
+#include <algorithm>
 #include "common/llm_ge_api.h"
 #include "common/llm_checker.h"
 #include "common/def_types.h"

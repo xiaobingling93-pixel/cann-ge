@@ -39,13 +39,6 @@ class StubModels {
   static ComputeGraphPtr BuildGraphWithQueueBindings();
 
   /**
-   *       NetOutput
-   *          |
-   *        PC_1
-   */
-  static ComputeGraphPtr BuildGraphWithQueueData();
-
-  /**
    *  NetOutput
    *     |
    *    PC_2
@@ -78,7 +71,7 @@ class StubModels {
    *     NetOutput
    *         |
    *       PC_3
-   *      /   \.
+   *      /   \
    *    PC_1  PC2
    *    |      |
    *  data1  data2

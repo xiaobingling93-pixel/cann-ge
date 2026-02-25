@@ -10,9 +10,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
+#include "es_ge_test_ops_c.h"
+#include "es_ge_test_ops.h"
 #include "stub/gert_runtime_stub.h"
 
 #include "graph/utils/graph_utils_ex.h"
@@ -78,12 +77,12 @@ TEST_F(UtestMatchReplacer, InvalidBoundary_NotSelfContained) {
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // build boundary
   NodePtr abs, relu;
@@ -124,12 +123,12 @@ TEST_F(UtestMatchReplacer, InvalidBoundary_HasMultiOwnerGraph) {
   auto target_graph1 = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // build boundary
   // build boundary
@@ -169,12 +168,12 @@ TEST_F(UtestMatchReplacer, SingleNode_1Input_1Output_Replace) {
   GraphUtils::DumpGEGraphToOnnx(*target_compute_graph, "tests");
 
   // build replacement graph
-  auto replace_graph = es::Graph("pattern");
-  auto esb_graph = replace_graph.GetEsbGraph();
+  auto replace_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = replace_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto relu = EsRelu(data);
   esb_graph->SetGraphOutput(relu, 0);
-  auto graph = replace_graph.Build();
+  auto graph = replace_graph.BuildAndReset();
   auto replace_compute_graph = GraphUtilsEx::GetComputeGraph(*graph.get());
 
   // build boundary
@@ -244,12 +243,12 @@ TEST_F(UtestMatchReplacer, TwoNode_2Input_1Output_WithConst_Replace) {
   // build replacement
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
   std::vector<int64_t> x_reshape_shape({3});
-  auto replace_graph_builder = es::Graph("replace");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("replace");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto add_const = EsCreateConstInt64(replace_esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   auto add_tensor = EsAdd(EsCreateGraphInput(replace_esb_graph, 0), add_const);
   replace_esb_graph->SetGraphOutput(EsRelu(add_tensor), 0);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // build boundary
   GraphUtils::DumpGEGraphToOnnx(*target_compute_graph, "LSTM");
@@ -332,14 +331,14 @@ TEST_F(UtestMatchReplacer, InputMultiConsumer_1Input_2Output_Replace) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   auto abs_r = EsAbs(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // replace
   GraphUtils::DumpGEGraphToOnnx(*target_compute_graph, "before_replace_abs");
@@ -377,8 +376,8 @@ TEST_F(UtestMatchReplacer, InputMultiConsumer_1Input_2Output_Replace) {
  */
 TEST_F(UtestMatchReplacer, ProducerHasConsumerOutOfBoundary) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto data = EsCreateGraphInput(target_esb_graph, 0);
   auto abs = EsAbs(data);
   auto exp = EsExp(abs,0,0,0);
@@ -387,7 +386,7 @@ TEST_F(UtestMatchReplacer, ProducerHasConsumerOutOfBoundary) {
   auto cast = EsCast(data, DT_INT64);
   target_esb_graph->SetGraphOutput(add, 0);
   target_esb_graph->SetGraphOutput(cast, 1);
-  auto target_graph = target_esb_graph->BuildGraph();
+  auto target_graph = target_graph_builder.BuildAndReset();
   auto target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph);
 
   // build boundary
@@ -402,14 +401,14 @@ TEST_F(UtestMatchReplacer, ProducerHasConsumerOutOfBoundary) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   auto abs_r = EsAbs(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // replace
   GraphUtils::DumpGEGraphToOnnx(*target_compute_graph, "before_replace_abs");
@@ -447,8 +446,8 @@ TEST_F(UtestMatchReplacer, ProducerHasConsumerOutOfBoundary) {
  */
 TEST_F(UtestMatchReplacer, ReplaceDataConnectToNetoutput) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto data = EsCreateGraphInput(target_esb_graph, 0);
   auto abs = EsAbs(data);
   auto exp = EsExp(abs,0,0,0);
@@ -457,7 +456,7 @@ TEST_F(UtestMatchReplacer, ReplaceDataConnectToNetoutput) {
   auto cast = EsCast(data, DT_INT64);
   target_esb_graph->SetGraphOutput(add, 0);
   target_esb_graph->SetGraphOutput(cast, 1);
-  auto target_graph = target_esb_graph->BuildGraph();
+  auto target_graph = target_graph_builder.BuildAndReset();
   auto target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph);
 
   // build boundary
@@ -472,13 +471,13 @@ TEST_F(UtestMatchReplacer, ReplaceDataConnectToNetoutput) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto abs_r = EsAbs(data_replace);
   replace_esb_graph->SetGraphOutput(data_replace, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // replace
   GraphUtils::DumpGEGraphToOnnx(*target_compute_graph, "before_replace_abs");
@@ -529,12 +528,12 @@ TEST_F(UtestMatchReplacer, delete_nodes_in_boundary) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   replace_esb_graph->SetGraphOutput(data_replace, 0);
   replace_esb_graph->SetGraphOutput(data_replace, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   GraphUtils::DumpGEGraphToOnnx(*GraphUtilsEx::GetComputeGraph(*replace_graph), "replace");
   // replace
@@ -583,16 +582,16 @@ TEST_F(UtestMatchReplacer, InvalidReplacement_has_cycle) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   auto abs_r = EsAbs(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
-  GraphUtils::AddEdge(relu_r->GetProducer()->GetOutControlAnchor(), abs_r->GetProducer()->GetInControlAnchor());
-  GraphUtils::AddEdge(abs_r->GetProducer()->GetOutControlAnchor(), relu_r->GetProducer()->GetInControlAnchor());
+  auto replace_graph = replace_graph_builder.BuildAndReset();
+  GraphUtils::AddEdge(NodeAdapter::GNode2Node(relu_r->GetProducer())->GetOutControlAnchor(), NodeAdapter::GNode2Node(abs_r->GetProducer())->GetInControlAnchor());
+  GraphUtils::AddEdge(NodeAdapter::GNode2Node(abs_r->GetProducer())->GetOutControlAnchor(), NodeAdapter::GNode2Node(relu_r->GetProducer())->GetInControlAnchor());
 
   // replace
   gert::GertRuntimeStub runtime_stub;
@@ -631,15 +630,15 @@ TEST_F(UtestMatchReplacer, InvalidReplacement_InputSizeNotMatch) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto data_replace1 = EsCreateGraphInput(replace_esb_graph, 1);
   auto relu_r = EsRelu(data_replace);
   auto abs_r = EsAbs(data_replace1);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // replace
   gert::GertRuntimeStub runtime_stub;
@@ -678,12 +677,12 @@ TEST_F(UtestMatchReplacer, InvalidReplacement_OutputSizeNotMatch) {
   }
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // replace
   gert::GertRuntimeStub runtime_stub;

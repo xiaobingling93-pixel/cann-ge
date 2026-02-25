@@ -14,9 +14,8 @@
 #include "graph/utils/graph_utils.h"
 #include "graph_metadef/graph/debug/ge_util.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
+#include "es_ge_test_ops_c.h"
+#include "es_ge_test_ops.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_inference.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_symbolizer.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/symbolic_infer_util.h"
@@ -24,11 +23,11 @@
 #include "faker/space_registry_faker.h"
 #include "graph/utils/tensor_adapter.h"
 #include "common/env_path.h"
-#include "framework/eager_style_graph_builder/compliant_op_desc_builder.h"
 #include "common/topo_checker.h"
 #include "ge_graph_dsl/graph_dsl.h"
 #include "graph/optimize/symbolic/symbolic_kernel_factory.h"
 #include "attribute_group/attr_group_shape_env.h"
+#include "attribute_group/attr_group_symbolic_desc.h"
 #include "stub/gert_runtime_stub.h"
 #include "expect_node_info_check_test.h"
 
@@ -47,15 +46,28 @@ class SymbolicShapeComputeUT : public testing::Test {
   static void TearDownTestSuite() {
   }
   void SetUp() override {
-    graph_ = EsCreateGraph("Hello");
+    graph_ = EsCreateGraphBuilder("Hello");
   }
 
   void TearDown() override {
-    EsDestroyGraph(graph_);
+    EsDestroyGraphBuilder(graph_);
     graph_ = nullptr;
   }
 
-  EsbGraph *graph_{nullptr};
+  EsCGraphBuilder *graph_{nullptr};
+  
+  // 辅助函数:创建GraphInput with Details
+  static EsCTensorHolder* CreateGraphInput(EsCGraphBuilder* graph, int64_t index, const char* name) {
+    return EsCreateGraphInputWithDetails(graph, index, name, nullptr, 
+                                        C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND,
+                                        nullptr, 0);
+  }
+  
+  // 辅助函数:将EsCGraph转换为ge::Graph
+  static Graph* BuildGraph(EsCGraphBuilder* graph_builder) {
+    auto es_graph = EsBuildGraphAndReset(graph_builder);
+    return reinterpret_cast<Graph*>(es_graph);
+  }
 };
 
 graphStatus UnsqueezeTest(gert::InferSymbolComputeContext *context) {
@@ -76,8 +88,8 @@ graphStatus UnsqueezeTest(gert::InferSymbolComputeContext *context) {
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraph) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -85,7 +97,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraph) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -125,7 +137,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraph) {
  *              NetOutput
  */
 TEST_F(SymbolicShapeComputeUT, InferShapeForGetConstInput) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   auto const_scalar_int32 = EsCreateScalarInt32(graph_, 1);
   ASSERT_NE(const_scalar_int32, nullptr);
@@ -133,12 +145,18 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForGetConstInput) {
   int64_t dims_size = 3;
   auto const_int64_list = EsCreateConstInt64(graph_, dims.data(), &dims_size, 1);
   ASSERT_NE(const_int64_list, nullptr);
-  auto reduce_sum = EsReduceSum(data0, const_scalar_int32, true);
-  reduce_sum->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
-  auto reduce_max = EsReduceMax(reduce_sum, const_int64_list, true);
-  reduce_max->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT64);
+  auto reduce_sum = EsReduceSum(data0, const_scalar_int32, true, true);
+  ge::TensorDesc reduce_sum_desc;
+  reduce_sum->GetProducer().GetInputDesc(1, reduce_sum_desc);
+  reduce_sum_desc.SetDataType(DT_INT32);
+  reduce_sum->GetProducer().UpdateInputDesc(1, reduce_sum_desc);
+  auto reduce_max = EsReduceMax(reduce_sum, const_int64_list, true, true);
+  ge::TensorDesc reduce_max_desc;
+  reduce_max->GetProducer().GetInputDesc(1, reduce_max_desc);
+  reduce_max_desc.SetDataType(DT_INT64);
+  reduce_max->GetProducer().UpdateInputDesc(1, reduce_max_desc);
   ASSERT_EQ(EsSetGraphOutput(reduce_max, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1}};
@@ -169,10 +187,33 @@ IMPL_OP(ReduceSum).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirst
 IMPL_OP(Const).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(Sub).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(ReduceMax).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
+IMPL_OP(ReduceProd).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(Exp).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(Div).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(Cast).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
 IMPL_OP(Data).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
+IMPL_OP(ConcatV2D).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput();
+
+void FixReduceProdIrAttrs(const ComputeGraphPtr &cg, bool keep_dims, bool noop_with_empty_axes) {
+  for (auto &node : cg->GetAllNodes()) {
+    if (node->GetType() != REDUCEPROD) continue;
+    auto op_desc = node->GetOpDesc();
+    if (op_desc == nullptr) continue;
+    ge::AttrUtils::SetBool(op_desc, "keep_dims", keep_dims);
+    ge::AttrUtils::SetBool(op_desc, "noop_with_empty_axes", noop_with_empty_axes);
+  }
+}
+
+void FixBatchMatMulV2IrAttrs(const ComputeGraphPtr &cg, bool adj_x1, bool adj_x2, int64_t offset_x) {
+  for (auto &node : cg->GetAllNodes()) {
+    if (node->GetType() != "BatchMatMulV2") continue;
+    auto op_desc = node->GetOpDesc();
+    if (op_desc == nullptr) continue;
+    ge::AttrUtils::SetBool(op_desc, "adj_x1", adj_x1);
+    ge::AttrUtils::SetBool(op_desc, "adj_x2", adj_x2);
+    ge::AttrUtils::SetInt(op_desc, "offset_x", offset_x);
+  }
+}
 
 /**
  *      Data0     Const(scalar)
@@ -184,23 +225,29 @@ IMPL_OP(Data).InferShape(InferShapeDoNothing).InferOutDataTypeSameWithFirstInput
  *              NetOutput
  */
 TEST_F(SymbolicShapeComputeUT, InferShapeForConst) {
-  auto es_graph = std::unique_ptr<es::Graph>(new es::Graph("cpp_graph"));
-  auto data0 = es_graph->CreateInput(0, "data0", nullptr);
-  data0.SetSymbolShape({"s0", "s1", "s2", "s3"});
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto data0 = es_graph->CreateInput(0, "data0");
+  data0.SetOriginSymbolShape({"s0", "s1", "s2", "s3"});
   auto const_scalar = es_graph->CreateScalar(1);
-  auto const_list = es_graph->CreateVector({0, 1});
+  auto const_list = es_graph->CreateVector(std::vector<int64_t>{0, 1});
   auto reduce_sum = es::ReduceSum(data0, const_scalar, true);
   // 在infer symbol时，非decompose场景，图上节点的dtype在前面的infer shape流程处理过，ut时需要显示设置
   // decompose图中，infer symbol代码里面会调用infer dtype流程，因此要保证完成了decompose图中算子的infer dtype注册
-  reduce_sum.GetEsbTensor()->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc reduce_sum_input_desc;
+  reduce_sum.GetProducer()->GetInputDesc(1, reduce_sum_input_desc);
+  reduce_sum_input_desc.SetDataType(DT_INT32);
+  reduce_sum.GetProducer()->UpdateInputDesc(1, reduce_sum_input_desc);
   auto reduce_max = es::ReduceMax(reduce_sum, const_list, true);
-  reduce_max.GetEsbTensor()->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT64);
-  ASSERT_EQ(es_graph->SetOutput(reduce_max, 0), 0);
-  auto graph = es_graph->Build();
+  ge::TensorDesc reduce_max_input_desc;
+  reduce_max.GetProducer()->GetInputDesc(1, reduce_max_input_desc);
+  reduce_max_input_desc.SetDataType(DT_INT64);
+  reduce_max.GetProducer()->UpdateInputDesc(1, reduce_max_input_desc);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(reduce_max, 0), 0);
+  auto graph = es_graph->BuildAndReset();
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   std::vector<Expression> expect_dims = {Symbol(2)};
-  ExpectNodeInfo expect_node("Const0", {}, {}, {}, {});
-  ExpectNodeInfo expect_node1("Const1", expect_dims, {}, {}, {});
+  ExpectNodeInfo expect_node("Const_0", {}, {}, {}, {});
+  ExpectNodeInfo expect_node1("Const_1", expect_dims, {}, {}, {});
   std::vector<ExpectNodeInfo> expect_node_vec;
   expect_node_vec.push_back(expect_node);
   expect_node_vec.push_back(expect_node1);
@@ -208,22 +255,21 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForConst) {
 }
 
 TEST_F(SymbolicShapeComputeUT, InferShapeForVariable) {
-  auto es_graph = std::unique_ptr<es::Graph>(new es::Graph("cpp_graph"));
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
   std::vector<int64_t> dims{4, 5, 6};
-  auto var = ge::ComGraphMakeUnique<int64_t[]>(4 * 5 * 6);
-  auto variable = es_graph->CreateVariable(0, var.get(), dims);
+  auto variable = es_graph->CreateVariable(0, "variable_0").SetShape(dims);
   auto relu = es::Relu(variable);
-  ASSERT_EQ(es_graph->SetOutput(relu, 0), 0);
-  auto graph = es_graph->Build();
-  ASSERT_NE(variable.GetEsbTensor()->GetProducer()->GetOpDesc(), nullptr);
-  ASSERT_NE(variable.GetEsbTensor()->GetProducer()->GetOpDesc()->MutableInputDesc(0), nullptr);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(relu, 0), 0);
+  auto graph = es_graph->BuildAndReset();
+  ASSERT_NE(variable.GetProducer(), nullptr);
+  ge::TensorDesc variable_input_desc;
+  ASSERT_EQ(variable.GetProducer()->GetInputDesc(0, variable_input_desc), ge::GRAPH_SUCCESS);
   // variable类节点存在输入的tensor_desc，但是输入上没有symbol_desc_attr
-  //  variable.GetEsbTensor()->GetProducer()->GetOpDesc()->MutableInputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_dims = {Symbol(4), Symbol(5), Symbol(6)};
-  ExpectNodeInfo expect_node("Variable0", expect_dims, {}, {}, {});
+  ExpectNodeInfo expect_node("variable_0", expect_dims, {}, {}, {});
   std::vector<ExpectNodeInfo> expect_node_vec;
   expect_node_vec.push_back(expect_node);
   ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
@@ -269,7 +315,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForNoInferFunc) {
   });
   data0->GetOpDescBarePtr()
       ->MutableOutputDesc(0)
-      ->GetOrCreateAttrsGroup<SymbolicDescAttr>()
+      ->template GetOrCreateAttrsGroup<SymbolicDescAttr>()
       ->symbolic_tensor.SetSymbolShape(symbol_shape);
   std::vector<Expression> expect_dims = {Symbol(2), Symbol(2), Symbol(3), Symbol(4)};
   ExpectNodeInfo expect_node("FOO1", expect_dims, {}, {}, {});
@@ -321,8 +367,8 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForConstantWithRecoverIrAttr) {
  *        NetOutput
  */
 TEST_F(SymbolicShapeComputeUT, InferShapeForDecomposedGraph) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto pow = EsPow(data0, data1);
@@ -331,7 +377,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForDecomposedGraph) {
   auto neg = EsNeg(squaredD);
 
   ASSERT_EQ(EsSetGraphOutput(neg, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1}};
@@ -364,21 +410,21 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForDecomposedGraph) {
  * 测试GeTensorDesc的拷贝函数，需要带着属性组深拷贝
  * */
 TEST_F(SymbolicShapeComputeUT, TestGeTensorDesc_Copy_With_Attr) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
   ASSERT_NE(data0, nullptr);
 
   auto relu = EsRelu(data0);
-  ASSERT_EQ(EsSetSymbolShape(relu, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(relu, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
   auto relu1 = cg->FindFirstNodeMatchType("Relu");
   ASSERT_NE(relu1, nullptr);
-  auto attr = relu1->GetOpDesc()->MutableInputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto attr = relu1->GetOpDesc()->MutableInputDesc(0)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   attr->symbolic_tensor.SetSymbolShape({
       Symbol(1),
       Symbol(2),
@@ -392,12 +438,12 @@ TEST_F(SymbolicShapeComputeUT, TestGeTensorDesc_Copy_With_Attr) {
   ASSERT_EQ(attr1->symbolic_tensor.GetOriginSymbolShape(), attr->symbolic_tensor.GetOriginSymbolShape());
 
   auto desc = relu1->GetOpDesc()->GetInputDesc(0);
-  auto attr2 = desc.GetAttrsGroup<SymbolicDescAttr>();
+  auto attr2 = desc.template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr2->symbolic_tensor.GetOriginSymbolShape(), attr->symbolic_tensor.GetOriginSymbolShape());
 
   auto all_desc = relu1->GetOpDesc()->GetAllInputsDesc();
   ASSERT_EQ(all_desc.size(), 1);
-  auto attr3 = all_desc.at(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr3 = all_desc.at(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr3, nullptr);
   auto ret1 = attr3->symbolic_tensor.GetOriginSymbolShape();
   ASSERT_EQ(attr3->symbolic_tensor.GetOriginSymbolShape().GetDims(),
@@ -419,18 +465,18 @@ TEST_F(SymbolicShapeComputeUT, TestGeTensorDesc_Copy_With_Attr) {
 // │ data_2 │ ───────> │  shape1  │
 // └────────┘          └──────────┘
 TEST_F(SymbolicShapeComputeUT, test_shape_mul) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   auto shape = EsShape(data0, 3);  // DT_INT32
   auto mul = EsMul(data1, shape);
   ASSERT_EQ(EsSetGraphOutput(mul, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1}};
-  SetNoStorage(cg, "data_0", di, 0);
+  SetNoStorage(cg, "data0", di, 0);
   di.shape = {-1, -1, 1};
-  SetNoStorage(cg, "data_1", di, 1);
+  SetNoStorage(cg, "data1", di, 1);
 
   std::vector<ge::GeTensor> input_vec;
   std::vector<int64_t> dims_vec0 = {2, 3, 2};
@@ -465,14 +511,14 @@ TEST_F(SymbolicShapeComputeUT, test_shape_mul) {
 // │ data_2 │ ───────> │  shape1  │
 // └────────┘          └──────────┘
 TEST_F(SymbolicShapeComputeUT, test_shape_reshape) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   const auto shape_0 = EsShape(data1, 3);
   auto reshape0 = EsReshape(data0, shape_0, 0, -1);
   ASSERT_EQ(EsSetGraphOutput(reshape0, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -535,14 +581,14 @@ TEST_F(SymbolicShapeComputeUT, test_shape_reshape) {
 //  │   (0,1)                                        ∧
 //  └────────────────────────────────────────────────┘
 TEST_F(SymbolicShapeComputeUT, simple_symbolic_kernel_compute) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  auto data2 = EsCreateGraphInputWithDetails(graph_, 2, "data_2", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data2 = EsCreateGraphInputWithDetails(graph_, 2, "data_2", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   auto const1 = EsCreateScalarInt32(graph_, 0);
 
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "s2"}).data(), 2), 0);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"(s3 * s4)", "s5"}).data(), 2), 0);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"s0", "(s1 * s3 * s4)"}).data(), 2), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "s2"}).data(), 2), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"(s3 * s4)", "s5"}).data(), 2), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"s0", "(s1 * s3 * s4)"}).data(), 2), 0);
 
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto gather_1 = EsGatherV2(shape1, const1, const1, 0, false, false);
@@ -550,14 +596,14 @@ TEST_F(SymbolicShapeComputeUT, simple_symbolic_kernel_compute) {
   auto shape2 = EsShape(data2, 3);  // DT_INT32
   auto gather_2 = EsGatherV2(shape2, const1, const1, 0, false, false);
 
-  std::vector<EsbTensor *> esb;
+  std::vector<EsCTensorHolder *> esb;
   esb.push_back(gather_1);
   esb.push_back(gather_2);
   auto pack1 = EsPack(esb.data(), 2, 0, 2);
 
   auto reshape = EsReshape(data2, pack1, 0, -1);
   ASSERT_EQ(EsSetGraphOutput(reshape, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -581,7 +627,7 @@ TEST_F(SymbolicShapeComputeUT, test_fill_with_const) {
   auto const1 = EsCreateVectorInt64(graph_, const_data.data(), 3);
   auto fill = EsFill(const1, const0);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto fill_node = cg->FindFirstNodeMatchType(FILL);
@@ -613,7 +659,7 @@ TEST_F(SymbolicShapeComputeUT, test_fill_output_size_exceed) {
   auto const1 = EsCreateVectorInt64(graph_, const_data.data(), 3);
   auto fill = EsFill(const1, const0);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto fill_node = cg->FindFirstNodeMatchType(FILL);
@@ -642,12 +688,12 @@ TEST_F(SymbolicShapeComputeUT, test_fill_output_size_exceed) {
 TEST_F(SymbolicShapeComputeUT, test_fill_with_value_symbols) {
   std::vector<int64_t> const_data = {2, 4, 2};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto fill = EsFill(const0, shape1);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -667,14 +713,14 @@ TEST_F(SymbolicShapeComputeUT, test_fill_with_value_symbols) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_fill_dim_not_const_value) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
   auto dims = EsShape(data0, 3);
   auto fill = EsFill(dims, data1);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -693,13 +739,13 @@ TEST_F(SymbolicShapeComputeUT, test_fill_dim_not_const_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_fill_node_const_input_failed) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
   auto fill = EsFill(data0, data1);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -716,11 +762,11 @@ TEST_F(SymbolicShapeComputeUT, test_fill_node_const_input_failed) {
 TEST_F(SymbolicShapeComputeUT, test_fill_node_const_input_over_limit) {
   std::vector<int64_t> const_data = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), const_data.size());
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 0, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 0, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"(s0 + s1)"}).data(), 1), 0);
   auto fill = EsFill(const0, data1);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -732,13 +778,13 @@ TEST_F(SymbolicShapeComputeUT, test_fill_node_const_input_over_limit) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(),
             gert::SymbolShape({Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1),
-                               Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1),
-                               Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1),
-                               Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1)}));
+                              Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1),
+                              Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1),
+                              Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1), Symbol(1)}));
 }
 
 //
@@ -760,7 +806,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_with_const) {
   auto const1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
   auto tile = EsTile(const0, const1);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -798,12 +844,12 @@ TEST_F(SymbolicShapeComputeUT, test_tile_with_const) {
 TEST_F(SymbolicShapeComputeUT, test_tile_with_value_symbols) {
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto tile = EsTile(shape1, const0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -829,11 +875,11 @@ TEST_F(SymbolicShapeComputeUT, test_tile_with_value_symbols) {
 TEST_F(SymbolicShapeComputeUT, test_tile_without_symbols_value) {
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
   auto tile = EsTile(data0, const0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -845,19 +891,19 @@ TEST_F(SymbolicShapeComputeUT, test_tile_without_symbols_value) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_tile_symbols_value_format_invalid) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
   auto tile = EsTile(shape1, shape1);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto tile_node = cg->FindFirstNodeMatchType(TILE);
@@ -865,18 +911,18 @@ TEST_F(SymbolicShapeComputeUT, test_tile_symbols_value_format_invalid) {
   auto op_desc = tile_node->GetOpDesc();
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_tile_create_expression_failed_double_not_support) {
-  auto const0 = EsCreateScalarDouble(graph_, 1.0);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  auto const0 = EsCreateScalarFloat(graph_, 1.0f);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   auto tile = EsTile(data0, const0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -888,18 +934,19 @@ TEST_F(SymbolicShapeComputeUT, test_tile_create_expression_failed_double_not_sup
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
-  EXPECT_EQ(attr, nullptr);
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_tile_without_symbols_value_input2) {
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   auto tile = EsTile(data0, const0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -911,7 +958,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_without_symbols_value_input2) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
@@ -919,11 +966,11 @@ TEST_F(SymbolicShapeComputeUT, test_tile_without_symbols_value_input2) {
 TEST_F(SymbolicShapeComputeUT, test_tile_2nd_input_dims_invalid) {
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   auto tile = EsTile(const0, data0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -935,18 +982,18 @@ TEST_F(SymbolicShapeComputeUT, test_tile_2nd_input_dims_invalid) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr, nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_tile_kMultiplesInputIndex_symbols_value_invalid) {
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const0 = EsCreateVectorInt64(graph_, const_data.data(), 3);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1"}).data(), 1), 0);
   auto tile = EsTile(const0, data0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -958,18 +1005,18 @@ TEST_F(SymbolicShapeComputeUT, test_tile_kMultiplesInputIndex_symbols_value_inva
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr, nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_tile_multiples_symbols_over_limit) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1"}).data(), 1), 0);
   std::vector<int64_t> const_data = {2, 2, 3};
   auto const1 = EsCreateVectorInt64(graph_, const_data.data(), 3);
   auto tile = EsTile(const1, data0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -978,8 +1025,8 @@ TEST_F(SymbolicShapeComputeUT, test_tile_multiples_symbols_over_limit) {
   auto op_desc = tile_node->GetOpDesc();
   op_desc->MutableInputDesc(0)->SetShape(GeShape({3}));
   op_desc->MutableInputDesc(1)->SetShape(GeShape({3}));
-  auto data_node = cg->FindNode("data_0");
-  auto data_attr = data_node->GetOpDesc()->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto data_node = cg->FindNode("data0");
+  auto data_attr = data_node->GetOpDesc()->MutableOutputDesc(0)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   std::vector<ge::Expression> input_symbol_value({Symbol("s1"), Symbol("s1"), Symbol(1), Symbol(1), Symbol("s1"),
                                                   Symbol("s1"), Symbol(1), Symbol(1), Symbol("s1"), Symbol("s1"),
                                                   Symbol(1), Symbol(1)});
@@ -987,7 +1034,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_multiples_symbols_over_limit) {
   data_attr->symbolic_tensor.SetSymbolicValue(std::move(symbolic_value_unique));
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
@@ -996,11 +1043,11 @@ TEST_F(SymbolicShapeComputeUT, test_tile_GetMultiplesDims_failed) {
   std::vector<int64_t> const_data = {2, 2, 3, 3, 4,4};
   std::vector<int64_t> shape_data = {1, 2, 3};
   auto const0 = EsCreateConstInt64(graph_, const_data.data(), shape_data.data(), shape_data.size());
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "2", "s2"}).data(), 3), 0);
   auto tile = EsTile(data0, const0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1012,7 +1059,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_GetMultiplesDims_failed) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
@@ -1027,7 +1074,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_check_outputsize_failed) {
   auto tile = EsTile(const0, const1);
 
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1039,7 +1086,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_check_outputsize_failed) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
@@ -1068,7 +1115,7 @@ TEST_F(SymbolicShapeComputeUT, test_tile_check_outputsize_failed) {
 // └────────┘            └────────┘
 
 TEST_F(SymbolicShapeComputeUT, test_pack_with_symbols_value) {
-  std::vector<EsbTensor *> input_nodes;
+  std::vector<EsCTensorHolder *> input_nodes;
   std::vector<int32_t> const_data0 = {1, 2, 3, 4, 5, 6};
   std::vector<int64_t> const_dim0 = {2, 3};
   input_nodes.emplace_back(EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size()));
@@ -1077,14 +1124,14 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_symbols_value) {
   input_nodes.emplace_back(EsCreateConstInt32(graph_, const_data1.data(), const_dim1.data(), const_dim1.size()));
   std::vector<int64_t> const_data2 = {2, 3};
   auto const2 = EsCreateVectorInt64(graph_, const_data2.data(), 2);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)"}).data(), 1), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto fill = EsFill(const2, shape1);
   input_nodes.emplace_back(fill);
   auto pack = EsPack(input_nodes.data(), 3, -2, 3);
   ASSERT_EQ(EsSetGraphOutput(pack, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1102,8 +1149,8 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_symbols_value) {
   auto s0 = ge::Symbol("s0");
   auto s1 = ge::Symbol("s1");
   std::vector<Expression> expect_symbolic_value = {Symbol(1),  Symbol(2),  Symbol(3),  Symbol(7), Symbol(8), Symbol(9),
-                                                   s0 * s1,    s0 * s1,    s0 * s1,    Symbol(4), Symbol(5), Symbol(6),
-                                                   Symbol(10), Symbol(11), Symbol(12), s0 * s1,   s0 * s1,   s0 * s1};
+                                                  s0 * s1,    s0 * s1,    s0 * s1,    Symbol(4), Symbol(5), Symbol(6),
+                                                  Symbol(10), Symbol(11), Symbol(12), s0 * s1,   s0 * s1,   s0 * s1};
   std::vector<Expression> expect_dims = {Symbol(2), Symbol(3), Symbol(3)};
   ExpectNodeInfo expect_node(PACK, expect_dims, {}, {}, expect_symbolic_value);
   std::vector<ExpectNodeInfo> expect_node_vec;
@@ -1128,7 +1175,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_symbols_value) {
 // └────────┘
 
 TEST_F(SymbolicShapeComputeUT, test_pack_with_const) {
-  std::vector<EsbTensor *> const_nodes;
+  std::vector<EsCTensorHolder *> const_nodes;
   std::vector<int32_t> const_data0 = {1, 2, 3, 4, 5, 6};
   std::vector<int64_t> const_dim0 = {2, 3};
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size()));
@@ -1140,7 +1187,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_const) {
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data2.data(), const_dim2.data(), const_dim2.size()));
   auto pack = EsPack(const_nodes.data(), 3, 2, 3);
   ASSERT_EQ(EsSetGraphOutput(pack, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1162,7 +1209,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_const) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_pack_with_const_abormal_input) {
-  std::vector<EsbTensor *> const_nodes;
+  std::vector<EsCTensorHolder *> const_nodes;
   std::vector<int32_t> const_data0 = {1, 2, 3, 4, 5, 6};
   std::vector<int64_t> const_dim0 = {2, 3};
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size()));
@@ -1174,7 +1221,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_const_abormal_input) {
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data2.data(), const_dim2.data(), const_dim2.size()));
   auto pack = EsPack(const_nodes.data(), 3, 2, 3);
   ASSERT_EQ(EsSetGraphOutput(pack, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1190,9 +1237,9 @@ TEST_F(SymbolicShapeComputeUT, test_pack_with_const_abormal_input) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_pack_without_symbolic_value) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
 
   const_nodes.emplace_back(data0);
   std::vector<int32_t> const_data1 = {7, 8, 9, 10, 11, 12};
@@ -1203,7 +1250,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_without_symbolic_value) {
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data2.data(), const_dim2.data(), const_dim2.size()));
   auto pack = EsPack(const_nodes.data(), 3, 2, 3);
   ASSERT_EQ(EsSetGraphOutput(pack, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1216,16 +1263,16 @@ TEST_F(SymbolicShapeComputeUT, test_pack_without_symbolic_value) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({Symbol(2), Symbol(3), Symbol(3)}));
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_pack_get_const_value_failed) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
 
   const_nodes.emplace_back(data0);
   std::vector<int32_t> const_data1 = {7, 8, 9, 10, 11, 12};
@@ -1236,7 +1283,7 @@ TEST_F(SymbolicShapeComputeUT, test_pack_get_const_value_failed) {
   const_nodes.emplace_back(EsCreateConstInt32(graph_, const_data2.data(), const_dim2.data(), const_dim2.size()));
   auto pack = EsPack(const_nodes.data(), 3, 2, 3);
   ASSERT_EQ(EsSetGraphOutput(pack, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1276,8 +1323,8 @@ TEST_F(SymbolicShapeComputeUT, test_pack_get_const_value_failed) {
 // └────────┘            └────────┘
 
 TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_symbols_value) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   std::vector<int64_t> const_data0 = {1};
   auto const_node0 = EsCreateVectorInt64(graph_, const_data0.data(), 1);
@@ -1287,7 +1334,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_symbols_value) {
   auto const_node2 = EsCreateVectorInt64(graph_, const_data2.data(), 1);
   auto strided_slice = EsStridedSlice(shape1, const_node0, const_node1, const_node2, 0, 0, 0, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1308,18 +1355,18 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_symbols_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_stridedslice_AttrStartInput_symbols_value_invalid) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
-  auto const_node0 = EsCreateGraphInputWithDetails(graph_, 1, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(const_node0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  auto const_node0 = EsCreateGraphInputWithDetails(graph_, 1, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(const_node0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   std::vector<int64_t> const_data1 = {4};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 1);
   std::vector<int64_t> const_data2 = {2};
   auto const_node2 = EsCreateVectorInt64(graph_, const_data2.data(), 1);
   auto strided_slice = EsStridedSlice(shape1, const_node0, const_node1, const_node2, 0, 0, 0, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1333,26 +1380,26 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_AttrStartInput_symbols_value_in
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr, nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_stridedslice_symbols_value_format_invalid) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
-  auto const_node0 = EsCreateGraphInputWithDetails(graph_, 1, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(const_node0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  auto const_node0 = EsCreateGraphInputWithDetails(graph_, 1, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(const_node0, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
 
   std::vector<int64_t> const_data1 = {4};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 1);
-  ASSERT_EQ(EsSetSymbolShape(const_node1, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(const_node1, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   std::vector<int64_t> const_data2 = {2};
   auto const_node2 = EsCreateVectorInt64(graph_, const_data2.data(), 1);
-  ASSERT_EQ(EsSetSymbolShape(const_node2, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(const_node2, std::vector<const char *>({"1", "2", "2"}).data(), 3), 0);
   auto strided_slice = EsStridedSlice(shape1, shape1, const_node1, const_node2, 0, 0, 0, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1361,22 +1408,22 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_symbols_value_format_invalid) {
   auto op_desc = strided_slice_node->GetOpDesc();
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr, nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_stridedsliced_with_symbols_value) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   std::vector<int64_t> const_data0 = {1};
   vector<int64_t> begin = {1};
   vector<int64_t> end = {4};
   vector<int64_t> strides = {2};
   auto strided_slice = EsStridedSliceD(shape1, begin.data(), begin.size(), end.data(), end.size(), strides.data(),
-                                       strides.size(), 0, 0, 0, 0, 1);
+                                      strides.size(), 0, 0, 0, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1394,16 +1441,16 @@ TEST_F(SymbolicShapeComputeUT, test_stridedsliced_with_symbols_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_stridedsliced_without_symbols_value) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "2", "3", "4"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "2", "3", "4"}).data(), 4), 0);
   std::vector<int64_t> const_data0 = {1};
   vector<int64_t> begin = {1};
   vector<int64_t> end = {4};
   vector<int64_t> strides = {2};
   auto strided_slice = EsStridedSliceD(data0, begin.data(), begin.size(), end.data(), end.size(), strides.data(),
-                                       strides.size(), 0, 0, 0, 0, 1);
+                                      strides.size(), 0, 0, 0, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1435,7 +1482,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_new_axis_mask_when_input_d
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0, 0b10, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1473,7 +1520,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_new_axis_mask_begin_mask_e
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0b101, 0b101, 0, 0b1100, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1533,7 +1580,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_normal) {
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0, 0, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1571,7 +1618,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_need_normalize) {
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0, 0, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1609,7 +1656,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_ellipsis_mask) {
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0b010, 0, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1647,7 +1694,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_ellipsis_mask_with_begin_m
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0b001, 0b110, 0b010, 0, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1685,7 +1732,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_ellipsis_mask_with_new_axi
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0b010, 0b1110, 0);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1722,7 +1769,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_ellipsis_mask_with_new_axi
   auto const_node3 = EsCreateConstInt32(graph_, const_data3.data(), const_dim3.data(), const_dim3.size());
   auto strided_slice = EsStridedSlice(const_node0, const_node1, const_node2, const_node3, 0, 0, 0b100, 0b1110, 0b10111);
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1761,12 +1808,12 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_with_ellipsis_mask_with_new_axi
 TEST_F(SymbolicShapeComputeUT, test_unpack_with_symbols_value) {
   std::vector<int64_t> const_data0 = {2, 2, 3, 2};
   auto const_node0 = EsCreateVectorInt64(graph_, const_data0.data(), 4);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 + s1)", "2", "s2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 + s1)", "2", "s2"}).data(), 3), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto tile = EsTile(shape1, const_node0);
   ASSERT_EQ(EsSetGraphOutput(tile, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1779,6 +1826,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_symbols_value) {
   auto unpack_op_desc = std::make_shared<OpDesc>("unpack_0", UNPACK);
   unpack_op_desc->AddRequiredAttr("num");
   AttrUtils::SetInt(unpack_op_desc, "num", 3);
+  unpack_op_desc->AppendIrAttrName("num");
   unpack_op_desc->AppendIrAttrName("axis");
   AttrUtils::SetInt(unpack_op_desc, "axis", 2);
   unpack_op_desc->AddInputDesc(unpack_input_desc);
@@ -1791,7 +1839,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_symbols_value) {
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
   for (size_t i = 0UL; i < 3; i++) {
-    auto attr = unpack_op_desc->GetOutputDesc(i).GetAttrsGroup<SymbolicDescAttr>();
+    auto attr = unpack_op_desc->GetOutputDesc(i).template GetAttrsGroup<SymbolicDescAttr>();
     ASSERT_NE(attr, nullptr);
     std::vector<Expression> expect_symbolic_shape = {Symbol(2), Symbol(2), Symbol(6)};
     EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_symbolic_shape);
@@ -1799,9 +1847,9 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_symbols_value) {
     auto s1 = ge::Symbol("s1");
     auto s2 = ge::Symbol("s2");
     std::vector<Expression> expect_symbolic_value = {(s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2,
-                                                     (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2,
-                                                     (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2,
-                                                     (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2};
+                                                    (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2,
+                                                    (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2,
+                                                    (s0 + s1), ge::Symbol(2), s2, (s0 + s1), ge::Symbol(2), s2};
     EXPECT_NE(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
     EXPECT_EQ(*attr->symbolic_tensor.GetSymbolicValue(), expect_symbolic_value);
   }
@@ -1814,8 +1862,8 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_get_const_value_failed) {
   }
   std::vector<int64_t> const_dim0 = {};
   auto const_node0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size());
-  ASSERT_EQ(EsSetSymbolShape(const_node0, std::vector<const char *>({}).data(), 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  ASSERT_EQ(EsSetOriginSymbolShape(const_node0, std::vector<const char *>({}).data(), 0), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1823,6 +1871,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_get_const_value_failed) {
   auto unpack_op_desc = std::make_shared<OpDesc>("unpack_0", UNPACK);
   unpack_op_desc->AddRequiredAttr("num");
   AttrUtils::SetInt(unpack_op_desc, "num", 3);
+  unpack_op_desc->AppendIrAttrName("num");
   unpack_op_desc->AppendIrAttrName("axis");
   AttrUtils::SetInt(unpack_op_desc, "axis", -1);
   unpack_op_desc->AddInputDesc(unpack_input_desc);
@@ -1839,9 +1888,9 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_get_const_value_failed) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_unpack_GetConstInputDims_failed) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "2", "3"}).data(), 3), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "2", "3"}).data(), 3), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1849,6 +1898,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_GetConstInputDims_failed) {
   auto unpack_op_desc = std::make_shared<OpDesc>("unpack_0", UNPACK);
   unpack_op_desc->AddRequiredAttr("num");
   AttrUtils::SetInt(unpack_op_desc, "num", 3);
+  unpack_op_desc->AppendIrAttrName("num");
   unpack_op_desc->AppendIrAttrName("axis");
   AttrUtils::SetInt(unpack_op_desc, "axis", 0);
   unpack_op_desc->AddInputDesc(unpack_input_desc);
@@ -1875,7 +1925,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_const) {
   std::vector<int64_t> const_dim0 = {2, 2, 3};
   auto const_node0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size());
   ASSERT_EQ(EsSetGraphOutput(const_node0, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -1883,6 +1933,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_const) {
   auto unpack_op_desc = std::make_shared<OpDesc>("unpack_0", UNPACK);
   unpack_op_desc->AddRequiredAttr("num");
   AttrUtils::SetInt(unpack_op_desc, "num", 3);
+  unpack_op_desc->AppendIrAttrName("num");
   unpack_op_desc->AppendIrAttrName("axis");
   AttrUtils::SetInt(unpack_op_desc, "axis", -1);
   unpack_op_desc->AddInputDesc(unpack_input_desc);
@@ -1897,7 +1948,7 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_const) {
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
   for (size_t i = 0UL; i < 3; i++) {
-    auto attr = unpack_op_desc->GetOutputDesc(i).GetAttrsGroup<SymbolicDescAttr>();
+    auto attr = unpack_op_desc->GetOutputDesc(i).template GetAttrsGroup<SymbolicDescAttr>();
     ASSERT_NE(attr, nullptr);
     std::vector<Expression> expect_symbolic_shape = {Symbol(2), Symbol(2)};
     EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_symbolic_shape);
@@ -1917,15 +1968,18 @@ TEST_F(SymbolicShapeComputeUT, test_unpack_with_const) {
 // │const_0 │ ———————————
 // └────────┘
 TEST_F(SymbolicShapeComputeUT, test_expanddims_with_symbols_value) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
   auto const0 = EsCreateScalarInt32(graph_, 1);
   ASSERT_NE(const0, nullptr);
 
   const auto expandDims = EsExpandDims(data0, const0);
-  expandDims->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc expandDims_input_desc;
+  expandDims->GetProducer().GetInputDesc(1, expandDims_input_desc);
+  expandDims_input_desc.SetDataType(DT_INT32);
+  expandDims->GetProducer().UpdateInputDesc(1, expandDims_input_desc);
   ASSERT_EQ(EsSetGraphOutput(expandDims, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_shape = {Symbol("s0"), Symbol(1), Symbol("s1"), Symbol("s2")};
@@ -1936,15 +1990,18 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_with_symbols_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_expanddims_without_symbols_value) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
   auto const0 = EsCreateScalarInt32(graph_, -1);
   ASSERT_NE(const0, nullptr);
 
   const auto expandDims = EsExpandDims(data0, const0);
-  expandDims->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc expandDims_input_desc;
+  expandDims->GetProducer().GetInputDesc(1, expandDims_input_desc);
+  expandDims_input_desc.SetDataType(DT_INT32);
+  expandDims->GetProducer().UpdateInputDesc(1, expandDims_input_desc);
   ASSERT_EQ(EsSetGraphOutput(expandDims, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_shape = {Symbol("s0"), Symbol("s1"), Symbol("s2"), Symbol(1)};
@@ -1955,15 +2012,18 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_without_symbols_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_expanddims_with_symbols_value3) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
   auto const0 = EsCreateScalarInt32(graph_, -1);
   ASSERT_NE(const0, nullptr);
 
   const auto expandDims = EsExpandDims(data0, const0);
-  expandDims->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc expandDims_input_desc;
+  expandDims->GetProducer().GetInputDesc(1, expandDims_input_desc);
+  expandDims_input_desc.SetDataType(DT_INT32);
+  expandDims->GetProducer().UpdateInputDesc(1, expandDims_input_desc);
   ASSERT_EQ(EsSetGraphOutput(expandDims, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_shape = {Symbol(1)};
@@ -1980,9 +2040,12 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_with_axis_symbols_error) {
   auto const0 = EsCreateScalarFloat(graph_, -1);
   ASSERT_NE(const0, nullptr);
   const auto expandDims = EsExpandDims(data0, const0);
-  expandDims->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc expandDims_input_desc;
+  expandDims->GetProducer().GetInputDesc(1, expandDims_input_desc);
+  expandDims_input_desc.SetDataType(DT_INT32);
+  expandDims->GetProducer().UpdateInputDesc(1, expandDims_input_desc);
   ASSERT_EQ(EsSetGraphOutput(expandDims, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2010,7 +2073,7 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_host_compute1) {
 
   ASSERT_EQ(EsSetGraphOutput(expand_dims, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto expanddims_node = cg->FindFirstNodeMatchType(EXPANDDIMS);
@@ -2043,7 +2106,7 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_host_compute2) {
 
   ASSERT_EQ(EsSetGraphOutput(expand_dims, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto expanddims_node = cg->FindFirstNodeMatchType(EXPANDDIMS);
@@ -2074,18 +2137,19 @@ TEST_F(SymbolicShapeComputeUT, test_expanddims_host_compute2) {
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_with_value_symbols) {
   std::vector<int64_t> const_data0 = {2, 2, 3, 2};
   auto const_node0 = EsCreateVectorInt64(graph_, const_data0.data(), 4);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 + s1)", "2", "s2"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 + s1)", "2", "s2"}).data(), 3), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto tile = EsTile(shape1, const_node0);
   std::vector<int64_t> const_data1 = {2, -4};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(tile, const_node1, false);
+  auto reduce_pro = EsReduceProd(tile, const_node1, false, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, false, true);
   auto tile_node = cg->FindFirstNodeMatchType(TILE);
   ASSERT_NE(tile_node, nullptr);
   auto tile_op_desc = tile_node->GetOpDesc();
@@ -2138,12 +2202,13 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_with_const) {
   auto const_node0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size());
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(const_node0, const_node1, true);
+  auto reduce_pro = EsReduceProd(const_node0, const_node1, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2159,17 +2224,18 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_with_const) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_without_symbolic_value) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(data0, const_node1, true);
+  auto reduce_pro = EsReduceProd(data0, const_node1, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2182,32 +2248,34 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_without_symbolic_value) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_symbolic_value_format_invalid) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"(s0 * s1)", "(s0 + s1)", "s0", "3"}).data(), 4), 0);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(const_node1, shape1, true);
+  auto reduce_pro = EsReduceProd(const_node1, shape1, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
   SymbolicShapeInference ssi;
   ASSERT_NE(ssi.Infer(cg), ge::SUCCESS);
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_AxisDims_invalid) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"2", "3"}).data(), 2), 0);
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(const_node1, data0, true);
+  auto reduce_pro = EsReduceProd(const_node1, data0, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2220,17 +2288,18 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_AxisDims_invalid) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_AxisInputIndex_invalid_symbolic_value) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"2"}).data(), 1), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"2"}).data(), 1), 0);
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(const_node1, data0, true);
+  auto reduce_pro = EsReduceProd(const_node1, data0, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2243,17 +2312,18 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_AxisInputIndex_invalid_symbolic_
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_get_const_failed) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(data0, const_node1, true);
+  auto reduce_pro = EsReduceProd(data0, const_node1, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2266,17 +2336,18 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_get_const_failed) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_reduce_prod_ConstInputDims_failed) {
-  std::vector<EsbTensor *> const_nodes;
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s1", "s2"}).data(), 2), 0);
+  std::vector<EsCTensorHolder *> const_nodes;
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s1", "s2"}).data(), 2), 0);
   std::vector<int64_t> const_data1 = {-1, 1};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 2);
-  auto reduce_pro = EsReduceProd(data0, const_node1, true);
+  auto reduce_pro = EsReduceProd(data0, const_node1, true, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, true, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2305,12 +2376,13 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_with_const_all_reduce) {
   auto const_node0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size());
   std::vector<int64_t> const_data1 = {0, 1, 2};
   auto const_node1 = EsCreateVectorInt64(graph_, const_data1.data(), 3);
-  auto reduce_pro = EsReduceProd(const_node0, const_node1, false);
+  auto reduce_pro = EsReduceProd(const_node0, const_node1, false, true);
   ASSERT_EQ(EsSetGraphOutput(reduce_pro, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixReduceProdIrAttrs(cg, false, true);
 
   auto reduce_prod_node = cg->FindFirstNodeMatchType(REDUCEPROD);
   ASSERT_NE(reduce_prod_node, nullptr);
@@ -2335,8 +2407,8 @@ TEST_F(SymbolicShapeComputeUT, test_reduce_prod_with_const_all_reduce) {
 // │const_0 │ ───────————
 // └────────┘
 TEST_F(SymbolicShapeComputeUT, test_pad_with_symbols_value) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
 
   std::vector<int32_t> const_data0 = {1, 2, 2, 1, 1, 1};
   std::vector<int64_t> const_dim = {3, 2};
@@ -2345,7 +2417,7 @@ TEST_F(SymbolicShapeComputeUT, test_pad_with_symbols_value) {
   const auto pad = EsPad(data0, const0);
 
   ASSERT_EQ(EsSetGraphOutput(pad, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_shape = {Symbol("s0") + Symbol(3), Symbol("s1") + Symbol(3), Symbol("s2") + Symbol(2)};
@@ -2365,8 +2437,8 @@ TEST_F(SymbolicShapeComputeUT, test_pad_with_symbols_value) {
 // │const_0 │ ───────————
 // └────────┘
 TEST_F(SymbolicShapeComputeUT, test_pad_with_symbols_value_but_error_shape) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2"}).data(), 3), 0);
 
   std::vector<int32_t> const_data0 = {1, 2, 2, 1, 1, 1, 1, 1};
   std::vector<int64_t> const_dim = {2, 4};  // // paddings.size != data0.dims * 2 校验报错
@@ -2375,7 +2447,7 @@ TEST_F(SymbolicShapeComputeUT, test_pad_with_symbols_value_but_error_shape) {
   const auto pad = EsPad(data0, const0);
 
   ASSERT_EQ(EsSetGraphOutput(pad, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2394,7 +2466,7 @@ TEST_F(SymbolicShapeComputeUT, test_host_compute_input_size_over_limit) {
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto fill = EsFill(data0, shape1);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -2414,9 +2486,12 @@ TEST_F(SymbolicShapeComputeUT, test_host_compute_type_not_valid) {
   auto data0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim.data(), const_dim.size());
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto fill = EsFill(data0, shape1);
-  fill->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT16);
+  ge::TensorDesc fill_input_desc;
+  fill->GetProducer().GetInputDesc(1, fill_input_desc);
+  fill_input_desc.SetDataType(DT_INT16);
+  fill->GetProducer().UpdateInputDesc(1, fill_input_desc);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2430,9 +2505,12 @@ TEST_F(SymbolicShapeComputeUT, test_host_compute_type_uint32) {
   auto data0 = EsCreateConstUInt32(graph_, const_data0.data(), const_dim.data(), const_dim.size());
   auto shape1 = EsShape(data0, DT_UINT32);
   auto fill = EsFill(data0, shape1);
-  fill->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_UINT32);
+  ge::TensorDesc fill_input_desc;
+  fill->GetProducer().GetInputDesc(1, fill_input_desc);
+  fill_input_desc.SetDataType(DT_UINT32);
+  fill->GetProducer().UpdateInputDesc(1, fill_input_desc);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2446,9 +2524,12 @@ TEST_F(SymbolicShapeComputeUT, test_host_compute_type_int64_t) {
   auto data0 = EsCreateConstInt64(graph_, const_data0.data(), const_dim.data(), const_dim.size());
   auto shape1 = EsShape(data0, DT_INT64);
   auto fill = EsFill(data0, shape1);
-  fill->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT64);
+  ge::TensorDesc fill_input_desc;
+  fill->GetProducer().GetInputDesc(1, fill_input_desc);
+  fill_input_desc.SetDataType(DT_INT64);
+  fill->GetProducer().UpdateInputDesc(1, fill_input_desc);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2462,9 +2543,12 @@ TEST_F(SymbolicShapeComputeUT, test_host_compute_type_uint64_t) {
   auto data0 = EsCreateConstUInt64(graph_, const_data0.data(), const_dim.data(), const_dim.size());
   auto shape1 = EsShape(data0, DT_UINT64);
   auto fill = EsFill(data0, shape1);
-  fill->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_UINT64);
+  ge::TensorDesc fill_input_desc;
+  fill->GetProducer().GetInputDesc(1, fill_input_desc);
+  fill_input_desc.SetDataType(DT_UINT64);
+  fill->GetProducer().UpdateInputDesc(1, fill_input_desc);
   ASSERT_EQ(EsSetGraphOutput(fill, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2483,7 +2567,7 @@ TEST_F(SymbolicShapeComputeUT, test_unsqueeze_hostcompute) {
   auto unsqueeze = EsUnsqueeze(const0, axes.data(), axes.size());
   ASSERT_EQ(EsSetGraphOutput(unsqueeze, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto unsqueeze_node = cg->FindFirstNodeMatchType(UNSQUEEZE);
@@ -2498,15 +2582,15 @@ TEST_F(SymbolicShapeComputeUT, test_unsqueeze_hostcompute) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_unsqueeze_hostcompute_without_symbolic_value) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"1", "1"}).data(), 2), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"1", "1"}).data(), 2), 0);
 
   std::vector<int64_t> axes = {0, 1};
 
   auto unsqueeze = EsUnsqueeze(data0, axes.data(), axes.size());
   ASSERT_EQ(EsSetGraphOutput(unsqueeze, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto unsqueeze_node = cg->FindFirstNodeMatchType(UNSQUEEZE);
@@ -2535,7 +2619,7 @@ TEST_F(SymbolicShapeComputeUT, test_unsqueeze_hostcompute_without_symbolic_value
 //      │ data_3 │ ——————————————
 //      └────────┘
 TEST_F(SymbolicShapeComputeUT, test_stridedslice_infershape) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
 
   // begin
   std::vector<int64_t> data1_value = {0, 1, 2, 3};
@@ -2549,15 +2633,15 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_infershape) {
 
   auto strided_slice =
       EsStridedSlice(data0, data1, data2, data3, static_cast<int64_t>(0b0010), static_cast<int64_t>(0b0010),
-                     static_cast<int64_t>(0b0100), static_cast<int64_t>(0b1101), static_cast<int64_t>(0b0111));
+                    static_cast<int64_t>(0b0100), static_cast<int64_t>(0b1101), static_cast<int64_t>(0b0111));
   ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   // 跳过hostcompute
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
-  SetNoStorage(cg, "data_0", di, 0);
+  SetNoStorage(cg, "data0", di, 0);
 
   std::vector<ge::GeTensor> input_vec;
   std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
@@ -2567,7 +2651,7 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_infershape) {
   ge::Tensor tensor0{td0};
   input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
   std::vector<Expression> expect_symbolic_shape = {Symbol(1), Symbol("s1"), Symbol("s2"),
-                                                   Symbol("s3"), Symbol("s4"), Symbol(1)};
+                                                  Symbol("s3"), Symbol("s4"), Symbol(1)};
   ExpectNodeInfo expect_node(STRIDEDSLICE, expect_symbolic_shape, {}, {}, {});
   std::vector<ExpectNodeInfo> expect_node_vec;
   expect_node_vec.push_back(expect_node);
@@ -2575,24 +2659,24 @@ TEST_F(SymbolicShapeComputeUT, test_stridedslice_infershape) {
 }
 
 /**
- *      Data0    Data1
- *        |    /   |
- *        |  /     |
- *       Pow     Tanh
- *        |       |
- *        |      Foo1
- *        \       /
- *    SquaredDifference
- *           |
- *          Neg
- *           |
- *        NetOutput
- */
+*      Data0    Data1
+*        |    /   |
+*        |  /     |
+*       Pow     Tanh
+*        |       |
+*        |      Foo1
+*        \       /
+*    SquaredDifference
+*           |
+*          Neg
+*           |
+*        NetOutput
+*/
 TEST_F(SymbolicShapeComputeUT, InferShapeForGraphWithNodeNotSupportSymbolInfer) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"s1", "1", "s0"}).data(), 3), 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s2", "s1", "s0", "s0"}).data(), 4), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"s1", "1", "s0"}).data(), 3), 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
 
@@ -2607,7 +2691,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForGraphWithNodeNotSupportSymbolInfer) 
   auto neg = EsNeg(squaredD);
 
   ASSERT_EQ(EsSetGraphOutput(neg, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -2624,27 +2708,27 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForGraphWithNodeNotSupportSymbolInfer) 
   ASSERT_NE(squared_difference_node, nullptr);
 
   ASSERT_EQ(GraphUtils::InsertNodeBetweenDataAnchors(tanh_node->GetOutDataAnchor(0),
-                                                     squared_difference_node->GetInDataAnchor(1), foo_node),
+                                                    squared_difference_node->GetInDataAnchor(1), foo_node),
             SUCCESS);
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto foo_attr = foo_op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto foo_attr = foo_op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(foo_attr, nullptr);
   auto neg_node = cg->FindNode("Neg_3");
   ASSERT_NE(neg_node, nullptr);
   auto neg_op_desc = neg_node->GetOpDesc();
   ASSERT_NE(neg_op_desc, nullptr);
-  auto neg_attr = neg_op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto neg_attr = neg_op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(neg_attr, nullptr);
   auto squared_difference_op_desc = squared_difference_node->GetOpDesc();
   ASSERT_NE(squared_difference_op_desc, nullptr);
-  auto sd_input_attr_0 = squared_difference_op_desc->GetInputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto sd_input_attr_0 = squared_difference_op_desc->GetInputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(sd_input_attr_0, nullptr);
   ASSERT_EQ(sd_input_attr_0->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({s2, s1, s0, s0}));
-  auto sd_input_attr_1 = squared_difference_op_desc->GetInputDesc(1).GetAttrsGroup<SymbolicDescAttr>();
+  auto sd_input_attr_1 = squared_difference_op_desc->GetInputDesc(1).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(sd_input_attr_1, nullptr);
-  auto sd_output_attr_0 = squared_difference_op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto sd_output_attr_0 = squared_difference_op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(sd_output_attr_0, nullptr);
 }
 
@@ -2656,18 +2740,19 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForGraphWithNodeNotSupportSymbolInfer) 
 // │ data_1 │ ───────> │BatchMatMulV2│ ───────> │ Node_Output │
 // └────────┘          └─────────────┘          └─────────────┘
 TEST_F(SymbolicShapeComputeUT, test_batchmatmulv2_infershape) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2", "s3", "s4"}).data(), 5), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2", "s3", "s4"}).data(), 5), 0);
 
-  const auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"s2", "s4", "s3"}).data(), 3), 0);
+  const auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"s2", "s4", "s3"}).data(), 3), 0);
 
   auto bmmv2 = EsBatchMatMulV2(data0, data1, nullptr, nullptr, false, false, 0);
   ASSERT_EQ(EsSetGraphOutput(bmmv2, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
+  FixBatchMatMulV2IrAttrs(cg, false, false, 0);
   std::vector<Expression> expect_symbolic_shape = {Symbol("s0"), Symbol("s1"), Symbol("s2"), Symbol("s3"), Symbol("s3")};
   ExpectNodeInfo expect_node("BatchMatMulV2", expect_symbolic_shape, {}, {}, {});
   std::vector<ExpectNodeInfo> expect_node_vec;
@@ -2675,21 +2760,21 @@ TEST_F(SymbolicShapeComputeUT, test_batchmatmulv2_infershape) {
   ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
 }
 
-void EXPECT_ConcatV2DHostComputeTestCommon(EsbGraph *graph_, const GeShape &data1_shape, const GeShape &data2_shape,
-                                           const GeShape &data3_shape, int64_t concat_dim,
-                                           const gert::SymbolShape &expect_out_shape,
-                                           const std::vector<Expression> &expect_out_values) {
+void EXPECT_ConcatV2DHostComputeTestCommon(EsCGraphBuilder *graph_, const GeShape &data1_shape, const GeShape &data2_shape,
+                                          const GeShape &data3_shape, int64_t concat_dim,
+                                          const gert::SymbolShape &expect_out_shape,
+                                          const std::vector<Expression> &expect_out_values) {
   std::vector<int64_t> const_data1 = {1, 1, 1, 1, 1, 1, 1, 1};
   auto data1 = EsCreateConstInt64(graph_, const_data1.data(), data1_shape.GetDims().data(), data1_shape.GetDimNum());
   std::vector<int64_t> const_data2 = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
   auto data2 = EsCreateConstInt64(graph_, const_data2.data(), data2_shape.GetDims().data(), data2_shape.GetDimNum());
   std::vector<int64_t> const_data3 = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
   auto data3 = EsCreateConstInt64(graph_, const_data3.data(), data3_shape.GetDims().data(), data3_shape.GetDimNum());
-  std::vector<EsbTensor *> inputs = {data1, data2, data3};
+  std::vector<EsCTensorHolder *> inputs = {data1, data2, data3};
 
   auto concatv2d = EsConcatV2D(inputs.data(), inputs.size(), concat_dim, inputs.size());
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2731,7 +2816,7 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute2) {
   auto c2 = Symbol(2);
   auto c3 = Symbol(3);
   std::vector<Expression> expect_out_values = {c1, c1, c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, c3, c3, c3, c3, c3, c3,
-                                               c1, c1, c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, c3, c3, c3, c3, c3, c3};
+                                              c1, c1, c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, c3, c3, c3, c3, c3, c3};
 
   EXPECT_ConcatV2DHostComputeTestCommon(graph_, GeShape({2, 2, 2}), GeShape({2, 3, 2}), GeShape({2, 4, 2}), 1,
                                         gert::SymbolShape({Symbol(2), Symbol(9), Symbol(2)}), expect_out_values);
@@ -2742,7 +2827,7 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute3) {
   auto c2 = Symbol(2);
   auto c3 = Symbol(3);
   std::vector<Expression> expect_out_values = {c1, c1, c2, c2, c2, c3, c3, c3, c3, c1, c1, c2, c2, c2, c3, c3, c3, c3,
-                                               c1, c1, c2, c2, c2, c3, c3, c3, c3, c1, c1, c2, c2, c2, c3, c3, c3, c3};
+                                              c1, c1, c2, c2, c2, c3, c3, c3, c3, c1, c1, c2, c2, c2, c3, c3, c3, c3};
 
   EXPECT_ConcatV2DHostComputeTestCommon(graph_, GeShape({2, 2, 2}), GeShape({2, 2, 3}), GeShape({2, 2, 4}), 2,
                                         gert::SymbolShape({Symbol(2), Symbol(2), Symbol(9)}), expect_out_values);
@@ -2753,11 +2838,11 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute4) {
   auto shape = GeShape({2, 2, 3});
   auto data2 = EsCreateConstInt64(graph_, const_data2.data(), shape.GetDims().data(), shape.GetDimNum());
 
-  std::vector<EsbTensor *> inputs = {data2};
+  std::vector<EsCTensorHolder *> inputs = {data2};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 1, 0, 1);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2784,11 +2869,11 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute5) {
   auto scalar2 = EsCreateScalarInt64(graph_, 2);
   auto scalar3 = EsCreateScalarInt64(graph_, 3);
 
-  std::vector<EsbTensor *> inputs = {scalar1, scalar2, scalar3};
+  std::vector<EsCTensorHolder *> inputs = {scalar1, scalar2, scalar3};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 3, 0, 3);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2810,16 +2895,16 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute5) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute6_without_value) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({"128", "32"}).data(), 2), 0);
-  const auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({"128", "32"}).data(), 2), 0);
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"128", "32"}).data(), 2), 0);
+  const auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"128", "32"}).data(), 2), 0);
 
-  std::vector<EsbTensor *> inputs = {data0, data1};
+  std::vector<EsCTensorHolder *> inputs = {data0, data1};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 2, 1, 1);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2833,7 +2918,7 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute6_without_value) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
 
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({Symbol(256), Symbol(32)}));
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
@@ -2847,11 +2932,11 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute7_concat_dim_not_valid)
 
   auto data2 = EsCreateConstInt64(graph_, const_data2.data(), shape.GetDims().data(), shape.GetDimNum());
 
-  std::vector<EsbTensor *> inputs = {data1, data2};
+  std::vector<EsCTensorHolder *> inputs = {data1, data2};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 2, 1, 2);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2869,12 +2954,12 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_hostcompute7_concat_dim_not_valid)
 
 TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n1) {
   std::vector<int64_t> const_data2 = {2, 2, 2, 2};
-  auto variable = EsCreateVariableInt64(graph_, 0, const_data2.data(), std::vector<int64_t>({2, 2}).data(), 2, "", "");
-  std::vector<EsbTensor *> inputs = {variable};
+  auto variable = EsCreateVariable(graph_, 0, "variable_0");
+  std::vector<EsCTensorHolder *> inputs = {variable};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 1, 1, 1);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2885,14 +2970,14 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n1) {
   op_desc->AppendIrAttrName("N");
   AttrUtils::SetInt(op_desc, "N", static_cast<int64_t>(inputs.size()));
   op_desc->MutableInputDesc(0)->SetShape(GeShape({2, 2, 3}));
-  auto var_node = cg->FindNode("Variable0");
-  auto attr = var_node->GetOpDesc()->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto var_node = cg->FindNode("variable_0");
+  auto attr = var_node->GetOpDesc()->MutableOutputDesc(0)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   attr->symbolic_tensor.SetSymbolShape({
-                                           Symbol("s1"),
-                                           Symbol("s2"),
-                                           Symbol(3),
-                                           Symbol(4),
-                                       });
+                                          Symbol("s1"),
+                                          Symbol("s2"),
+                                          Symbol(3),
+                                          Symbol(4),
+                                      });
   std::vector<ge::Expression> input_symbol_value({Symbol("s1"), Symbol("s1"), Symbol(1), Symbol(1)});
   auto symbolic_value_unique = ge::MakeUnique<std::vector<ge::Expression> >(input_symbol_value);
   attr->symbolic_tensor.SetSymbolicValue(std::move(symbolic_value_unique));
@@ -2902,12 +2987,12 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n1) {
 
 TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n2) {
   std::vector<int64_t> const_data2 = {2, 2, 2, 2};
-  auto variable = EsCreateVariableInt64(graph_, 0, const_data2.data(), std::vector<int64_t>({2, 2}).data(), 2, "", "");
-  std::vector<EsbTensor *> inputs = {variable, variable};
+  auto variable = EsCreateVariable(graph_, 0, "variable_0");
+  std::vector<EsCTensorHolder *> inputs = {variable, variable};
 
   auto concatv2d = EsConcatV2D(inputs.data(), 2, 1, 1);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2918,14 +3003,14 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n2) {
   op_desc->AppendIrAttrName("N");
   AttrUtils::SetInt(op_desc, "N", static_cast<int64_t>(inputs.size()));
   op_desc->MutableInputDesc(0)->SetShape(GeShape({2, 2, 3}));
-  auto var_node = cg->FindNode("Variable0");
-  auto attr = var_node->GetOpDesc()->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
+  auto var_node = cg->FindNode("variable_0");
+  auto attr = var_node->GetOpDesc()->MutableOutputDesc(0)->template GetOrCreateAttrsGroup<SymbolicDescAttr>();
   attr->symbolic_tensor.SetSymbolShape({
-                                           Symbol("s1"),
-                                           Symbol("s2"),
-                                           Symbol(3),
-                                           Symbol(4),
-                                       });
+                                          Symbol("s1"),
+                                          Symbol("s2"),
+                                          Symbol(3),
+                                          Symbol(4),
+                                      });
   std::vector<ge::Expression> input_symbol_value({Symbol("s1"), Symbol("s1"), Symbol(1), Symbol(1)});
   auto symbolic_value_unique = ge::MakeUnique<std::vector<ge::Expression> >(input_symbol_value);
   attr->symbolic_tensor.SetSymbolicValue(std::move(symbolic_value_unique));
@@ -2934,12 +3019,12 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_GetConstInputDims_failed_n2) {
 }
 
 TEST_F(SymbolicShapeComputeUT, test_concatv2d_get_symbolic_input_failed) {
-  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
-  std::vector<EsbTensor *> inputs = {data0};
+  const auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
+  std::vector<EsCTensorHolder *> inputs = {data0};
   auto concatv2d = EsConcatV2D(inputs.data(), 1, 1, 1);
   ASSERT_EQ(EsSetGraphOutput(concatv2d, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto concatv2d_node = cg->FindFirstNodeMatchType("ConcatV2D");
@@ -2953,7 +3038,7 @@ TEST_F(SymbolicShapeComputeUT, test_concatv2d_get_symbolic_input_failed) {
 
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
 
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({}));
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
@@ -2973,11 +3058,11 @@ TEST_F(SymbolicShapeComputeUT, test_squeeze_hostcompute) {
   auto squeeze = EsSqueeze(const0, axis.data(), axis.size());
   ASSERT_EQ(EsSetGraphOutput(squeeze, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_value = {Symbol(1), Symbol(2), Symbol(3), Symbol(4), Symbol(5),
-                                                   Symbol(6), Symbol(7), Symbol(8), Symbol(9), Symbol(10)};
+                                                  Symbol(6), Symbol(7), Symbol(8), Symbol(9), Symbol(10)};
   std::vector<Expression> expect_symbolic_shape = {Symbol(5), Symbol(2)};
   ExpectNodeInfo expect_node(SQUEEZE, expect_symbolic_shape, {}, {}, expect_symbolic_value);
   std::vector<ExpectNodeInfo> expect_node_vec;
@@ -2999,7 +3084,7 @@ TEST_F(SymbolicShapeComputeUT, test_squeeze_all_hostcompute) {
   auto squeeze = EsSqueeze(const0, axis.data(), axis.size());
   ASSERT_EQ(EsSetGraphOutput(squeeze, 0), 0);
 
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_value = {Symbol(1), Symbol(2), Symbol(3), Symbol(4)};
@@ -3015,23 +3100,23 @@ TEST_F(SymbolicShapeComputeUT, test_squeeze_all_hostcompute) {
 // │data_0  │ ───────> │squeeze   │ ───────> │ Node_Output │
 // └────────┘          └──────────┘          └─────────────┘
 TEST_F(SymbolicShapeComputeUT, test_squeeze_data_hostcompute) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data1, nullptr);
-  std::vector<EsbTensor *> concat_input;
+  std::vector<EsCTensorHolder *> concat_input;
   concat_input.push_back(data0);
   concat_input.push_back(data1);
   const auto concat0 = EsConcatV2D(concat_input.data(), 2, 1, 2);
   std::vector<int64_t> axis = {};
   auto squeeze = EsSqueeze(concat0, axis.data(), axis.size());
   ASSERT_EQ(EsSetGraphOutput(squeeze, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {1, -1, -1, -1}};
-  SetNoStorage(cg, "data_0", di, 0);
-  SetNoStorage(cg, "data_1", di, 1);
+  SetNoStorage(cg, "data0", di, 0);
+  SetNoStorage(cg, "data1", di, 1);
 
   std::vector<ge::GeTensor> input_vec;
   std::vector<int64_t> dims_vec0 = {1, 2, 3, 2};
@@ -3058,7 +3143,7 @@ TEST_F(SymbolicShapeComputeUT, test_squeeze_data_hostcompute) {
   ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
 }
 namespace {
-void SelectTestCommon(EsbGraph *graph_, const vector<int32_t> &cond_value, const vector<int32_t> &const0,
+void SelectTestCommon(EsCGraphBuilder *graph_, const vector<int32_t> &cond_value, const vector<int32_t> &const0,
                       const vector<int32_t> &const1, const vector<int64_t> &cond_dims, const vector<int64_t> &data_dims,
                       gert::SymbolTensor &symbolic_tensor, graphStatus status = SUCCESS) {
   auto cond = EsCreateConstInt32(graph_, cond_value.data(), cond_dims.data(), cond_dims.size());
@@ -3067,7 +3152,7 @@ void SelectTestCommon(EsbGraph *graph_, const vector<int32_t> &cond_value, const
 
   auto select = EsSelect(cond, data0, data1);
   ASSERT_EQ(EsSetGraphOutput(select, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto select_node = cg->FindFirstNodeMatchType(SELECT);
@@ -3076,7 +3161,7 @@ void SelectTestCommon(EsbGraph *graph_, const vector<int32_t> &cond_value, const
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(cg), status);
   if (status == SUCCESS) {
-    symbolic_tensor = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>()->symbolic_tensor;
+    symbolic_tensor = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>()->symbolic_tensor;
   }
 }
 }
@@ -3122,13 +3207,13 @@ TEST_F(SymbolicShapeComputeUT, test_select_1_n1xn2) {
 TEST_F(SymbolicShapeComputeUT, test_select_1_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {1};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3138,9 +3223,9 @@ TEST_F(SymbolicShapeComputeUT, test_select_1_n1xn2xn3) {
 
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1, c1, c1, c1, c1, c1,
-                                           c1, c1, c1, c1, c1, c1,
-                                           c1, c1, c1, c1, c1, c1,
-                                           c1, c1, c1, c1, c1, c1};
+                                          c1, c1, c1, c1, c1, c1,
+                                          c1, c1, c1, c1, c1, c1,
+                                          c1, c1, c1, c1, c1, c1};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3150,13 +3235,13 @@ TEST_F(SymbolicShapeComputeUT, test_select_1_n1xn2xn3) {
 TEST_F(SymbolicShapeComputeUT, test_select_n3_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 0, 1, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {4};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3167,9 +3252,9 @@ TEST_F(SymbolicShapeComputeUT, test_select_n3_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1, c0, c1, c0, c1, c0,
-                                           c1, c0, c1, c0, c1, c0,
-                                           c1, c0, c1, c0, c1, c0,
-                                           c1, c0, c1, c0, c1, c0};
+                                          c1, c0, c1, c0, c1, c0,
+                                          c1, c0, c1, c0, c1, c0,
+                                          c1, c0, c1, c0, c1, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3178,16 +3263,16 @@ TEST_F(SymbolicShapeComputeUT, test_select_n3_n1xn2xn3) {
 
 TEST_F(SymbolicShapeComputeUT, test_select_n2xn3_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 1, 1, 1,
-                                     1, 0, 1, 0,
-                                     0, 0, 0, 0};
+                                    1, 0, 1, 0,
+                                    0, 0, 0, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {3, 4};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3198,7 +3283,7 @@ TEST_F(SymbolicShapeComputeUT, test_select_n2xn3_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1, c1, c0, c1, c0, c0, c0, c0, c0,
-                                           c1 ,c1, c1, c1, c1, c0, c1, c0, c0, c0, c0, c0};
+                                          c1 ,c1, c1, c1, c1, c0, c1, c0, c0, c0, c0, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3208,13 +3293,13 @@ TEST_F(SymbolicShapeComputeUT, test_select_n2xn3_n1xn2xn3) {
 TEST_F(SymbolicShapeComputeUT, test_select_n1x1x1_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {2, 1, 1};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3225,7 +3310,7 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1x1x1_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1,
-                                           c0 ,c0, c0, c0, c0, c0, c0, c0, c0, c0, c0, c0};
+                                          c0 ,c0, c0, c0, c0, c0, c0, c0, c0, c0, c0, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3235,13 +3320,13 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1x1x1_n1xn2xn3) {
 TEST_F(SymbolicShapeComputeUT, test_select_1xn2x1_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 1, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {1, 3, 1};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3252,11 +3337,11 @@ TEST_F(SymbolicShapeComputeUT, test_select_1xn2x1_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1,
-                                           c1 ,c1, c1, c1,
-                                           c0, c0, c0, c0,
-                                           c1 ,c1, c1, c1,
-                                           c1 ,c1, c1, c1,
-                                           c0, c0, c0, c0};
+                                          c1 ,c1, c1, c1,
+                                          c0, c0, c0, c0,
+                                          c1 ,c1, c1, c1,
+                                          c1 ,c1, c1, c1,
+                                          c0, c0, c0, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3266,13 +3351,13 @@ TEST_F(SymbolicShapeComputeUT, test_select_1xn2x1_n1xn2xn3) {
 TEST_F(SymbolicShapeComputeUT, test_select_n1xn2x1_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 1, 0, 1, 0, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {2, 3, 1};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3283,11 +3368,11 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1xn2x1_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1,
-                                           c1 ,c1, c1, c1,
-                                           c0, c0, c0, c0,
-                                           c1 ,c1, c1, c1,
-                                           c0, c0, c0, c0,
-                                           c0, c0, c0, c0};
+                                          c1 ,c1, c1, c1,
+                                          c0, c0, c0, c0,
+                                          c1 ,c1, c1, c1,
+                                          c0, c0, c0, c0,
+                                          c0, c0, c0, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3296,15 +3381,15 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1xn2x1_n1xn2xn3) {
 
 TEST_F(SymbolicShapeComputeUT, test_select_n1x1xn3_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 1, 1, 1,
-                                     1, 0, 1, 0};
+                                    1, 0, 1, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {2, 1, 4};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3315,11 +3400,11 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1x1xn3_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1,
-                                           c1 ,c1, c1, c1,
-                                           c1 ,c1, c1, c1,
-                                           c1, c0, c1, c0,
-                                           c1, c0, c1, c0,
-                                           c1, c0, c1, c0};
+                                          c1 ,c1, c1, c1,
+                                          c1 ,c1, c1, c1,
+                                          c1, c0, c1, c0,
+                                          c1, c0, c1, c0,
+                                          c1, c0, c1, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3328,16 +3413,16 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1x1xn3_n1xn2xn3) {
 
 TEST_F(SymbolicShapeComputeUT, test_select_n1xn2xn3_n1xn2xn3) {
   std::vector<int32_t> cond_value = {1, 1, 1, 1, 1, 0, 1, 0,
-                                     0, 0, 0, 0, 1, 0, 1, 0,
-                                     1, 1, 1, 1, 0, 0, 0, 0};
+                                    0, 0, 0, 0, 1, 0, 1, 0,
+                                    1, 1, 1, 1, 0, 0, 0, 0};
   std::vector<int32_t> const0 = {1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1,
-                                 1, 1, 1, 1, 1, 1};
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1,
+                                1, 1, 1, 1, 1, 1};
   std::vector<int32_t> const1 = {0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0,
-                                 0, 0, 0, 0, 0, 0};
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0};
 
   std::vector<int64_t> cond_dims = {2, 3, 4};
   std::vector<int64_t> data_dims = {2, 3, 4};
@@ -3348,8 +3433,8 @@ TEST_F(SymbolicShapeComputeUT, test_select_n1xn2xn3_n1xn2xn3) {
   auto c0 = Symbol(0);
   auto c1 = Symbol(1);
   std::vector<Expression> expect_values = {c1 ,c1, c1, c1, c1, c0, c1, c0,
-                                           c0, c0, c0, c0, c1, c0, c1, c0,
-                                           c1 ,c1, c1, c1, c0, c0, c0, c0};
+                                          c0, c0, c0, c0, c1, c0, c1, c0,
+                                          c1 ,c1, c1, c1, c0, c0, c0, c0};
   std::vector<Expression> expect_shape = {Symbol(2), Symbol(3), Symbol(4)};
 
   EXPECT_EQ(symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
@@ -3360,17 +3445,17 @@ TEST_F(SymbolicShapeComputeUT, test_select_inputs_invalid) {
   gert::GertRuntimeStub stub;
   stub.GetSlogStub().SetLevelInfo();
 
-  auto condition = EsCreateGraphInputWithDetails(graph_, 0, "condition", nullptr);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 1, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 2, "data1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(condition, std::vector<const char *>({}).data(), 0), 0);
-  ASSERT_EQ(EsSetSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
-  ASSERT_EQ(EsSetSymbolShape(data1, std::vector<const char *>({}).data(), 0), 0);
+  auto condition = EsCreateGraphInputWithDetails(graph_, 0, "condition", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 1, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 2, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(condition, std::vector<const char *>({}).data(), 0), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({}).data(), 0), 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({}).data(), 0), 0);
 
 
   auto select = EsSelect(condition, data0, data1);
   ASSERT_EQ(EsSetGraphOutput(select, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto select_node = cg->FindFirstNodeMatchType(SELECT);
@@ -3399,7 +3484,7 @@ TEST_F(SymbolicShapeComputeUT, test_select_shape_invalid) {
 
   auto select = EsSelect(cond, data0, data1);
   ASSERT_EQ(EsSetGraphOutput(select, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto select_node = cg->FindFirstNodeMatchType(SELECT);
@@ -3427,7 +3512,7 @@ TEST_F(SymbolicShapeComputeUT, test_select_broadcast_failed1) {
 
   auto select = EsSelect(cond, data0, data1);
   ASSERT_EQ(EsSetGraphOutput(select, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto select_node = cg->FindFirstNodeMatchType(SELECT);
@@ -3457,7 +3542,7 @@ TEST_F(SymbolicShapeComputeUT, test_select_broadcast_failed2) {
 
   auto select = EsSelect(cond, data0, data1);
   ASSERT_EQ(EsSetGraphOutput(select, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   auto select_node = cg->FindFirstNodeMatchType(SELECT);
@@ -3499,7 +3584,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_0_success
 
   auto gather_v2 = EsGatherV2(param_const, indice_const, axis_const, 0, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_value = {
@@ -3547,7 +3632,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_1_success
 
   auto gather_v2 = EsGatherV2(param_const, indice_const, axis_const, -2, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -3596,7 +3681,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_2_success
 
   auto gather_v2 = EsGatherV2(param_const, indice_const, axis_const, 2, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_symbolic_value = {
@@ -3621,7 +3706,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_2_success
 // └────────┘          
 // param: [4], indice: [2, 3, 2], axis: 0 batch_dim = 0 
 TEST_F(SymbolicShapeComputeUT, test_gather_symbol_value_hostcompute_batch_dim_0_success) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
 
@@ -3634,11 +3719,11 @@ TEST_F(SymbolicShapeComputeUT, test_gather_symbol_value_hostcompute_batch_dim_0_
 
   auto gather_v2 = EsGatherV2(shape1, indice_const, axis_const, 0, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, 3, -1}};
-  SetNoStorage(cg, "data_0", di, 0);
+  SetNoStorage(cg, "data0", di, 0);
   std::vector<ge::GeTensor> input_vec;
   std::vector<int64_t> dims_vec0 = {5, 2, 3, 4};
   ge::Shape shape0({dims_vec0});
@@ -3681,7 +3766,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_scalar_param_hostcompute_batch_dim_0_
 
   auto gather_v2 = EsGatherV2(param_const, indice_const, axis_const, 0, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_dim = {Symbol(2), Symbol(3)};
@@ -3706,7 +3791,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_scalar_param_hostcompute_batch_dim_0_
 // param: [4], indice: [], axis: 0 batch_dim = 0 
 
 TEST_F(SymbolicShapeComputeUT, test_gather_scalar_indices_hostcompute_batch_dim_0_success) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   auto shape1 = EsShape(data0, 3);  // DT_INT32
   auto indice_const = EsCreateScalarInt32(graph_, 1);
@@ -3714,11 +3799,11 @@ TEST_F(SymbolicShapeComputeUT, test_gather_scalar_indices_hostcompute_batch_dim_
 
   auto gather_v2 = EsGatherV2(shape1, indice_const, axis_const, 0, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, 3, -1}};
-  SetNoStorage(cg, "data_0", di, 0);
+  SetNoStorage(cg, "data0", di, 0);
 
   std::vector<ge::GeTensor> input_vec;
   std::vector<int64_t> dims_vec0 = {5, 2, 3, 4};
@@ -3763,7 +3848,7 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_2_equal_t
 
   auto gather_v2 = EsGatherV2(param_const, indice_const, axis_const, 2, false, false);
   ASSERT_EQ(EsSetGraphOutput(gather_v2, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
   std::vector<Expression> expect_dim = {Symbol(2), Symbol(2), Symbol(2)};
@@ -3778,8 +3863,8 @@ TEST_F(SymbolicShapeComputeUT, test_gather_const_hostcompute_batch_dim_2_equal_t
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphUnkownDimNum) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -3787,7 +3872,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphUnkownDimNum) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -3818,7 +3903,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphUnkownDimNum) {
   auto op_desc = node->GetOpDesc();
   ASSERT_NE(op_desc, nullptr);
 
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   auto result = attr->symbolic_tensor.GetOriginSymbolShape().GetDims();
   std::vector<std::string> expect_dim = {"s1", "s5", "s3", "s6"};
@@ -3831,8 +3916,8 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphUnkownDimNum) {
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeDynamic) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -3840,7 +3925,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeDynamic) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -3869,15 +3954,15 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeDynamic) {
   auto op_desc = node->GetOpDesc();
   ASSERT_NE(op_desc, nullptr);
 
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_EQ(attr, nullptr);
 }
 
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeStatic) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -3885,7 +3970,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeStatic) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -3915,7 +4000,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeStatic) {
   auto op_desc = node->GetOpDesc();
   ASSERT_NE(op_desc, nullptr);
 
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   auto result = attr->symbolic_tensor.GetOriginSymbolShape().GetDims();
   std::vector<Expression> expect_dim = {Symbol(2), Symbol(3), Symbol(4), Symbol(4)};
@@ -3926,8 +4011,8 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInvalidShapeStatic) {
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInputData0IsEmpty) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -3935,7 +4020,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInputData0IsEmpty) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -3965,7 +4050,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInputData0IsEmpty) {
   auto op_desc = node->GetOpDesc();
   ASSERT_NE(op_desc, nullptr);
 
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   auto result = attr->symbolic_tensor.GetOriginSymbolShape().GetDims();
   std::vector<Expression> expect_dim = {Symbol("s1"), Symbol(1), Symbol("s2")};
@@ -3976,8 +4061,8 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphInputData0IsEmpty) {
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphScalar) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -3985,7 +4070,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphScalar) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
@@ -4015,7 +4100,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphScalar) {
   auto op_desc = node->GetOpDesc();
   ASSERT_NE(op_desc, nullptr);
 
-  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
   ASSERT_NE(attr, nullptr);
   auto result = attr->symbolic_tensor.GetOriginSymbolShape().GetDims();
   std::vector<Expression> expect_dim = {Symbol("s0"), Symbol(1), Symbol("s1")};
@@ -4025,18 +4110,21 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphScalar) {
 
 // 不论src的symbol value是否为空都刷新到dst，避免切图的时候symbol value残留导致符号推导失败
 TEST_F(SymbolicShapeComputeUT, test_clean_symbolic_value_when_infer_two_times) {
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data_0", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data0,std::vector<const char *>({"s0","s1","s2",}).data(),3),0);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data_1", nullptr);
-  ASSERT_EQ(EsSetSymbolShape(data1,std::vector<const char *>({"s3","s4","s5",}).data(),3),0);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0,std::vector<const char *>({"s0","s1","s2",}).data(),3),0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1,std::vector<const char *>({"s3","s4","s5",}).data(),3),0);
   std::vector<int32_t> const_data0 = {1, 2, 2, 1};
   std::vector<int64_t> const_dim0 = {2, 2};
   auto const0 = EsCreateConstInt32(graph_, const_data0.data(), const_dim0.data(), const_dim0.size());
   auto shape = EsShape(const0, 3);
   auto reshape = EsReshape(data0, shape, 0, -1);
-  reshape->GetProducer()->GetOpDesc()->MutableInputDesc(1)->SetDataType(DT_INT32);
+  ge::TensorDesc reshape_input_desc;
+  reshape->GetProducer().GetInputDesc(1, reshape_input_desc);
+  reshape_input_desc.SetDataType(DT_INT32);
+  reshape->GetProducer().UpdateInputDesc(1, reshape_input_desc);
   ASSERT_EQ(EsSetGraphOutput(reshape, 0), 0);
-  const auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  const auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
   const auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);
 
@@ -4046,18 +4134,22 @@ TEST_F(SymbolicShapeComputeUT, test_clean_symbolic_value_when_infer_two_times) {
   auto reshape_node = cg->FindFirstNodeMatchType(RESHAPE);
   ASSERT_NE(reshape_node, nullptr);
   auto op_desc = reshape_node->GetOpDesc();
-  auto attr = const_cast<SymbolicDescAttr *>(op_desc->GetInputDesc(1).GetAttrsGroup<SymbolicDescAttr>());
+  auto attr = const_cast<SymbolicDescAttr *>(op_desc->GetInputDesc(1).template GetAttrsGroup<SymbolicDescAttr>());
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({Symbol(2)}));
   std::vector<Expression> expect_values = {Symbol(2), Symbol(2)};
   EXPECT_NE(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
   EXPECT_EQ(*attr->symbolic_tensor.GetSymbolicValue(), expect_values);
 
-  // 第二次推导
-  ge::GraphUtils::RemoveEdge(shape->GetAnchor(), reshape_node->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(data1->GetAnchor(), reshape_node->GetInDataAnchor(1));
+  // 第二次推导 - use internal node access for edge manipulation
+  auto shape_node = cg->FindFirstNodeMatchType("Shape");
+  ASSERT_NE(shape_node, nullptr);
+  auto data1_node = cg->FindNode("data1");
+  ASSERT_NE(data1_node, nullptr);
+  ge::GraphUtils::RemoveEdge(shape_node->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(data1_node->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(1));
   ssi.Infer(cg);
-  attr = const_cast<SymbolicDescAttr *>(op_desc->GetInputDesc(1).GetAttrsGroup<SymbolicDescAttr>());
+  attr = const_cast<SymbolicDescAttr *>(op_desc->GetInputDesc(1).template GetAttrsGroup<SymbolicDescAttr>());
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({Symbol("s3"), Symbol("s4"), Symbol("s5")}));
   EXPECT_EQ(attr->symbolic_tensor.GetSymbolicValue(), nullptr);
 }
@@ -4065,8 +4157,8 @@ TEST_F(SymbolicShapeComputeUT, test_clean_symbolic_value_when_infer_two_times) {
 TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphShapeNEOriginShape) {
   REGISTER_SYMBOLIC_KERNEL(Unpack, nullptr);
   REGISTER_SYMBOLIC_KERNEL(Unsqueeze, UnsqueezeTest);
-  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr);
-  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr);
+  auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   ASSERT_NE(data0, nullptr);
   ASSERT_NE(data1, nullptr);
   auto one = ge::Symbol(1);
@@ -4074,7 +4166,7 @@ TEST_F(SymbolicShapeComputeUT, InferShapeForSimpleGraphShapeNEOriginShape) {
   auto mul = EsMul(data0, add);
   auto relu = EsRelu(mul);
   ASSERT_EQ(EsSetGraphOutput(relu, 0), 0);
-  auto graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph_)));
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
 
   auto cg = GraphUtilsEx::GetComputeGraph(*graph);
   ASSERT_NE(cg, nullptr);

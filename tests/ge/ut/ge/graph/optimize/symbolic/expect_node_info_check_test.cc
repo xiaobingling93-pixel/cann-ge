@@ -9,7 +9,7 @@
  */
 
 #include "expect_node_info_check_test.h"
-
+#include "attribute_group/attr_group_symbolic_desc.h"
 namespace ge {
 bool ExpectNodeInfo::ExpectShapeCheck(const gert::SymbolShape &real_shape) const {
   if (GetExpectSymbolOutputShape().empty()) {
@@ -72,7 +72,7 @@ Status RunSymbolInferenceTest(const ComputeGraphPtr &cg, const std::vector<Expec
     GE_ASSERT_NOTNULL(node_ptr);
     auto op_desc = node_ptr->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
-    auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+    auto attr = op_desc->GetOutputDesc(0).template GetAttrsGroup<SymbolicDescAttr>();
     GE_ASSERT_NOTNULL(attr);
     auto symbol_shape = attr->symbolic_tensor.GetOriginSymbolShape();
     GE_ASSERT_TRUE(node.ExpectShapeCheck(symbol_shape));

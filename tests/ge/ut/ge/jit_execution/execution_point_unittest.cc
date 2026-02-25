@@ -14,8 +14,7 @@
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/graph_utils.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "faker/space_registry_faker.h"
 #include "graph/utils/tensor_adapter.h"
 #include "common/env_path.h"
@@ -37,15 +36,15 @@ protected:
      auto ascend_install_path = EnvPath().GetAscendInstallPath();
      setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
      setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
-     graph_ = EsCreateGraph("Hello");
+     graph_ = EsCreateGraphBuilder("Hello");
  }
  void TearDown() override {
-     EsDestroyGraph(graph_);
+     EsDestroyGraphBuilder(graph_);
      graph_ = nullptr;
      unsetenv("ASCEND_OPP_PATH");
      unsetenv("LD_LIBRARY_PATH");
  }
-    EsbGraph *graph_{nullptr};
+    EsCGraphBuilder *graph_{nullptr};
 
     ExecutionPoint *ep;
 };
@@ -54,7 +53,8 @@ TEST_F(ExecutionPointUT, load_guard_check_func) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -215,7 +215,8 @@ static void ThreadFunction(ExecutionPoint *ep, const std::vector<gert::Tensor> *
 TEST_F(ExecutionPointUT, NoCheckFunc_Error) {
   dlog_setlevel(0, 1, 0);
 
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
 
   gert::Tensor tensor0 = {{{3, 2, 9}, {3, 2, 9}},                      // shape
                           {ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ, {}},  // format
@@ -252,7 +253,8 @@ TEST_F(ExecutionPointUT, NoCheckFunc_Error) {
 TEST_F(ExecutionPointUT, OneGraphMultiThread_Success) {
   dlog_setlevel(0, 1, 0);
 
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
 
   gert::Tensor tensor0 = {{{3, 2, 9}, {3, 2, 9}},                      // shape
                           {ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ, {}},  // format

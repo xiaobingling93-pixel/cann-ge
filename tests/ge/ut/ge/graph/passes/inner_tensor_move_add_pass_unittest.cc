@@ -16,6 +16,22 @@
 using namespace ge;
 
 namespace {
+ComputeGraphPtr BuildTensormoveOnlyOutputToAssignGraph() {
+  DEF_GRAPH(g1) {
+    auto assign = OP_CFG(ASSIGN)
+                      .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+                      .InCnt(2)
+                      .OutCnt(1)
+                      .InNames({"ref", "value"})
+                      .OutNames({"ref"})
+                      .Attr(ATTR_NAME_REFERENCE, true)
+                      .Build("assign");
+    CHAIN(NODE("data1", DATA)->NODE("tensormove", TENSORMOVE)->NODE(assign)->NODE("net_output", NETOUTPUT));
+    CHAIN(NODE("data2", DATA))->EDGE(0, 1)->NODE(assign);
+  };
+  return ToComputeGraph(g1);
+}
+
 ComputeGraphPtr BuildReluOnlyOutputToAssignGraph() {
   DEF_GRAPH(g1) {
     auto assign = OP_CFG(ASSIGN)
@@ -222,4 +238,20 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_4) {
   ASSERT_NE(assign2, nullptr);
   auto tensormove2 = assign2->GetInDataNodes().at(0);
   ASSERT_EQ(tensormove1->GetOutDataNodes().at(1), tensormove2);
+}
+
+TEST_F(UtestGraphPassesInnerTensorMoveAddPass, not_add_tensormove) {
+  auto graph = BuildTensormoveOnlyOutputToAssignGraph();
+  InnerTensorMoveAddPass pass;
+  ASSERT_EQ(pass.Run(graph), SUCCESS);
+  size_t inner_tensor_move_count = 0;
+  for (const auto &node : graph->GetDirectNode()) {
+    if (node->GetType() == TENSORMOVE) {
+      bool is_inner_tensor_move = false;
+      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_tensor_move", is_inner_tensor_move) && is_inner_tensor_move) {
+        inner_tensor_move_count++;
+      }
+    }
+  }
+  ASSERT_EQ(inner_tensor_move_count, 0U);
 }

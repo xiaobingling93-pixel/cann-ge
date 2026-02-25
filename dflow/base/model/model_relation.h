@@ -33,7 +33,8 @@ struct ModelRelation {
     std::string model_name;
     std::vector<std::string> input_endpoint_names;
     std::vector<std::string> output_endpoint_names;
-    std::vector<std::string> external_output_queue_names;  // created by others
+    // Reserved for expansion.
+    std::vector<std::string> external_output_queue_names;
     std::vector<std::string> external_input_queue_names;
     std::vector<std::string> status_input_queue_names;
     std::vector<std::string> status_output_queue_names;
@@ -82,17 +83,14 @@ class ModelRelationBuilder {
   Status DoBuild(const ComputeGraph &root_graph);
   Status DoBuildForData(const NodePtr &node, std::map<NodePtr, std::map<int32_t, std::string>> &paired_inputs,
                         const ComputeGraph &root_graph);
-  Status DoBuildForPartitionedCall(const ComputeGraph &subgraph,
-                                   const NodePtr &node, std::map<NodePtr,
-                                   std::map<int32_t, std::string>> &paired_inputs);
+  Status DoBuildForPartitionedCall(const NodePtr &node,
+                                   std::map<NodePtr, std::map<int32_t, std::string>> &paired_inputs);
   Status DoBuildForNetOutput(const NodePtr &node, const std::map<NodePtr,
                              std::map<int32_t, std::string>> &paired_inputs);
   bool CheckInnerNode(const NodePtr &node) const;
   Status GetOrCreateModelEndpointInfo(const OpDesc &op_desc, ModelRelation::ModelEndpointInfo *&model_endpoint_info);
   ModelRelation::ModelEndpointInfo *GetOrCreateModelEndpointInfo(const std::string &model_name);
   Status CheckNetOutputNode(const NodePtr &node) const;
-  Status CreateExternalEndpointInfo(const ComputeGraph &subgraph,
-                                    ModelRelation::ModelEndpointInfo *&model_endpoint_info);
 
   bool GetFlowAttr(const AttrHolder *obj, const std::string &queue_name, int64_t &depth, std::string &enqueue_policy);
   void GetFlowAttr(const std::string &queue_name, const GeTensorDesc &tensor_desc, const Node &node, int64_t &depth,

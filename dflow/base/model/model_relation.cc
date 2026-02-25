@@ -68,7 +68,6 @@ Status ModelRelationBuilder::CreateQueueForDataNode(const Node &node, const std:
 }
 
 Status ModelRelationBuilder::BuildForSingleModel(const ComputeGraph &root_graph, ModelRelation &model_relation) {
-  std::vector<std::string> external_queue_names;
   for (const auto &node : root_graph.GetDirectNode()) {
     const auto &op_type = node->GetType();
     GE_CHECK_NOTNULL(node->GetOpDesc());
@@ -76,16 +75,6 @@ Status ModelRelationBuilder::BuildForSingleModel(const ComputeGraph &root_graph,
       std::string unused;
       GE_CHK_STATUS_RET(CreateQueueForDataNode(*node, root_graph.GetName(), unused),
                         "Failed to create queue for data: %s", node->GetName().c_str());
-    } else if (op_type == QUEUE_DATA) {
-      std::string queue_name;
-      (void) AttrUtils::GetStr(node->GetOpDesc(), "queue_name", queue_name);
-      if (queue_name.empty()) {
-        GELOGE(PARAM_INVALID, "QueueData node [%s] missing attribute queue_name", node->GetName().c_str());
-        return PARAM_INVALID;
-      }
-      GE_CHK_STATUS_RET_NOLOG(CreateQueueDef(
-          node->GetOpDesc()->GetOutputDesc(static_cast<uint32_t>(kDataOutputAnchorIndex)), queue_name, *node));
-      external_queue_names.emplace_back(queue_name);
     } else if (op_type == NETOUTPUT) {
       const size_t num_outputs = node->GetOpDesc()->GetAllInputsSize();
       for (size_t i = 0U; i < num_outputs; ++i) {
@@ -98,10 +87,8 @@ Status ModelRelationBuilder::BuildForSingleModel(const ComputeGraph &root_graph,
       // do nothing
     }
   }
-  model_relation_.root_model_endpoint_info.external_input_queue_names = external_queue_names;
   model_relation_.root_model_endpoint_info.model_name = root_graph.GetName();
   model_relation_.submodel_endpoint_infos[root_graph.GetName()] = model_relation_.root_model_endpoint_info;
-  model_relation_.submodel_endpoint_infos[root_graph.GetName()].external_input_queue_names = external_queue_names;
   model_relation = std::move(model_relation_);
   return SUCCESS;
 }
@@ -159,8 +146,7 @@ Status ModelRelationBuilder::DoBuildForData(const NodePtr &node,
   return SUCCESS;
 }
 
-Status ModelRelationBuilder::DoBuildForPartitionedCall(const ComputeGraph &subgraph,
-                                                       const NodePtr &node,
+Status ModelRelationBuilder::DoBuildForPartitionedCall(const NodePtr &node,
                                                        std::map<NodePtr, std::map<int32_t,
                                                        std::string>> &paired_inputs) {
   // check all input are valid
@@ -169,7 +155,6 @@ Status ModelRelationBuilder::DoBuildForPartitionedCall(const ComputeGraph &subgr
   // create queue for submodel outputs, and set input to peer submodel
   ModelRelation::ModelEndpointInfo *model_queues = nullptr;
   GE_CHK_STATUS_RET_NOLOG(GetOrCreateModelEndpointInfo(*node->GetOpDesc(), model_queues));
-  GE_CHK_STATUS_RET_NOLOG(CreateExternalEndpointInfo(subgraph, model_queues));
   for (const auto &out_data_anchor : node->GetAllOutDataAnchors()) {
     GE_CHECK_NOTNULL(out_data_anchor);
     const size_t output_idx = static_cast<size_t>(out_data_anchor->GetIdx());
@@ -242,9 +227,7 @@ Status ModelRelationBuilder::DoBuild(const ComputeGraph &root_graph) {
     if (OpTypeUtils::IsDataNode(op_type)) {
       GE_CHK_STATUS_RET_NOLOG(DoBuildForData(node, paired_inputs, root_graph));
     } else if (op_type == PARTITIONEDCALL) {
-      const auto subgraph = root_graph.GetSubgraph(node->GetOpDesc()->GetSubgraphInstanceName(0U));
-      GE_CHECK_NOTNULL(subgraph);
-      GE_CHK_STATUS_RET_NOLOG(DoBuildForPartitionedCall(*subgraph, node, paired_inputs));
+      GE_CHK_STATUS_RET_NOLOG(DoBuildForPartitionedCall(node, paired_inputs));
     } else if (op_type == NETOUTPUT) {
       GE_CHK_STATUS_RET_NOLOG(DoBuildForNetOutput(node, paired_inputs));
     } else {
@@ -346,33 +329,6 @@ Status ModelRelationBuilder::GetOrCreateModelEndpointInfo(const OpDesc &op_desc,
   return SUCCESS;
 }
 
-Status ModelRelationBuilder::CreateExternalEndpointInfo(const ComputeGraph &subgraph,
-                                                        ModelRelation::ModelEndpointInfo *&model_endpoint_info) {
-  const NodePtr &queue_data = subgraph.FindFirstNodeMatchType(QUEUE_DATA);
-  if (queue_data == nullptr) {
-    GELOGI("Graph has no queue data node, model_name = %s.", model_endpoint_info->model_name.c_str());
-    return SUCCESS;
-  }
-
-  std::string queue_name;
-  (void) AttrUtils::GetStr(queue_data->GetOpDesc(), "queue_name", queue_name);
-  if (queue_name.empty()) {
-    GELOGE(PARAM_INVALID, "QueueData node [%s] missing attribute queue_name", queue_data->GetName().c_str());
-    return PARAM_INVALID;
-  }
-  model_endpoint_info->external_input_queue_names.emplace_back(queue_name);
-  auto &root_external_input_names = model_relation_.root_model_endpoint_info.external_input_queue_names;
-  const auto result = std::find(root_external_input_names.begin(), root_external_input_names.end(), queue_name);
-  if (result == root_external_input_names.end()) {
-    GE_CHK_STATUS_RET_NOLOG(
-        CreateQueueDef(queue_data->GetOpDesc()->GetOutputDesc(static_cast<uint32_t>(kDataOutputAnchorIndex)),
-                       queue_name, *queue_data));
-    root_external_input_names.emplace_back(queue_name);
-    GELOGI("Root model info add external queue success, queue_name = %s.", queue_name.c_str());
-  }
-  return SUCCESS;
-}
-
 Status ModelRelationBuilder::GetInputQueueNames(const NodePtr &node,
                                                 const map<NodePtr, std::map<int32_t, std::string>> &paired_inputs,
                                                 std::vector<std::string> &input_queue_names) {
@@ -429,10 +385,6 @@ void ModelRelationReader::LogDebugString(const ModelRelation &model_relation) {
          model_relation.root_model_endpoint_info.input_endpoint_names.size());
   GELOGD("root_model_endpoint_info.output_endpoint_names.size: %zu.",
          model_relation.root_model_endpoint_info.output_endpoint_names.size());
-  GELOGD("root_model_endpoint_info.external_input_queue_names.size: %zu.",
-         model_relation.root_model_endpoint_info.external_input_queue_names.size());
-  GELOGD("root_model_endpoint_info.external_output_queue_names.size: %zu.",
-         model_relation.root_model_endpoint_info.external_output_queue_names.size());
 }
 
 Status ModelRelationReader::Initialize() {

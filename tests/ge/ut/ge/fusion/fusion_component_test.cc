@@ -12,9 +12,7 @@
 #include "common/share_graph.h"
 #include "common/topo_checker.h"
 
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -27,7 +25,7 @@
 namespace ge {
 namespace fusion {
 class UtestFusionComponent : public testing::Test {
- public:
+public:
   static void SetUpTestSuite() {}
   static void TearDownTestSuite() {}
 };
@@ -54,10 +52,10 @@ class UtestFusionComponent : public testing::Test {
  */
 TEST_F(UtestFusionComponent, InputSingleConsumer_MultiOutputs_N2M) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto target_data = EsCreateGraphInput(target_esb_graph, 0);
-  EsbTensor *last_add = nullptr;
+  EsCTensorHolder *last_add = nullptr;
   for (size_t i = 0u; i < 10; ++i) {
     auto abs1 = EsAbs(target_data);
     auto exp = EsExp(abs1, 0 , 0, 0);
@@ -66,30 +64,30 @@ TEST_F(UtestFusionComponent, InputSingleConsumer_MultiOutputs_N2M) {
     target_data = last_add;
   }
   target_esb_graph->SetGraphOutput(EsIdentity(last_add), 0);
-  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.Build());
+  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.BuildAndReset());
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto abs1 = EsAbs(data);
   auto exp = EsExp(abs1, 0 , 0, 0);
   auto relu = EsRelu(abs1);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   auto abs_r = EsAbs(data_replace);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(abs_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // Simulate pass core match and replace
   PatternMatcher matcher(std::move(pattern), target_graph);
@@ -137,10 +135,10 @@ TEST_F(UtestFusionComponent, InputSingleConsumer_MultiOutputs_N2M) {
  */
 TEST_F(UtestFusionComponent, InputMultiConsumer_MultiOutputs_N2M) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto target_data = EsCreateGraphInput(target_esb_graph, 0);
-  EsbTensor *last_add = nullptr;
+  EsCTensorHolder *last_add = nullptr;
   for (size_t i = 0u; i < 10; ++i) {
     auto abs1 = EsAbs(target_data);
     auto exp = EsExp(abs1, 0 , 0, 0);
@@ -149,29 +147,29 @@ TEST_F(UtestFusionComponent, InputMultiConsumer_MultiOutputs_N2M) {
     target_data = last_add;
   }
   target_esb_graph->SetGraphOutput(EsIdentity(last_add), 0);
-  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.Build());
+  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.BuildAndReset());
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto exp = EsExp(data, 0 , 0, 0);
   auto relu = EsRelu(data);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto relu_r = EsRelu(data_replace);
   auto cast_r = EsCast(data_replace, DT_INT64);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(cast_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // Simulate pass core match and replace
   PatternMatcher matcher(std::move(pattern), target_graph);
@@ -219,10 +217,10 @@ TEST_F(UtestFusionComponent, InputMultiConsumer_MultiOutputs_N2M) {
  */
 TEST_F(UtestFusionComponent, TargetInputMultiConsumer_PatternInputSingleConsumer_MultiOutputs_N2M) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto target_data = EsCreateGraphInput(target_esb_graph, 0);
-  EsbTensor *last_add = nullptr;
+  EsCTensorHolder *last_add = nullptr;
   for (size_t i = 0u; i < 10; ++i) {
     auto abs1 = EsAbs(target_data);
     auto exp = EsExp(abs1, 0 , 0, 0);
@@ -231,31 +229,31 @@ TEST_F(UtestFusionComponent, TargetInputMultiConsumer_PatternInputSingleConsumer
     target_data = last_add;
   }
   target_esb_graph->SetGraphOutput(EsIdentity(last_add), 0);
-  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.Build());
+  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.BuildAndReset());
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto data1 = EsCreateGraphInput(esb_graph, 1);
   auto exp = EsExp(data, 0 , 0, 0);
   auto relu = EsRelu(data1);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build replacement graph
-  auto replace_graph_builder = es::Graph("repalce");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("repalce");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto data_replace = EsCreateGraphInput(replace_esb_graph, 0);
   auto data_replace1 = EsCreateGraphInput(replace_esb_graph, 1);
   auto relu_r = EsRelu(data_replace);
   auto cast_r = EsCast(data_replace1, DT_INT64);
   replace_esb_graph->SetGraphOutput(relu_r, 0);
   replace_esb_graph->SetGraphOutput(cast_r, 1);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // Simulate pass core match and replace
   PatternMatcher matcher(std::move(pattern), target_graph);
@@ -297,8 +295,8 @@ TEST_F(UtestFusionComponent, TwoNode_2Input_1Output_WithConst_Replace) {
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
   std::vector<int64_t> x_reshape_shape({3});
@@ -306,18 +304,18 @@ TEST_F(UtestFusionComponent, TwoNode_2Input_1Output_WithConst_Replace) {
   auto reshape = EsReshape(data, shape_const, 0, 0);
   auto transdata = EsTransData(reshape, "0", "29", 0, 0, 0);
   esb_graph->SetGraphOutput(transdata, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build replacement
   std::vector<int64_t> add_reshape_const_data({2, 1, 256});
   std::vector<int64_t> add_reshape_shape({3});
-  auto replace_graph_builder = es::Graph("replace");
-  auto replace_esb_graph = replace_graph_builder.GetEsbGraph();
+  auto replace_graph_builder = es::EsGraphBuilder("replace");
+  auto replace_esb_graph = replace_graph_builder.GetCGraphBuilder();
   auto add_const = EsCreateConstInt64(replace_esb_graph, add_reshape_const_data.data(), add_reshape_shape.data(), add_reshape_shape.size());
   auto add_tensor = EsAdd(EsCreateGraphInput(replace_esb_graph, 0), add_const);
   replace_esb_graph->SetGraphOutput(EsRelu(add_tensor), 0);
-  auto replace_graph = replace_graph_builder.Build();
+  auto replace_graph = replace_graph_builder.BuildAndReset();
 
   // build boundary
   PatternMatcher matcher(std::move(pattern), target_graph);
@@ -364,20 +362,20 @@ TEST_F(UtestFusionComponent, TwoNode_2Input_1Output_WithConst_Replace) {
 }
 
 std::unique_ptr<Graph> CreateTestKeepConstReplacement() {
-  auto es_graph = es::Graph("replace");
-  auto esb_graph = es_graph.GetEsbGraph();
+  auto es_graph_builder = es::EsGraphBuilder("replace");
+  auto esb_graph = es_graph_builder.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
   std::vector<int64_t> x_reshape_shape({3});
   auto const_0 = EsCreateConstInt64(esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   esb_graph->SetGraphOutput(data, 0);
   esb_graph->SetGraphOutput(const_0, 1);
-  return esb_graph->BuildGraph();
+  return es_graph_builder.BuildAndReset();
 }
 
 TEST_F(UtestFusionComponent, test_keep_const) {
-  auto es_graph = es::Graph("target");
-  auto esb_graph = es_graph.GetEsbGraph();
+  auto es_graph_builder = es::EsGraphBuilder("target");
+  auto esb_graph = es_graph_builder.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
   std::vector<int64_t> x_reshape_shape({3});
@@ -385,17 +383,18 @@ TEST_F(UtestFusionComponent, test_keep_const) {
   auto mul0 = EsMul(data, const_0);
   auto mul1 = EsMul(mul0, const_0);
   esb_graph->SetGraphOutput(mul1, 0);
-  auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(esb_graph->BuildComputeGraph());
+  auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(
+      GraphUtilsEx::GetComputeGraph(*es_graph_builder.BuildAndReset()));
 
   // build pattern
-  auto es_pattern_graph = es::Graph("pattern");
-  auto esb_pattern_graph = es_pattern_graph.GetEsbGraph();
+  auto es_pattern_graph_builder = es::EsGraphBuilder("pattern");
+  auto esb_pattern_graph = es_pattern_graph_builder.GetCGraphBuilder();
   auto data_pattern = EsCreateGraphInput(esb_pattern_graph, 0);
   auto const_pattern = EsCreateConstInt64(esb_pattern_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   auto mul_pattern = EsMul(data_pattern, const_pattern);
   esb_pattern_graph->SetGraphOutput(mul_pattern, 0);
   esb_pattern_graph->SetGraphOutput(const_pattern, 1);
-  auto pattern_graph = esb_pattern_graph->BuildGraph();
+  auto pattern_graph = es_pattern_graph_builder.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph));
 
 
@@ -413,8 +412,8 @@ TEST_F(UtestFusionComponent, test_keep_const) {
 }
 
 TEST_F(UtestFusionComponent, test_core) {
-    auto es_graph = es::Graph("target");
-    auto esb_graph = es_graph.GetEsbGraph();
+    auto es_graph_builder = es::EsGraphBuilder("target");
+    auto esb_graph = es_graph_builder.GetCGraphBuilder();
     auto data = EsCreateGraphInput(esb_graph, 0);
     std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
     std::vector<int64_t> x_reshape_shape({3});
@@ -422,18 +421,19 @@ TEST_F(UtestFusionComponent, test_core) {
     auto mul0 = EsMul(data, const_0);
     auto mul1 = EsMul(mul0, const_0);
     esb_graph->SetGraphOutput(mul1, 0);
-    auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(esb_graph->BuildComputeGraph());
+    auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(
+        GraphUtilsEx::GetComputeGraph(*es_graph_builder.BuildAndReset()));
 
     // build pattern
-    auto es_pattern_graph = es::Graph("pattern");
-    auto esb_pattern_graph = es_pattern_graph.GetEsbGraph();
+    auto es_pattern_graph_builder = es::EsGraphBuilder("pattern");
+    auto esb_pattern_graph = es_pattern_graph_builder.GetCGraphBuilder();
     auto data_pattern = EsCreateGraphInput(esb_pattern_graph, 0);
     auto const_pattern = EsCreateConstInt64(esb_pattern_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
     auto mul_pattern = EsMul(data_pattern, const_pattern);
     auto relu_pattern = EsRelu(const_pattern);
     esb_pattern_graph->SetGraphOutput(mul_pattern, 0);
     esb_pattern_graph->SetGraphOutput(relu_pattern, 1);
-    auto pattern_graph = esb_pattern_graph->BuildGraph();
+    auto pattern_graph = es_pattern_graph_builder.BuildAndReset();
     auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph));
 
     PatternMatcher matcher(std::move(pattern), target_graph);
@@ -450,8 +450,8 @@ TEST_F(UtestFusionComponent, test_core) {
 }
 
 TEST_F(UtestFusionComponent, test_cycle) {
-  auto es_graph = es::Graph("target");
-  auto esb_graph = es_graph.GetEsbGraph();
+  auto es_graph_builder = es::EsGraphBuilder("target");
+  auto esb_graph = es_graph_builder.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
   std::vector<int64_t> x_reshape_shape({3});
@@ -459,17 +459,18 @@ TEST_F(UtestFusionComponent, test_cycle) {
   auto mul0 = EsMul(data, const_0);
   auto mul1 = EsMul(mul0, const_0);
   esb_graph->SetGraphOutput(mul1, 0);
-  auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(esb_graph->BuildComputeGraph());
+  auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(
+      GraphUtilsEx::GetComputeGraph(*es_graph_builder.BuildAndReset()));
 
   // build pattern
-  auto es_pattern_graph = es::Graph("pattern");
-  auto esb_pattern_graph = es_pattern_graph.GetEsbGraph();
+  auto es_pattern_graph_builder = es::EsGraphBuilder("pattern");
+  auto esb_pattern_graph = es_pattern_graph_builder.GetCGraphBuilder();
   auto data_pattern = EsCreateGraphInput(esb_pattern_graph, 0);
   auto const_pattern = EsCreateConstInt64(esb_pattern_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   auto mul_pattern = EsMul(data_pattern, const_pattern);
   esb_pattern_graph->SetGraphOutput(mul_pattern, 0);
   esb_pattern_graph->SetGraphOutput(const_pattern, 1);
-  auto pattern_graph = esb_pattern_graph->BuildGraph();
+  auto pattern_graph = es_pattern_graph_builder.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph));
 
   PatternMatcher matcher(std::move(pattern), target_graph);

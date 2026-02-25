@@ -56,34 +56,6 @@ static NodePtr CreateFileConstantNode(const ComputeGraphPtr &graph, const string
   return graph->AddNode(op_desc);
 }
 
-void SetSubGraphWithQueueData(const NodePtr &node, const string &name) {
-  auto op_desc = node->GetOpDesc();
-  auto builder = ut::GraphBuilder(name);
-
-  int num_inputs = static_cast<int>(op_desc->GetInputsSize());
-  int num_outputs = static_cast<int>(op_desc->GetOutputsSize());
-  auto some_node = AddNode(builder, name + "_node", ADDN, num_inputs, 1);
-
-  auto queue_data = AddNode(builder, "QueueData", QUEUE_DATA, 0, 1);
-  AttrUtils::SetStr(queue_data->GetOpDesc(), "queue_name", "some_name");
-  builder.AddDataEdge(queue_data, 0, some_node, 0);
-
-  auto net_output = AddNode(builder, "Node_Output", NETOUTPUT, num_outputs, num_outputs);
-  for (int i = 0; i < num_outputs; ++i) {
-    AttrUtils::SetInt(net_output->GetOpDesc()->MutableInputDesc(i), ATTR_NAME_PARENT_NODE_INDEX, i);
-    builder.AddDataEdge(some_node, 0, net_output, i);
-  }
-
-  auto subgraph = builder.GetGraph();
-  AttrUtils::SetStr(*subgraph, ATTR_NAME_SESSION_GRAPH_ID, kSessionId);
-  subgraph->SetParentNode(node);
-  op_desc->AddSubgraphName(name);
-  op_desc->SetSubgraphInstanceName(0, name);
-  auto root_graph = GraphUtils::FindRootGraph(node->GetOwnerComputeGraph());
-  subgraph->SetParentGraph(root_graph);
-  root_graph->AddSubgraph(name, subgraph);
-}
-
 void SetSubGraph(const NodePtr &node, const string &name) {
   auto op_desc = node->GetOpDesc();
   auto builder = ut::GraphBuilder(name);
@@ -319,16 +291,6 @@ ComputeGraphPtr StubModels::BuildGraphWithQueueBindings() {
   builder.AddDataEdge(partitioned_call_1, 0, partitioned_call_2, 0);
   builder.AddDataEdge(data2, 0, partitioned_call_2, 1);
   builder.AddDataEdge(partitioned_call_2, 0, net_output, 0);
-  return builder.GetGraph();
-}
-
-ComputeGraphPtr StubModels::BuildGraphWithQueueData() {
-  auto builder = ut::GraphBuilder("g1");
-  auto partitioned_call_1 = builder.AddNode("PartitionedCall1", PARTITIONEDCALL, 0, 1);
-  auto net_output = builder.AddNode("NetOutput", NETOUTPUT, 1, 1);
-  SetSubGraphWithQueueData(partitioned_call_1, "subgraph-1");
-
-  builder.AddDataEdge(partitioned_call_1, 0, net_output, 0);
   return builder.GetGraph();
 }
 

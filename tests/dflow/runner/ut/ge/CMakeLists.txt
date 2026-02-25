@@ -392,7 +392,8 @@ target_link_libraries(ut_libge_helper_utest
     ascend_hal_headers
     runtime_headers
     -Wl,--whole-archive
-    ge_common_base eager_graph_builder_lib
+    ge_common_base
+    es_ge_test
     ge_single_op ge_davinci_model ge_build_common ge_prepare_common
     ge_pass_common ge_ut_common ge_ut_common_format
     helper_ut_runtime ge_runtime_stub

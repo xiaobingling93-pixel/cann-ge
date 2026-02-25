@@ -11,8 +11,7 @@
 #include <gtest/gtest.h>
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "compiler/graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_inference.h"
 #include "compiler/graph/passes/feature/auto_fuse_pass.h"
 #include "framework/common/types.h"
@@ -36,6 +35,7 @@
 #include "graph/optimize/symbolic/symbolic_kernel_factory.h"
 #include "graph/optimize/symbolic/codegen/guard_codegen.h"
 #include "attribute_group/attr_group_shape_env.h"
+#include "attribute_group/attr_group_symbolic_desc.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/op_impl_infer_symbol_shape.h"
 #include "graph/operator_reg.h"
 

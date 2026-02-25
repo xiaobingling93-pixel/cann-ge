@@ -10,9 +10,7 @@
 
 #include <gtest/gtest.h>
 #include "ge_graph_dsl/graph_dsl.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "jit_execution/user_graphs_manager.h"
 #include "stub/gert_runtime_stub.h"

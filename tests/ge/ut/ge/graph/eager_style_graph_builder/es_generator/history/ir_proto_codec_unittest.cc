@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "ir_proto_codec.h"
+#include "history/ir_proto_codec.h"
 
 #include <fstream>
 #include <gtest/gtest.h>
@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "default_attr_utils.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
 #include "graph/operator_reg.h"
 #include "op_desc_utils.h"
 
@@ -43,7 +42,6 @@ nlohmann::json PhonyAllOpJson() {
                  })},
       {"attrs", nlohmann::json::array({
                     {{"name", "ri"}, {"type", "Int"}, {"required", true}},
-                    {{"name", "rlb"}, {"type", "ListBool"}, {"required", true}},
                     {{"name", "i"}, {"type", "Int"}, {"required", false}, {"default_value", "7"}},
                     {{"name", "f"}, {"type", "Float"}, {"required", false}, {"default_value", "1.0"}},
                     {{"name", "s"}, {"type", "String"}, {"required", false}, {"default_value", "\"a\""}},
@@ -56,6 +54,7 @@ nlohmann::json PhonyAllOpJson() {
                     {{"name", "lli"}, {"type", "ListListInt"}, {"required", false}, {"default_value", "[[],[2,3],[]]"}},
                     {{"name", "t"}, {"type", "Tensor"}, {"required", false}, {"default_value", "\"Tensor()\""}},
                     {{"name", "ls"}, {"type", "ListString"}, {"required", false}, {"default_value", "[\"a\",\"b\"]"}},
+                    {{"name", "rlb"}, {"type", "ListBool"}, {"required", true}},
                 })},
   };
 }
@@ -96,12 +95,14 @@ void ExpectPhonyAllSubgraphs(const IrOpProto &proto) {
 }
 
 void ExpectPhonyAllRequiredAttrs(const IrOpProto &proto) {
+  EXPECT_EQ(proto.attrs.front().name, "ri");
   const auto *attr_ri = FindAttr(proto.attrs, "ri");
   ASSERT_NE(attr_ri, nullptr);
   EXPECT_EQ(attr_ri->av_type, "Int");
   EXPECT_TRUE(attr_ri->required);
   EXPECT_EQ(attr_ri->default_value, "");
 
+  EXPECT_EQ(proto.attrs.back().name, "rlb");
   const auto *attr_rlb = FindAttr(proto.attrs, "rlb");
   ASSERT_NE(attr_rlb, nullptr);
   EXPECT_EQ(attr_rlb->av_type, "ListBool");
@@ -237,7 +238,6 @@ REG_OP(phony_all)
   .GRAPH(g)
   .DYNAMIC_GRAPH(dg)
   .REQUIRED_ATTR(ri, Int)
-  .REQUIRED_ATTR(rlb, ListBool)
   .ATTR(i, Int, 7)
   .ATTR(f, Float, 1.0)
   .ATTR(s, String, "a")
@@ -250,6 +250,7 @@ REG_OP(phony_all)
   .ATTR(lli, ListListInt, {{}, {2, 3}, {}})
   .ATTR(t, Tensor, Tensor())
   .ATTR(ls, ListString, {"a", "b"})
+  .REQUIRED_ATTR(rlb, ListBool)
   .OUTPUT(y, TensorType::NumberType())
   .DYNAMIC_OUTPUT(dy, TensorType::All())
   .OP_END_FACTORY_REG(phony_all);

@@ -10,16 +10,16 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "fusion/utils/log_checker.h"
+#include "graph/utils/node_adapter.h"
 
 #include "compiler/graph/fusion/node_matcher.h"
 namespace ge {
 namespace fusion {
 class UtestNormalNodeMatcher : public testing::Test {
- public:
+public:
   void SetUp() override {
     dlog_setlevel(GE_MODULE_NAME, 2, 0);
   }
@@ -28,7 +28,7 @@ class UtestNormalNodeMatcher : public testing::Test {
     dlog_setlevel(GE_MODULE_NAME, 3, 0);
   }
   static void SetUpTestSuite() {
-    graph_ = EsCreateGraph("target");
+    graph_ = EsCreateGraphBuilder("target");
 
     int32_t int32_scaler_const_data = 2;
     node_2_tensor_["const"] = EsCreateScalarInt32(graph_, int32_scaler_const_data);
@@ -46,21 +46,21 @@ class UtestNormalNodeMatcher : public testing::Test {
   NodePtr GetTargetNode(const std::string &case_name) {
     const auto esb_tensor = node_2_tensor_[case_name];
     if (esb_tensor != nullptr) {
-      return esb_tensor->GetProducer();
+      return NodeAdapter::GNode2Node(esb_tensor->GetProducer());
     }
     return nullptr;
   }
 
  private:
-  static EsbGraph *graph_;
-  static std::unordered_map<std::string, EsbTensor *> node_2_tensor_;
+  static EsCGraphBuilder *graph_;
+  static std::unordered_map<std::string, EsCTensorHolder *> node_2_tensor_;
   gert::GertRuntimeStub runtime_stub_;
 };
-EsbGraph *UtestNormalNodeMatcher::graph_;
-std::unordered_map<std::string, EsbTensor *> UtestNormalNodeMatcher::node_2_tensor_;
+EsCGraphBuilder *UtestNormalNodeMatcher::graph_;
+std::unordered_map<std::string, EsCTensorHolder *> UtestNormalNodeMatcher::node_2_tensor_;
 
 TEST_F(UtestNormalNodeMatcher, DisableIrAttr_Match) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   auto input_tensor1 = EsCreateGraphInput(pattern_graph_ptr, 1);
@@ -68,11 +68,11 @@ TEST_F(UtestNormalNodeMatcher, DisableIrAttr_Match) {
 
   auto target_node = GetTargetNode("add");
   NormalNodeMatcher matcher(false);
-  EXPECT_TRUE(matcher.IsMatch(add_tensor->GetProducer(), target_node));
+  EXPECT_TRUE(matcher.IsMatch(NodeAdapter::GNode2Node(add_tensor->GetProducer()), target_node));
 }
 
 TEST_F(UtestNormalNodeMatcher, DisableIrAttr_Miss) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   auto input_tensor1 = EsCreateGraphInput(pattern_graph_ptr, 1);
@@ -80,11 +80,11 @@ TEST_F(UtestNormalNodeMatcher, DisableIrAttr_Miss) {
 
   auto target_node = GetTargetNode("const");
   NormalNodeMatcher matcher(false);
-  EXPECT_FALSE(matcher.IsMatch(add_tensor->GetProducer(), target_node));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(add_tensor->GetProducer()), target_node));
 }
 
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_TypeAttr) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   auto cast_tensor_match = EsCast(input_tensor, DT_FLOAT16);
@@ -92,12 +92,12 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_TypeAttr) {
 
   auto target_node = GetTargetNode("cast_to_fp16");
   NormalNodeMatcher matcher(true);
-  EXPECT_TRUE(matcher.IsMatch(cast_tensor_match->GetProducer(), target_node));
-  EXPECT_FALSE(matcher.IsMatch(cast_tensor_miss->GetProducer(), target_node));
+  EXPECT_TRUE(matcher.IsMatch(NodeAdapter::GNode2Node(cast_tensor_match->GetProducer()), target_node));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(cast_tensor_miss->GetProducer()), target_node));
 }
 
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_FloatAttr) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   auto cast_tensor_match = EsCast(input_tensor, DT_FLOAT16);
@@ -105,12 +105,12 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_FloatAttr) {
 
   auto target_node = GetTargetNode("cast_to_fp16");
   NormalNodeMatcher matcher(true);
-  EXPECT_TRUE(matcher.IsMatch(cast_tensor_match->GetProducer(), target_node));
-  EXPECT_FALSE(matcher.IsMatch(cast_tensor_miss->GetProducer(), target_node));
+  EXPECT_TRUE(matcher.IsMatch(NodeAdapter::GNode2Node(cast_tensor_match->GetProducer()), target_node));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(cast_tensor_miss->GetProducer()), target_node));
 }
 
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   std::vector<int64_t > list_int_value = {4,5,6};
@@ -122,25 +122,25 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr) {
 
   auto target_node = GetTargetNode("node_with_list_int_attr");
   NormalNodeMatcher matcher(true);
-  EXPECT_FALSE(matcher.IsMatch(compress_tensor_miss->GetProducer(), target_node));
-  EXPECT_TRUE(matcher.IsMatch(compress_tensor_match->GetProducer(), target_node));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer()), target_node));
+  EXPECT_TRUE(matcher.IsMatch(NodeAdapter::GNode2Node(compress_tensor_match->GetProducer()), target_node));
 }
 
 // compress找不到ir， ir recover自动返回成功了
 // 为pattern中的compress构造一个不存在的IR attr name，构造pattern ir attr name和target ir attr name数量不一样的场景
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr_IrNameNumMiss) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   std::vector<int64_t > list_int_value_right = {1,2,3};
   auto compress_tensor_miss =
       EsCompress(input_tensor, reinterpret_cast<int64_t *>(list_int_value_right.data()), 3).weight_compress;
 
-  compress_tensor_miss->GetProducer()->GetOpDesc()->AppendIrAttrName("fake_attr_name");
+  NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer())->GetOpDesc()->AppendIrAttrName("fake_attr_name");
   auto target_node = GetTargetNode("node_with_list_int_attr");
   NormalNodeMatcher matcher(true);
 
-  EXPECT_FALSE(matcher.IsMatch(compress_tensor_miss->GetProducer(), target_node));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer()), target_node));
   EXPECT_TRUE(ut::WarnLogContain(runtime_stub_, "Ir attr num is not match"));
 }
 
@@ -149,7 +149,7 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr_IrNameNumMiss
 // 为target中的compress构造一个不存在的IR attr name b
 // 构造pattern ir attr name和target ir attr name不一样的场景
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr_IrNameWrongMiss) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   std::vector<int64_t > list_int_value_right = {1,2,3};
@@ -159,11 +159,11 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr_IrNameWrongMi
   auto compress_tensor_target =
       EsCompress(input_tensor, reinterpret_cast<int64_t *>(list_int_value_right.data()), 3).weight_compress;
 
-  compress_tensor_miss->GetProducer()->GetOpDesc()->AppendIrAttrName("fake_attr_a");
-  compress_tensor_target->GetProducer()->GetOpDesc()->AppendIrAttrName("fake_attr_b");
+  NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer())->GetOpDesc()->AppendIrAttrName("fake_attr_a");
+  NodeAdapter::GNode2Node(compress_tensor_target->GetProducer())->GetOpDesc()->AppendIrAttrName("fake_attr_b");
 
   NormalNodeMatcher matcher(true);
-  EXPECT_FALSE(matcher.IsMatch(compress_tensor_miss->GetProducer(), compress_tensor_target->GetProducer()));
+  EXPECT_FALSE(matcher.IsMatch(NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer()), NodeAdapter::GNode2Node(compress_tensor_target->GetProducer())));
   EXPECT_TRUE(ut::WarnLogContain(runtime_stub_, "Ir attr names is not match"));
 }
 
@@ -172,7 +172,7 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_SingleAttr_ListIntAttr_IrNameWrongMi
 // 为target中的compress构造一个不存在的IR attr name
 // 构造pattern ir attr name和target ir attr name一样的场景
 TEST_F(UtestNormalNodeMatcher, EnableIrAttr_MultiAttr_Match) {
-  auto pattern_graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("pattern"), EsDestroyGraph);
+  auto pattern_graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("pattern"), EsDestroyGraphBuilder);
   auto pattern_graph_ptr = pattern_graph.get();
   auto input_tensor = EsCreateGraphInput(pattern_graph_ptr, 0);
   std::vector<int64_t > list_int_value_right = {1,2,3};
@@ -183,13 +183,13 @@ TEST_F(UtestNormalNodeMatcher, EnableIrAttr_MultiAttr_Match) {
       EsCompress(input_tensor, reinterpret_cast<int64_t *>(list_int_value_right.data()), 3).weight_compress;
 
   const std::string fake_attr_name = "fake_attr";
-  compress_tensor_miss->GetProducer()->GetOpDesc()->AppendIrAttrName(fake_attr_name);
-  AttrUtils::SetFloat(compress_tensor_miss->GetProducer()->GetOpDesc(), fake_attr_name, 2);
-  compress_tensor_target->GetProducer()->GetOpDesc()->AppendIrAttrName(fake_attr_name);
-  AttrUtils::SetFloat(compress_tensor_target->GetProducer()->GetOpDesc(), fake_attr_name, 2);
+  NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer())->GetOpDesc()->AppendIrAttrName(fake_attr_name);
+  AttrUtils::SetFloat(NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer())->GetOpDesc(), fake_attr_name, 2);
+  NodeAdapter::GNode2Node(compress_tensor_target->GetProducer())->GetOpDesc()->AppendIrAttrName(fake_attr_name);
+  AttrUtils::SetFloat(NodeAdapter::GNode2Node(compress_tensor_target->GetProducer())->GetOpDesc(), fake_attr_name, 2);
 
   NormalNodeMatcher matcher(true);
-  EXPECT_TRUE(matcher.IsMatch(compress_tensor_miss->GetProducer(), compress_tensor_target->GetProducer()));
+  EXPECT_TRUE(matcher.IsMatch(NodeAdapter::GNode2Node(compress_tensor_miss->GetProducer()), NodeAdapter::GNode2Node(compress_tensor_target->GetProducer())));
 }
 } // namespace fusion
 } // namespace ge

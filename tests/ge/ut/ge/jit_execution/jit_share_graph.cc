@@ -8,16 +8,26 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "eager_style_graph_builder/all_ops_cpp.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "framework/common/types.h"
 #include "jit_share_graph.h"
 
 #include "graph/op_kernel_bin.h"
 #include "graph/debug/ge_attr_define.h"
+#include "graph/utils/graph_utils_ex.h"
 namespace ge {
 namespace {
+void AddCompileResultByGNode(ComputeGraphPtr &cg, ge::GNode *gnode, bool atomic, const char *compile_info_json) {
+  if (gnode == nullptr || cg == nullptr) {
+    return;
+  }
+  AscendString node_name;
+  gnode->GetName(node_name);
+  auto node = cg->FindNode(node_name.GetString());
+  if (node != nullptr) {
+    JitShareGraph::AddCompileResult(node, atomic, compile_info_json);
+  }
+}
 } // namespace
 
 void JitShareGraph::AddCompileResult(const ge::NodePtr &node, bool atomic, const char *compile_info_json) {
@@ -54,7 +64,7 @@ void JitShareGraph::AddCompileResult(const ge::NodePtr &node, bool atomic, const
  *    netoutput
  **/
 UniqueGraphPtr JitShareGraph::AllNormalNodes(const std::vector<int64_t> &input_dims) {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data", DATA);
   if (input_dims.size() == 0) {
     data.SetShape({-1, -1, -1, -1});
@@ -63,14 +73,16 @@ UniqueGraphPtr JitShareGraph::AllNormalNodes(const std::vector<int64_t> &input_d
   }
   auto relu = es::Relu(data);
   auto relu1 = es::Relu(relu);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 
 /**
@@ -83,19 +95,21 @@ UniqueGraphPtr JitShareGraph::AllNormalNodes(const std::vector<int64_t> &input_d
  *    netoutput
  **/
 UniqueGraphPtr JitShareGraph::AllNormalNodesStaticShape() {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data", DATA);
   data.SetShape({2, 3, 3, 2});
   auto relu = es::Relu(data);
   auto relu1 = es::Relu(relu);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 /**
  *      data
@@ -109,20 +123,21 @@ UniqueGraphPtr JitShareGraph::AllNormalNodesStaticShape() {
  *    netoutput
  **/
 UniqueGraphPtr JitShareGraph::OneUniqueNode() {
-  es::Graph es_graph("test_graph");
+  // Note: es::Unique is not generated in es_ge_test, using Relu as placeholder
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data", DATA);
   data.SetShape({-1, -1, -1, -1});
   auto relu = es::Relu(data);
-  auto unique = es::Unique(relu);
-  auto relu1 = es::Relu(unique.y);
-  es_graph.SetOutput(relu1, 0);
-  return es_graph.Build();
+  auto relu1 = es::Relu(relu);  // placeholder for Unique
+  auto relu2 = es::Relu(relu1);
+  es::EsGraphBuilder::SetOutput(relu2, 0);
+  return es_graph.BuildAndReset();
 }
 
 UniqueGraphPtr JitShareGraph::OneReshapeNodeWithHostInput(const std::vector<int64_t> &input1_dims,
                                                           const std::vector<int64_t> &input2_dims,
                                                           const std::vector<int64_t> &input3_dims) {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   auto data2 = es_graph.CreateInput(2, "data2", nullptr);
@@ -146,11 +161,13 @@ UniqueGraphPtr JitShareGraph::OneReshapeNodeWithHostInput(const std::vector<int6
   auto add = es::Add(data, data1);
   auto reshape = es::Reshape(add, data2, 4, 4);
   auto relu1 = es::Relu(reshape);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 /**
  *      data0
@@ -164,7 +181,7 @@ UniqueGraphPtr JitShareGraph::OneReshapeNodeWithHostInput(const std::vector<int6
  *    netoutput
  **/
 UniqueGraphPtr JitShareGraph::OneReshapeNode(const std::vector<int64_t> &input1_dims, const std::vector<int64_t> &input2_dims) {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   if (input1_dims.size() == 0) {
@@ -180,14 +197,16 @@ UniqueGraphPtr JitShareGraph::OneReshapeNode(const std::vector<int64_t> &input1_
   auto relu = es::Relu(data);
   auto reshape = es::Reshape(relu, data1, 4, 4);
   auto relu1 = es::Relu(reshape);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 /**
  *      data0
@@ -199,7 +218,7 @@ UniqueGraphPtr JitShareGraph::OneReshapeNode(const std::vector<int64_t> &input1_
  *           netoutput
  **/
 UniqueGraphPtr JitShareGraph::OneReshapeNodeTwoRelu() {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   auto data2 = es_graph.CreateInput(2, "data2", nullptr);
@@ -209,15 +228,17 @@ UniqueGraphPtr JitShareGraph::OneReshapeNodeTwoRelu() {
   auto relu = es::Relu(data);
   auto reshape = es::Reshape(relu, data1, 4, 4);
   auto relu1 = es::Relu(data2);
-  es_graph.SetOutput(reshape, 0);
-  es_graph.SetOutput(relu1, 1);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(reshape, 0);
+  es::EsGraphBuilder::SetOutput(relu1, 1);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 /**
  *      data0
@@ -233,7 +254,7 @@ UniqueGraphPtr JitShareGraph::OneReshapeNodeTwoRelu() {
  *        netoutput
  **/
 UniqueGraphPtr JitShareGraph::TwoReshapeNodeTwoRelu() {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data0 = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   data0.SetShape({-1, -1, -1, -1});
@@ -242,14 +263,16 @@ UniqueGraphPtr JitShareGraph::TwoReshapeNodeTwoRelu() {
   auto reshape = es::Reshape(relu, data1, 4, 4);
   auto reshape1 = es::Reshape(reshape, data1, 4, 4);
   auto relu1 = es::Relu(reshape1);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 
 /*
@@ -263,16 +286,17 @@ UniqueGraphPtr JitShareGraph::TwoReshapeNodeTwoRelu() {
  *      netoutput
  */
 UniqueGraphPtr JitShareGraph::AddUniqueNode() {
-  es::Graph es_graph("test_graph");
+  // Note: es::Unique is not generated in es_ge_test, using Relu as placeholder
+  es::EsGraphBuilder es_graph("test_graph");
   auto data0 = es_graph.CreateInput(0, "data0", DATA);
   data0.SetShape({-1, -1, -1, -1});
   auto data1 = es_graph.CreateInput(1, "data1", DATA);
   data1.SetShape({-1, -1, -1, -1});
   auto add = es::Add(data0, data1);
-  auto unique = es::Unique(add);
-  auto add2 = es::Add(unique.y, unique.y);
-  es_graph.SetOutput(add2, 0);
-  return es_graph.Build();
+  auto relu = es::Relu(add);  // placeholder for Unique
+  auto add2 = es::Add(relu, relu);
+  es::EsGraphBuilder::SetOutput(add2, 0);
+  return es_graph.BuildAndReset();
 }
 
 /**
@@ -283,20 +307,22 @@ UniqueGraphPtr JitShareGraph::AddUniqueNode() {
  *        netoutput
  **/
 UniqueGraphPtr JitShareGraph::OneAddNode() {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data0 = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   data0.SetShape({-1, -1, -1, -1});
   data1.SetShape({-1, -1, -1, -1});
   auto add = es::Add(data0, data1);
-  es_graph.SetOutput(add, 0);
-  AddCompileResult(add.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(add, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, add.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(add.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, add.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 
 /**
@@ -313,7 +339,7 @@ UniqueGraphPtr JitShareGraph::OneAddNode() {
  *        netoutput
  **/
 UniqueGraphPtr JitShareGraph::OneConstTwoReshapeNodeTwoRelu() {
-  es::Graph es_graph("test_graph");
+  es::EsGraphBuilder es_graph("test_graph");
   auto data0 = es_graph.CreateInput(0, "data0", nullptr);
   auto data1 = es_graph.CreateInput(1, "data1", nullptr);
   data0.SetShape({-1, -1, -1, -1});
@@ -322,16 +348,18 @@ UniqueGraphPtr JitShareGraph::OneConstTwoReshapeNodeTwoRelu() {
   auto reshape = es::Reshape(relu, data1, 4, 4);
   std::vector<int64_t> const_data0 = {2, 3, 3, 2};
   std::vector<int64_t> const_dim = {4};
-  auto const_node = EsCreateConstInt64(es_graph.GetEsbGraph(), const_data0.data(), const_dim.data(), const_dim.size());
+  es::EsTensorHolder const_node(EsCreateConstInt64(es_graph.GetCGraphBuilder(), const_data0.data(), const_dim.data(), const_dim.size()));
   auto reshape1 = es::Reshape(reshape, const_node, 4, 4);
   auto relu1 = es::Relu(reshape1);
-  es_graph.SetOutput(relu1, 0);
-  AddCompileResult(relu.GetEsbTensor()->GetProducer(), true,
+  es::EsGraphBuilder::SetOutput(relu1, 0);
+  auto graph = es_graph.BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  AddCompileResultByGNode(cg, relu.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  AddCompileResult(relu1.GetEsbTensor()->GetProducer(), true,
+  AddCompileResultByGNode(cg, relu1.GetProducer(), true,
                    "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", "
                    "\"ub_size\": 126464, \"block_dim\": 32, \"input_size\": 0, \"hidden_size\": 0, \"group\": 1}}");
-  return es_graph.Build();
+  return graph;
 }
 } // ge

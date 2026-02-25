@@ -60,7 +60,7 @@ target_link_libraries(autofuse_test PRIVATE
         GTest::gtest_main
         GTest::gmock
         GTest::gmock_main
-        eager_graph_builder_lib
+        es_ge_test
         metadef_graph
         intf_pub
         -Wl,--whole-archive

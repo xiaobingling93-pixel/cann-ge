@@ -334,7 +334,7 @@ TEST_F(UtestExpression, ConstBoolWithSymbolSerializeAndDeserialize_Succ) {
   auto expr = Eq(Le(Symbol(2), Symbol(3)), Ne(s0, Symbol(2)));
   const std::string expr_str = std::string(expr.Serialize().get());
   // 大于可以被转化为小于
-  EXPECT_EQ(expr_str, "ExpectEq(True, ExpectNe(2, s0))");
+  EXPECT_EQ(expr_str, "ExpectEq(ExpectNe(2, s0), True)");
   auto expr_parser = Expression::Deserialize(expr_str.c_str());
   EXPECT_EQ(expr_parser, expr);
 }
@@ -1918,19 +1918,19 @@ TEST_F(UtestExpression, CanonicalizeBoolExpr) {
 
   // x * y == 0  ---> x *y == 0
   EXPECT_EQ(std::string(sym::Eq(Mul(x, y), Symbol(0)).CanonicalizeBoolExpr().Serialize().get()),
-            "ExpectEq(0, (x * y))");
+            "ExpectEq((x * y), 0)");
 
   // 2*x*y + 4*x == 0 ---> x*y + 2*x == 0
   auto e = ExpressionImpl::CreateExpressionImpl<const SymEngineExprPtr &>(SymEngine::parse("2*x*y+4*x==0"));
-  EXPECT_EQ(e->CanonicalizeBoolExpr()->Str(), "ExpectEq(0, ((2 * x) + (x * y)))");
+  EXPECT_EQ(e->CanonicalizeBoolExpr()->Str(), "ExpectEq(((2 * x) + (x * y)), 0)");
 
   // 2*x*y+4*x + 2**x==0 ---> 2*x*y+4*x + 2**x==0 (pow not support)
   auto e1 = ExpressionImpl::CreateExpressionImpl<const SymEngineExprPtr &>(SymEngine::parse("2*x*y+4*x + 2**x==0"));
-  EXPECT_EQ(e1->CanonicalizeBoolExpr()->Str(), "ExpectEq(0, ((2 * x * y) + (4 * x) + Pow(2, x)))");
+  EXPECT_EQ(e1->CanonicalizeBoolExpr()->Str(), "ExpectEq(((2 * x * y) + (4 * x) + Pow(2, x)), 0)");
 
   // 2*x + 4y == 0 ---> x + 2*y == 0
   auto e2 = ExpressionImpl::CreateExpressionImpl<const SymEngineExprPtr &>(SymEngine::parse("2*x + 4y == 0"));
-  EXPECT_EQ(e2->CanonicalizeBoolExpr()->Str(), "ExpectEq(0, ((2 * y) + x))");
+  EXPECT_EQ(e2->CanonicalizeBoolExpr()->Str(), "ExpectEq(((2 * y) + x), 0)");
 
   EXPECT_EQ(std::string(sym::Eq(Add(Symbol(0), Symbol(0)), Symbol(0)).CanonicalizeBoolExpr().Serialize().get()),
             "True");
@@ -1953,7 +1953,7 @@ TEST_F(UtestExpression, CanonicalizeBoolExpr) {
   EXPECT_EQ(std::string(expr41.Serialize().get()), "ExpectEq(4055, r0)");
 
   auto expr5 = sym::Eq(sym::Add(s3, sym::Mul(r0, Symbol(2))), s2).CanonicalizeBoolExpr();
-  EXPECT_EQ(std::string(expr5.Serialize().get()), "ExpectEq(4055, (2 * r0))");
+  EXPECT_EQ(std::string(expr5.Serialize().get()), "ExpectEq((2 * r0), 4055)");
 
   auto expr6 = sym::Eq(sym::Add(Symbol(42), sym::Mul(r0, Symbol(2))), Symbol(4096)).CanonicalizeBoolExpr();
   EXPECT_EQ(std::string(expr6.Serialize().get()), "ExpectEq(2027, r0)");

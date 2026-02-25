@@ -11,9 +11,7 @@
 #define private public
 #define protected public
 #include "slice_result_mocker.h"
-#include "eager_style_graph_builder/esb_funcs.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
+#include "es_ge_test_ops.h"
 #include "common_setup.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_symbolizer.h"
 #include "dflow/compiler/model/flow_model_cache.h"
@@ -21,6 +19,7 @@
 #include "graph/optimize/symbolic/shape_env_guarder.h"
 #include "framework/common/helper/model_save_helper.h"
 #include "dflow/inc/data_flow/model/flow_model_helper.h"
+#include "graph/utils/graph_utils_ex.h"
 #undef private
 #undef protected
 using namespace ge;
@@ -122,9 +121,10 @@ void SliceResultMocker::InitGtGraph() {
 ComputeGraphPtr SliceResultMocker::GenGraphWithGuard(const string &graph_name,
                                                      std::function<void(ShapeEnvAttr &attr)> func) {
   GuardCodegen codegen;
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(
-    EsCreateGraph(graph_name.c_str()), EsDestroyGraph);
-  auto compute_graph = graph->BuildComputeGraph();
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(
+    EsCreateGraphBuilder(graph_name.c_str()), EsDestroyGraphBuilder);
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -136,9 +136,10 @@ ComputeGraphPtr SliceResultMocker::GenGraphWithGuard(const string &graph_name,
 }
 
 ComputeGraphPtr SliceResultMocker::GenGraph(const string &graph_name) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(
-    EsCreateGraph(graph_name.c_str()), EsDestroyGraph);
-  return graph->BuildComputeGraph();
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(
+    EsCreateGraphBuilder(graph_name.c_str()), EsDestroyGraphBuilder);
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
+  return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
 
 GuardedExecutionPoint *SliceResultMocker::GenGEP(ExecutionPoint &ep, CompiledModelCache &cmc,

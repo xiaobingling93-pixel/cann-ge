@@ -35,6 +35,56 @@ constexpr int gather_mode_two = 2;
 constexpr int gather_data_num_two = 2;
 constexpr int gather_data_num_three = 3;
 
+// 检查是否因为尾轴太小而跳过lowering
+// 返回true表示应该跳过，false表示继续lowering
+static bool ShouldSkipLoweringForSmallLastAxis(const NodePtr &node,
+                                              const std::vector<Expression> &src_dims,
+                                              const std::vector<size_t> &reduce_axes_u,
+                                              const InDataAnchorPtr &reduce_anchor) {
+  // 输入tensor的dim>1
+  if (src_dims.size() <= 1) {
+    return false;
+  }
+
+  const size_t last_axis_idx = src_dims.size() - 1;
+  const size_t second_last_axis_idx = src_dims.size() - 2;
+
+  // 检查尾轴和倒数第二个轴是否不同（即是否在reduce_axes中只有一个）
+  bool last_axis_in_reduce = std::find(reduce_axes_u.begin(), reduce_axes_u.end(), last_axis_idx) != reduce_axes_u.end();
+  bool second_last_axis_in_reduce = std::find(reduce_axes_u.begin(), reduce_axes_u.end(), second_last_axis_idx) != reduce_axes_u.end();
+  // 当尾轴和倒数第二个轴不同时
+  if (last_axis_in_reduce != second_last_axis_in_reduce) {
+    // 获取尾轴的大小
+    const auto &last_axis_expr = src_dims[last_axis_idx];
+    // 判断是否为常量表达式
+    if (!last_axis_expr.IsConstExpr()) {
+      // 如果不是常量，无法判断，不跳过
+      return false;
+    }
+
+    // 获取输入数据类型大小
+    ge::DataType input_dtype = ge::DT_FLOAT;
+    const auto input_op_desc = reduce_anchor->GetPeerOutAnchor()->GetOwnerNode()->GetOpDesc();
+    if (input_op_desc != nullptr && input_op_desc->GetOutputDescPtr(0) != nullptr) {
+      input_dtype = input_op_desc->GetOutputDescPtr(0)->GetDataType();
+    }
+    size_t dtype_size = ge::GetSizeByDataType(input_dtype);
+
+    // 先用IsConstExpr判断是否为常量，再用GetConstValue获取值
+    int64_t last_axis_size = 0;
+    (void)last_axis_expr.GetConstValue(last_axis_size);
+
+    // 判断尾轴大小乘以dtypesize < 64时，返回true（跳过lowering）
+    if (last_axis_size > 0 && (static_cast<size_t>(last_axis_size) * dtype_size < 64ULL)) {
+      GELOGI("Skip lowering node %s, as: Last axis size[%ld] * dtype_size[%zu] < 64.",
+               node->GetNamePtr(), last_axis_size, dtype_size);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 constexpr int transpose_two_perms = 2;
 constexpr int transpose_three_perms = 3;
 constexpr int transpose_four_perms = 4;
@@ -628,6 +678,13 @@ graphStatus LowerReduction(const NodePtr &node, loop::ReduceType reduce_type) {
                    node->GetNamePtr(), reduce_dim, src_dims.size());
     reduce_axes_u.emplace_back(static_cast<size_t>(reduce_dim));
   }
+
+  // 检查是否需要跳过lowering：当输入tensor的dim>1，并且尾轴和倒数第二个轴不同时为A轴或者R轴
+  // 判断尾轴大小乘以dtypesize < 64时，返回true（跳过lowering）
+  GE_WARN_ASSERT(!ShouldSkipLoweringForSmallLastAxis(node, src_dims, reduce_axes_u, reduce_anchor),
+                 "Skip lowering node %s, as: Last axis is too small.",
+                 node->GetNamePtr());
+
   (void)loop::StoreReduction(reduce_type, out_anchor, loop::Load(reduce_anchor), src_dims, reduce_axes_u);
   return GRAPH_SUCCESS;
 }

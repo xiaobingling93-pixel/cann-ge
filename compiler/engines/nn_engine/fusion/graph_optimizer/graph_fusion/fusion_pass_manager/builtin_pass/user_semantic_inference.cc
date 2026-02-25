@@ -45,7 +45,8 @@ namespace fe {
   static const std::string FUSED_OP_TYPE = "GroupedMatmul";
   static const std::string PATTERN_PYPTO = "pypto";
 
-  static const std::set<ge::Format> dataOutputFormatSet = {ge::FORMAT_FRACTAL_NZ, ge::FORMAT_FRACTAL_NZ_C0_8};
+  static const std::set<ge::Format> dataOutputFormatSet = {ge::FORMAT_FRACTAL_NZ, ge::FORMAT_FRACTAL_NZ_C0_8,
+                                                           ge::FORMAT_FRACTAL_NZ_C0_16, ge::FORMAT_FRACTAL_NZ_C0_32};
 
 vector<FusionPattern *> UserSemanticInferencePass::DefinePatterns() {
   vector<FusionPattern *> patterns;

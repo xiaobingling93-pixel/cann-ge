@@ -600,11 +600,10 @@ __aicore__ inline void CastExtend(const AscendC::LocalTensor<OutT> &dst, const A
 
     constexpr bool b64CastWithTransfer = SupportType<Tuple<OutT, InT>, Tuple<half, int64_t>, Tuple<int64_t, half>>();
 
-    constexpr bool castWithSameBit = SupportType<Tuple<OutT, InT>, Tuple<uint8_t, int8_t>, Tuple<uint16_t, int16_t>,
+    constexpr bool castWithSameBit = SupportType<Tuple<OutT, InT>, Tuple<uint8_t, int8_t>, Tuple<int8_t, uint8_t>, Tuple<uint16_t, int16_t>,
         Tuple<int16_t, uint16_t>, Tuple<uint32_t, int32_t>, Tuple<int32_t, uint32_t>,
         Tuple<uint64_t, int64_t>, Tuple<int64_t, uint64_t>>();
 
-    constexpr bool u8s8Cast = SupportType<Tuple<OutT, InT>, Tuple<int8_t, uint8_t>>();
     constexpr bool s64U8Cast = SupportType<Tuple<OutT, InT>, Tuple<uint8_t, int64_t>>();
 
     if constexpr (b4Cast) {
@@ -635,18 +634,6 @@ __aicore__ inline void CastExtend(const AscendC::LocalTensor<OutT> &dst, const A
         constexpr auto func = CastExtendS64U8<InT, OutT, roundMode>;
         CastExtendImplOptimizeS64U8<func, InT, OutT, roundMode, dim>(dstUb, srcUb, count, innerLoopStride, output_dims, 
         output_stride, input_stride);
-    } else if constexpr (u8s8Cast) {
-        if constexpr (dim == 1) {
-            constexpr auto func = CastExtendInT<InT, OutT, roundMode>;
-            CastExtendImplOptimize<func, InT, OutT, roundMode, dim>(dstUb, srcUb, count, repeatTimes,
-                innerLoopStride, output_dims, output_stride, input_stride);
-        } else {
-            innerLoopStride = static_cast<uint32_t>(GetVecLen() / sizeof(half));
-            repeatTimes = static_cast<uint32_t>((count + innerLoopStride - 1) / innerLoopStride);
-            constexpr auto func = CastExtendB8<InT, OutT, roundMode>;
-            CastExtendImpl<func, InT, OutT, roundMode, dim>(dstUb, srcUb, count, repeatTimes, innerLoopStride,
-                output_dims, output_stride, input_stride);
-        }
     } else if constexpr (SupportType<Tuple<OutT, InT>, Tuple<float, int8_t>>()) {
         constexpr auto func = CastExtendInt8ToFloat<InT, OutT, roundMode>;
         CastExtendImpl<func, InT, OutT, roundMode, dim>(dstUb, srcUb, count, repeatTimes, innerLoopStride,

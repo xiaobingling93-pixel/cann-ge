@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -43,7 +41,7 @@ std::string GetCodeDir() {
   return current_path;
 }
 } // namespace
-using namespace es;
+using namespace ge::es;
 class UtestFusionPassExecutor : public testing::Test {
  public:
   void SetUp() override {
@@ -80,12 +78,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape) {
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -93,12 +91,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -145,12 +143,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Option
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(pattern.release());
       return patterns;
     }
@@ -158,12 +156,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Option
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -191,12 +189,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(pattern.release());
       return patterns;
     }
@@ -204,12 +202,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -252,12 +250,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(pattern.release());
       return patterns;
     }
@@ -265,12 +263,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -314,12 +312,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(pattern.release());
       return patterns;
     }
@@ -327,12 +325,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_Config
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -378,12 +376,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_WithSu
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto shape = EsShape(data, DT_INT64);
       esb_graph->SetGraphOutput(shape, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -391,12 +389,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_WithSu
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -424,12 +422,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_WithSu
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto shape = EsShape(data, DT_INT64);
       esb_graph->SetGraphOutput(shape, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -437,14 +435,14 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_WithSu
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override { // invalid replacement
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
       esb_graph->SetGraphOutput(data1, 1);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -472,12 +470,12 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_FAILED
     std::vector<PatternUniqPtr> Patterns() override {
       std::vector<PatternUniqPtr> patterns;
       // build pattern graph
-      auto pattern_graph = es::Graph("pattern");
-      auto esb_graph = pattern_graph.GetEsbGraph();
+      auto pattern_graph = ge::es::EsGraphBuilder("pattern");
+      auto esb_graph = pattern_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
       esb_graph->SetGraphOutput(transdata, 0);
-      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.Build()));
+      auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph.BuildAndReset()));
       patterns.emplace_back(std::move(pattern));
       return patterns;
     }
@@ -485,14 +483,14 @@ TEST_F(UtestFusionPassExecutor, PatternFusionPassReg_Run_BeforeInferShape_FAILED
       return true;
     }
     std::unique_ptr<Graph> Replacement(const unique_ptr<MatchResult> &match_result) override { // invalid replacement
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
       esb_graph->SetGraphOutput(data1, 1);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_FUSION_PASS(TransDataToReluPass).Stage(CustomPassStage::kAfterInferShape);
@@ -524,12 +522,12 @@ TEST_F(UtestFusionPassExecutor, DecomposePass_Run_AfterInferShape) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const GNode &matched_node) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_DECOMPOSE_PASS(RunDecomposeTransDataPass, {"TransData"}).Stage(CustomPassStage::kAfterInferShape);
@@ -580,14 +578,14 @@ TEST_F(UtestFusionPassExecutor, DecomposePass_Run_AfterInferShape_Failed) {
       return true;
     }
     std::unique_ptr<Graph> Replacement(const GNode &matched_node) override {
-      auto replace_graph = es::Graph("replacement");
-      auto esb_graph = replace_graph.GetEsbGraph();
+      auto replace_graph = ge::es::EsGraphBuilder("replacement");
+      auto esb_graph = replace_graph.GetCGraphBuilder();
       auto data = EsCreateGraphInput(esb_graph, 0);
       auto data1 = EsCreateGraphInput(esb_graph, 1);
       auto relu = EsRelu(data);
       esb_graph->SetGraphOutput(relu, 0);
       esb_graph->SetGraphOutput(data1, 1);
-      return replace_graph.Build();
+      return replace_graph.BuildAndReset();
     }
   };
   REG_DECOMPOSE_PASS(RunDecomposeTransDataPass, {"TransData"}).Stage(CustomPassStage::kAfterInferShape);

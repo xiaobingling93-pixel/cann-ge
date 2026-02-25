@@ -78,7 +78,7 @@ target_link_libraries(st_fast_runtime2_test PRIVATE
         ge_running_env
         ge_compiler
         st_stubs
-        eager_graph_builder_lib
+        es_ge_test
         -Wl,--whole-archive
         rt2_registry_static
         gert_op_impl_static

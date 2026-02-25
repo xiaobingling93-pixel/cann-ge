@@ -1447,11 +1447,6 @@ std::map<std::string, std::string> TilingLib::GenerateCVFusion(const ascir::Fuse
     ss << GenTilingDataBlockDimAndWss();
   }
 
-  ss << kTilingHeadCceKtTestGuard << std::endl;
-  if (CanUseTilingKey(elemwise_schedule_result) && is_static) {
-    ss << GenGetTilingKeyKernelTypeForStatic(elemwise_schedule_result);
-  }
-  ss << "#endif" << std::endl;
   tiling_file_name_to_content[kTilingDefAndConstIdentify] += ss.str();
 
   return tiling_file_name_to_content;
@@ -2420,6 +2415,20 @@ static std::string GenWorkspaceNodeCheckCode(const ascir::FusedScheduledResult &
   return ss.str();
 }
 
+static std::string GenLocalMemorySizeCode() {
+  std::stringstream ss;
+  const auto backend_spec = optimize::BackendSpec::GetInstance();
+  GE_ASSERT_NOTNULL(backend_spec);
+  if (backend_spec->set_local_memory_size > 0) {
+    ss << "  #ifdef CV_RELU_FIXPIP_MODE" << std::endl;
+    ss << "  context->SetLocalMemorySize(0);" << std::endl;
+    ss << "  #else" << std::endl;
+    ss << "  context->SetLocalMemorySize(" << backend_spec->set_local_memory_size << ");" << std::endl;
+    ss << "  #endif" << std::endl;
+  }
+  return ss.str();
+}
+
 std::string TilingLib::GenExternTilingFuncBody(const ascir::FusedScheduledResult &fused_schedule_result,
                                                const std::map<std::string, std::string> &shape_info,
                                                const std::string &tiling, const std::string &pgo_dir) const {
@@ -2454,11 +2463,7 @@ std::string TilingLib::GenExternTilingFuncBody(const ascir::FusedScheduledResult
   } else {
     ss << "  *context->GetWorkspaceSizes(1) = workspace_size;" << std::endl;
   }
-  const auto backend_spec = optimize::BackendSpec::GetInstance();
-  GE_ASSERT_NOTNULL(backend_spec);
-  if (backend_spec->set_local_memory_size > 0) {
-    ss << "  context->SetLocalMemorySize(" << backend_spec->set_local_memory_size << ");" << std::endl;
-  }
+  ss << GenLocalMemorySizeCode();
 
   ss << GenWorkspaceNodeCheckCode(fused_schedule_result);
 

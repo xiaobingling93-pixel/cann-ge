@@ -25,6 +25,7 @@ DOWNLOAD_LIST=(
     "https://gitcode.com/cann-src-third-party/zlib/releases/download/v1.2.13/zlib-1.2.13.tar.gz zlib"
     "https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz makeself"
     "https://gitcode.com/cann-src-third-party/mockcpp/releases/download/v2.7-h1/mockcpp-2.7.tar.gz mockcpp-2.7"
+    "https://gitcode.com/cann-src-third-party/libseccomp/releases/download/v2.5.4/libseccomp-2.5.4.tar.gz libseccomp-2.5.4"
     # Example:
     # "https://example.com/xxx.tar.gz xxx"
 )

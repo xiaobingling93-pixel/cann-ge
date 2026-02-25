@@ -142,8 +142,8 @@ target_link_libraries(graph_engine_test
     ge_running_env
     graphengine
     ge_runtime_stub
-    -Wl,--no-whole-archive gert_op_impl flow_graph eager_graph_builder_lib 
-    eager_graph_builder ge_graph_dsl st_stubs GTest::gtest GTest::gmock GTest::gmock_main
+    -Wl,--no-whole-archive gert_op_impl flow_graph
+    es_ge_test ge_graph_dsl st_stubs GTest::gtest GTest::gmock GTest::gmock_main
 )
 
 ################################################################################
@@ -218,8 +218,8 @@ target_link_libraries(graph_engine_compile_test
         graphengine
         ascendcl_stub
         flow_graph
-        -Wl,--no-whole-archive eager_graph_builder_lib ge_runtime_stub 
-        gert_op_impl eager_graph_builder ge_running_env ge_graph_dsl st_stubs ge_runtime_stub GTest::gtest GTest::gmock GTest::gmock_main
+        -Wl,--no-whole-archive es_ge_test ge_runtime_stub 
+        gert_op_impl ge_running_env ge_graph_dsl st_stubs ge_runtime_stub GTest::gtest GTest::gmock GTest::gmock_main
         )
 
 add_subdirectory(fast_runtime_v2)

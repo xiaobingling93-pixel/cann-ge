@@ -11,9 +11,7 @@
 #include <gtest/gtest.h>
 #include "faker/space_registry_faker.h"
 #include "ge_graph_dsl/graph_dsl.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "framework/common/types.h"
 #include "jit_execution/exe_points/execution_order.h"
@@ -102,7 +100,7 @@ std::vector<NodePtr> getPreviousNodes(ComputeGraphPtr graph, size_t nodeNum) {
 }
 
 ComputeGraphPtr BuildAddAbsReLuReshapeGraph(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
@@ -113,7 +111,7 @@ ComputeGraphPtr BuildAddAbsReLuReshapeGraph(const vector<int64_t> &shape) {
   const auto reshape = EsReshape(relu, relu, 3, 3);
   EsSetGraphOutput(reshape, 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -153,7 +151,7 @@ TEST_F(JitInferUtilsUT, graphContainsUnInferableReshapeShouldBeSliceReshape) {
 }
 
 ComputeGraphPtr BuildAddAbsReLuReduceSumAbsGraph(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
@@ -162,11 +160,11 @@ ComputeGraphPtr BuildAddAbsReLuReduceSumAbsGraph(const vector<int64_t> &shape) {
   const auto add = EsAdd(abs0, abs0);
   const auto abs = EsAbs(add);
   const auto relu = EsRelu(abs);
-  const auto reduceSum = EsReduceSum(relu, relu, true);
+  const auto reduceSum = EsReduceSum(relu, relu, true, false);
   const auto abs2 = EsAbs(reduceSum);
   EsSetGraphOutput(abs2, 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -225,23 +223,24 @@ TEST_F(JitInferUtilsUT, graphContainsUnInferableReduceSumShouldBeSliceReducesum)
  *
  */
 TEST_F(JitInferUtilsUT, graphContainsConstReshapeShouldContinueInfer) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
-  auto data0 = EsCreateGraphInputWithDetails(graph.get(), 0, "data0", nullptr);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
+  auto data0 = EsCreateGraphInputWithDetails(graph.get(), 0, "data0", nullptr, C_DT_FLOAT, C_FORMAT_ND, nullptr, 0);
   std::vector<int64_t> shape = {-1, -1, -1, -1, -1};
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
-  const auto abs0 = EsAbs(data0);
-  const auto add = EsAdd(abs0, abs0);
-  const auto abs = EsAbs(add);
-  const auto relu = EsRelu(abs);
+  es::EsTensorHolder data0_holder(data0);
+  const auto abs0 = es::Abs(data0_holder);
+  const auto add = es::Add(abs0, abs0);
+  const auto abs = es::Abs(add);
+  const auto relu = es::Relu(abs);
 
   std::vector<int64_t> dims_data{1, 1, 3, 3, -1};
   int64_t dims_size = 5;
-  auto const_0 = EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1);
+  es::EsTensorHolder const_0(EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1));
 
-  auto reshape = EsReshape(relu, const_0, 0, -1);
-  EsSetGraphOutput(reshape, 0);
+  auto reshape = es::Reshape(relu, const_0, 0, -1);
+  EsSetGraphOutput(reshape.GetCTensorHolder(), 0);
 
-  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   ASSERT_NE(ge_graph, nullptr);
   const auto computerGraph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   ASSERT_NE(computerGraph, nullptr);
@@ -269,23 +268,24 @@ TEST_F(JitInferUtilsUT, graphContainsConstReshapeShouldContinueInfer) {
 }
 
 ComputeGraphPtr BuildAddAbsReLuConstReduceSumAbsGraph(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
+  es::EsTensorHolder data0_holder(data0);
 
-  const auto abs0 = EsAbs(data0);
-  const auto add = EsAdd(abs0, abs0);
-  const auto abs = EsAbs(add);
-  const auto relu = EsRelu(abs);
+  const auto abs0 = es::Abs(data0_holder);
+  const auto add = es::Add(abs0, abs0);
+  const auto abs = es::Abs(add);
+  const auto relu = es::Relu(abs);
 
-  auto const_scalar_int32 = EsCreateScalarInt32(graph.get(), 1);
-  const auto reduceSum = EsReduceSum(relu, const_scalar_int32, true);
+  es::EsTensorHolder const_scalar_int32(EsCreateScalarInt32(graph.get(), 1));
+  const auto reduceSum = es::ReduceSum(relu, const_scalar_int32, true, false);
 
-  const auto abs2 = EsAbs(reduceSum);
-  EsSetGraphOutput(abs2, 0);
+  const auto abs2 = es::Abs(reduceSum);
+  EsSetGraphOutput(abs2.GetCTensorHolder(), 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -427,23 +427,24 @@ TEST_F(JitInferUtilsUT, AddReluReluTransposeDGraphInferV2) {
 }
 
 ComputeGraphPtr BuildAddReshapeReLuConstReduceSumAbsGraph(const vector<int64_t> &shape) {
-    auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+    auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
     const auto data0 = EsCreateGraphInput(graph.get(), 0);
     EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
+    es::EsTensorHolder data0_holder(data0);
 
-    const auto abs0 = EsAbs(data0);
-    const auto add = EsAdd(abs0, abs0);
-    const auto reshape = EsReshape(add, add, 3, 3);
-    const auto relu = EsRelu(reshape);
+    const auto abs0 = es::Abs(data0_holder);
+    const auto add = es::Add(abs0, abs0);
+    const auto reshape = es::Reshape(add, add, 3, 3);
+    const auto relu = es::Relu(reshape);
 
-    auto const_scalar_int32 = EsCreateScalarInt32(graph.get(), 1);
-    const auto reduceSum = EsReduceSum(relu, const_scalar_int32, true);
+    es::EsTensorHolder const_scalar_int32(EsCreateScalarInt32(graph.get(), 1));
+    const auto reduceSum = es::ReduceSum(relu, const_scalar_int32, true, false);
 
-    const auto abs2 = EsAbs(reduceSum);
-    EsSetGraphOutput(abs2, 0);
+    const auto abs2 = es::Abs(reduceSum);
+    EsSetGraphOutput(abs2.GetCTensorHolder(), 0);
 
-    const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+    const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
     GE_ASSERT_NOTNULL(ge_graph);
     return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -496,28 +497,29 @@ TEST_F(JitInferUtilsUT, graphContainsConstNodeWithControlEdge) {
 }
 
 ComputeGraphPtr BuildAddReshapeReLuConstReshapeConstReduceSumAbsGraph(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
+  es::EsTensorHolder data0_holder(data0);
 
-  const auto abs0 = EsAbs(data0);
-  const auto add = EsAdd(abs0, abs0);
-  const auto reshape0 = EsReshape(add, add, 3, 3);
-  const auto relu = EsRelu(reshape0);
+  const auto abs0 = es::Abs(data0_holder);
+  const auto add = es::Add(abs0, abs0);
+  const auto reshape0 = es::Reshape(add, add, 3, 3);
+  const auto relu = es::Relu(reshape0);
 
   std::vector<int64_t> dims_data{1, 1, 3, 3, -1};
   int64_t dims_size = 5;
-  auto const_0 = EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1);
-  auto reshape1 = EsReshape(relu, const_0, 0, -1);
+  es::EsTensorHolder const_0(EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1));
+  auto reshape1 = es::Reshape(relu, const_0, 0, -1);
 
-  auto const_scalar_int32 = EsCreateScalarInt32(graph.get(), 1);
-  const auto reduceSum = EsReduceSum(reshape1, const_scalar_int32, true);
+  es::EsTensorHolder const_scalar_int32(EsCreateScalarInt32(graph.get(), 1));
+  const auto reduceSum = es::ReduceSum(reshape1, const_scalar_int32, true, false);
 
-  const auto abs2 = EsAbs(reduceSum);
-  EsSetGraphOutput(abs2, 0);
+  const auto abs2 = es::Abs(reduceSum);
+  EsSetGraphOutput(abs2.GetCTensorHolder(), 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -562,10 +564,18 @@ TEST_F(JitInferUtilsUT, graphContainsConstNodeWithControlEdge2) {
   reducesum_op_desc0->MutableInputDesc(0)->SetDataType(DT_INT64);
   reducesum_op_desc0->MutableInputDesc(1)->SetDataType(DT_INT64);
 
-  auto relu3 = graph->FindNode("Relu_3");
-  auto const4 = graph->FindNode("Const4");
-  auto const6 = graph->FindNode("Const6");
-  ASSERT_EQ(GraphUtils::AddEdge(relu3->GetOutControlAnchor(), const4->GetInControlAnchor()), ge::SUCCESS);
+  auto relu_node = graph->FindFirstNodeMatchType("Relu");
+  ASSERT_NE(relu_node, nullptr);
+  std::vector<NodePtr> const_nodes;
+  for (const auto &node : graph->GetDirectNode()) {
+    if (node->GetType() == "Const") {
+      const_nodes.push_back(node);
+    }
+  }
+  ASSERT_GE(const_nodes.size(), 2U) << "graph should have at least 2 Const nodes";
+  NodePtr const4 = const_nodes[0];
+  NodePtr const6 = const_nodes[1];
+  ASSERT_EQ(GraphUtils::AddEdge(relu_node->GetOutControlAnchor(), const4->GetInControlAnchor()), ge::SUCCESS);
   ASSERT_EQ(GraphUtils::AddEdge(const4->GetOutControlAnchor(), const6->GetInControlAnchor()), ge::SUCCESS);
 
   std::vector<NodePtr> nodes = getPreviousNodes(graph, 4);

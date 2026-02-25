@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "common/share_graph.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
-#include "eager_style_graph_builder/esb_funcs_cpp.h"
+#include "es_ge_test_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/node_adapter.h"
@@ -82,8 +80,8 @@ void ExpectMatchedBoundaryEqualWith(const SubgraphBoundary &actual_boundary, con
  * @return
  */
 std::unique_ptr<Graph> BuildPartialOutputAnchorsAsPatternOutputGraph(DataType cast_dst_type) {
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data0 = EsCreateGraphInput(esb_graph, 0);
   auto data1 = EsCreateGraphInput(esb_graph, 1);
   auto data2 = EsCreateGraphInput(esb_graph, 2);
@@ -97,7 +95,7 @@ std::unique_ptr<Graph> BuildPartialOutputAnchorsAsPatternOutputGraph(DataType ca
   esb_graph->SetGraphOutput(add_layer_norm.mean, 1);
   esb_graph->SetGraphOutput(add_layer_norm.rstd, 2);
   esb_graph->SetGraphOutput(add_layer_norm.x, 3);
-  return pattern_graph.Build();
+  return pattern_graph.BuildAndReset();
 }
 }  // namespace
 using namespace es;
@@ -110,7 +108,7 @@ class UtestPatternMatcher : public testing::Test {
   static void TearDownTestSuite() {}
 
  private:
-  static std::unordered_map<std::string, EsbTensor *> case_2_tensor_;
+  static std::unordered_map<std::string, EsCTensorHolder *> case_2_tensor_;
  protected:
   static Graph target_graph0;
   static Graph target_graph1;
@@ -182,12 +180,12 @@ Graph UtestPatternMatcher::target_graph1;
 TEST_F(UtestPatternMatcher, SingleNode_1Input_1Output_Match) {
   auto target_compute_graph = GraphUtilsEx::GetComputeGraph(target_graph0);
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto transdata = EsTransData(data, "0", "29", 0, 0, 0);
   esb_graph->SetGraphOutput(transdata, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph0));
@@ -201,15 +199,15 @@ TEST_F(UtestPatternMatcher, SingleNode_1Input_1Output_Match) {
 
   EXPECT_EQ(match_ret.size(), 6);
   std::vector<std::string> expect_match_node_name = {"transdata_10", "transdata_13", "transdata_15",
-                                                     "transdata_17", "transdata_4",  "transdata_8"};
+                                                    "transdata_17", "transdata_4",  "transdata_8"};
   std::vector<std::string> expect_match_node_input_name = {"cell_state_float32", "drnnv3", "drnnv3",
-                                                     "drnnv3", "x_reshape",  "hidden_state_float32"};
+                                                    "drnnv3", "x_reshape",  "hidden_state_float32"};
   GNode transdata10;
   for (size_t i = 0u; i < match_ret.size(); ++i) {
     if (i == 0) {
-       match_ret[i]->GetMatchedNode(NodeAdapter::Node2GNode(transdata->GetProducer()), transdata10);
+      match_ret[i]->GetMatchedNode(NodeAdapter::Node2GNode(NodeAdapter::GNode2Node(transdata->GetProducer())), transdata10);
     }
-    ExpectMatchedNodeEqualWith(match_ret[i], transdata->GetProducer(), expect_match_node_name[i]);
+    ExpectMatchedNodeEqualWith(match_ret[i], NodeAdapter::GNode2Node(transdata->GetProducer()), expect_match_node_name[i]);
     std::cout << match_ret[i]->ToAscendString().GetString() << std::endl;
   }
   auto actual_boundary = match_ret[0]->ToSubgraphBoundary();
@@ -234,8 +232,8 @@ TEST_F(UtestPatternMatcher, SingleNode_1Input_1Output_Match) {
  */
 TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
 
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
@@ -244,7 +242,7 @@ TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_Match) {
   auto shape_const = EsCreateConstInt64(esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   auto reshape = EsReshape(data, shape_const, 0, 0);
   esb_graph->SetGraphOutput(reshape, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph0));
@@ -257,7 +255,7 @@ TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_Match) {
   EXPECT_EQ(match_ret.size(), 2);
   std::vector<std::string> expect_match_node_name = {"x_reshape", "y_reshape"};
   for (size_t i = 0u; i < match_ret.size(); ++i) {
-    ExpectMatchedNodeEqualWith(match_ret[i], reshape->GetProducer(), expect_match_node_name[i]);
+    ExpectMatchedNodeEqualWith(match_ret[i], NodeAdapter::GNode2Node(reshape->GetProducer()), expect_match_node_name[i]);
   }
 }
 
@@ -271,8 +269,8 @@ TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_Match) {
  */
 TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_EnableValueMatch_ValueMiss) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
 
   std::vector<int64_t> x_reshape_const_data({-1, 2, 256});
@@ -282,7 +280,7 @@ TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_EnableValueMatch
       EsCreateConstInt64(esb_graph, x_reshape_const_data.data(), x_reshape_shape.data(), x_reshape_shape.size());
   auto reshape = EsReshape(data, shape_const, 0, 0);
   esb_graph->SetGraphOutput(reshape, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   auto matcher_config = PatternMatcherConfigBuilder().EnableConstValueMatch().Build();
@@ -308,8 +306,8 @@ TEST_F(UtestPatternMatcher, SingleNode_2Input_1Output_WithConst_EnableValueMatch
  */
 TEST_F(UtestPatternMatcher, TwoNode_2Input_1Output_WithConst_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
 
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
@@ -318,7 +316,7 @@ TEST_F(UtestPatternMatcher, TwoNode_2Input_1Output_WithConst_Match) {
   auto reshape = EsReshape(data, shape_const, 0, 0);
   auto transdata = EsTransData(reshape, "0", "29", 0, 0, 0);
   esb_graph->SetGraphOutput(transdata, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph0));
@@ -330,8 +328,8 @@ TEST_F(UtestPatternMatcher, TwoNode_2Input_1Output_WithConst_Match) {
   }
 
   EXPECT_EQ(match_ret.size(), 1);
-  ExpectMatchedNodeEqualWith(match_ret[0], reshape->GetProducer(), "x_reshape");
-  ExpectMatchedNodeEqualWith(match_ret[0], transdata->GetProducer(), "transdata_4");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(reshape->GetProducer()), "x_reshape");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(transdata->GetProducer()), "transdata_4");
 }
 
 /**
@@ -350,15 +348,15 @@ TEST_F(UtestPatternMatcher, TwoNode_2Input_1Output_WithConst_Match) {
  */
 TEST_F(UtestPatternMatcher, 3Node_1Input_2Output_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto abs1 = EsAbs(data);
   auto exp = EsExp(abs1, 0 , 0, 0);
   auto relu = EsRelu(abs1);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph1));
@@ -369,9 +367,9 @@ TEST_F(UtestPatternMatcher, 3Node_1Input_2Output_Match) {
   }
 
   EXPECT_EQ(match_ret.size(), 1);
-  ExpectMatchedNodeEqualWith(match_ret[0], abs1->GetProducer(), "abs1");
-  ExpectMatchedNodeEqualWith(match_ret[0], exp->GetProducer(), "exp");
-  ExpectMatchedNodeEqualWith(match_ret[0], relu->GetProducer(), "relu");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(abs1->GetProducer()), "abs1");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(exp->GetProducer()), "exp");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(relu->GetProducer()), "relu");
 }
 
 /**
@@ -390,14 +388,14 @@ TEST_F(UtestPatternMatcher, 3Node_1Input_2Output_Match) {
 */
 TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto exp = EsExp(data, 0 , 0, 0);
   auto relu = EsRelu(data);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph1));
@@ -408,8 +406,8 @@ TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_Match) {
   }
 
   EXPECT_EQ(match_ret.size(), 1);
-  ExpectMatchedNodeEqualWith(match_ret[0], exp->GetProducer(), "exp");
-  ExpectMatchedNodeEqualWith(match_ret[0], relu->GetProducer(), "relu");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(exp->GetProducer()), "exp");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(relu->GetProducer()), "relu");
 
   std::vector<std::string> expected_matched_nodes({"exp", "relu"});
   auto matched_nodes = match_ret[0]->GetMatchedNodes();
@@ -434,19 +432,19 @@ TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_Match) {
 // todo check later how can this ut work
 TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_TargetNode_ProducerIsDiff_Miss) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto exp = EsExp(data, 0 , 0, 0);
   auto relu = EsRelu(data);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build target graph
-  auto target_graph_builder = es::Graph("target_graph");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target_graph");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto t_data = EsCreateGraphInput(target_esb_graph, 0);
   auto t_abs1 = EsAbs(t_data);
   auto t_abs2 = EsAbs(t_data);
@@ -454,7 +452,7 @@ TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_TargetNode_ProducerIsDiff
   auto t_relu = EsRelu(t_abs2);
   target_esb_graph->SetGraphOutput(t_exp, 0);
   target_esb_graph->SetGraphOutput(t_relu, 1);
-  auto target_graph = target_graph_builder.Build();
+  auto target_graph = target_graph_builder.BuildAndReset();
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(*target_graph));
   std::vector<std::unique_ptr<MatchResult>> match_ret;
@@ -482,15 +480,15 @@ TEST_F(UtestPatternMatcher, PatternInput_MultiConsumer_TargetNode_ProducerIsDiff
 */
 TEST_F(UtestPatternMatcher, 3Node_1Input_2Output_Miss) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
   auto abs1 = EsAbs(data);
   auto exp = EsExp(abs1, 0 , 0, 0);
   auto relu = EsRelu(data);
   esb_graph->SetGraphOutput(exp, 0);
   esb_graph->SetGraphOutput(relu, 1);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph1));
@@ -515,8 +513,8 @@ TEST_F(UtestPatternMatcher, 3Node_1Input_2Output_Miss) {
  */
 TEST_F(UtestPatternMatcher, 2Patterns_Match) {
   // build pattern graph0
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data = EsCreateGraphInput(esb_graph, 0);
 
   std::vector<int64_t> x_reshape_const_data({-1, 1, 256});
@@ -525,16 +523,16 @@ TEST_F(UtestPatternMatcher, 2Patterns_Match) {
   auto reshape = EsReshape(data, shape_const, 0, 0);
   auto transdata = EsTransData(reshape, "0", "29", 0, 0, 0);
   esb_graph->SetGraphOutput(transdata, 0);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
   auto pattern = std::make_unique<Pattern>(std::move(*graph));
 
   // build pattern graph1
-  auto pattern_graph1= es::Graph("pattern1");
-  auto esb_graph1 = pattern_graph1.GetEsbGraph();
+  auto pattern_graph1= es::EsGraphBuilder("pattern1");
+  auto esb_graph1 = pattern_graph1.GetCGraphBuilder();
   auto transdata1 = EsTransData(EsCreateGraphInput(esb_graph1, 0), "0", "29", 0, 0, 0);
   auto reshape1 = EsReshape(transdata1, EsCreateGraphInput(esb_graph1, 1), 0, 0);
   esb_graph1->SetGraphOutput(reshape1, 0);
-  auto graph1 = pattern_graph1.Build();
+  auto graph1 = pattern_graph1.BuildAndReset();
   auto pattern1 = std::make_unique<Pattern>(std::move(*graph1));
 
   PatternMatcher matcher(std::move(pattern), std::make_shared<Graph>(target_graph0));
@@ -550,10 +548,10 @@ TEST_F(UtestPatternMatcher, 2Patterns_Match) {
   }
 
   EXPECT_EQ(match_ret.size(), 2);
-  ExpectMatchedNodeEqualWith(match_ret[0], reshape->GetProducer(), "x_reshape");
-  ExpectMatchedNodeEqualWith(match_ret[0], transdata->GetProducer(), "transdata_4");
-  ExpectMatchedNodeEqualWith(match_ret[1], reshape1->GetProducer(), "y_reshape");
-  ExpectMatchedNodeEqualWith(match_ret[1], transdata1->GetProducer(), "transdata_17");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(reshape->GetProducer()), "x_reshape");
+  ExpectMatchedNodeEqualWith(match_ret[0], NodeAdapter::GNode2Node(transdata->GetProducer()), "transdata_4");
+  ExpectMatchedNodeEqualWith(match_ret[1], NodeAdapter::GNode2Node(reshape1->GetProducer()), "y_reshape");
+  ExpectMatchedNodeEqualWith(match_ret[1], NodeAdapter::GNode2Node(transdata1->GetProducer()), "transdata_17");
 }
 
 TEST_F(UtestPatternMatcher, InvalidPattern_ContrlEdgeInPattern_Miss) {
@@ -619,8 +617,8 @@ TEST_F(UtestPatternMatcher, InvalidPattern_DynamicOutputNodeInPattern_Miss) {
  */
 TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data0 = EsCreateGraphInput(esb_graph, 0);
   auto data1 = EsCreateGraphInput(esb_graph, 1);
   auto data2 = EsCreateGraphInput(esb_graph, 2);
@@ -634,7 +632,7 @@ TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_M
   esb_graph->SetGraphOutput(add_layer_norm.mean, 1);
   esb_graph->SetGraphOutput(add_layer_norm.rstd, 2);
   esb_graph->SetGraphOutput(add_layer_norm.x, 3);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
 
   // build target graph
   ComputeGraphPtr target_graph = MakeShared<ComputeGraph>("target_graph");
@@ -669,8 +667,8 @@ TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_M
  */
 TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_EnableIrAttrMatch_Match) {
   // build pattern graph
-  auto pattern_graph = es::Graph("pattern");
-  auto esb_graph = pattern_graph.GetEsbGraph();
+  auto pattern_graph = es::EsGraphBuilder("pattern");
+  auto esb_graph = pattern_graph.GetCGraphBuilder();
   auto data0 = EsCreateGraphInput(esb_graph, 0);
   auto data1 = EsCreateGraphInput(esb_graph, 1);
   auto data2 = EsCreateGraphInput(esb_graph, 2);
@@ -684,7 +682,7 @@ TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_E
   esb_graph->SetGraphOutput(add_layer_norm.mean, 1);
   esb_graph->SetGraphOutput(add_layer_norm.rstd, 2);
   esb_graph->SetGraphOutput(add_layer_norm.x, 3);
-  auto graph = pattern_graph.Build();
+  auto graph = pattern_graph.BuildAndReset();
 
   // build target graph
   ComputeGraphPtr target_graph = MakeShared<ComputeGraph>("target_graph");
@@ -756,8 +754,8 @@ TEST_F(UtestPatternMatcher, PatternOutNode_PartialOutputAnchorsAsPatternOutput_E
 */
 TEST_F(UtestPatternMatcher, InvalidBoundary_NotSelfContained_Miss) {
   // build target graph
-  auto target_graph_builder = es::Graph("target");
-  auto target_esb_graph = target_graph_builder.GetEsbGraph();
+  auto target_graph_builder = es::EsGraphBuilder("target");
+  auto target_esb_graph = target_graph_builder.GetCGraphBuilder();
   auto data_target = EsCreateGraphInput(target_esb_graph, 0);
   auto abs1_target = EsAbs(data_target);
   auto relu_target = EsRelu(abs1_target);
@@ -766,17 +764,17 @@ TEST_F(UtestPatternMatcher, InvalidBoundary_NotSelfContained_Miss) {
   auto abs2_target = EsAbs(add_target);
   auto relu2_target = EsRelu(abs2_target);
   target_esb_graph->SetGraphOutput(relu2_target, 0);
-  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.Build());
+  ComputeGraphPtr target_compute_graph = GraphUtilsEx::GetComputeGraph(*target_graph_builder.BuildAndReset());
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern graph
-  auto pattern_graph_builder = es::Graph("pattern");
-  auto pattern_esb_graph = pattern_graph_builder.GetEsbGraph();
+  auto pattern_graph_builder = es::EsGraphBuilder("pattern");
+  auto pattern_esb_graph = pattern_graph_builder.GetCGraphBuilder();
   auto data_pattern = EsCreateGraphInput(pattern_esb_graph, 0);
   auto abs1 = EsAbs(data_pattern);
   auto relu = EsRelu(abs1);
   pattern_esb_graph->SetGraphOutput(relu, 0);
-  auto pattern_graph = pattern_graph_builder.Build();
+  auto pattern_graph = pattern_graph_builder.BuildAndReset();
 
   auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph));
   PatternMatcher matcher(std::move(pattern), target_graph);
@@ -809,14 +807,14 @@ TEST_F(UtestPatternMatcher, InvalidBoundary_ForceSelfContained_Match) {
   auto target_graph = GraphUtilsEx::CreateGraphPtrFromComputeGraph(target_compute_graph);
 
   // build pattern graph
-  auto pattern_graph_builder = es::Graph("pattern");
-  auto pattern_esb_graph = pattern_graph_builder.GetEsbGraph();
+  auto pattern_graph_builder = es::EsGraphBuilder("pattern");
+  auto pattern_esb_graph = pattern_graph_builder.GetCGraphBuilder();
   auto data_pattern = EsCreateGraphInput(pattern_esb_graph, 0);
   auto abs1 = EsAbs(data_pattern);
   auto relu = EsRelu(abs1);
   pattern_esb_graph->SetGraphOutput(relu, 0);
   pattern_esb_graph->SetGraphOutput(abs1, 1);
-  auto pattern_graph = pattern_graph_builder.Build();
+  auto pattern_graph = pattern_graph_builder.BuildAndReset();
 
   auto pattern = std::make_unique<Pattern>(std::move(*pattern_graph));
   PatternMatcher matcher(std::move(pattern), target_graph);

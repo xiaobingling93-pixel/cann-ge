@@ -11,9 +11,7 @@
 #include <gtest/gtest.h>
 #include "faker/space_registry_faker.h"
 #include "ge_graph_dsl/graph_dsl.h"
-#include "eager_style_graph_builder/all_ops_cpp.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/compliant_op_desc_builder.h"
+#include "es_ge_test_ops.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "framework/common/types.h"
 #include "jit_execution/exe_points/execution_order.h"
@@ -25,6 +23,7 @@
 #include "jit_execution/utils/partitioner/binary_partitioner.h"
 #include "graph/passes/graph_builder_utils.h"
 #include "graph/utils/graph_dump_utils.h"
+#include "graph/attribute_group/attr_group_symbolic_desc.h"
 #include <vector>
 #include <stack>
 using namespace std;
@@ -43,7 +42,7 @@ class JitFullPartitionUT : public testing::Test {
 };
 
 ComputeGraphPtr BuildAddAbsReLuReshapeAbsGraph(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
@@ -55,7 +54,7 @@ ComputeGraphPtr BuildAddAbsReLuReshapeAbsGraph(const vector<int64_t> &shape) {
   const auto abs1 = EsAbs(reshape);
   EsSetGraphOutput(abs1, 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -198,7 +197,7 @@ TEST_F(JitFullPartitionUT, return_partition_one_graph) {
  *
  */
 ComputeGraphPtr BuildAddAbsReLuReshapeGraph2(const vector<int64_t> &shape) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
@@ -209,7 +208,7 @@ ComputeGraphPtr BuildAddAbsReLuReshapeGraph2(const vector<int64_t> &shape) {
   const auto reshape = EsReshape(relu, data0, 3, 3);
   EsSetGraphOutput(reshape, 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   GE_ASSERT_NOTNULL(ge_graph);
   return GraphUtilsEx::GetComputeGraph(*ge_graph);
 }
@@ -221,7 +220,7 @@ TEST_F(JitFullPartitionUT, return_partition_two_graph_conatins_uninferable_resha
   td.SetShape((GeShape({4, 5, 6})));
   td.SetOriginShape((GeShape({4, 5, 6})));
   inputs.emplace_back(td);
-  auto output = graph->FindNode("NetOutput");
+  auto output = graph->GetOrUpdateNetOutputNode();
   ASSERT_NE(output, nullptr);
   output->GetOpDesc()->MutableInputDesc(0)->SetOriginShape(GeShape({-1, -1, -1}));
   output->GetOpDesc()->MutableInputDesc(0)->SetShape(GeShape({-1, -1, -1}));
@@ -271,23 +270,24 @@ TEST_F(JitFullPartitionUT, return_partition_two_graph_conatins_uninferable_resha
  *
  */
 TEST_F(JitFullPartitionUT, return_partition_one_graph_can_infer_success_when_origin_graph_infered_full) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
-  auto data0 = EsCreateGraphInputWithDetails(graph.get(), 0, "data0", nullptr);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
+  auto data0 = EsCreateGraphInputWithDetails(graph.get(), 0, "data0", nullptr, C_DT_FLOAT, C_FORMAT_ND, nullptr, 0);
   std::vector<int64_t> shape = {-1, -1, -1, -1, -1};
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
-  const auto abs0 = EsAbs(data0);
-  const auto add = EsAdd(abs0, abs0);
-  const auto abs = EsAbs(add);
-  const auto relu = EsRelu(abs);
+  es::EsTensorHolder data0_holder(data0);
+  const auto abs0 = es::Abs(data0_holder);
+  const auto add = es::Add(abs0, abs0);
+  const auto abs = es::Abs(add);
+  const auto relu = es::Relu(abs);
 
   std::vector<int64_t> dims_data{1, 1, 3, 3, -1};
   int64_t dims_size = 5;
-  auto const_0 = EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1);
+  es::EsTensorHolder const_0(EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1));
 
-  auto reshape = EsReshape(relu, const_0, 0, -1);
-  EsSetGraphOutput(reshape, 0);
+  auto reshape = es::Reshape(relu, const_0, 0, -1);
+  EsSetGraphOutput(reshape.GetCTensorHolder(), 0);
 
-  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   ASSERT_NE(ge_graph, nullptr);
   const auto computerGraph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   ASSERT_NE(computerGraph, nullptr);
@@ -348,7 +348,7 @@ TEST_F(JitFullPartitionUT, return_partition_one_graph_can_infer_success_when_ori
  *          netout
  */
 TEST_F(JitFullPartitionUT, return_partition_two_graph_can_infer_success_when_origin_graph_uninfernode_output_has_symbol) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   const auto data1 = EsCreateGraphInput(graph.get(), 1);
@@ -363,7 +363,7 @@ TEST_F(JitFullPartitionUT, return_partition_two_graph_can_infer_success_when_ori
 
   EsSetGraphOutput(add, 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   ASSERT_NE(ge_graph, nullptr);
   const auto computerGraph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   ASSERT_NE(computerGraph, nullptr);
@@ -407,22 +407,23 @@ TEST_F(JitFullPartitionUT, return_partition_two_graph_can_infer_success_when_ori
  *           netout
  */
 TEST_F(JitFullPartitionUT, return_partition_second_graph_can_infer_success_when_origin_graph_second_reshape_has_const_input) {
-  auto graph = std::unique_ptr<EsbGraph, void (*)(EsbGraph *)>(EsCreateGraph("graph"), EsDestroyGraph);
+  auto graph = std::unique_ptr<EsCGraphBuilder, void (*)(EsCGraphBuilder *)>(EsCreateGraphBuilder("graph"), EsDestroyGraphBuilder);
 
   const auto data0 = EsCreateGraphInput(graph.get(), 0);
   std::vector<int64_t> shape = {-1, -1, -1, -1, -1};
   EsSetShape(data0, shape.data(), static_cast<int64_t>(shape.size()));
-  const auto relu = EsRelu(data0);
-  const auto reshape = EsReshape(relu, relu, 0, -1);
+  es::EsTensorHolder data0_holder(data0);
+  const auto relu = es::Relu(data0_holder);
+  const auto reshape = es::Reshape(relu, relu, 0, -1);
   std::vector<int64_t> dims_data{1, 1, 3, 3, -1};
   int64_t dims_size = 5;
-  auto const_0 = EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1);
+  es::EsTensorHolder const_0(EsCreateConstInt64(graph.get(), dims_data.data(), &dims_size, 1));
 
-  auto reshape1 = EsReshape(reshape, const_0, 0, -1);
-  const auto relu1 = EsRelu(reshape1);
-  EsSetGraphOutput(relu1, 0);
+  auto reshape1 = es::Reshape(reshape, const_0, 0, -1);
+  const auto relu1 = es::Relu(reshape1);
+  EsSetGraphOutput(relu1.GetCTensorHolder(), 0);
 
-  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(EsBuildGraph(graph.get())));
+  const auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph.get()))));
   ASSERT_NE(ge_graph, nullptr);
   const auto computerGraph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   ASSERT_NE(computerGraph, nullptr);

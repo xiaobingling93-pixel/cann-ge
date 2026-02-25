@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "releases": [
+    {"release_version": "8.0.RC2", "release_date": "2025-01-15"},
+    {"release_version": "8.0.RC1", "release_date": "2024-09-30"}
+  ]
+}

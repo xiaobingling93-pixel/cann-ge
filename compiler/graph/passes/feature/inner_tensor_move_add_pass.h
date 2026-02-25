@@ -15,7 +15,11 @@
 
 namespace ge {
 /**
- * 对图上所有ref类算子，在其ref输入前插入内部的TensorMove节点，防止后续其他pass对ref输入进行修改时，影响到ref算子。
+ * 对图上所有ref类算子，在其ref输入前插入内部的TensorMove节点，防止后续其他pass对ref输入进行修改时，其他输出受ref算子影响。
+ * 如下场景不插TensorMove：
+ * 1. 当ref类算子的输入原本就是TensorMove，且该TensorMove只连给这个ref算子
+ * 2. ref输入是variable类算子或者特殊算子（如RefSwitch、RefMerge、ReadVariableOp等)
+ * 其他情况都需要插入TensorMove
  */
 class InnerTensorMoveAddPass : public GraphPass {
  public:

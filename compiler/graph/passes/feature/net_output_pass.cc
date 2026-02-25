@@ -57,6 +57,9 @@ Status NetOutputPass::Run(ge::ComputeGraphPtr graph) {
   GELOGI("[NETOUTPUT PASS] Run.graph is [%s]", graph->GetName().c_str());
   GE_ASSERT_SUCCESS(graph->CreateOrUpdateNetoutput());
   NodePtr output_node = graph->FindFirstNodeMatchType(NETOUTPUT);
+  GE_ASSERT_NOTNULL(output_node);
+  GE_ASSERT_SUCCESS(SetNetOutputFormat(output_node));
+  GE_ASSERT_SUCCESS(AddCtrlEdgesBetweenLeafAndNetOutput(graph, output_node));
   (void)TryToSetOutputNodeName(output_node);
   GE_CHK_STATUS_RET(TryToSetOutputMaxSize(output_node), "Failed to set output max size");
   // Add userdef attrs to netoutput node
@@ -251,6 +254,56 @@ Status NetOutputPass::TryToSetOutputMaxSize(const NodePtr &output_node) const {
       GELOGI("Node[%s] set attr max size[%ld] success, index = %d",
              output_node->GetName().c_str(), output_max_size_list[idx], idx);
     }
+  }
+  return SUCCESS;
+}
+
+Status NetOutputPass::AddCtrlEdgesBetweenLeafAndNetOutput(const ComputeGraphPtr &compute_graph, const ge::NodePtr &net_out_node) const {
+  GE_CHECK_NOTNULL(net_out_node);
+  bool is_user_define_output_nodes = false;
+  for (const auto &item : compute_graph->GetGraphOutNodesInfo()) {
+    auto op_desc = item.first->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc);
+    if (op_desc->HasAttr(ATTR_ATC_USER_DEFINE_OUTPUT_NODES)) {
+      is_user_define_output_nodes = true;
+      break;
+    }
+  }
+  if (!GetLocalOmgContext().user_out_nodes.empty() || is_user_define_output_nodes) {
+    GELOGI("No need to add ctrl edge to netoutput because user out nodes have been set.");
+    return SUCCESS;
+  }
+  bool graph_has_only_one_node_except_netoutput = (compute_graph->GetDirectNodesSize() == kNodesCount);
+  for (const auto &node : compute_graph->GetDirectNode()) {
+    if (node->GetOpDesc() == nullptr || node->GetOpDesc()->GetType() == NETOUTPUT) {
+      continue;
+    }
+    if ((node->GetInControlNodesSize() != 0 || node->GetInDataNodesSize() != 0 ||
+         graph_has_only_one_node_except_netoutput) &&
+        node->GetOutDataNodesSize() == 0 && node->GetOutControlNodesSize() == 0) {
+      GE_CHK_GRAPH_STATUS_RET(GraphUtils::AddEdge(node->GetOutControlAnchor(), net_out_node->GetInControlAnchor()),
+                              "[Add][ControlEdge] between %s and %s failed", node->GetName().c_str(),
+                              net_out_node->GetName().c_str());
+      GELOGD("Add ctrl edge success. src name: %s, dst name: %s", node->GetName().c_str(),
+             net_out_node->GetName().c_str());
+    }
+  }
+  return SUCCESS;
+}
+
+Status NetOutputPass::SetNetOutputFormat(const ge::NodePtr &net_output) const {
+  auto op_desc = net_output->GetOpDesc();
+  GE_ASSERT_NOTNULL(op_desc);
+  bool is_inner_net_output = false;
+  (void) AttrUtils::GetBool(op_desc, "_inner_net_output", is_inner_net_output);
+  if (!is_inner_net_output) {
+    return SUCCESS;
+  }
+  for (size_t i = 0U; i < op_desc->GetAllInputsDesc().size(); i++) {
+    auto input_desc = op_desc->MutableInputDesc(i);
+    GE_ASSERT_NOTNULL(input_desc);
+    input_desc->SetFormat(FORMAT_ND);
+    input_desc->SetOriginFormat(FORMAT_ND);
   }
   return SUCCESS;
 }

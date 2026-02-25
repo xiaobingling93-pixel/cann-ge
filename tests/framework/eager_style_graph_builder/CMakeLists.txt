@@ -1,20 +1,44 @@
-file(GLOB_RECURSE EAGER_GRAPH_BUILDER CONFIGURE_DEPENDS "*.cc")
+set(CMAKE_CURRENT_BINARY_DIR ${PROJECT_SOURCE_DIR}/tests/framework/eager_style_graph_builder/build)
+set(ES_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/es_output)
+include(${AIR_CODE_DIR}/cmake/generate_es_package.cmake)
 
-add_library(eager_graph_builder STATIC ${EAGER_GRAPH_BUILDER})
+message(STATUS "[ES Test Ops] Generating ES API for test framework")
 
-target_compile_options(eager_graph_builder PRIVATE ${AIR_COMMON_COMPILE_OPTION})
-
-target_link_libraries(eager_graph_builder PRIVATE
-        intf_pub
-        cce_headers
-        slog_headers
-        mmpa_headers
-        metadef_headers
-        c_sec
-        $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
-        -ldl
+# 生成测试算子API
+add_library(test_ops_proto SHARED
+    ${CMAKE_CURRENT_LIST_DIR}/proto/test_ops.cc
 )
 
-add_library(eager_graph_builder_lib INTERFACE)
-target_link_libraries(eager_graph_builder_lib INTERFACE eager_graph_builder)
-target_include_directories(eager_graph_builder_lib INTERFACE ${CMAKE_CURRENT_LIST_DIR})
+target_compile_definitions(test_ops_proto PRIVATE OP_PROTO_LIB)
+target_compile_options(test_ops_proto PRIVATE
+    -fvisibility=hidden
+)
+
+target_include_directories(test_ops_proto PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/proto
+    ${AIR_CODE_DIR}/inc/graph_metadef/external
+)
+
+target_link_libraries(test_ops_proto PRIVATE
+    metadef_headers
+)
+
+if(ENABLE_CROSS_COMPILE)
+    target_link_directories(test_ops_proto PRIVATE
+        ${CMAKE_COMPILE_COMPILER_LIBRARY}
+        ${CMAKE_COMPILE_RUNTIME_LIBRARY}
+    )
+endif()
+
+# 调用 add_es_library 生成测试算子
+add_es_library(
+    ES_LINKABLE_AND_ALL_TARGET es_ge_test
+    OPP_PROTO_TARGET test_ops_proto
+    OUTPUT_PATH ${ES_OUTPUT_PATH}
+)
+
+# GCOV 模式下，动态库也需要链接 gcov 库，避免 hidden symbol 错误
+if (CMAKE_BUILD_TYPE STREQUAL "GCOV")
+    target_link_options(es_ge_test_so PRIVATE --coverage)
+endif ()
+

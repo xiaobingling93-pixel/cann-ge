@@ -14,8 +14,7 @@
 #include <dlfcn.h>
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/graph_utils.h"
-#include "eager_style_graph_builder/esb_graph.h"
-#include "eager_style_graph_builder/all_ops.h"
+#include "es_ge_test_ops_c.h"
 #include "faker/space_registry_faker.h"
 #include "common/env_path.h"
 #include "common/topo_checker.h"
@@ -35,7 +34,8 @@ class GuardCacheUT : public testing::Test {
   // s0xs1 维度的张量  与  s2xs3的张量 且 s0>s2
   ComputeGraphPtr make_computer_graph1() {
     GuardCodegen codegen;
-    auto compute_graph = graph1_->BuildComputeGraph();
+    auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph1_))));
+    auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
     auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
     EXPECT_NE(attr, nullptr);
     ShapeEnvGuarder guard(attr);
@@ -58,7 +58,8 @@ class GuardCacheUT : public testing::Test {
   // s0xs1 维度的张量  与  s2xs3的张量 且 s0=s2
   ComputeGraphPtr make_computer_graph2() {
     GuardCodegen codegen;
-    auto compute_graph = graph2_->BuildComputeGraph();
+    auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph2_))));
+    auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
     auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
     EXPECT_NE(attr, nullptr);
     ShapeEnvGuarder guard(attr);
@@ -81,7 +82,8 @@ class GuardCacheUT : public testing::Test {
   // s0xs1 维度的张量  与  s2xs3的张量 且 s0<s2
   ComputeGraphPtr make_computer_graph3() {
     GuardCodegen codegen;
-    auto compute_graph = graph3_->BuildComputeGraph();
+    auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph3_))));
+    auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
     auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
     EXPECT_NE(attr, nullptr);
     ShapeEnvGuarder guard(attr);
@@ -114,20 +116,20 @@ protected:
      auto ascend_install_path = EnvPath().GetAscendInstallPath();
      setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
      setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
-     graph_ = EsCreateGraph("Hello");
+     graph_ = EsCreateGraphBuilder("Hello");
      guardCheckCache_ = new GuardCheckCache(2, nullptr);
  }
  void TearDown() override {
-     EsDestroyGraph(graph_);
+     EsDestroyGraphBuilder(graph_);
      graph_ = nullptr;
      unsetenv("ASCEND_OPP_PATH");
      unsetenv("LD_LIBRARY_PATH");
      delete guardCheckCache_;
  }
-    EsbGraph *graph_{nullptr};
-    EsbGraph *graph1_{nullptr};
-    EsbGraph *graph2_{nullptr};
-    EsbGraph *graph3_{nullptr};
+    EsCGraphBuilder *graph_{nullptr};
+    EsCGraphBuilder *graph1_{nullptr};
+    EsCGraphBuilder *graph2_{nullptr};
+    EsCGraphBuilder *graph3_{nullptr};
 
     GuardCheckCache *guardCheckCache_{nullptr};
 };
@@ -136,7 +138,8 @@ TEST_F(GuardCacheUT, load_guard_check_func) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -191,9 +194,9 @@ TEST_F(GuardCacheUT, load_guard_check_func) {
 
 TEST_F(GuardCacheUT, check_priority_feat) {
   dlog_setlevel(0, 1, 0);
-  graph1_ = EsCreateGraph("Hello");
-  graph2_ = EsCreateGraph("Hello");
-  graph3_ = EsCreateGraph("Hello");
+  graph1_ = EsCreateGraphBuilder("Hello");
+  graph2_ = EsCreateGraphBuilder("Hello");
+  graph3_ = EsCreateGraphBuilder("Hello");
   auto computer_graph1 = make_computer_graph1();
   auto computer_graph2 = make_computer_graph2();
   auto computer_graph3 = make_computer_graph3();
@@ -228,17 +231,17 @@ TEST_F(GuardCacheUT, check_priority_feat) {
   EXPECT_EQ(gep_find->GetPriority(), 3);
   EXPECT_EQ(gep2->GetPriority(), 0);
 
-  EsDestroyGraph(graph1_);
-  EsDestroyGraph(graph2_);
-  EsDestroyGraph(graph3_);
+  EsDestroyGraphBuilder(graph1_);
+  EsDestroyGraphBuilder(graph2_);
+  EsDestroyGraphBuilder(graph3_);
   dlog_setlevel(0, 3, 0);
 }
 
 TEST_F(GuardCacheUT, check_aging_feat) {
   dlog_setlevel(0, 1, 0);
-  graph1_ = EsCreateGraph("Hello");
-  graph2_ = EsCreateGraph("Hello");
-  graph3_ = EsCreateGraph("Hello");
+  graph1_ = EsCreateGraphBuilder("Hello");
+  graph2_ = EsCreateGraphBuilder("Hello");
+  graph3_ = EsCreateGraphBuilder("Hello");
   auto computer_graph1 = make_computer_graph1();
   auto computer_graph2 = make_computer_graph2();
   auto computer_graph3 = make_computer_graph3();
@@ -291,9 +294,9 @@ TEST_F(GuardCacheUT, check_aging_feat) {
   }
 
 
-  EsDestroyGraph(graph1_);
-  EsDestroyGraph(graph2_);
-  EsDestroyGraph(graph3_);
+  EsDestroyGraphBuilder(graph1_);
+  EsDestroyGraphBuilder(graph2_);
+  EsDestroyGraphBuilder(graph3_);
   dlog_setlevel(0, 3, 0);
 }
 
@@ -301,7 +304,8 @@ TEST_F(GuardCacheUT, load_guard_check_func_always_true_when_no_guard_symbol) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -346,7 +350,8 @@ TEST_F(GuardCacheUT, gen_guard_func_verify_guard_num) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -375,7 +380,8 @@ TEST_F(GuardCacheUT, gen_guard_func_verify_compile_cost) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
@@ -404,7 +410,8 @@ TEST_F(GuardCacheUT, gen_guard_func_verify_run_cost) {
   dlog_setlevel(0, 1, 0);
 
   GuardCodegen codegen;
-  auto compute_graph = graph_->BuildComputeGraph();
+  auto ge_graph = std::unique_ptr<Graph>(static_cast<Graph *>(static_cast<void *>(EsBuildGraphAndReset(graph_))));
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*ge_graph);
   auto attr = compute_graph->GetOrCreateAttrsGroup<ShapeEnvAttr>();
   EXPECT_NE(attr, nullptr);
   ShapeEnvGuarder guard(attr);
