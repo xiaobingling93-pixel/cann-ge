@@ -34,7 +34,6 @@
 namespace ge {
 namespace {
 const size_t OUTPUT_PARAM_SIZE = 2UL;
-const size_t kNodesCount = 2;
 const std::string kMemoryPriority = "MemoryPriority";
 
 TopoSortingMode GetTopoSortingStrategy() {
