@@ -119,6 +119,24 @@ std::string GenObjDrivenOptimize(bool enable_equal_order_tiling) {
   return codes;
 }
 
+std::string GenEmptyTensorCheck() {
+  std::string codes;
+  codes += "  // 检测空tensor场景：当某个轴的upper_bound为0时，直接返回成功\n";
+  codes += "  auto is_var_empty = [](const TilingVariable *var) -> bool {\n";
+  codes += "    return var->upper_bound(var->upper_bound_vars) == 0;\n";
+  codes += "  };\n";
+  codes += "  bool has_empty = std::any_of(input_.pure_mc_vars, input_.pure_mc_vars + input_.pure_mc_vars_size, is_var_empty) ||\n";
+  codes += "                   std::any_of(input_.local_buffer_vars, input_.local_buffer_vars + input_.local_buffer_vars_size,\n";
+  codes += "                               is_var_empty);\n";
+  codes += "  if (has_empty) {\n";
+  codes += "    OP_LOGW(OP_NAME, \"Got empty tensor, input[%s]\", input_.DebugString().c_str());\n";
+  codes += "    is_empty_tensor_ = true;\n";
+  codes += "    return true;\n";
+  codes += "  }\n";
+  codes += "\n";
+  return codes;
+}
+
 std::string GenAxesReorderRun(bool enable_equal_order_tiling) {
   std::string codes;
   std::string run_impl_start = "bool AxesReorderSolver::Run(const bool is_trade_off, const bool is_block_loop_auto_tune, "
@@ -131,6 +149,9 @@ std::string GenAxesReorderRun(bool enable_equal_order_tiling) {
   codes += "//                  使用说明：默认开启，通过att_accuracy_level=0关闭\n";
   codes += "// enable_equal_order 描述：表示是否使能同优先级切分\n";
   codes += run_impl_start;
+
+  // 在GetTiling之前添加空tensor检测
+  codes += GenEmptyTensorCheck();
 
   // 根据是否使能equal_order生成不同的GetTiling调用
   std::string equal_order_param = enable_equal_order_tiling ? ", enable_equal_order" : "";

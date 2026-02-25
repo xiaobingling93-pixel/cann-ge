@@ -185,6 +185,7 @@ std::string GenProcessSingleAxisNaive();
 std::string GenWorkloadBalancePrepare();
 std::string GenObjDrivenOptimize(bool enable_equal_order_tiling = false);
 std::string GenAxesReorderRun(bool enable_equal_order_tiling = false);
+std::string GenEmptyTensorCheck();
 // Helper functions for GetAxesSolverSolverFunc
 std::string GenCoreSolverFunctions();
 std::string GenBinarySearchFunctions();

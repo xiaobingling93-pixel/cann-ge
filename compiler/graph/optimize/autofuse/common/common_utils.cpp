@@ -442,14 +442,14 @@ std::string FormatExpression(const std::string &expression) {
 int32_t CalcReservedTmpBufSizeForAscGraph(const ascir::ImplGraph &graph) {
   constexpr int32_t one_blk_size = 1024;
   uint32_t total_reserve_blk_num = 0U;
-  GetApiSelectSet(graph, total_reserve_blk_num);
+  GetApiReservedBlockNum(graph, total_reserve_blk_num);
   return total_reserve_blk_num * one_blk_size;
 }
 
-void GetApiSelectSet(const ascir::ImplGraph &graph, uint32_t& total_blk_num) {
+void GetApiReservedBlockNum(const ascir::ImplGraph &graph, uint32_t& total_blk_num) {
   const std::unordered_set<std::string> type2api = {
       {Select::Type}, {Where::Type},
-      {Ge::Type}, {Eq::Type}, {Ne::Type}, {Gt::Type}, {Le::Type}, {Lt::Type},
+      {Ge::Type}, {Eq::Type}, {Ne::Type}, {Gt::Type}, {Le::Type}, {Lt::Type}, {Gather::Type},
   };
   for (const auto &node : graph.GetAllNodes()) {
     auto iter = type2api.find(node->GetType());

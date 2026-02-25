@@ -122,7 +122,7 @@ namespace ascgen_utils {
                          std::set<std::pair<std::string, std::string>> &pre_api_extract_dup,
                          uint32_t& total_blk_num);
   int32_t CalcReservedTmpBufSizeForAscGraph(const ascir::ImplGraph &graph);
-  void GetApiSelectSet(const ascir::ImplGraph &graph, uint32_t& total_blk_num);
+  void GetApiReservedBlockNum(const ascir::ImplGraph &graph, uint32_t& total_blk_num);
   bool IsScalarNextNodeSupportBlkTensor(const ge::AscNodePtr &node);
   bool IsUbScalarLoad(const ge::AscNodePtr &node);
   bool IsStaticSchedResult(const ascir::FusedScheduledResult& fused_schedule_result);

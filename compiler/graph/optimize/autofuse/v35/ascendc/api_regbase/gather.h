@@ -16,6 +16,9 @@ constexpr int32_t CASE4 = 3;   // 对中间轴gather
 constexpr int32_t INT64_OFFSET = 64;
 constexpr int32_t INT32_OFFSET = 32;
 #define THREAD_NUMBER 2048
+#ifndef AUTOFUSE_SIMT_RESERVED_UB_SIZE
+#define AUTOFUSE_SIMT_RESERVED_UB_SIZE 40960 // 32 * 1024 + 8 * 1024
+#endif
 // 生成单个向量轴的参数声明
 // 首先定义每个变量的宏
 #define VECTORIZED_AXIS_SIZE_M(n)       vectorized_axis_##n##_size_m

@@ -28,6 +28,15 @@ constexpr int64_t ID_NONE = -1;
 using namespace ge;
 using HintGraph=AscGraph;
 }
+// 公共函数声明：生成tiling代码并写入文件
+std::map<std::string, std::string> GenerateTilingCodeCommon(
+    const std::string &op_name,
+    const ascir::FusedScheduledResult &fused_scheduled_result,
+    const std::map<std::string, std::string> &options,
+    const std::string &tiling_func,
+    const std::string &header_file,
+    bool gen_extra_infos);
+
 namespace {
 using att::test_common::CreateTilingMainFunc;
 
@@ -74,7 +83,7 @@ class STestGenConcat : public ::testing::Test {
   void SetUp() override {
     // Code here will be called immediately after the constructor (right
     // before each test).
-//     dlog_setlevel(GE, 0, 1);
+    // dlog_setlevel(GE, 0, 1);
     att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
     setenv("ASCEND_GLOBAL_LOG_LEVEL", "4", 1);
     att::AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
@@ -1131,23 +1140,11 @@ TEST_F(STestGenConcat, tque_tbuf_case0)
   auto res = GenTilingImplAutoFuseV3(op_name, fused_scheduled_result, options, tiling_funcs, true);
   std::string tiling_func;
   CombineTilings(tiling_funcs, tiling_func);
-  std::ofstream oss;
-  oss.open("Concat_tiling_func.cpp", std::ios::out);
-  oss << "#include \"Concat_tiling_data.h\"\n";
-  oss << tiling_func;
-  oss.close();
   EXPECT_EQ(res, true);
 
-  TilingCodeGenerator generator;
-  TilingCodeGenConfig generator_config;
-  std::map<std::string, std::string> tiling_res;
-  FusedParsedScheduleResult all_model_infos;
-  GetModelInfoMap(fused_scheduled_result, options, all_model_infos);
-  generator_config.type = TilingImplType::HIGH_PERF;
-  generator_config.tiling_data_type_name = options[ge::sym::kTilingDataTypeName];
-  generator_config.gen_tiling_data = true;
-  generator_config.gen_extra_infos = false;
-  EXPECT_EQ(generator.GenTilingCode(op_name, all_model_infos, generator_config, tiling_res), ge::SUCCESS);
+  auto tiling_res = GenerateTilingCodeCommon(op_name, fused_scheduled_result, options, tiling_func, "Concat_tiling_data.h", false);
+
+  std::ofstream oss;
   oss.open("Concat_tiling_data.h", std::ios::out);
   oss << tiling_res[kFirstGraphName + "TilingData"];
   oss.close();
@@ -1183,6 +1180,105 @@ int main() {
   EXPECT_EQ(ret, 0);
   ret = std::system("./tiling_func_main_concat");
   EXPECT_EQ(ret, 0);
+}
+
+// 公共函数定义：生成tiling代码并写入文件
+std::map<std::string, std::string> GenerateTilingCodeCommon(
+    const std::string &op_name,
+    const ascir::FusedScheduledResult &fused_scheduled_result,
+    const std::map<std::string, std::string> &options,
+    const std::string &tiling_func,
+    const std::string &header_file,
+    bool gen_extra_infos) {
+
+  std::ofstream oss;
+  oss.open("Concat_tiling_func.cpp", std::ios::out);
+  oss << "#include \"" << header_file << "\"\n";
+  oss << tiling_func;
+  oss.close();
+
+  TilingCodeGenerator generator;
+  TilingCodeGenConfig generator_config;
+  std::map<std::string, std::string> tiling_res;
+  FusedParsedScheduleResult all_model_infos;
+  GetModelInfoMap(fused_scheduled_result, options, all_model_infos);
+  generator_config.type = TilingImplType::HIGH_PERF;
+  generator_config.tiling_data_type_name = options.at(ge::sym::kTilingDataTypeName);
+  generator_config.gen_tiling_data = true;
+  generator_config.gen_extra_infos = gen_extra_infos;
+  EXPECT_EQ(generator.GenTilingCode(op_name, all_model_infos, generator_config, tiling_res), ge::SUCCESS);
+
+  return tiling_res;
+}
+
+// 空tensor测试用例的辅助函数
+namespace {
+void BuildEmptyTensorGraph(const std::string &graph_name, ascir::ScheduledResult &schedule_result) {
+  ascir::ScheduleGroup schedule_group1;
+  ascir::AscGraph graph(graph_name.c_str());
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphND(graph), ge::SUCCESS);
+  graph.SetTilingKey(0U);
+  schedule_group1.impl_graphs.emplace_back(graph);
+  GraphConstructUtils::UpdateGraphsVectorizedStride(schedule_group1.impl_graphs);
+  schedule_result.schedule_groups.emplace_back(schedule_group1);
+}
+
+void GenerateTilingCodeForEmptyTensor(const std::string &op_name,
+                                         const std::vector<ascir::ScheduledResult> &schedule_results,
+                                         const std::string &graph_name) {
+  std::map<std::string, std::string> options;
+  std::map<std::string, std::string> tiling_funcs;
+  options.emplace(kGenConfigType, "AxesReorder");
+  ascir::FusedScheduledResult fused_scheduled_result;
+  fused_scheduled_result.node_idx_to_scheduled_results.emplace_back(schedule_results);
+  auto res = GenTilingImplAutoFuseV3(op_name, fused_scheduled_result, options, tiling_funcs, true);
+  std::string tiling_func;
+  CombineTilings(tiling_funcs, tiling_func);
+  EXPECT_EQ(res, true);
+
+  auto tiling_res = GenerateTilingCodeCommon(op_name, fused_scheduled_result, options, tiling_func, "Concat_tiling_data.h", true);
+
+  std::ofstream oss;
+  oss.open("Concat_tiling_data.h", std::ios::out);
+  oss << tiling_res[graph_name + "TilingData"];
+  oss.close();
+  auto ret = std::system(std::string("cp ").append(TOP_DIR).append("/tests/autofuse/st/att/testcase/op_log.h ./ -f").c_str());
+  ret = autofuse::test::CopyStubFiles(TOP_DIR, "tests/autofuse/st/att/testcase/stub/");
+  EXPECT_EQ(ret, 0);
+}
+
+void CompileAndRunEmptyTensorTest(const std::string &graph_name) {
+  std::ofstream oss;
+  oss.open("tiling_func_main_concat_empty.cpp", std::ios::out);
+  const std::string kRunTilingFuncMainLocal = R"(
+#include <iostream>
+#include "Concat_tiling_data.h"
+using namespace optiling;
+
+int main() {
+)" + graph_name + R"(TilingData tilingData;
+  tilingData.set_block_dim(1);
+  tilingData.set_ub_size(1024);
+  tilingData.set_ND(0);
+
+  if (GetTiling(tilingData)) {
+    std::cout << "GetTiling success with empty tensor ND=0" << std::endl;
+    return 0;
+  } else {
+    std::cout << "GetTiling failed with empty tensor" << std::endl;
+    return -1;
+  }
+}
+)";
+  oss << kRunTilingFuncMainLocal;
+  oss.close();
+
+  auto ret = std::system("g++ tiling_func_main_concat_empty.cpp Concat_tiling_func.cpp -o tiling_func_main_concat_empty -I ./ -DSTUB_LOG");
+  EXPECT_EQ(ret, 0);
+  ret = std::system("./tiling_func_main_concat_empty > ./info_empty.log");
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info_empty.log", "GetTiling success with empty tensor"), true);
+}
 }
 
 ge::Status ConstructTQueTBufScheduleResults(std::vector<ascir::ScheduledResult> &schedule_results) {
@@ -2895,4 +2991,22 @@ int main() {
   EXPECT_EQ(ret, 0);
   ret = std::system("./tiling_func_main_concat");
   EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "get_nd2t_size = 17"), true);
+}
+
+// 测试ND为0时动态shape场景的空tensor处理
+TEST_F(STestGenConcat, empty_tensor_nd_zero_dynamic_shape)
+{
+  const std::string kFirstGraphName = "graph_empty_tensor";
+  ascir::ScheduledResult schedule_result1;
+  std::vector<ascir::ScheduledResult> schedule_results;
+
+  // 构建图结构
+  BuildEmptyTensorGraph(kFirstGraphName, schedule_result1);
+  schedule_results.emplace_back(schedule_result1);
+
+  // 生成tiling代码
+  GenerateTilingCodeForEmptyTensor("Concat", schedule_results, kFirstGraphName);
+
+  // 编译并运行测试
+  CompileAndRunEmptyTensorTest(kFirstGraphName);
 }

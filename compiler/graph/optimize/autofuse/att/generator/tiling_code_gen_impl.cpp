@@ -1058,6 +1058,10 @@ ge::Status TilingCodeGenImpl::GenCacheHashMapDef() {
    if (config_.enable_small_shape_strategy) {
      tiling_func_.AddLine("    }");
    }
+   tiling_func_.AddLine("    if (is_empty_tensor_) {");
+   tiling_func_.AddLine("      OP_LOGW(OP_NAME, \"Empty tensor, skip DoApiTiling and GeneralTiling.\");");
+   tiling_func_.AddLine("      return true;");
+   tiling_func_.AddLine("    }");
    tiling_func_.AddLine("    DoApiTiling(tiling_data);");
    tiling_func_.AddLine("    GeneralTiling(tiling_data);");
    if (config_.gen_extra_infos) {
@@ -1076,6 +1080,7 @@ ge::Status TilingCodeGenImpl::GenCacheHashMapDef() {
  
  ge::Status TilingCodeGenImpl::GenProtectedVars() {
    tiling_func_.AddLine("  uint32_t corenum_;");
+   tiling_func_.AddLine("  bool is_empty_tensor_{false};");
    return ge::SUCCESS;
  }
 

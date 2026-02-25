@@ -197,7 +197,11 @@ __aicore__ inline void ReduceInit(const LocalTensor<T> &dstTensor, const uint32_
     bool is_inner_r_align = (inner_r * sizeof(T) % AscendC::ONE_BLK_SIZE == 0);
 
     __ubuf__ uint32_t *maskBuf = nullptr;
+#if defined(AUTOFUSE_SIMT_RESERVED_UB_SIZE)
+    maskBuf = AscendCUtils::GetTemporaryBufferAddr<uint32_t>(TMP_UB_OFFSET - AUTOFUSE_SIMT_RESERVED_UB_SIZE, 64);
+#else
     maskBuf = AscendCUtils::GetTemporaryBufferAddr<uint32_t>(TMP_UB_OFFSET, 64);
+#endif
     bool need_exec = MaskPreprocess<T>(maskBuf, dim_a, inner_r, inner_r_down);
     if constexpr (is_b64) {
         if (!is_inner_r_align) {

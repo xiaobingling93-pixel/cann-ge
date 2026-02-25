@@ -1081,6 +1081,70 @@ std::string AxesReorderSolverGen::GenSetTiling() {
   return strs;
 }
 
+// Helper function to generate PGO solver run code
+static std::string GenPGOSolverRunCode(const std::string &class_name, const char *high_perf_val,
+                                       const std::string &enable_equal_order_arg) {
+  std::string codes;
+  codes += "    if (PgoConfig::Instance().need_change_solver_run == 1) {\n";
+  codes += "      input.ub_threshold = PgoConfig::Instance().pgo_ub_threshold_list[PgoConfig::Instance().pgo_threshold_index];\n";
+  codes += "      input.corenum_threshold = PgoConfig::Instance().pgo_corenum_threshold_list[PgoConfig::Instance().pgo_threshold_index];\n";
+  codes += "      " + class_name + " solver(input);\n";
+  codes += "      if (!solver.Run(true, false, " + std::string(high_perf_val) + enable_equal_order_arg + ")) { \n";
+  codes += "        return false;\n";
+  codes += "      }\n";
+  codes += "    } else {\n";
+  return codes;
+}
+
+std::string AxesReorderSolverGen::GenSolverRunInvoke(const std::string &class_name) {
+  std::string codes;
+  const ge::char_t *high_perf_val = (enable_high_perf_ && (!enable_group_parallel_)) ? "true" : "false";
+  bool hit_pattern = NeedUBMultiCoreBalance();
+  const auto enable_block_loop_trade_off_by_perf = IsEnableBlockLoopTradeOffByPerf();
+  const bool model_tradeoff_enable = tiling_schedule_config_.trade_off_config.is_enable && (!enable_group_parallel_);
+  const std::string enable_multicore_ub_tradeoff =
+      ((enable_multicore_ub_tradeoff_ || model_tradeoff_enable) && hit_pattern)
+        ? "true"
+        : "false";
+  std::string enable_equal_order_arg = enable_equal_order_ ? ", true" : ", false";
+
+  if (enable_autofuse_pgo_) {
+    codes += GenPGOSolverRunCode(class_name, high_perf_val, enable_equal_order_arg);
+  }
+
+  std::string run_args = enable_multicore_ub_tradeoff + ", " + enable_block_loop_trade_off_by_perf + ", " +
+                         high_perf_val + enable_equal_order_arg;
+  codes += "    if (!solver.Run(" + run_args + ")) {\n";
+  GELOGI(
+      "[DFX] Gen solver func, high_perf_val: %s, hit_pattern: %d, high_perf_: %d, multicore_ub_tradeoff:%d, "
+      "model_tradeoff_enable:%d, trade_off_config:%s, parallel enable flag:%d, "
+      "enable_block_loop_trade_off_by_perf:%s, enable_equal_order_:%d",
+      high_perf_val, hit_pattern, enable_high_perf_, enable_multicore_ub_tradeoff_, model_tradeoff_enable,
+      tiling_schedule_config_.trade_off_config.DebugString().c_str(), enable_group_parallel_,
+      enable_block_loop_trade_off_by_perf.c_str(),
+      enable_equal_order_);
+  codes += "      return false;\n";
+  codes += "    }\n";
+  if (enable_autofuse_pgo_) {
+    codes += "    }\n";
+  }
+  return codes;
+}
+
+std::string AxesReorderSolverGen::GenEmptyTensorCheckInSolver() {
+  std::string codes;
+  codes += "    if (solver.IsEmptyTensor()) {\n";
+  codes += "      tiling_data.set_block_dim(1);\n";
+  for (uint32_t i = 0u; i < mc_args_.size(); ++i) {
+    auto &mc_arg = mc_args_[i];
+    codes += "      tiling_data.set_" + Str(mc_arg) + "(0);\n";
+  }
+  codes += "      is_empty_tensor_ = true;\n";
+  codes += "      return true;\n";
+  codes += "    }\n";
+  return codes;
+}
+
 std::string AxesReorderSolverGen::GenPgoSetTiling() {
   std::string code;
   std::string filed_name = GetTilingDataSubGroupItemName();
@@ -1147,21 +1211,6 @@ std::string AxesReorderSolverGen::IsEnableBlockLoopTradeOffByPerf() const {
   return res;
 }
 
-// Helper function to generate PGO solver run code
-static std::string GenPGOSolverRunCode(const std::string &class_name, const char *high_perf_val,
-                                       const std::string &enable_equal_order_arg) {
-  std::string codes;
-  codes += "    if (PgoConfig::Instance().need_change_solver_run == 1) {\n";
-  codes += "      input.ub_threshold = PgoConfig::Instance().pgo_ub_threshold_list[PgoConfig::Instance().pgo_threshold_index];\n";
-  codes += "      input.corenum_threshold = PgoConfig::Instance().pgo_corenum_threshold_list[PgoConfig::Instance().pgo_threshold_index];\n";
-  codes += "      " + class_name + " solver(input);\n";
-  codes += "      if (!solver.Run(true, false, " + std::string(high_perf_val) + enable_equal_order_arg + ")) { \n";
-  codes += "        return false;\n";
-  codes += "      }\n";
-  codes += "    } else {\n";
-  return codes;
-}
-
 std::string AxesReorderSolverGen::GenSolverFuncImpl() {
   std::string codes;
   std::vector<Expr> all_cons;
@@ -1174,40 +1223,8 @@ std::string AxesReorderSolverGen::GenSolverFuncImpl() {
   // 直接使用 ModelInfo 中的 TilingScheduleConfig
   codes += GenInput(tiling_schedule_config_.trade_off_config, all_cons);
   codes += "    " + class_name + " solver(input);\n";
-  // 仅当使能高性能tiling模式并且未使能分组并行时才使能高性能tiling模式(分组并行会影响性能估值)
-  const ge::char_t *high_perf_val = (enable_high_perf_ && (!enable_group_parallel_)) ? "true" : "false";
-  bool hit_pattern = NeedUBMultiCoreBalance();
-  const auto enable_block_loop_trade_off_by_perf = IsEnableBlockLoopTradeOffByPerf();
-  const bool model_tradeoff_enable = tiling_schedule_config_.trade_off_config.is_enable && (!enable_group_parallel_);
-  const std::string enable_multicore_ub_tradeoff =
-      ((enable_multicore_ub_tradeoff_ || model_tradeoff_enable) && hit_pattern)
-        ? "true"
-        : "false";
-  // 根据enable_equal_order_生成不同的Run调用参数
-  std::string enable_equal_order_arg = enable_equal_order_ ? ", true" : ", false";
-  // 是否开启性能公式权衡核内循环数，vec重型算子/使能多核权衡时不使能该功能
-  if (enable_autofuse_pgo_) {
-    codes += GenPGOSolverRunCode(class_name, high_perf_val, enable_equal_order_arg);
-  }
-
-  // 生成Run调用参数
-  std::string run_args = enable_multicore_ub_tradeoff + ", " + enable_block_loop_trade_off_by_perf + ", " +
-                         high_perf_val + enable_equal_order_arg;
-  codes += "    if (!solver.Run(" + run_args + ")) {\n";
-  GELOGI(
-      "[DFX] Gen solver func, high_perf_val: %s, hit_pattern: %d, high_perf_: %d, multicore_ub_tradeoff:%d, "
-      "model_tradeoff_enable:%d, trade_off_config:%s, parallel enable flag:%d, "
-      "enable_block_loop_trade_off_by_perf:%s, enable_equal_order_:%d",
-      high_perf_val, hit_pattern, enable_high_perf_, enable_multicore_ub_tradeoff_, model_tradeoff_enable,
-      tiling_schedule_config_.trade_off_config.DebugString().c_str(), enable_group_parallel_,
-      enable_block_loop_trade_off_by_perf.c_str(),
-      enable_equal_order_);
-  // 使能高性能tiling模式并且命中ub多核可调优patterns
-  codes += "      return false;\n";
-  codes += "    }\n";
-  if (enable_autofuse_pgo_) {
-    codes += "    }\n";
-  }
+  codes += GenSolverRunInvoke(class_name);
+  codes += GenEmptyTensorCheckInSolver();
   codes += GenSetTiling();
   codes += "    return true;\n";
   codes += "  }\n";

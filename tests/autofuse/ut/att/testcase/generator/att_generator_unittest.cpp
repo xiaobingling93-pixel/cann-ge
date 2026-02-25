@@ -297,6 +297,10 @@ TEST(GeneratorUT, TilingCodeGenImplPGO) {
       OP_LOGW(OP_NAME, "Failed to do tiling.");
       return false;
     }
+    if (is_empty_tensor_) {
+      OP_LOGW(OP_NAME, "Empty tensor, skip DoApiTiling and GeneralTiling.");
+      return true;
+    }
     DoApiTiling(tiling_data);
     GeneralTiling(tiling_data);
     TilingSummary(tiling_data);

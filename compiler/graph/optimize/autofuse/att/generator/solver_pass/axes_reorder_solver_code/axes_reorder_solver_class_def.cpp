@@ -198,6 +198,7 @@ std::string GenAxesReorderSolver(bool enable_equal_order_tiling) {
   std::string run_decl =
       "  bool Run(const bool is_trade_off, const bool block_loop_auto_tune, const bool enable_auto_tune, const bool "
       "enable_equal_order = false);\n";
+  run_decl += "  bool IsEmptyTensor() const { return is_empty_tensor_; }\n";
   std::string function_define = R"(protected:
   virtual bool CalUsedCoreNum(double &used_core_num) = 0;
   virtual bool CalRealUsedCoreNum(int64_t &used_corenum) = 0;
@@ -205,6 +206,7 @@ std::string GenAxesReorderSolver(bool enable_equal_order_tiling) {
   virtual double GetPerf() = 0;
   virtual bool SatisfyUBSizeCacheLine(uint32_t idx) = 0;
   AxesReorderSolverInput input_;
+  bool is_empty_tensor_{false};
 )";
   function_define = run_decl + function_define;
   codes += function_define;

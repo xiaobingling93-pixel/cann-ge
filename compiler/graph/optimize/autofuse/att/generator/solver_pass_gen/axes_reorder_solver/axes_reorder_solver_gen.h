@@ -182,6 +182,8 @@ namespace att {
                              std::vector<Expr> &mc_mixed_cons);
     std::string GenInput(const TradeOffConfig &trade_off_config, std::vector<Expr> &all_cons);
     std::string GenSetTiling();
+    std::string GenSolverRunInvoke(const std::string &class_name);
+    std::string GenEmptyTensorCheckInSolver();
     std::string GenOriginExpr(const std::vector<Expr> &exprs, const std::string &indent) const;
     std::pair<std::string, std::string> GenOriginBufExpr(const Expr &expr, const std::string &indent) const;
     std::string GenPgoSetTiling();
