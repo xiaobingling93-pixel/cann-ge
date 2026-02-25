@@ -105,6 +105,19 @@ void SetBuildGraphModeOffline(std::map<std::string, std::string> &options) {
   GELOGI("build graph mode option set value to offset");
   options[OPTION_BUILD_GRAPH_MODE] = kOffline;
 }
+
+// input_hint_shape暂不支持
+Status CheckInputHintShape(const std::map<std::string, std::string> &global_options) {
+  auto iter = global_options.find(INPUT_HINT_SHAPE);
+  if (iter != global_options.end() && !iter->second.empty()) {
+    const std::string reason = "Option[input_hint_shape: " +
+      iter->second + "] is not supported in ge_ir_build. Please do not set it.";
+    REPORT_PREDEFINED_ERR_MSG("E10055", std::vector({"reason"}), std::vector({reason.c_str()}));
+    GELOGE(GRAPH_PARAM_INVALID, "[Check][Param] %s", reason.c_str());
+    return GRAPH_PARAM_INVALID;
+  }
+  return GRAPH_SUCCESS;
+}
 }  // namespace
 
 Status VerifyVarOffset(const ComputeGraphPtr &root_graph,
@@ -313,6 +326,7 @@ static graphStatus aclgrphBuildInitializeImpl(std::map<std::string, std::string>
            "tuning.");
     return GRAPH_FAILED;
   }
+  GE_ASSERT_GRAPH_SUCCESS(CheckInputHintShape(global_options));
   // print global option map
   ge::PrintOptionMap(global_options, "global option");
   GE_ASSERT_GRAPH_SUCCESS(OpLibRegistry::GetInstance().PreProcessForCustomOp());
@@ -936,6 +950,7 @@ graphStatus Impl::BuildModel(const Graph &graph, const std::map<std::string, std
     GELOGE(ret, "[Check][option] AutoTune mode is not supported!");
     return ret;
   }
+  GE_ASSERT_SUCCESS(CheckInputHintShape(options));
   ret = Init(graph, options);
   if (ret != GRAPH_SUCCESS) {
     GELOGE(ret, "[Init][GeGenerator]Build ir model Init failed!");

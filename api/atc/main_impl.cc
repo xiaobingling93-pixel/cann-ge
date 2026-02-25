@@ -2007,6 +2007,14 @@ int32_t main_impl(int32_t argc, char* argv[]) {
       ret = FAILED;
       break;
     }
+    if (!FLAGS_input_hint_shape.empty()) {
+      const std::string reason = "Option[input_hint_shape: " +
+        FLAGS_input_hint_shape + "] is not supported in ATC. Please do not set it.";
+      REPORT_PREDEFINED_ERR_MSG("E10055", std::vector({"reason"}), std::vector({reason.c_str()}));
+      GELOGE(FAILED, "[Check][Param] %s", reason.c_str());
+      ret = FAILED;
+      break;
+    }
     if (!FLAGS_singleop.empty()) {
       ret = CheckAndRunSingleOp();
       break;

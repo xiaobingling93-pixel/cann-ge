@@ -2820,4 +2820,11 @@ TEST_F(AtcCommonSTest, CheckDisplayModelInfo_Failed) {
   ReInitGe();
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
 }
+
+TEST_F(AtcCommonSTest, GeFlags_set_input_hint_shpae_failed) {
+  char *argv[] = {"atc"
+                  "--input_hint_shape=0:[3];1:[3]"};
+  int32_t ret = main_impl(sizeof(argv) / sizeof(argv[0]), argv);
+  EXPECT_NE(ret, 0);
+}
 }

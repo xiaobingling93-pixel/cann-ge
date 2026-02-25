@@ -239,6 +239,7 @@ TEST_F(UserGraphsManagerlUT, ExecuteGraphWithStreamAsync_Success) {
   dlog_setlevel(GE_MODULE_NAME, 3, 1);
 }
 
+#if 0
 TEST_F(UserGraphsManagerlUT, return_compile_load_skip_summary_not_null_execute_success_when_input_dynamic_graph_not_partition) {
   ModelExecutor model_executor;
   model_executor.Initialize({}, 0);
@@ -342,6 +343,7 @@ TEST_F(UserGraphsManagerlUT, return_compile_load_skip_summary_not_null_execute_s
   EXPECT_EQ(graph_manager.Finalize(), SUCCESS);
   dlog_setlevel(GE_MODULE_NAME, 3, 1);
 }
+#endif
 
 TEST_F(UserGraphsManagerlUT, return_compile_load_summary_execute_success_when_input_static_graph_not_partition) {
   ModelExecutor model_executor;

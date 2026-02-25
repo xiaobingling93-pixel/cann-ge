@@ -3066,4 +3066,39 @@ TEST_F(SymbolicShapeInferenceUT, RefDataCopyOpTest) {
   input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
   ASSERT_EQ(SymbolicShapeSymbolizer::Symbolize(cg, input_vec), SUCCESS);
 }
+
+TEST_F(SymbolicShapeInferenceUT, DummyShapeTest) {
+  auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data0", REFDATA, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  auto data1 = EsCreateGraphInputWithDetails(
+      graph_, 1, "data1", REFDATA, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_NE(data0, nullptr);
+  ASSERT_NE(data1, nullptr);
+  auto add = EsAdd(data0, data1);
+  ASSERT_EQ(EsSetGraphOutput(add, 0), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+  DataInfo di = {ge::FORMAT_ND, DT_INT32, {-1, -1, -1, -1}};
+  SetNoStorage(cg, "data0", di, 0);
+  di.shape = {-1, -1, -1, -1};
+  SetNoStorage(cg, "data0", di, 0);
+  SetNoStorage(cg, "data1", di, 1);
+
+  std::vector<ge::GeTensor> input_vec;
+  ge::Shape shape0({2, 3, 4, 4});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+
+  ge::Shape shape1({-3});
+  ge::TensorDesc td1{shape0, ge::FORMAT_ND, DT_INT32};
+  td1.SetOriginShape(shape1);
+  ge::Tensor tensor1{td1};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor1));
+
+  ASSERT_NE(SymbolicShapeSymbolizer::Symbolize(cg, input_vec), SUCCESS);
+}
 } // namespace ge

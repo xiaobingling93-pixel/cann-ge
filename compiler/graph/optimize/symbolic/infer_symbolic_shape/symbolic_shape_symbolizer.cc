@@ -26,6 +26,8 @@
 
 namespace ge {
 namespace {
+const std::vector<int64_t> kDummyShape = {-3};
+
 std::map<ge::DataType, std::string> kGeDType2CppDtype = {
     {ge::DT_INT32, "int32_t"},
     {ge::DT_INT64, "int64_t"},
@@ -266,11 +268,9 @@ Status SymbolicShapeSymbolizer::Symbolize(const ComputeGraphPtr &graph, const st
     if (ge_tensor_desc.IsOriginShapeInitialized()) {
       input_origin_shape = tensor.GetTensorDesc().GetOriginShape();
     }
-    const std::vector<int64_t> kDummyShape = {-3};
-    if (input_origin_shape.GetDims() == kDummyShape && shape.IsUnknownShape()) {
-      GELOGW("Invalid shape unable to symbolize this node %s.", op_desc->GetName().c_str());
-      continue;
-    }
+    // atc + acl场景动态shape下开启自动融合会产生[-3]的shape，在这里拦截报错
+    GE_ASSERT_TRUE(input_origin_shape.GetDims() != kDummyShape,
+      "Node[%s] is not supported symbolize, input origin shape is [-3].", data_node->GetNamePtr());
     GeShape ge_shape;
     if (shape.IsUnknownDimNum()) {
       GE_ASSERT_SUCCESS(HandleUnknownDimNum(input_origin_shape, op_desc, shape_env_attr, data_index, ge_shape),
@@ -279,9 +279,9 @@ Status SymbolicShapeSymbolizer::Symbolize(const ComputeGraphPtr &graph, const st
       ge_shape = shape;
     }
 
-    GE_ASSERT_TRUE(input_origin_shape.GetDims() == kDummyShape || ge_shape.GetDimNum() == input_origin_shape.GetDimNum(),
-                   "The index %d shape dim num between Data node(%s)(%zu) and input tensor(%zu) are different",
-                   data_index, op_desc->GetName().c_str(), ge_shape.GetDimNum(), input_origin_shape.GetDimNum());
+    GE_ASSERT_TRUE(ge_shape.GetDimNum() == input_origin_shape.GetDimNum(),
+      "The index %d shape dim num between Data node(%s)(%zu) and input tensor(%zu) are different",
+      data_index, op_desc->GetName().c_str(), ge_shape.GetDimNum(), input_origin_shape.GetDimNum());
 
     const auto symbolic_desc_attr = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
     GE_ASSERT_NOTNULL(symbolic_desc_attr);
