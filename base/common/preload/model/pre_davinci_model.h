@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -18,6 +18,8 @@
 #include "common/model/ge_model.h"
 
 namespace ge {
+using GetOpIndexFunc = std::function<int64_t(const domi::TaskDef &)>;
+using TypeToEngineNameToGetOpIndexFunc = std::map<uint32_t, std::pair<std::string, GetOpIndexFunc>>;
 class PreDavinciModel {
  public:
   PreDavinciModel() = default;
@@ -32,10 +34,14 @@ class PreDavinciModel {
   void DoReset() const;
 
  private:
-  Status GetEngineName(const EngineType engine_type, const uint32_t task_type,
-                       const uint32_t kernel_type, std::string &engine_name) const;
-  std::string GetEngineNameByType(const uint32_t type,
-                                  const std::map<uint32_t, std::string> type_to_engine_name) const;
+  Status GetEngineNameAndOpDesc(const EngineType engine_type, const domi::TaskDef &task_def,
+                                std::string &engine_name, OpDescPtr &op_desc) const;
+  Status GetEngineNameAndOpDescByType(const uint32_t type,
+                                           const TypeToEngineNameToGetOpIndexFunc &type_to_engine_name_to_get_op_index_func,
+                                           const domi::TaskDef &task_def,
+                                           std::string &engine_name,
+                                           OpDescPtr &op_desc) const;
+  std::string PrintTaskDef(const domi::TaskDef &task_def) const;
 
  protected:
   // get Op

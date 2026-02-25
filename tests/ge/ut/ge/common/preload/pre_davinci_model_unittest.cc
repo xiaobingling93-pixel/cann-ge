@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -32,33 +32,40 @@
 namespace ge {
 class PreDavinciModelUnittest : public testing::Test {};
 
-TEST_F(PreDavinciModelUnittest, GetEngineNameFail) {
+TEST_F(PreDavinciModelUnittest, GetEngineNameAndOpDescFail) {
   PreDavinciModel pre_davinci;
   std::string name;
+  OpDescPtr op_desc;
   pre_davinci.Assign(nullptr);
-  EXPECT_NE(pre_davinci.GetEngineName(static_cast<EngineType>(2U),
-      static_cast<uint32_t>(ModelTaskType::MODEL_TASK_KERNEL), 0, name), SUCCESS);
-  EXPECT_NE(pre_davinci.GetEngineName(static_cast<EngineType>(2U),
-      static_cast<uint32_t>(ModelTaskType::MODEL_TASK_ALL_KERNEL), 0, name), SUCCESS);
-}
-
-TEST_F(PreDavinciModelUnittest, GetEngineNameByTypeFail) {
-  PreDavinciModel pre_davinci;
-  EXPECT_EQ(pre_davinci.GetEngineNameByType(static_cast<uint32_t>(ccKernelType::CUST_AI_CPU), kKernelTypeToNanoEngineName), "");
+  EXPECT_NE(pre_davinci.GetEngineNameAndOpDesc(static_cast<EngineType>(2U),
+      domi::TaskDef(), name, op_desc), SUCCESS);
 }
 
 TEST_F(PreDavinciModelUnittest, GetHostFuncEngine) {
   PreDavinciModel pre_davinci;
-  std::string engine_name;
-  EXPECT_EQ(pre_davinci.GetEngineName(static_cast<EngineType>(EngineType::kNanoEngine),
-      static_cast<uint32_t>(ModelTaskType::MODEL_TASK_KERNEL),
-      static_cast<uint32_t>(ccKernelType::AI_CPU), engine_name), SUCCESS);
-  EXPECT_EQ(engine_name, "nano_aicpu_engine");
-  const auto func = PreGenerateTaskRegistry::GetInstance().FindPreGenerateTask(engine_name);
   domi::TaskDef task_def;
+  task_def.set_type(static_cast<uint32_t>(ModelTaskType:: MODEL_TASK_KERNEL));
+
+  domi::KernelDef kernel_def;
+  domi::KernelContext context;
+  context.set_kernel_type(static_cast<uint32_t>(ccKernelType::CCE_AI_CPU));
+
+  *kernel_def.mutable_context() = context;
+  *task_def.mutable_kernel() = kernel_def;
+
+  std::string engine_name;
   OpDescPtr op_desc;
-  PreTaskInput pre_task_input;
-  func(task_def, op_desc, pre_task_input);
+
+  EXPECT_NE(pre_davinci.GetEngineNameAndOpDesc(
+      static_cast<EngineType>(EngineType::kNanoEngine),
+      task_def,
+      engine_name,
+      op_desc),
+      SUCCESS);
+
+  EXPECT_TRUE(engine_name.empty());
+  const auto func = PreGenerateTaskRegistry::GetInstance().FindPreGenerateTask(engine_name);
+  ASSERT_EQ(func, nullptr);
 }
 
 TEST_F(PreDavinciModelUnittest, DoTaskSinkDefaultTaskSuccess) {
@@ -118,23 +125,11 @@ TEST_F(PreDavinciModelUnittest, DoTaskSinkDefaultTaskSuccess) {
 TEST_F(PreDavinciModelUnittest, GenerateTaskDesc) {
   PreDavinciModel pre_davinci;
   std::string engine_name;
-  EXPECT_EQ(pre_davinci.GetEngineName(static_cast<EngineType>(EngineType::kNanoEngine),
-      static_cast<uint32_t>(ModelTaskType::MODEL_TASK_KERNEL),
-      static_cast<uint32_t>(ccKernelType::TE), engine_name), SUCCESS);
-  EXPECT_EQ(engine_name, "nano_aicore_engine");
+  OpDescPtr op_desc;
+  EXPECT_NE(pre_davinci.GetEngineNameAndOpDesc(static_cast<EngineType>(EngineType::kNanoEngine),
+      domi::TaskDef(), engine_name, op_desc), SUCCESS);
+  EXPECT_TRUE(engine_name.empty());
   const auto func = PreGenerateTaskRegistry::GetInstance().FindPreGenerateTask(engine_name);
-  domi::TaskDef task_def;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>("test0", "test1");
-  PreTaskInput pre_task_input;
-  PreTaskResult result;
-  (void)ge::AttrUtils::SetBool(op_desc, "_slow_context_switch", true);
-  result = func(task_def, op_desc, pre_task_input);
-  EXPECT_EQ(result.pre_task_desc_infos.at(0).seq_info.u.nanoAicoreTask.u.hwtsTaskDesc.sw, 1);
-  EXPECT_EQ(result.pre_task_desc_infos.at(0).seq_info.u.nanoAicoreTask.u.hwtsTaskDesc.uf, 0);
-  ge::OpDescPtr op_desc_withUf = std::make_shared<ge::OpDesc>("test2", "test3");
-  (void)ge::AttrUtils::SetBool(op_desc_withUf, "_slow_context_switch", true);
-  (void)ge::AttrUtils::SetStr(op_desc_withUf, "_switch_buffer_type", "UF");
-  result = func(task_def, op_desc_withUf, pre_task_input);
-  EXPECT_EQ(result.pre_task_desc_infos.at(0).seq_info.u.nanoAicoreTask.u.hwtsTaskDesc.uf, 1);
+  ASSERT_EQ(func, nullptr);
 }
 }

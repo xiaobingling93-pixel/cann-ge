@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -42,28 +42,5 @@ const std::string kAttrWeightPrefetchType = "_weight_prefetch_type";
 const std::string kAttrWeightPrefetchSrcOffset = "_weight_prefetch_src_offset";
 const std::string kAttrWeightPrefetchDstOffset = "_weight_prefetch_dst_offset";
 const std::string kAttrWeightPrefetchDataSize = "_weight_prefetch_data_size";
-
-const std::map<uint32_t, std::string> kKernelTypeToEngineName = {
-    {static_cast<uint32_t>(ccKernelType::TE), kPreEngineAiCore},
-    {static_cast<uint32_t>(ccKernelType::AI_CPU), kPreEngineAiCpu},
-    {static_cast<uint32_t>(ccKernelType::CUST_AI_CPU), kPreEngineAiCpu}};
-const std::map<uint32_t, std::string> kKernelTypeToNanoEngineName = {
-    {static_cast<uint32_t>(ccKernelType::TE), kPreEngineNanoAiCore},
-    {static_cast<uint32_t>(ccKernelType::AI_CPU), kPreEngineNanoAiCpu}};
-const std::map<uint32_t, std::string> kTaskTypeToEngineName = {
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_EVENT_RECORD), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_EVENT_WAIT), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_STREAM_SWITCH), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_STREAM_ACTIVE), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_STREAM_LABEL_SWITCH_BY_INDEX), kPreEngineNanoAiCore},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_STREAM_LABEL_GOTO), kPreEngineNanoAiCore},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_LABEL_SET), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_LABEL_SWITCH), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_LABEL_GOTO), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_MEMCPY_ASYNC), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_MEMCPY_ADDR_ASYNC), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_FUSION_START), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_FUSION_END), kPreEngineDefault},
-    {static_cast<uint32_t>(ModelTaskType::MODEL_TASK_END_GRAPH), kPreEngineDefault}};
 }  // namespace ge
 #endif  // GE_COMMON_PRELOAD_PRE_MODEL_UTILS_H_
