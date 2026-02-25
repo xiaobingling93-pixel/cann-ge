@@ -55,34 +55,26 @@ class HeterogeneousDeployPlannerTest : public testing::Test {
     RuntimeStub::Reset();
   }
 
-  std::vector<DeployPlan::DeviceInfo>
-      double_node_list{DeployPlan::DeviceInfo{1, 0, 0},
-                                  DeployPlan::DeviceInfo{0, 1, 0},
-                                  DeployPlan::DeviceInfo{0, 1, 1}};
-  std::vector<DeployPlan::DeviceInfo>
-      double_device_list{DeployPlan::DeviceInfo{0, 1, 0}, DeployPlan::DeviceInfo{0, 1, 1}};
-  std::vector<DeployPlan::DeviceInfo> single_device_with_cpu_list{DeployPlan::DeviceInfo{1, 0, 0},
-                                                                  DeployPlan::DeviceInfo{0, 0, 0}};
-  std::vector<DeployPlan::DeviceInfo> double_device_with_cpu_list{DeployPlan::DeviceInfo{1, 0, 0},
-                                                                  DeployPlan::DeviceInfo{0, 0, 0},
-                                                                  DeployPlan::DeviceInfo{0, 0, 1}};
+  std::vector<DeployPlan::DeviceInfo> double_device_list{DeployPlan::DeviceInfo{1, 0, 0},
+                                                         DeployPlan::DeviceInfo{0, 0, 0},
+                                                         DeployPlan::DeviceInfo{0, 0, 1}};
+
   std::vector<DeployPlan::DeviceInfo> four_device_with_cpu_list{DeployPlan::DeviceInfo{1, 0, 0},
                                                                 DeployPlan::DeviceInfo{0, 0, 0},
                                                                 DeployPlan::DeviceInfo{0, 0, 1},
+                                                                DeployPlan::DeviceInfo{1, 1, 0},
                                                                 DeployPlan::DeviceInfo{0, 1, 0},
                                                                 DeployPlan::DeviceInfo{0, 1, 1}};
-  std::vector<DeployPlan::DeviceInfo> single_device_list{DeployPlan::DeviceInfo{0, 1, 0}};
-  std::vector<DeployPlan::DeviceInfo> single_host_list{DeployPlan::DeviceInfo{1, 0, 0}};
-  std::vector<DeployPlan::DeviceInfo> device_list_2_dev
-      {DeployPlan::DeviceInfo{0, 1, 0}, DeployPlan::DeviceInfo{0, 2, 0}};
 
-  void BuildDeviceInfos(const std::vector<DeployPlan::DeviceInfo> &device_list,
-                        bool is_multi_cluster = false,
-                        bool has_host_flowgw = false) {
+  std::vector<DeployPlan::DeviceInfo> single_device_list{DeployPlan::DeviceInfo{1, 0, 0},
+                                                         DeployPlan::DeviceInfo{0, 0, 0}};
+  std::vector<DeployPlan::DeviceInfo> single_host_list{DeployPlan::DeviceInfo{1, 0, 0}};
+
+  void BuildDeviceInfos(const std::vector<DeployPlan::DeviceInfo> &device_list, bool has_host_flowgw = false) {
     ResourceManager::GetInstance().device_info_map_.clear();
     mock_device_list_.clear();
     mock_device_list_.resize(device_list.size());
-    int32_t device_index = 0;    
+    int32_t device_index = 0;
     std::map<int32_t, std::vector<int32_t>> npu_node_id_to_mesh;
     std::map<int32_t, std::vector<int32_t>> cpu_node_id_to_mesh;
     std::set<int32_t> npu_node_ids;
@@ -92,18 +84,12 @@ class HeterogeneousDeployPlannerTest : public testing::Test {
       if (type == NPU) {
         npu_node_ids.emplace(node_id);
         npu_node_id_to_mesh[node_id] = {0, static_cast<int>(npu_node_ids.size() - 1)};
-        if (!is_multi_cluster) {
-          npu_node_id_to_mesh[node_id].insert(npu_node_id_to_mesh[node_id].begin(), 0);
-        }
       } else {
         cpu_node_id_to_mesh[node_id] = {0, node_id};
-        if (!is_multi_cluster) {
-          npu_node_id_to_mesh[node_id].insert(npu_node_id_to_mesh[node_id].begin(), 0);
-        }
       }
     }
     for (const auto &device : device_list) {
-      auto type = static_cast<DeviceType>(device.GetType()); 
+      auto type = static_cast<DeviceType>(device.GetType());
       auto node_id = device.GetNodeId();
       auto device_id = device.GetDeviceId();
       mock_device_list_[device_index].SetNodeId(node_id);
@@ -111,14 +97,10 @@ class HeterogeneousDeployPlannerTest : public testing::Test {
       mock_device_list_[device_index].SetHcomDeviceId(device_id);
       mock_device_list_[device_index].SetPhyDeviceId(device_id);
       mock_device_list_[device_index].SetDeviceType(type);
-      if (type == NPU) {
-        mock_device_list_[device_index].SetDeviceIndex(device_id);
-        mock_device_list_[device_index].SetNodeMeshIndex(npu_node_id_to_mesh[node_id]);
-      } else {
-        mock_device_list_[device_index].SetDeviceIndex(-1);
-        mock_device_list_[device_index].SetNodeMeshIndex(cpu_node_id_to_mesh[node_id]);
-      }
-      if (is_multi_cluster) {
+      mock_device_list_[device_index].SetDeviceIndex(device_id);
+      mock_device_list_[device_index].SetNodeMeshIndex(npu_node_id_to_mesh[node_id]);
+      // device has flowgw
+      if (type != NPU) {
         mock_device_list_[device_index].SetSupportFlowgw(has_host_flowgw);
       }
       std::cout << "device mesh = " << mock_device_list_[device_index].ToIndex().c_str()
@@ -174,8 +156,8 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithProxy) {
 
   DeployPlan deploy_plan;
   std::vector<GeRootModelPtr> models;
-  BuildDeviceInfos(single_device_with_cpu_list, true);
-  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_with_cpu_list).BuildPlan(deploy_plan);
+  BuildDeviceInfos(single_device_list);
+  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 8);
   ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
@@ -187,7 +169,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildServerDynamicSchedDeployPlanWith
   ASSERT_TRUE(flow_model != nullptr);
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
-  ASSERT_TRUE(model_relation != nullptr);
+  ASSERT_NE(model_relation, nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
   ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
   ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
@@ -201,9 +183,10 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildServerDynamicSchedDeployPlanWith
   std::vector<GeRootModelPtr> models;
   std::vector<DeployPlan::DeviceInfo> node_list = {DeployPlan::DeviceInfo{1, 0, 0},
                                                    DeployPlan::DeviceInfo{0, 0, 0},
+                                                   DeployPlan::DeviceInfo{1, 1, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 1}};
-  BuildDeviceInfos(node_list, true);
+  BuildDeviceInfos(node_list, false);
   auto ret = HeterogeneousDeployPlanner(flow_model, node_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   std::cout << "GetQueueInfoList" << deploy_plan.GetQueueInfoList().size() <<
@@ -217,9 +200,9 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildServerDynamicSchedDeployPlanWith
     "GetEntryBindings" << deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size() <<
     "GetModelIndexInfo" << deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size() <<
     "GetModelInstanceNum" << deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size();
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 64);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 64);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithProxyAndMultipleDevice) {
@@ -242,7 +225,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithProxyAndMultipleDe
                                                    DeployPlan::DeviceInfo{0, 0, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 1}};
-  BuildDeviceInfos(node_list, true);
+  BuildDeviceInfos(node_list);
   auto ret = HeterogeneousDeployPlanner(flow_model, node_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 30);
@@ -259,10 +242,10 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithProxyAndMultipleDe
  *         |
  *         |
  *        PC_2
- *        |  \
- *       PC_1 |
- *     /    \
- *    |      |
+ *        |   \
+ *       PC_1  |
+ *     /    \  |
+ *    |      \|
  *  data1  data2
  */
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan) {
@@ -272,24 +255,23 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan) {
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   std::vector<GeRootModelPtr> models;
   BuildDeviceInfos(single_device_list);
   auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  // data2 -> PC_1, data2 -> PC_2 ==== relation: data2(q) -> tagxx && tagxx -> pc1(q) && tagxx -> pc2(q)
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 14);  // 8(queue) + 3(in group) + 3(out group)
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 6);  
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 7);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 8);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 2);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 2);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 }
 
 /**
@@ -310,12 +292,12 @@ TEST_F(HeterogeneousDeployPlannerTest, TestDynamicSchedBuildDeployPlan) {
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   deploy_plan.SetIsDynamicSched(true);
@@ -335,12 +317,12 @@ TEST_F(HeterogeneousDeployPlannerTest, TestDynamicSchedBuildDeployPlan) {
     "GetEntryBindings" << deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size() <<
     "GetModelIndexInfo" << deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size() <<
     "GetModelInstanceNum" << deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size();
-  // data2 -> PC_1, data2 -> PC_2 ==== relation: data2(q) -> tagxx && tagxx -> pc1(q) && tagxx -> pc2(q)
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 28);  // 8(queue) + 3(in group) + 3(out group)
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 12);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 15);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 16);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 2);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 7);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 }
 
 /**
@@ -361,12 +343,12 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanInputsFusion) {
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   std::map<std::string, std::string> options;
   options.insert(std::pair<std::string, std::string>(OPTION_EXEC_ENABLE_FUSION, "true"));
@@ -378,11 +360,11 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanInputsFusion) {
   auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   // data2 -> PC_1, data2 -> PC_2
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 12);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 4);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 5);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 8);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 2);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 2);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
   std::map<std::string, std::string> empty_options;
   ge::GetThreadLocalContext().SetGraphOption(empty_options);
 }
@@ -403,19 +385,19 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithSeriesModel) {
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   auto model_iter = flow_model->GetSubmodels().begin();
   auto submodel1 = model_iter->second;
-  submodel1->SetLogicDeviceId("0:0:0,0:0:1");
+  submodel1->SetLogicDeviceId("0:0:0:0,0:0:1:0");
   ++model_iter;
   auto submodel2 = model_iter->second;
-  submodel2->SetLogicDeviceId("0:0:0");
+  submodel2->SetLogicDeviceId("0:0:0:0");
 
   DeployPlan deploy_plan;
   BuildDeviceInfos(double_device_list);
@@ -423,15 +405,14 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithSeriesModel) {
   ASSERT_EQ(ret, SUCCESS);
 
   // data2 -> PC_1, data2 -> PC_2
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 15);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 9);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 7);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 1);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 11);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 6);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 4);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithLogicDeviceId1) {
-    Configurations::GetInstance().information_.has_cluster_define = true;
     auto flow_model = StubModels::BuildFlowModel(StubModels::BuildSinglePartitionedCallGraph());
     ASSERT_TRUE(flow_model != nullptr);
     EXPECT_EQ(flow_model->GetSubmodels().size(), 1);
@@ -443,7 +424,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithLogicDeviceId1) {
     auto submodel1 = model_iter->second.get();
     submodel1->SetLogicDeviceId("0:0:0,0:0:1");
     DeployPlan deploy_plan;
-    BuildDeviceInfos(double_device_list, true);
+    BuildDeviceInfos(double_device_list);
     auto ret = HeterogeneousDeployPlanner(flow_model, double_device_list).BuildPlan(deploy_plan);
     ASSERT_EQ(ret, SUCCESS);
 }
@@ -459,9 +440,8 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithLogicDeviceId2) {
     auto model_iter = flow_model->GetSubmodels().begin();
     auto submodel1 = model_iter->second.get();
     submodel1->SetModelType(PNE_ID_CPU);
-    submodel1->SetLogicDeviceId("0:0:-1");
     DeployPlan deploy_plan;
-    BuildDeviceInfos(single_host_list, true);
+    BuildDeviceInfos(single_host_list);
     auto ret = HeterogeneousDeployPlanner(flow_model, single_host_list).BuildPlan(deploy_plan);
     ASSERT_EQ(ret, SUCCESS);
 }
@@ -482,23 +462,23 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_2) {
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
   ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 3);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-3")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-3")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-3")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-3")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   BuildDeviceInfos(single_device_list);
   auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
 
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 14);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 6);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 6);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 5);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 0);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
 }
 
 /**
@@ -515,20 +495,20 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel) {
   ASSERT_TRUE(flow_model != nullptr);
   HeterogeneousDeployPlanner planner(flow_model, single_device_list);
   DeployPlan deploy_plan;
-  BuildDeviceInfos(single_device_list);
+  BuildDeviceInfos(single_device_list, false);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 12);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 6);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 3);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 0);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 6);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
   ASSERT_EQ(deploy_plan.GetSubmodels().size(), 1);
   auto iter = deploy_plan.submodels_.begin();
   auto &submodel_info = deploy_plan.submodels_[iter->first];
-  ASSERT_EQ(submodel_info.input_queue_indices.size(), deploy_plan.GetInputQueueIndices().size());
-  ASSERT_EQ(submodel_info.output_queue_indices.size(), deploy_plan.GetOutputQueueIndices().size());
+  EXPECT_EQ(submodel_info.input_queue_indices.size(), deploy_plan.GetInputQueueIndices().size());
+  EXPECT_EQ(submodel_info.output_queue_indices.size(), deploy_plan.GetOutputQueueIndices().size());
 }
 
 /**
@@ -549,17 +529,17 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel_host) {
   BuildDeviceInfos(single_host_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 3);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 3);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 0);
-  ASSERT_EQ(deploy_plan.GetSubmodels().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
+  EXPECT_EQ(deploy_plan.GetSubmodels().size(), 1);
   auto iter = deploy_plan.submodels_.begin();
   auto &submodel_info = deploy_plan.submodels_[iter->first];
-  ASSERT_EQ(submodel_info.input_queue_indices.size(), deploy_plan.GetInputQueueIndices().size());
-  ASSERT_EQ(submodel_info.output_queue_indices.size(), deploy_plan.GetOutputQueueIndices().size());
-  ASSERT_EQ(submodel_info.is_head, true);
+  EXPECT_EQ(submodel_info.input_queue_indices.size(), deploy_plan.GetInputQueueIndices().size());
+  EXPECT_EQ(submodel_info.output_queue_indices.size(), deploy_plan.GetOutputQueueIndices().size());
+  EXPECT_EQ(submodel_info.is_head, true);
 }
 
 
@@ -618,20 +598,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_2_dev) {
   flow_model->SetModelRelation(model_relation_ptr);
 
   {
-    HeterogeneousDeployPlanner planner(flow_model, device_list_2_dev);
-    BuildDeviceInfos(device_list_2_dev);
+    HeterogeneousDeployPlanner planner(flow_model, double_device_list);
+    BuildDeviceInfos(double_device_list);
     auto ret = planner.BuildPlan(deploy_plan);
     ASSERT_EQ(ret, SUCCESS);
-    // (1 + 2 * 2)(output) + (2 * 2 + 1)(input) + 5(output group) + 5(input group) + 2(transit queue)
-    // with remove relation in diffirent device
-    ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 14);
-    // 2 + 2 + 2 + 1 + 1(output group) + 1 + 1 + 1 + 1 + 2(input group)
-    // PC_1->PC_2 contains 2 queue->queue
-    // in PC_1's output group, entries are [tag, queue]
-    // but in PC_2's input group, entries are [tag]
-    ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 8);
-    // 5(output) + 5(input)
-    ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 6);
+    EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 12);
+    EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 6);
+    EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 4);
   }
 }
 
@@ -688,9 +661,9 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_AllRawModel) {
   BuildDeviceInfos(single_device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 22);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 10);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 10);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 7);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 0);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
 }
 
 /**
@@ -747,10 +720,10 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_AllWrappedModels) {
   BuildDeviceInfos(single_device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 28);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 10);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 10);
-  ASSERT_EQ(deploy_plan.GetSubmodels().size(), 9);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 13);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 0);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
+  EXPECT_EQ(deploy_plan.GetSubmodels().size(), 9);
 }
 
 /**
@@ -807,10 +780,10 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_Mixed) {
   BuildDeviceInfos(single_device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 26);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 10);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 10);
-  ASSERT_EQ(deploy_plan.GetSubmodels().size(), 7);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 11);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 0);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 0);
+  EXPECT_EQ(deploy_plan.GetSubmodels().size(), 7);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlan_NoModel) {
@@ -850,15 +823,14 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel_2PG) {
   BuildDeviceInfos(double_device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  // 5(input queue) + 4(output queue) + 5(input group) + 4(output group)
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 18);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 12);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 15);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 9);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 9);
-  ASSERT_EQ(deploy_plan.GetSubmodels().size(), 2);
-  ASSERT_EQ(deploy_plan.GetGroups().size(), 9);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 6);
+  EXPECT_EQ(deploy_plan.GetSubmodels().size(), 2);
+  EXPECT_EQ(deploy_plan.GetGroups().size(), 6);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel_DeployResource_not_soc) {
@@ -927,7 +899,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel_2PG_UseNode0)
   BuildDeviceInfos(device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(planner.model_relation_.submodel_endpoint_infos.size(), 1);
+  EXPECT_EQ(planner.model_relation_.submodel_endpoint_infos.size(), 1);
   std::map<std::string, std::string> empty_options;
   ge::GetThreadLocalContext().SetGraphOption(empty_options);
 }
@@ -949,13 +921,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanFor2Models_2PG) {
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   BuildDeviceInfos(double_device_list);
@@ -967,11 +939,11 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanFor2Models_2PG) {
   std::cout << "GetQueueBindings().size():" << deploy_plan.GetQueueBindings().size() << std::endl;
   std::cout << "GetInputQueueIndices().size():" << deploy_plan.GetInputQueueIndices().size() << std::endl;
   std::cout << "GetOutputQueueIndices().size():" << deploy_plan.GetOutputQueueIndices().size() << std::endl;
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 25);
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 16);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 12);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 21);
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 12);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 8);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 
   DeviceInfo local_device(0, CPU, 0);
   local_device.SetHcomDeviceId(0);
@@ -994,8 +966,8 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanFor2Models_2PG) {
   ResourceManager::GetInstance().device_info_list_.emplace_back(remote_device_0);
   ResourceManager::GetInstance().device_info_list_.emplace_back(remote_device_1);
   ResourceManager::GetInstance().device_info_map_[0][0][CPU] = &local_device;
-  ResourceManager::GetInstance().device_info_map_[1][0][NPU] = &remote_device_0;
-  ResourceManager::GetInstance().device_info_map_[1][1][NPU] = &remote_device_1;
+  ResourceManager::GetInstance().device_info_map_[0][0][NPU] = &remote_device_0;
+  ResourceManager::GetInstance().device_info_map_[0][1][NPU] = &remote_device_1;
 
   Configurations::GetInstance().information_.host_info.data_panel.ipaddr = "127.0.0.1";
 
@@ -1020,21 +992,20 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanFor2Models_2PG) {
   };
   {
     deployer::FlowRoutePlan exchange_plan{};
-    DeployPlan::DeviceInfo target_device_info(1, 0, 0);
-    std::map<std::string, DeployPlan::DeviceInfo> key_2_device;
     EXPECT_EQ(FlowRoutePlanner::ResolveFlowRoutePlan(deploy_plan, 0, exchange_plan), SUCCESS);
-    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeQueue)), 3);
+    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeQueue)), 13);
     EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeTag)), 8);
-    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeGroup)), 4);
+    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeGroup)), 8);
     FlowRoutePlanner::PrintFlowRoutePlan(exchange_plan);
   }
   {
     deployer::FlowRoutePlan exchange_plan{};
     EXPECT_EQ(FlowRoutePlanner::ResolveFlowRoutePlan(deploy_plan, 0, exchange_plan), SUCCESS);
-    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeQueue)), 3);
+    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeQueue)), 13);
     EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeTag)), 8);
-    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeGroup)), 4);
+    EXPECT_EQ(CountEndpointByType(exchange_plan, static_cast<int32_t>(ExchangeEndpointType::kEndpointTypeGroup)), 8);
 
+    SubprocessManager::GetInstance().executable_paths_.emplace("queue_schedule", "/var/queue_schedule");
     FlowGwClientManager client_manager;
     client_manager.GetOrCreateClient(0, 0, {0}, false);
     client_manager.GetOrCreateClient(1, 0, {0}, false);
@@ -1081,26 +1052,26 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanFor2Models_Host) {
   }
 
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   BuildDeviceInfos(single_host_list);
   auto ret = HeterogeneousDeployPlanner(flow_model, single_host_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   // data2 -> PC_1, data2 -> PC_2
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 8);  // 6 + 2(group)
-  ASSERT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 2);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 8);  // 6 + 2(group)
+  EXPECT_EQ(deploy_plan.GetGroupEntryInfoList().size(), 2);
   ASSERT_NE(deploy_plan.GetGroupEntryInfoList()[0].ref_index, -1);
   ASSERT_NE(deploy_plan.GetGroupEntryInfoList()[1].ref_index, -1);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 2);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 2);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
 
   DeviceInfo local_device(0, CPU, 0);
   local_device.SetHostIp("127.0.0.1");
@@ -1484,7 +1455,7 @@ TEST_F(HeterogeneousDeployPlannerTest, ReindexNpuDevices) {
   EXPECT_EQ(ret, SUCCESS);
   EXPECT_EQ(planner.index_to_devices_.size(), 4);
   std::set<std::string> keys;
-  std::set<std::string> expected_keys {"0:0:0:0", "0:0:0:1", "0:0:1:0", "0:0:1:1"};
+  std::set<std::string> expected_keys {"0:0:0:0", "0:0:1:0", "0:1:0:0", "0:1:1:0"};
   for (auto &it : planner.index_to_devices_) {
     keys.emplace(it.first);
   }
@@ -1505,7 +1476,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForSingleModel_Without_Compi
   // without compile resource json
   auto ret = planner.BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
-  ASSERT_EQ(deploy_plan.submodels_.size(), device_list.size());
+  EXPECT_EQ(deploy_plan.submodels_.size(), device_list.size());
   std::map<std::string, std::string> empty_options;
   ge::GetThreadLocalContext().SetGraphOption(empty_options);
 }
@@ -1548,7 +1519,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForHeavyLoadUdf) {
                                                   DeployPlan::DeviceInfo{0, 0, 1}};
   HeterogeneousDeployPlanner planner(flow_model, device_list);
   DeployPlan deploy_plan;
-  BuildDeviceInfos(device_list, true);
+  BuildDeviceInfos(device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   EXPECT_EQ(ret, SUCCESS);
   const auto &submodels = deploy_plan.GetSubmodels();
@@ -1603,7 +1574,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForHeavyLoadUdf_cannot_assig
                                                   DeployPlan::DeviceInfo{0, 0, 1}};
   HeterogeneousDeployPlanner planner(flow_model, device_list);
   DeployPlan deploy_plan;
-  BuildDeviceInfos(device_list, true);
+  BuildDeviceInfos(device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   EXPECT_NE(ret, SUCCESS);
   // recover
@@ -1648,7 +1619,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildPlanForHeavyLoadUdf_without_logi
                                                   DeployPlan::DeviceInfo{0, 0, 1}};
   HeterogeneousDeployPlanner planner(flow_model, device_list);
   DeployPlan deploy_plan;
-  BuildDeviceInfos(device_list, true);
+  BuildDeviceInfos(device_list);
   auto ret = planner.BuildPlan(deploy_plan);
   EXPECT_NE(ret, SUCCESS);
   // recover
@@ -1662,19 +1633,19 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxy)
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   deploy_plan.SetIsDynamicSched(true);
   std::vector<GeRootModelPtr> models;
-  BuildDeviceInfos(single_device_with_cpu_list, true);
-  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_with_cpu_list).BuildPlan(deploy_plan);
+  BuildDeviceInfos(single_device_list);
+  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
 
   cout << deploy_plan.GetQueueInfoList().size() << endl;
@@ -1689,17 +1660,17 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxy)
   cout << deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size() << endl;
   cout << deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size() << endl;
 
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 16);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 7);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetStatusOutputQueueIndices().size(), 3);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedInputQueueIndices().size(), 1);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedOutputQueueIndices().size(), 1);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetDatagwRequestBindings().size(), 2);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size(), 2);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size(), 1);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size(), 3);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 16);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 7);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetStatusOutputQueueIndices().size(), 3);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedInputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetDatagwRequestBindings().size(), 2);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size(), 2);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size(), 1);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size(), 3);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxyAndMultipleDevice) {
@@ -1708,13 +1679,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxyA
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 2);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeployPlan deploy_plan;
   deploy_plan.SetIsDynamicSched(true);
@@ -1723,7 +1694,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxyA
                                                    DeployPlan::DeviceInfo{0, 0, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 0},
                                                    DeployPlan::DeviceInfo{0, 1, 1}};
-  BuildDeviceInfos(node_list, true);
+  BuildDeviceInfos(node_list);
   auto ret = HeterogeneousDeployPlanner(flow_model, node_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   
@@ -1739,17 +1710,17 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDynamicSchedDeployPlanWithProxyA
   cout << deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size() << endl;
   cout << deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size() << endl;
 
-  ASSERT_EQ(deploy_plan.GetQueueInfoList().size(), 64);
-  ASSERT_EQ(deploy_plan.GetQueueBindings().size(), 33);
-  ASSERT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
-  ASSERT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetStatusOutputQueueIndices().size(), 9);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedInputQueueIndices().size(), 3);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedOutputQueueIndices().size(), 3);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetDatagwRequestBindings().size(), 6);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size(), 11);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size(), 3);
-  ASSERT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size(), 9);
+  EXPECT_EQ(deploy_plan.GetQueueInfoList().size(), 64);
+  EXPECT_EQ(deploy_plan.GetQueueBindings().size(), 33);
+  EXPECT_EQ(deploy_plan.GetInputQueueIndices().size(), 2);
+  EXPECT_EQ(deploy_plan.GetOutputQueueIndices().size(), 1);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetStatusOutputQueueIndices().size(), 9);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedInputQueueIndices().size(), 3);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetSchedOutputQueueIndices().size(), 3);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetDatagwRequestBindings().size(), 6);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetEntryBindings().size(), 11);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelIndexInfo().size(), 3);
+  EXPECT_EQ(deploy_plan.GetDynamicSchedPlan().GetModelInstanceNum().size(), 9);
 }
 
 TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw) {
@@ -1758,11 +1729,11 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw) {
   EXPECT_EQ(flow_model->GetSubmodels().size(), 1);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 1);
 
   DeployPlan deploy_plan;
-  BuildDeviceInfos(single_device_with_cpu_list, true, true);
-  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_with_cpu_list).BuildPlan(deploy_plan);
+  BuildDeviceInfos(single_device_list, true);
+  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
 }
 
@@ -1772,13 +1743,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw2) {
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeviceInfo local_device(0, CPU, 0);
   local_device.SetResourceType("X86");
@@ -1818,8 +1789,8 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw2) {
 
   DeployPlan deploy_plan;
   deploy_plan.SetIsDynamicSched(true);
-  BuildDeviceInfos(double_device_with_cpu_list, true, true);
-  auto ret = HeterogeneousDeployPlanner(flow_model, double_device_with_cpu_list).BuildPlan(deploy_plan);
+  BuildDeviceInfos(double_device_list, true);
+  auto ret = HeterogeneousDeployPlanner(flow_model, double_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
 
   ResourceManager::GetInstance().device_info_list_ = std::move(backup_device_info_list);
@@ -1832,13 +1803,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw3) {
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeviceInfo local_device(0, CPU, 0);
   local_device.SetResourceType("X86");
@@ -1877,7 +1848,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgw3) {
   submodel2->SetLogicDeviceId("0:0:0:0,0:1:1:0");
 
   DeployPlan deploy_plan;
-  BuildDeviceInfos(four_device_with_cpu_list, true, true);
+  BuildDeviceInfos(four_device_with_cpu_list, true);
   auto ret = HeterogeneousDeployPlanner(flow_model, four_device_with_cpu_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   ResourceManager::GetInstance().device_info_list_ = std::move(backup_device_info_list);
@@ -1890,13 +1861,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgwBothHeav
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 1);
 
   DeviceInfo local_device(0, CPU, 0);
   local_device.SetResourceType("X86");
@@ -1937,7 +1908,7 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgwBothHeav
   udf_model2->SetLogicDeviceId("0:0:0:0,0:0:1:0");
 
   DeployPlan deploy_plan;
-  BuildDeviceInfos(four_device_with_cpu_list, true, true);
+  BuildDeviceInfos(four_device_with_cpu_list, true);
   auto ret = HeterogeneousDeployPlanner(flow_model, four_device_with_cpu_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
   ResourceManager::GetInstance().device_info_list_ = std::move(backup_device_info_list);
@@ -1950,13 +1921,13 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgwReuseQue
   EXPECT_EQ(flow_model->GetSubmodels().size(), 2);
   auto model_relation = flow_model->GetModelRelation();
   ASSERT_TRUE(model_relation != nullptr);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
-  ASSERT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 0);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.size(), 2);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->root_model_endpoint_info.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-1")->second.output_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.input_endpoint_names.size(), 1);
+  EXPECT_EQ(model_relation->submodel_endpoint_infos.find("subgraph-2")->second.output_endpoint_names.size(), 0);
 
   auto model_iter = flow_model->GetSubmodels().begin();
   auto &model_ins = model_iter->second;
@@ -1967,8 +1938,8 @@ TEST_F(HeterogeneousDeployPlannerTest, TestBuildDeployPlanWithHostFlowgwReuseQue
   model_ins2->SetLogicDeviceId("0:0:0:0");
 
   DeployPlan deploy_plan;
-  BuildDeviceInfos(single_device_with_cpu_list, true, true);
-  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_with_cpu_list).BuildPlan(deploy_plan);
+  BuildDeviceInfos(single_device_list, true);
+  auto ret = HeterogeneousDeployPlanner(flow_model, single_device_list).BuildPlan(deploy_plan);
   ASSERT_EQ(ret, SUCCESS);
 }
 

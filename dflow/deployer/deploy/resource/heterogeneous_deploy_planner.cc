@@ -345,16 +345,9 @@ Status HeterogeneousDeployPlanner::AssignDevices(const std::string &model_name,
 }
 
 void HeterogeneousDeployPlanner::GetValidLogicDeviceId(std::string &device_id) {
-  const uint8_t invalid_device_id_size = 3;
+  constexpr uint8_t invalid_device_id_size = 3;
   if (StringUtils::Split(device_id, ':').size() == invalid_device_id_size) {
-    if (Configurations::GetInstance().GetHostInformation().has_cluster_define) {
-      device_id.append(":0");
-    } else {
-      if (device_id == "0:0:-1") {
-        device_id = "0:-1:0";
-      }
-      device_id.insert(0, "0:");
-    }
+    device_id.append(":0");
   }
 }
 

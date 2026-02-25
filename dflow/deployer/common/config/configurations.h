@@ -71,7 +71,6 @@ struct DeployerConfig {
   NodeConfig node_config;
   std::vector<NodeConfig> remote_node_config_list;
   std::string working_dir;
-  bool has_cluster_define = false;
 };
 
 class Configurations {

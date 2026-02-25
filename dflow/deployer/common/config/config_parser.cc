@@ -365,7 +365,6 @@ Status ConfigParser::InitDeployerConfig(const std::vector<ClusterConfig> &cluste
                                         const std::vector<NodeDefConfig> &node_defs,
                                         const std::vector<ItemDefConfig> &item_defs,
                                         DeployerConfig &deployer_config) {
-  deployer_config.has_cluster_define = true;
   std::vector<NodeConfig> node_configs;
   GE_CHK_STATUS_RET(InitAllNodeConfig(clusters, node_defs, item_defs, node_configs),
                     "Failed to init all node config.");
