@@ -244,3 +244,31 @@ TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveCannotDelete1) 
   auto tensor_move = compute_graph->FindFirstNodeMatchType(TENSORMOVE);
   EXPECT_NE(tensor_move, nullptr);
 }
+
+TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveCannotDelete2) {
+  DEF_GRAPH(g1) {
+    auto test_op = OP_CFG("TESTOP")
+        .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+        .InCnt(2)
+        .OutCnt(2)
+        .InNames({"ref1", "ref2"})
+        .OutNames({"ref1", "ref2"})
+        .Attr(ATTR_NAME_REFERENCE, true)
+        .Build("test_op");
+    auto tensormove1 = OP_CFG(TENSORMOVE).InCnt(1).OutCnt(1).Attr("_inner_tensor_move", true).Build("tensormove1");
+    auto tensormove2 = OP_CFG(TENSORMOVE).InCnt(1).OutCnt(1).Attr("_inner_tensor_move", true).Build("tensormove2");
+    auto transdata1 = OP_CFG(TRANSDATA).InCnt(1).OutCnt(1).OutputAttr(0, ATTR_NAME_TENSOR_MEMORY_SCOPE, 2).
+        Build("transdata1");
+    auto transdata2 = OP_CFG(TRANSDATA).InCnt(1).OutCnt(1).OutputAttr(0, ATTR_NAME_TENSOR_MEMORY_SCOPE, 2).
+        Build("transdata2");
+    CHAIN(NODE("data1", DATA)->NODE(tensormove1)->NODE(transdata1)->NODE(test_op)->NODE("net_output", NETOUTPUT));
+    CHAIN(NODE("data1")->NODE(tensormove2)->NODE(transdata2)->EDGE(0, 1)->NODE(test_op));
+  };
+  auto compute_graph = ToComputeGraph(g1);
+  InnerTensorMoveDeletePass pass;
+  ASSERT_EQ(pass.Run(compute_graph), SUCCESS);
+  auto tensor_move_1 = compute_graph->FindNode("tensormove1");
+  EXPECT_NE(tensor_move_1, nullptr);
+  auto tensor_move_2 = compute_graph->FindNode("tensormove2");
+  EXPECT_NE(tensor_move_2, nullptr);
+}

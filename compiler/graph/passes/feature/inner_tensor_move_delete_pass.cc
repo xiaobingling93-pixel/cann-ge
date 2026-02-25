@@ -19,6 +19,38 @@
 namespace ge {
 namespace {
 const std::string kInnerTensorMoveAttr = "_inner_tensor_move";
+bool HasTensorMemoryScope(const NodePtr &node) {
+  auto op_desc = node->GetOpDesc();
+  GE_ASSERT_NOTNULL(op_desc);
+  for (const auto &tensor_desc : op_desc->GetAllOutputsDescPtr()) {
+    if (AttrUtils::HasAttr(tensor_desc, ATTR_NAME_TENSOR_MEMORY_SCOPE)) {
+      return true;
+    }
+  }
+  return false;
+}
+// nano形态下，是根据编译出来的kernel决定基地址来自于ioa/workspace/weight，所以连着输入的算子不能轻易删除，后续会有正式方案解决.
+// 临时方案:根据ATTR_NAME_TENSOR_MEMORY_SCOPE属性判断nano形态，并且判断是否连着输入data，如果连着就不删除
+bool IsCannotDelete(const NodePtr &tensor_move) {
+  bool has_tensor_memory_scope = HasTensorMemoryScope(tensor_move);
+  for (const auto &node : tensor_move->GetOutDataNodes()) {
+    GE_ASSERT_NOTNULL(node);
+    if (HasTensorMemoryScope(node)) {
+      has_tensor_memory_scope = true;
+      break;
+    }
+  }
+  if (!has_tensor_memory_scope) {
+    return false;
+  }
+  for (const auto &node: tensor_move->GetInDataNodes()) {
+    GE_ASSERT_NOTNULL(node);
+    if (OpTypeUtils::IsDataNode(node->GetType())) {
+      return true;
+    }
+  }
+  return false;
+}
 
 bool IsInnerTensorMove(const NodePtr &node) {
   if (node->GetType() != TENSORMOVE) {
@@ -202,6 +234,9 @@ Status InnerTensorMoveDeletePass::Run(ComputeGraphPtr graph) {
   GE_ASSERT_SUCCESS(PassUtils::UpdateRefAttr(graph));
   for (const auto &node : graph->GetDirectNode()) {
     if (IsInnerTensorMove(node)) {
+      if (IsCannotDelete(node)) {
+        continue;
+      }
       GE_ASSERT_SUCCESS(DeleteInnerTensorMove(node), "Inner TensorMove %s delete failed", node->GetNamePtr());
     }
   }

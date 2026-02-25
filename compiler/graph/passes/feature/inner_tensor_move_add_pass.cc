@@ -83,7 +83,7 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
       std::vector<InDataAnchorPtr> target_in_data_anchors; // 记录ref_input_node多引用时需要重新连边的输入inanchor
       for (const auto &peer_in_data_anchor : peer_out_data_anchor->GetPeerInDataAnchors()) {
         GE_ASSERT_NOTNULL(peer_in_data_anchor);
-        if (peer_in_data_anchor == in_data_anchor) {
+        if ((peer_in_data_anchor == in_data_anchor) || (node == peer_in_data_anchor->GetOwnerNode())) {
           continue;
         }
         if (connectivity_->IsConnected(node, peer_in_data_anchor->GetOwnerNode())) {

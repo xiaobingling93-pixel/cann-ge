@@ -43,7 +43,23 @@ ComputeGraphPtr BuildReluOnlyOutputToAssignGraph() {
                       .Attr(ATTR_NAME_REFERENCE, true)
                       .Build("assign");
     CHAIN(NODE("data1", DATA)->NODE("relu", RELU)->NODE(assign)->NODE("net_output", NETOUTPUT));
-    CHAIN(NODE("data2", DATA))->EDGE(0, 1)->NODE(assign);
+    CHAIN(NODE("data2", DATA)->EDGE(0, 1)->NODE(assign));
+  };
+  return ToComputeGraph(g1);
+}
+
+ComputeGraphPtr BuildMultiRefOpGraph() {
+  DEF_GRAPH(g1) {
+    auto test_op = OP_CFG("TESTOP")
+                      .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+                      .InCnt(2)
+                      .OutCnt(2)
+                      .InNames({"ref1", "ref2"})
+                      .OutNames({"ref1", "ref2"})
+                      .Attr(ATTR_NAME_REFERENCE, true)
+                      .Build("test_op");
+    CHAIN(NODE("data1", DATA)->NODE(test_op)->NODE("net_output", NETOUTPUT));
+    CHAIN(NODE("data1")->EDGE(0, 1)->NODE(test_op));
   };
   return ToComputeGraph(g1);
 }
@@ -211,6 +227,21 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_3) {
   auto add = graph->FindNode("add");
   ASSERT_NE(add, nullptr);
   EXPECT_EQ(add->GetInDataNodes().at(1), tensor_move);
+}
+
+TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_op_add_tensor_move_succ) {
+  auto graph = BuildMultiRefOpGraph();
+  InnerTensorMoveAddPass pass;
+  ASSERT_EQ(pass.Run(graph), SUCCESS);
+  auto test_op = graph->FindNode("test_op");
+  ASSERT_NE(test_op, nullptr);
+  auto input_1 = test_op->GetInDataNodes().at(0);
+  auto input_2 = test_op->GetInDataNodes().at(1);
+  ASSERT_NE(input_1, nullptr);
+  ASSERT_NE(input_2, nullptr);
+  EXPECT_EQ(input_1->GetType(), TENSORMOVE);
+  EXPECT_EQ(input_2->GetType(), TENSORMOVE);
+  EXPECT_NE(input_1->GetName(), input_2->GetName());
 }
 
 /**
