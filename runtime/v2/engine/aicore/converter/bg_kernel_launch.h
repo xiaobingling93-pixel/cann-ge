@@ -46,6 +46,11 @@ ValueHolderPtr LaunchKernelWithHandle(const CommonLaunchArg &launch_arg,
 ValueHolderPtr LaunchKernelWithFlag(const CommonLaunchArg &launch_arg,
                                     const std::vector<DevMemValueHolderPtr> &input_addrs,
                                     const std::vector<DevMemValueHolderPtr> &output_addrs);
+ValueHolderPtr AtomicLaunchKernelWithHandle(const CommonLaunchArg &launch_arg,
+                                            const ValueHolderPtr &stub_func,
+                                            const ValueHolderPtr &clean_workspace_indexes,
+                                            const std::vector<DevMemValueHolderPtr> &clean_output_addrs,
+                                            const ValueHolderPtr &clean_workspace_addrs);
 ValueHolderPtr AtomicLaunchKernelWithFlag(const CommonLaunchArg &launch_arg,
                                           const ValueHolderPtr &clean_workspace_indexes,
                                           const std::vector<DevMemValueHolderPtr> &clean_output_addrs,

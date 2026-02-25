@@ -89,7 +89,7 @@ inline bool IsUpdateContext(const char *const node_type) {
          IsStaAutoUpdateContext(node_type) || IsMixL2UpdateContext(node_type);
 }
 inline bool IsAtomicLaunchNode(const char *const node_type) {
-  return (strcmp(node_type, "AtomicLaunchKernelWithFlag") == 0);
+  return (strcmp(node_type, "AtomicLaunchKernelWithFlag") == 0) || (strcmp(node_type, "AtomicLaunchKernelWithHandle") == 0);
 }
 inline bool IsAiCoreLaunchNode(const char *const node_type) {
   return IsLaunchWithHandleNode(node_type) || IsLaunchWithFlagNode(node_type) || IsAtomicLaunchNode(node_type);

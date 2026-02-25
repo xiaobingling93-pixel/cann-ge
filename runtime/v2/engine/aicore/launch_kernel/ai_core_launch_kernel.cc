@@ -425,7 +425,7 @@ ge::graphStatus UpdateArgs(const KernelContext *context, const int32_t addr_star
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus UpdateAtomicArgs(const KernelContext *context, const int32_t addr_start, RtKernelLaunchArgsEx &args) {
+ge::graphStatus UpdateAtomicArgs(const KernelContext *context, const int32_t addr_start, const int32_t workspaceIndex, RtKernelLaunchArgsEx &args) {
   // todo 部分和 UpdateArgs 重复的代码可考虑提取
   auto &tiling_data = args.GetTilingData();
   FE_RETURN_IF_ERROR(args.UpdateBaseByTilingSize(tiling_data.GetDataSize()));
@@ -433,7 +433,7 @@ ge::graphStatus UpdateAtomicArgs(const KernelContext *context, const int32_t add
 
   auto io_num = context->GetInputPointer<size_t>(static_cast<int32_t>(InputCommon::kIoNum));
   auto ws_indexes =
-      context->GetInputPointer<TypedContinuousVector<int64_t>>(static_cast<int32_t>(WithAtomic::kWorkspaceIndex));
+      context->GetInputPointer<TypedContinuousVector<int64_t>>(workspaceIndex);
   if (io_num == nullptr || ws_indexes == nullptr) {
     return ge::GRAPH_FAILED;
   }
@@ -739,6 +739,33 @@ ge::graphStatus FillAtomicAiCoreProfilingInfo(const KernelContext *context, Prof
   return ge::GRAPH_SUCCESS;
 }
 
+ge::graphStatus AtomicAiCoreLaunchKernelWithHandle(KernelContext *context) {
+  auto stream = context->GetInputValue<void *>(static_cast<int32_t>(InputCommon::kStream));
+  FE_ASSERT_NOTNULL(stream);
+  auto handle = context->GetInputValue<void *>(static_cast<int32_t>(InputCommon::kBinHandle));
+  FE_ASSERT_NOTNULL(handle);
+  auto dev_fun = context->GetInputValue<size_t>(static_cast<int32_t>(WithAtomicHandle::kTilingKey));
+  auto block_dim = context->GetInputPointer<uint64_t>(static_cast<int32_t>(InputCommon::kBlockDim));
+  FE_ASSERT_NOTNULL(block_dim);
+  auto schedule_mode = context->GetInputValue<uint32_t>(static_cast<uint32_t>(InputCommon::kScheduleMode));
+  auto cfg = context->MutableInputPointer<rtTaskCfgInfo_t>(static_cast<size_t>(InputCommon::kCfg));
+  FE_ASSERT_NOTNULL(cfg);
+  cfg->schemMode = static_cast<uint8_t>(schedule_mode & k2BitsMask);
+  auto args = context->MutableInputPointer<RtKernelLaunchArgsEx>(static_cast<size_t>(InputCommon::kRtArg));
+  FE_ASSERT_NOTNULL(args);
+  auto local_mem_size = context->GetInputValue<uint32_t>(static_cast<uint32_t>(InputCommon::kLocalMemSize));
+  cfg->localMemorySize = local_mem_size;
+  FE_RETURN_IF_ERROR(UpdateAtomicArgs(context, static_cast<int32_t>(WithAtomicHandle::kIoAddrs), static_cast<int32_t>(WithAtomicHandle::kWorkspaceIndex), *args));
+  auto ret = rtKernelLaunchWithHandleV2(handle, dev_fun, *block_dim, args->GetBase(), nullptr, stream, cfg);
+  if (ret != RT_ERROR_NONE) {
+    GELOGE(ret, "Failed to launch kernel with handle");
+    return ret;
+  }
+  return ge::GRAPH_SUCCESS;
+}
+REGISTER_KERNEL(AtomicLaunchKernelWithHandle).RunFunc(AtomicAiCoreLaunchKernelWithHandle).TracePrinter(PrintLaunchArgs)
+.ProfilingInfoFiller(FillAtomicAiCoreProfilingInfo);
+
 ge::graphStatus AtomicAiCoreLaunchKernelWithFlag(KernelContext *context) {
   auto stream = context->GetInputValue<void *>(static_cast<int32_t>(InputCommon::kStream));
   FE_ASSERT_NOTNULL(stream);
@@ -754,7 +781,7 @@ ge::graphStatus AtomicAiCoreLaunchKernelWithFlag(KernelContext *context) {
   FE_ASSERT_NOTNULL(args);
   auto local_mem_size = context->GetInputValue<uint32_t>(static_cast<uint32_t>(InputCommon::kLocalMemSize));
   cfg->localMemorySize = local_mem_size;
-  FE_RETURN_IF_ERROR(UpdateAtomicArgs(context, static_cast<int32_t>(WithAtomic::kIoAddrs), *args));
+  FE_RETURN_IF_ERROR(UpdateAtomicArgs(context, static_cast<int32_t>(WithAtomic::kIoAddrs), static_cast<int32_t>(WithAtomic::kWorkspaceIndex), *args));
   FE_CHK_RT_RET(rtKernelLaunchWithFlagV2(handle, *block_dim, args->GetBase(), nullptr, stream, 0U, cfg));
   return ge::GRAPH_SUCCESS;
 }

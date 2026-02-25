@@ -62,6 +62,7 @@ REGISTER_PROF_TYPE(LaunchHcomKernel);
 REGISTER_PROF_TYPE(LaunchKernelWithHandle);
 REGISTER_PROF_TYPE(LaunchKernelWithFlag);
 REGISTER_PROF_TYPE(AtomicLaunchKernelWithFlag);
+REGISTER_PROF_TYPE(AtomicLaunchKernelWithHandle);
 REGISTER_PROF_TYPE(AicpuLaunchTfKernel);
 REGISTER_PROF_TYPE(AicpuLaunchCCKernel);
 REGISTER_PROF_TYPE(StarsTaskLaunchKernel);

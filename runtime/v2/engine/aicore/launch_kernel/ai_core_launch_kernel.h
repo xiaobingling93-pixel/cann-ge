@@ -42,6 +42,12 @@ enum class WithAtomic {
   kIoAddrs,
   kNum
 };
+enum class WithAtomicHandle {
+  kTilingKey = static_cast<int32_t>(InputCommon::kNum), //
+  kWorkspaceIndex, //
+  kIoAddrs,
+  kNum
+};
 constexpr uint64_t kAssertWorkFlag = 4U;
 constexpr uint16_t kDumpTypeBitNum = 56U;
 constexpr uint64_t kDumpSkipAddrNum = 1U;

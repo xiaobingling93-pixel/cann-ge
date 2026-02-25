@@ -31,7 +31,7 @@
 namespace gert {
 namespace bg {
 namespace {
-const char *kLaunchKernelTypes[] = {"LaunchKernelWithFlag", "LaunchKernelWithHandle", "AtomicLaunchKernelWithFlag",
+const char *kLaunchKernelTypes[] = {"LaunchKernelWithFlag", "LaunchKernelWithHandle", "AtomicLaunchKernelWithFlag", "AtomicLaunchKernelWithHandle",
                                     "LaunchMixKernelWithHandle", "LaunchMixKernelWithFlag"};
 
 bool IsTargetLaunchNode(const ge::FastNode *const node) {
@@ -79,6 +79,7 @@ ge::graphStatus FilterAndCopyInCtrlEdges(const ge::FastNode *launch_node, const 
 
 const std::unordered_map<std::string, int32_t> kLaunchKernelNamesToIoAddrIndexes = {
     {"LaunchKernelWithFlag", static_cast<int32_t>(kernel::WithArgs::kIoAddrs)},
+    {"AtomicLaunchKernelWithHandle", static_cast<int32_t>(kernel::WithAtomicHandle::kIoAddrs)},
     {"AtomicLaunchKernelWithFlag", static_cast<int32_t>(kernel::WithAtomic::kIoAddrs)},
     {"LaunchKernelWithHandle", static_cast<int32_t>(kernel::WithHandle::kIoAddrs)},
     {"LaunchMixKernelWithHandle", static_cast<int32_t>(kernel::WithHandle::kIoAddrs)},

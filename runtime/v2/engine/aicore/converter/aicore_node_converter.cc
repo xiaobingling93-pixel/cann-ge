@@ -551,7 +551,27 @@ static bg::ValueHolderPtr LaunchAtomic(const ge::NodePtr &node, const LowerInput
   ge::AttrUtils::GetListInt(atomic_op_desc, "WorkspaceIndexes", workspace_indexes);
   DfxExeArg dfx_exe_arg = GetOpDfxExeArg(atomic_node);
   auto dfx_holder = bg::ValueHolder::CreateConst(&dfx_exe_arg, sizeof(dfx_exe_arg));
-  auto launch_arg = bg::AtomicLaunchKernelWithFlag(
+  bg::ValueHolderPtr launch_arg = nullptr;
+  if (static_cast<ge::ModelTaskType>(task_def->type()) == ge::ModelTaskType::MODEL_TASK_ALL_KERNEL) {
+    launch_arg = bg::AtomicLaunchKernelWithHandle(
+      {lower_input.global_data->GetStream(),
+      atomic_bin,
+      atomic_tiling_ret[TilingContext::kOutputBlockDim],
+      atomic_tiling_ret[TilingContext::kOutputScheduleMode],
+      atomic_tiling_ret[TilingContext::kOutputLocalMemorySize],
+      atomic_workspaces_addr,
+      shapebuffer_addr,
+      qos,
+      {},
+      {},
+      atomic_node,
+      lower_input.global_data,
+      dfx_holder,
+      atomic_tiling_ret[static_cast<size_t>(kernel::TilingExOutputIndex::kRtArg)]},
+      atomic_tiling_ret[TilingContext::kOutputTilingKey],
+      CreateVectorHolder(workspace_indexes), output_clean_addrs, atomic_lowering_arg.workspaces_addrs);
+  } else {
+    launch_arg = bg::AtomicLaunchKernelWithFlag(
       {lower_input.global_data->GetStream(),
        atomic_bin,
        atomic_tiling_ret[TilingContext::kOutputBlockDim],
@@ -567,6 +587,7 @@ static bg::ValueHolderPtr LaunchAtomic(const ge::NodePtr &node, const LowerInput
        dfx_holder,
        atomic_tiling_ret[static_cast<size_t>(kernel::TilingExOutputIndex::kRtArg)]},
       CreateVectorHolder(workspace_indexes), output_clean_addrs, atomic_lowering_arg.workspaces_addrs);
+  }
   // 6. free memory, add dependency
   auto free_holder = bg::FreeWorkspaceMem(kOnDeviceHbm, atomic_workspaces_addr);
   bg::ValueHolder::AddDependency(launch_arg, free_holder);
