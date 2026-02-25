@@ -13,7 +13,7 @@
 │   ├──move_relu_before_concat_pass.cpp                 // pass实现文件 
 ├── CMakeLists.txt                                      // 编译脚本
 ├── data         
-|   ├──torch_gen_air.py                                // torch脚本用于导出air
+|   ├──es_gen_air.py                                // 导出air
 |   ├──torch_forward.py                                 // torch脚本用于在线推理
 |—— gen_es_api
 |   |——CMakeLists.txt                                   // 生成eager style api的编译脚本
@@ -98,8 +98,9 @@
     - 安装es_all.whl
       ```
       pip install --force-reinstall --upgrade --target ${ASCEND_PATH}/python/site-packages/ 
-      ${CURRENT_PATH}/build/es_output/whl/es_all-*****.whl
+      ${BUILD_PATH}/es_output/whl/es_all-*****.whl
       ```
+      `${BUILD_PATH}`请替换为build目录的实际路径。
     - 设置环境变量，添加es_all.so的路径
       ```
       LD_LIBRARY_PATH="${BUILD_PATH}/es_output/lib64:${LD_LIBRARY_PATH}"
@@ -109,7 +110,7 @@
       python torch_gen_air.py
       ```
     - 执行结束后，在data目录下生成.air格式的模型文件，名称为graph.air。
-    - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](www.hiascend.com)搜索ATC离线模型编译工具)，`soc_version`请根据实际环境修改：
+    - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](https://www.hiascend.com)搜索ATC离线模型编译工具)，`soc_version`请根据实际环境修改：
       ```
       atc --model=./graph.air --framework=1 --soc_version=xxx --output=./model
       ```

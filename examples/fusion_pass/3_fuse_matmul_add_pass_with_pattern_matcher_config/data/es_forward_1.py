@@ -19,13 +19,11 @@ from ge.es.all import *
 
 
 def build_matmul_add_graph():
-
     # 1、创建图构建器
     builder = GraphBuilder("MakeMatmulAddGraph")
     # 2、创建图输入节点
     input1, input2 = builder.create_inputs(2)
-    #input3的值与pattern不同
-    input3_data = np.array([[0.1, 0.1],[0.2, 0.2]], dtype=np.float32)
+    input3_data = np.array([[0.1, 0.1], [0.1, 0.1]], dtype=np.float32)
     input3 = Tensor(
         input3_data.flatten().tolist(),
         None,
@@ -51,6 +49,7 @@ def dump_matmul_add_graph(graph):
     graph.dump_to_file(format=DumpFormat.kOnnx,
                        suffix="make_matmul_add_graph"
                        )
+
 
 def run_matmul_add_graph(graph) -> int:
     """

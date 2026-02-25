@@ -21,13 +21,13 @@ from ge.es.all import *
 def build_matmul_add_graph():
     builder = GraphBuilder("MakeMatmulAddGraph")
     input1, input2 = builder.create_inputs(2)
-    input3_data = np.array([[0.1, 0.1],[0.1, 0.1]], dtype=np.float32)
+    input3_data = np.array([[0.1, 0.1], [0.1, 0.1]], dtype=np.float32)
     input3 = Tensor(
         input3_data.flatten().tolist(),
         None,
         DataType.DT_FLOAT,
         Format.FORMAT_ND,
-        [2,2]
+        [2, 2]
     )
     matmul_tensor_holder = MatMul(
         input1,
@@ -40,9 +40,11 @@ def build_matmul_add_graph():
     builder.set_graph_output(add_tensor_holder, 0)
     return builder.build_and_reset()
 
+
 def save_graph_to_air(graph):
     print("save to air")
     graph.save_to_air(file_path="graph.air")
+
 
 graph = build_matmul_add_graph()
 save_graph_to_air(graph)

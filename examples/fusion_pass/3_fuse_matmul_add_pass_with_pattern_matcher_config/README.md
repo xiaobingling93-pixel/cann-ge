@@ -13,10 +13,10 @@
 │   ├──fuse_matmul_add_pass.cpp  // pass实现文件 
 ├── CMakeLists.txt               // 编译脚本
 ├── data         
-|   ├──torch_gen_onnx.py         // torch脚本用于导出onnx
-|   ├──torch_forward_1.py        // torch脚本用于在线推理,pass成功执行
-|   ├──torch_forward_2.py        // torch脚本用于在线推理，EnableConstValueMatch拦截生效，pass被拦截
-|   ├──torch_forward_3.py        // torch脚本用于在线推理，EnableIrAttrMatch拦截生效， pass被拦截
+|   ├──es_gen_air.py         // 导出air
+|   ├──es_forward_1.py        // 使用eager style api构图，调用ge api做在线推理，pass成功执行
+|   ├──es_forward_2.py        // 在线推理，EnableConstValueMatch拦截生效，pass被拦截
+|   ├──es_forward_3.py        // 在线推理，EnableIrAttrMatch拦截生效， pass被拦截
 |—— gen_es_api
 |   |——CMakeLists.txt            // 生成eager style api的编译脚本
 ```
@@ -92,33 +92,30 @@
    - 运行软件包中设置环境变量脚本，命令如下：
 
      ```
-     source ${ASCEND_PATH}/bin/set_env.sh
+     source ${ASCEND_PATH}/set_env.sh
      ```
 
      `${ASCEND_PATH}`请替换相关软件包的实际安装路径。
-
-2. 使用ATC离线推理。
-
    - 设置环境变量，dump出编译过程中的模型图：
      ```
      export DUMP_GE_GRAPH=1
      ```
    - 安装es_all.whl
-    ```
-     pip install --force-reinstall --upgrade --target ${ASCEND_PATH}/python/site-packages/ 
-   ${CURRENT_PATH}/build/es_output/whl/es_all-*****.whl
+      ```
+       pip install --force-reinstall --upgrade --target ${ASCEND_PATH}/python/site-packages/ ${BUILD_PATH}/es_output/whl/es_all-*****.whl
      ```
-   - 设置环境变量，添加es_all.so的路径
-     ```
-     export LD_LIBRARY_PATH="${BUILD_PATH}/es_output/lib64:${LD_LIBRARY_PATH}"
-     ```   
-        其中 ${BUILD_PATH} 是build目录的路径
+     `${BUILD_PATH}`请替换为build目录的实际路径。
+    - 设置环境变量，添加es_all.so的路径
+      ```
+      export LD_LIBRARY_PATH="${BUILD_PATH}/es_output/lib64:${LD_LIBRARY_PATH}"
+      ```
+2. 使用ATC离线推理。
    - 进入data目录执行.py文件导出air（文件中使用了 es 的 python 接口来构图）：
      ```
      python torch_gen_air.py
      ```
      - 执行结束后，在data目录下生成.air格式的模型文件，名称为graph.air。
-     - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](www.hiascend.com)查看文档“ATC离线模型编译工具”)，`soc_version`请根据实际环境修改：
+     - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](https://www.hiascend.com)查看文档“ATC离线模型编译工具”)，`soc_version`请根据实际环境修改：
        ```
        atc --framework=1 --model=./graph.air --soc_version=xxx --output=./model
        ```
@@ -129,10 +126,6 @@
         ```
 
 3. 在线推理
-   - 设置环境变量，dump出编译过程中的模型图：
-      ```
-      export DUMP_GE_GRAPH=1
-      ```
    - 进入data目录执行.py文件进行在线推理（在线推理请确保已安装torch_npu插件）：
       ```
       python torch_forward_1.py/torch_forward_2.py/torch_forward_3.py
