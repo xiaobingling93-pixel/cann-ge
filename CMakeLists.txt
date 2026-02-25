@@ -213,6 +213,12 @@ else ()
     include(cmake/find_release_mode_cann_packages.cmake)
 endif ()
 
+include(version.cmake)
+if(BUILD_COMPONENT)
+    check_pkg_build_deps(${BUILD_COMPONENT})
+endif()
+add_version_info_targets()
+
 if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
     if (NOT DEFINED HI_PYTHON)
         set(HI_PYTHON python3)
@@ -566,9 +572,13 @@ else ((BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC))
             add_dependencies(ge-executor ge_common ge_common_base davinci_executor hybrid_executor gert register graph graph_base acl_cblas)
         endif ()
 
+        add_dependencies(ge-compiler version_ge-compiler_info)
+        add_dependencies(ge-executor version_ge-executor_info)
+
         add_custom_target(dflow-executor)	 
         add_dependencies(dflow-executor deployer_daemon npu_executor_main host_cpu_executor_main udf_dump	 
                 reader_writer udf_profiling flow_func built_in_flowfunc udf_executor) 
+        add_dependencies(dflow-executor version_dflow-executor_info)
         if (DEFINED ENV{TOOLCHAIN_DIR} AND ENABLE_BUILD_DEVICE)
             message(STATUS $ENV{TOOLCHAIN_DIR})
             set(TOOLCHAIN_DIR $ENV{TOOLCHAIN_DIR})

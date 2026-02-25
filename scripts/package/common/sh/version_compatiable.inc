@@ -111,7 +111,7 @@ _check_version_required() {
     if [ "${result}" = "T" ]; then
         return 0
     fi
-
+    echo "Version compatibility check failed, $src_pkg required $dst_pkg version $require, but $dst_pkg version is $version!"
     return 1
 }
 
@@ -130,7 +130,7 @@ _check_version_compatiable() {
     if [ -d "$install_path/share/info" ]; then
         err_msgs="$(
             ls "$install_path/share/info" | grep -v "^${package}$" | while read src_pkg; do
-                get_formal_package_name "src_pkg_formal" "$package"
+                get_formal_package_name "src_pkg_formal" "$src_pkg"
                 installed_version_info="$install_path/share/info/$src_pkg/version.info"
                 grep "^required_package_${package_formal}_version=" "$installed_version_info" | cut -d= -f2- | tr -d '"' | while read required; do
                     _check_version_required "$self_version" "$required" "$script_dir" "$src_pkg_formal" "$package_formal"

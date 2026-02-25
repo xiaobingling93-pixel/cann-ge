@@ -75,8 +75,9 @@ function(install_public_packages components)
     set(CONF_FILES
         ${CMAKE_SOURCE_DIR}/scripts/package/common/cfg/path.cfg
     )
-    install(FILES ${CMAKE_SOURCE_DIR}/version.info
+    install(FILES ${CMAKE_BINARY_DIR}/version.${components}.info
         DESTINATION share/info/${components}
+        RENAME version.info
     )
     install(FILES ${CONF_FILES}
         DESTINATION ${components}/conf
