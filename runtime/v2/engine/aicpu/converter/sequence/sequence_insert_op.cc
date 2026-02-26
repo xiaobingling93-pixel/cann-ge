@@ -36,7 +36,7 @@ ge::graphStatus SequenceInsertCompute(KernelContext* context) {
 
   auto input_handle_data =
       context->GetInputPointer<TensorData>(input_handle_idx);
-  if (input_handle_data == nullptr) {
+  if ((input_handle_data == nullptr) || (input_handle_data->GetAddr() == nullptr)) {
     GELOGE(ge::PARAM_INVALID, "Get input handle tensor data failed.");
     REPORT_INNER_ERR_MSG("E39999", "Get input handle tensor data failed.");
     return ge::PARAM_INVALID;

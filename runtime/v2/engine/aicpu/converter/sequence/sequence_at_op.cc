@@ -77,7 +77,7 @@ ge::graphStatus SequenceAtDoCompute(KernelContext *context) {
   GELOGD("SequenceAtDoCompute begin");
 
   auto input_handle = context->GetInputPointer<TensorData>(kHandleIndex);
-  if (input_handle == nullptr) {
+  if ((input_handle == nullptr) || (input_handle->GetAddr() == nullptr)) {
     GELOGE(ge::PARAM_INVALID, "[Check][Op]Failed to get input handle.");
     REPORT_INNER_ERR_MSG("E39999", "Failed to get input handle.");
     return ge::PARAM_INVALID;
@@ -85,7 +85,7 @@ ge::graphStatus SequenceAtDoCompute(KernelContext *context) {
   auto handle = *(static_cast<uint64_t*>(input_handle->GetAddr()));
   
   auto index_data = context->GetInputPointer<TensorData>(kDataIndex);
-  if (index_data == nullptr) {
+  if ((index_data == nullptr) || (index_data->GetAddr() == nullptr)) {
     GELOGE(ge::PARAM_INVALID, "Failed to get input index.");
     REPORT_INNER_ERR_MSG("E39999", "Failed to get input index.");
     return ge::PARAM_INVALID;
@@ -185,7 +185,7 @@ ge::graphStatus SequenceLengthDoCompute(KernelContext *context) {
   uint64_t session_id = context->GetInputValue<size_t>(kSessionIdIndex);
   uint64_t container_id = context->GetInputValue<size_t>(kContainerIdIndex);
   auto input_handle = context->GetInputPointer<TensorData>(kHandleIndex);
-  if (input_handle == nullptr) {
+  if ((input_handle == nullptr) || (input_handle->GetAddr() == nullptr)) {
     GELOGE(ge::PARAM_INVALID, "Failed to get input handle.");
     REPORT_INNER_ERR_MSG("E39999", "Failed to get input handle.");
     return ge::PARAM_INVALID;

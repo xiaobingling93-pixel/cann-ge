@@ -81,7 +81,7 @@ ge::graphStatus SequenceConstructCompute(KernelContext* context) {
   out_rm->Create(handle, tensor_seq_ptr);
   int32_t output_idx = first_input_idx + input_num * 2;
   auto output_tensor = context->MutableInputPointer<Tensor>(output_idx);
-  if (output_tensor == nullptr) {
+  if ((output_tensor == nullptr) || (output_tensor->GetData<uint64_t>() == nullptr)) {
     GELOGE(ge::PARAM_INVALID, "output_tensor is nullptr");
     REPORT_INNER_ERR_MSG("E39999", "output_tensor is nullptr");
     return ge::PARAM_INVALID;
