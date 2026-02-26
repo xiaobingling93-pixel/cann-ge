@@ -76,7 +76,7 @@ EquivalentGraphRecognizer::EquivalentGraphRecognizer(const ge::AscGraph &graph_t
   axis_id_to_axis_map_to_ = GetAllAxisInfo(graph_to_);
   axis_id_to_axis_map_from_ = GetAllAxisInfo(graph_from_);
   search_axes_name_to_.insert(group_info_to_.reuse_search_axes.begin(), group_info_to_.reuse_search_axes.end());
-  search_axes_name_from_.insert(group_info_to_.reuse_search_axes.begin(), group_info_to_.reuse_search_axes.end());
+  search_axes_name_from_.insert(group_info_from_.reuse_search_axes.begin(), group_info_from_.reuse_search_axes.end());
   input_axes_name_to_.insert(group_info_to_.reuse_input_axes.begin(), group_info_to_.reuse_input_axes.end());
   input_axes_name_from_.insert(group_info_from_.reuse_input_axes.begin(), group_info_from_.reuse_input_axes.end());
 }

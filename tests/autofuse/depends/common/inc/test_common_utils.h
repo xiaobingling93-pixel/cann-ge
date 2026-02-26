@@ -22,13 +22,13 @@ inline void CleanupTestArtifacts() {
   // 删除stub相关目录和文件
   system("rm -rf ./stub ./tiling ./register ./graph ./lib ./kernel_tiling");
   // 删除公共文件
-  system("rm -f ./op_log.h ./autofuse_tiling_func_common.h");
+  system("rm -f ./*.h");
   // 删除日志文件
   system("rm -f *.log");
   // 删除生成的二进制文件
   system("rm -f ./tiling_func_main ./tiling_func_main_concat ./tiling_func_main_transpose ./tiling_func_main_softmax");
   // 删除生成的tiling data和func文件
-  system("rm -f ./*_tiling_data.h ./*_tiling_func.cpp ./tiling_func_main_*.cpp");
+  system("rm -f ./*_tiling_func.cpp ./tiling_func_main_*.cpp");
 
   // 清理build根目录下可能残留的tiling和register目录
   // 测试在build/tests/autofuse/st/att下运行，build根目录在../../

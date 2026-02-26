@@ -204,6 +204,7 @@ set(ATT_DIR ${CODE_ROOT_DIR}/att)
 
 file(GLOB SOURCES
     ${ATT_DIR}/generator/*.cpp
+    ${ATT_DIR}/generator/cache/*.cpp
     ${ATT_DIR}/generator/preprocess/*.cpp
     ${ATT_DIR}/generator/solver_pass/*.cpp
     ${ATT_DIR}/generator/solver_pass/axes_reorder_solver_code/*.cpp

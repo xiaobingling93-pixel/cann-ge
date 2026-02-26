@@ -114,8 +114,12 @@ bool ReuseGroupUtils::IsGroupGraphsEquivalent(const std::vector<ge::AscGraph> &g
       return false;
     }
     if (equivalent_graph_recognizer.GetMappedInputAxesNames() != group_info_to.reuse_input_axes) {
-      GELOGD("AscGraphs are not equivalent, graph1[%s], graph2[%s], index[%zu]", graphs_to[i].GetName().c_str(),
-             graphs_from[i].GetName().c_str(), i);
+      GELOGD("AscGraphs are not equivalent, graph1[%s], graph2[%s], index[%zu], "
+             "mapped_input_axes[%s], reuse_input_axes[%s]",
+             graphs_to[i].GetName().c_str(),
+             graphs_from[i].GetName().c_str(), i,
+             ge::ToString(equivalent_graph_recognizer.GetMappedInputAxesNames()).c_str(),
+             ge::ToString(group_info_to.reuse_input_axes).c_str());
       return false;
     }
   }

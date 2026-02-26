@@ -37,6 +37,7 @@ target_include_directories(aihac_codegen PRIVATE
     ${CODE_ROOT_DIR}/att/generator
     ${CODE_ROOT_DIR}/att/generator/preprocess
     ${CODE_ROOT_DIR}/att/generator/solver_pass_gen
+    ${CODE_ROOT_DIR}/att/generator/cache
     ${CODE_ROOT_DIR}/att/ascir
     ${CODE_ROOT_DIR}/att/ascir/generator
     ${CODE_ROOT_DIR}/att/gen_model_info

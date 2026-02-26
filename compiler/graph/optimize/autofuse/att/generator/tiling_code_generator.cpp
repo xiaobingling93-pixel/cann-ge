@@ -186,7 +186,8 @@ ge::Status TilingCodeGenerator::GenTilingCode(const std::string &op_type,
                     "Generate schedule group tiling bodies failed.");
 
   GenTilingParams params = {op_type, all_model_infos, config, cache_reuse_info};
-  GenTilingTailExtParams ext_params = {schedule_result_score_func, var_relations, enable_group_parallels, workspace_tensor_id_set};
+  GenTilingTailExtParams ext_params = {schedule_result_score_func, var_relations, enable_group_parallels,
+                                       workspace_tensor_id_set};
   GenTilingTail(params, tiling_res, ext_params);
   return ge::SUCCESS;
 }

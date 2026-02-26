@@ -20,7 +20,13 @@ class ResultCheckerUtils {
   static std::string DefineCheckerFunction();
   static bool IsFileContainsString(const std::string &filename, const std::string &search_sub_string);
   static bool ReplaceLogMacros(const std::string& filename = "autofuse_tiling_func_common.h");
+  static bool ReplaceLogMacrosGeneric(const std::string& filename = "autofuse_tiling_func_common.h");
   static std::string GetDependAscendIncPath();
+
+ private:
+  static bool ReadFileLines(const std::string &filename, std::vector<std::string> &lines);
+  static bool CreateBackupAndWrite(const std::string &filename, const std::vector<std::string> &lines);
+  static bool FinalizeLogFileReplacement(const std::string &filename, const std::vector<std::string> &lines, const std::string &log_type = "log macros");
 };
 }  // namespace att
 #endif  // ATT_RESULT_CHECKER_UTILS_H

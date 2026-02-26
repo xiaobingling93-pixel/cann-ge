@@ -63,21 +63,30 @@ bool AxesReorderSolver::MulticoreTilingCore(bool block_loop_auto_tune) {
     })";
   std::string find_optimal_mc_val = GenFindOptimalMcVal();
   codes += find_optimal_mc_val;
-  codes.append(R"(    if (!SatisfyMCCons()) {
+
+  // 生成 OptimizeMCVariable 函数调用
+  std::string optimize_mc_variable = GenOptimizeMCVariable();
+  codes += optimize_mc_variable;
+
+  codes.append("  }\n"
+                 "  if (!SatisfyCons(ConstraintType::MC_MIXED)) {\n"
+                 "    OP_LOGW(OP_NAME, \"Multicore Tiling Calculation failed in the final check, input: %s\", input_.DebugString().c_str());\n"
+                 "    return false;\n"
+                 "  }\n"
+                 "  return true;\n"
+                 "}\n");
+  return codes;
+}
+
+std::string GenOptimizeMCVariable() {
+  return R"(
+    if (!SatisfyMCCons()) {
       var->value = init_val;
     }
     while (!SatisfyCons(var, ConstraintType::MC_MIXED) && var->value != init_val) {
       var->value += var->align;
     }
-  }
-  if (!SatisfyCons(ConstraintType::MC_MIXED)) {
-    OP_LOGW(OP_NAME, "Multicore Tiling Calculation failed in the final check, input: %s", input_.DebugString().c_str());
-    return false;
-  }
-  return true;
-}
-)");
-  return codes;
+  )";
 }
 
 std::string GenMulticoreTiling() {

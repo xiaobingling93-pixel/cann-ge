@@ -62,6 +62,7 @@ std::string GenApplyPromptAlign();
 // ============================================================================
 
 std::string GenMutiCoreTilingCore();
+std::string GenOptimizeMCVariable();
 std::string GenMulticoreTiling();
 
 // ============================================================================

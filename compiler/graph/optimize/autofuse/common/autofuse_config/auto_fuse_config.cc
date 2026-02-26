@@ -83,6 +83,8 @@ Status AttStrategyConfig::SetEnvVal(std::unordered_map<std::string, std::string>
   AutoFuseConfigValue<int64_t> corenum_threshold_config_val(40L, std::vector<int64_t>({0, kMaxCorenumThreshold}));
   AutoFuseConfigValue<std::string> att_profiling_val(
       std::string("false"), std::vector<std::string>({std::string("true"), std::string("false")}));
+  AutoFuseConfigValue<std::string> enable_tiling_cache_val(
+      std::string("true"), std::vector<std::string>({std::string("true"), std::string("false")}));
 
   // 解析具体的配置
   GE_ASSERT_SUCCESS(TrySetVal(merged_configs, kExperimentalAutofusionAttTilingAlgorithm, tiling_algorithm_config_val,
@@ -102,6 +104,8 @@ Status AttStrategyConfig::SetEnvVal(std::unordered_map<std::string, std::string>
                               set_env_enable_multicore_ub_tradeoff));
   GE_ASSERT_SUCCESS(TrySetVal(merged_configs, kExperimentalAutofusionAttProfiling, att_profiling_val, att_profiling,
                               set_env_att_profiling));
+  GE_ASSERT_SUCCESS(TrySetVal(merged_configs, kExperimentalAutofusionEnableTilingCache, enable_tiling_cache_val,
+                              enable_tiling_cache, set_env_enable_tiling_cache));
   GE_ASSERT_SUCCESS(TrySetVal(merged_configs, kExperimentalAutofusionAttScheduleResult, force_schedule_result_val,
                               force_schedule_result, set_force_schedule_result));
   GE_ASSERT_SUCCESS(TrySetVal(merged_configs, kExperimentalAutofusionAttTilingCase, force_tiling_case_val,
@@ -132,6 +136,7 @@ Status AttStrategyConfig::Init() {
                                              kExperimentalAutofusionAttEnableMulticoreUBTradeoff,
                                              kExperimentalAutofusionAttSolutionAccuracyLevel,
                                              kExperimentalAutofusionAttProfiling,
+                                             kExperimentalAutofusionEnableTilingCache,
                                              kExperimentalAutofusionAttScheduleResult, // 用于强制模板选择，不对外开放
                                              kExperimentalAutofusionAttTilingCase,     // 用于强制模板选择，不对外开放
                                              kExperimentalAutofusionAttForceOpName    // 用于强制模板选择，不对外开放

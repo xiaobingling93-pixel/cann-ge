@@ -125,6 +125,12 @@ using namespace optiling;
 uint32_t GetWorkspaceSize(const AutofuseTilingData &tiling_data);
 namespace optiling {
 using namespace std;
+
+// ATT缓存相关常量
+constexpr size_t kAttInputShapeSize = 64;           // 输入Shape数组大小
+constexpr size_t kAttOperatorCacheCapacity = 24;    // 算子级缓存容量
+constexpr double kAttLoadFactorThreshold = 0.8;      // 负载因子阈值
+constexpr uint32_t kAttHashPrime = 0x9e3779b9;       // Hash混合黄金比例常量
 inline bool IsEqual(double a, double b)
 {
     const double epsilon = 1e-8;
