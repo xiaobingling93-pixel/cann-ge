@@ -15,85 +15,6 @@
 #include "api/aclgrph/option_utils.h"
 
 namespace ge {
-namespace {
-const std::set<std::string> kUnsupportedOpList = {
-    "Switch",
-    "RefSwitch",
-    "StreamSwitch",
-    "Merge",
-    "RefMerge",
-    "StreamMerge",
-    "Enter",
-    "RefEnter",
-    "Exit",
-    "RefExit",
-    "LoopCond",
-    "NextIteration",
-    "RefNextIteration",
-    "GetNext",
-    "IteratorGetNext",
-    "DynamicGetNext",
-    "DynamicGetNextV2"};
-
-bool HasUnSupportedOp(const ComputeGraphPtr &graph) {
-  const auto &all_nodes = graph->GetAllNodes();
-  return std::any_of(all_nodes.begin(), all_nodes.end(), [] (const NodePtr &node) {
-    return kUnsupportedOpList.count(node->GetType()) > 0;
-  });
-}
-
-bool IsContainResourceOp(const ComputeGraphPtr &graph) {
-  const auto &all_nodes = graph->GetAllNodes();
-  return std::any_of(all_nodes.begin(), all_nodes.end(), [](const NodePtr &node) {
-    const auto &op_desc = node->GetOpDesc();
-    const auto &all_input_desc = op_desc->GetAllInputsDescPtr();
-    const auto &all_output_desc = op_desc->GetAllOutputsDescPtr();
-
-    return std::any_of(all_input_desc.begin(), all_input_desc.end(), [](const GeTensorDescPtr &input_desc) {
-      return input_desc->GetOriginDataType() == DT_RESOURCE;
-    }) || std::any_of(all_output_desc.begin(), all_output_desc.end(), [](const GeTensorDescPtr &input_desc) {
-      return input_desc->GetOriginDataType() == DT_RESOURCE;
-    });
-  });
-}
-
-bool IsOptionEmpty(const std::map<std::string, std::string> &options, const std::string &option_key) {
-  const auto it = options.find(option_key);
-  if (it == options.end()) {
-    return true;
-  }
-  return it->second.empty();
-}
-
-/*
- * 以下场景暂不支持断图
- * 1、动态分档
- * 2、包含资源类算子
- * 3、包含v1版本控制算子
- * 4、数据预处理下沉
- * 5、aoe场景
- */
-Status IsGraphSupportSliceSchedule(const ComputeGraphPtr &graph, const std::map<std::string, std::string> &options) {
-  // 动态分档场景
-  GE_ASSERT_TRUE(IsOptionEmpty(options, kDynamicDims),
-      "Graph[%s] is multi_batch, not support slice schedule, ",
-      "please set --experimental_enable_jit_executor_v2=false in env AUTOFUSE_FLAGS.", graph->GetName().c_str());
-  // 包含不支持的算子类型（V1类控制算子/预处理算子）
-  GE_ASSERT_TRUE(!HasUnSupportedOp(graph),
-      "Graph[%s] contains control_op_v1 or get next op, not support slice schedule, ",
-      "please set --experimental_enable_jit_executor_v2=false in env AUTOFUSE_FLAGS.", graph->GetName().c_str());
-  // 包含资源类算子
-  GE_ASSERT_TRUE(!IsContainResourceOp(graph),
-      "Graph[%s] contains resource_op, not support slice schedule, ",
-      "please set --experimental_enable_jit_executor_v2=false in env AUTOFUSE_FLAGS.", graph->GetName().c_str());
-  // aoe场景
-  GE_ASSERT_TRUE(IsOptionEmpty(options, BUILD_MODE),
-      "Graph[%s] is aoe mode, not support slice schedule, ",
-      "please set --experimental_enable_jit_executor_v2=false in env AUTOFUSE_FLAGS.", graph->GetName().c_str());
-  return SUCCESS;
-}
-}
-
 Status UserGraphsManager::AddGraph(uint32_t user_graph_id, const Graph &graph,
   const std::map<std::string, std::string> &options) {
   if (!EnableSliceSchedule()) {
@@ -101,7 +22,6 @@ Status UserGraphsManager::AddGraph(uint32_t user_graph_id, const Graph &graph,
   }
   auto compute_graph = GraphUtilsEx::GetComputeGraph(graph);
   GE_ASSERT_NOTNULL(compute_graph);
-  GE_ASSERT_SUCCESS(IsGraphSupportSliceSchedule(compute_graph, options));
   SetLocalOmgContext(domi::GetContext());
   GetThreadLocalContext().SetGraphOption(options);
   std::lock_guard<std::mutex> locker(user_graph_ctrl_mutex_);
