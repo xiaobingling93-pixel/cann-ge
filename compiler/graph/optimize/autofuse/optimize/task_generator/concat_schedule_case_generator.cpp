@@ -56,6 +56,7 @@ Status ConcatFusionCaseGenerator::Generate(ascir::HintGraph &graph,
   auto &concat_node = concat_nodes.front();
   bool is_first_dim = false;
   GE_CHK_STATUS_RET(ScheduleUtils::ResolveDiffDim(concat_node, concat_dim_, is_first_dim), "ResolveConcatDim failed");
+  GE_ASSERT_SUCCESS(AddExtraShapeEnv(concat_node, concat_dim_));
   GE_ASSERT_SUCCESS(SplitDataForDifferentConcatDim(graph),
                     "Failed to split data for graph:[%s].", graph.GetName().c_str());
   const auto backend_spec = BackendSpec::GetInstance();
@@ -726,6 +727,33 @@ Status ConcatFusionCaseGenerator::ReconnectIfShareSameAncestor(
   if (it != name_to_node.end()) {
     in_anchor->UnlinkAll();
     GE_ASSERT_GRAPH_SUCCESS(in_anchor->LinkFrom(it->second->GetOutDataAnchor(src_anchor->GetIdx())));
+  }
+  return ge::SUCCESS;
+}
+
+Status ConcatFusionCaseGenerator::AddExtraShapeEnv(const ge::AscNodePtr &concat_node, size_t concat_dim) {
+  const auto &output_repeats = concat_node->outputs[0].attr.repeats;
+  // axis开始, concat各输入的轴大小一致
+  // 符号库无法推导存在限制, 这里将多个轴进行组合进行guard
+  for (uint32_t k = 1; k < concat_node->inputs.Size(); ++k) {
+    const auto &input_repeats = concat_node->inputs[k].attr.repeats;
+    auto input_axis_size = ge::ops::One;
+    auto output_axis_size = ge::ops::One;
+    for (size_t i = output_repeats.size() - 1; i > concat_dim; --i) {
+      input_axis_size = input_axis_size * input_repeats[i];
+      output_axis_size = output_axis_size * output_repeats[i];
+      GE_ASSERT_TRUE(EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size));
+    }
+  }
+  for (uint32_t k = 1; k < concat_node->inputs.Size(); ++k) {
+    const auto &input_repeats = concat_node->inputs[k].attr.repeats;
+    auto input_axis_size = ge::ops::One;
+    ge::Expression output_axis_size = ge::ops::One;
+    for (size_t i = concat_dim + 1; i < output_repeats.size(); ++i) {
+      input_axis_size = input_axis_size * input_repeats[i];
+      output_axis_size = output_axis_size * output_repeats[i];
+      GE_ASSERT_TRUE(EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size));
+    }
   }
   return ge::SUCCESS;
 }
