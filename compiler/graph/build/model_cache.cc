@@ -110,8 +110,8 @@ Status ModelCache::Init(const ComputeGraphPtr &root_graph, GraphRebuildStateCtrl
   }
   const std::string lock_file = cache_dir_ + cache_index_.graph_key + kLockFileName;
   GE_CHK_STATUS_RET(TryLockFile(lock_file, lock_file_fd_), "Try lock cache dir by locking file failed.");
-  GE_CHK_STATUS_RET(InitCacheFileInfo(), "Fail to init cache file info, cache_dir=%s, graph_key=%s.",
-                    cache_dir_.c_str(), cache_index_.graph_key.c_str());
+  GE_WARN_ASSERT_GRAPH_SUCCESS(InitCacheFileInfo(), "Fail to init cache file info, cache_dir=%s, graph_key=%s.",
+      cache_dir_.c_str(), cache_index_.graph_key.c_str());
   session_id_ = root_graph->GetSessionID();
   graph_id_ = root_graph->GetGraphID();
   cache_enable_ = true;
@@ -188,13 +188,12 @@ Status ModelCache::InitCacheFileByIdx(const std::string &cache_path) {
                       "Failed to read cache index list from file:%s", index_file_.c_str());
     for (const auto &idx : cache_file_list) {
       if (idx.graph_key == cache_index_.graph_key) {
-        GE_CHK_BOOL_RET_STATUS(CheckFileExist(idx.cache_file_name), FAILED,
-                               "cache file[%s] in cache index file[%s] is not exits.",
-                               idx.cache_file_name.c_str(), index_file_.c_str());
-        GE_CHK_BOOL_RET_STATUS((idx.var_desc_file_name.empty() || CheckFileExist(idx.cache_file_name)),
-                               FAILED,
-                               "var desc file[%s] in cache index file[%s] is not exits.",
-                               idx.var_desc_file_name.c_str(), index_file_.c_str());
+        GE_WARN_ASSERT(CheckFileExist(idx.cache_file_name),
+            "cache file[%s] in cache index file[%s] is not exists.",
+            idx.cache_file_name.c_str(), index_file_.c_str());
+        GE_WARN_ASSERT((idx.var_desc_file_name.empty() || CheckFileExist(idx.cache_file_name)),
+            "var desc file[%s] in cache index file[%s] is not exists.",
+            idx.var_desc_file_name.c_str(), index_file_.c_str());
         GELOGI("Matched graph_key[%s] success, cache om file = %s, cache var desc file = %s, cache dir = %s.",
                cache_index_.graph_key.c_str(), idx.cache_file_name.c_str(),
                idx.var_desc_file_name.c_str(), cache_path.c_str());

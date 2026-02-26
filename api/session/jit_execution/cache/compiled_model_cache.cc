@@ -49,7 +49,7 @@ Status CompiledModelCache::RestoreCache(ExecutionOrder &order) {
     return SUCCESS; // user may not set user_graph_key_ or cache_dir, then skip restoration
   }
 
-  GE_CHK_STATUS_RET(eo_util_.RestoreExecutionOrder(root_dir_, user_graph_key_, order),
+  GE_WARN_ASSERT_GRAPH_SUCCESS(eo_util_.RestoreExecutionOrder(root_dir_, user_graph_key_, order),
 		  "Failed to restore execution order.");
   GELOGI("Compiled model cache restoration success, user_graph_id[%u].", user_graph_id_);
   return SUCCESS;

@@ -17,14 +17,14 @@
 namespace ge {
 namespace {
 static Status TryLoadCompiledGraphFromCache(const ComputeGraphPtr &root_graph, ComputeGraphPtr &compiled_graph_cached) {
-   ModelCache model_cache;
-   GeRootModelPtr root_model;
-   GraphRebuildStateCtrl ctrl;
-   GE_CHK_STATUS_RET(model_cache.Init(root_graph, &ctrl));
-   GE_CHK_STATUS_RET(model_cache.TryLoadModelFromCache(root_graph, root_model), "Failed to load model from cache.");
-   GE_ASSERT_NOTNULL(root_model);
-   compiled_graph_cached = root_model->GetRootGraph();
-   return SUCCESS;
+  ModelCache model_cache;
+  GeRootModelPtr root_model;
+  GraphRebuildStateCtrl ctrl;
+  GE_WARN_ASSERT_GRAPH_SUCCESS(model_cache.Init(root_graph, &ctrl));
+  GE_CHK_STATUS_RET(model_cache.TryLoadModelFromCache(root_graph, root_model), "Failed to load model from cache.");
+  GE_WARN_ASSERT(root_model != nullptr);
+  compiled_graph_cached = root_model->GetRootGraph();
+  return SUCCESS;
 }
 }
 
@@ -148,8 +148,11 @@ Status GuardedExecutionPointUtil::RestoreGuardedExecutionPoint(const std::string
   /* load the flow_model from the .om file, and restore the Guard func stored in the .om file */
   gep->compiled_ = false;
   ComputeGraphPtr compiled_graph_cached;
-  GE_CHK_STATUS_RET(TryLoadCompiledGraphFromCache(exec_point.GetSlicedGraph(), compiled_graph_cached),
-    "Failed to load compiled graph from cache.");
+  GE_WARN_ASSERT_GRAPH_SUCCESS(TryLoadCompiledGraphFromCache(exec_point.GetSlicedGraph(), compiled_graph_cached),
+      "Failed to load compiled graph from cache.");
+  if (compiled_graph_cached == nullptr) {
+    return SUCCESS;
+  }
   gep->compiled_graph_ = compiled_graph_cached; // set compiled_graph_ in the gep
 
   /*

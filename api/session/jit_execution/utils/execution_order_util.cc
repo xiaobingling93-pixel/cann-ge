@@ -110,7 +110,7 @@ Status ExecutionOrderUtil::RestoreExecutionOrder(const std::string root_dir, con
   /* restore the execution points and add them to the EO */
   for (SliceGraphInfo &info : result.slice_graph_infos) {
     std::unique_ptr<ExecutionPoint> exec_point_ptr;
-    GE_CHK_STATUS_RET(ep_util_.RestoreExecutionPoint(root_dir, user_graph_key, info, exec_point_ptr),
+    GE_WARN_ASSERT_GRAPH_SUCCESS(ep_util_.RestoreExecutionPoint(root_dir, user_graph_key, info, exec_point_ptr),
 		    "Failed to restore ep.");
     GELOGD("Slice graph %lld restoration success.", exec_point_ptr->GetId());
     order.slice_graphs_.emplace_back(std::move(exec_point_ptr));

@@ -115,7 +115,7 @@ Status ExecutionPointUtil::RestoreExecutionPoint(const std::string root_dir, con
   for (const GuardedExecutionPointInfo &info: gep_info_list.gep_list) {
     GuardedExecutionPoint *gep = new GuardedExecutionPoint(&(*exec_point_ptr));
     GE_ASSERT_NOTNULL(gep);
-    GE_CHK_STATUS_RET(gep_util_.RestoreGuardedExecutionPoint(root_dir, info, *exec_point_ptr, gep));
+    GE_WARN_ASSERT_GRAPH_SUCCESS(gep_util_.RestoreGuardedExecutionPoint(root_dir, info, *exec_point_ptr, gep));
     (*exec_point_ptr).models_.GetCache().emplace_back(gep);
     GELOGD("Restoring GEP success, gep_graph_key = %s", info.gep_graph_key.c_str());
   }

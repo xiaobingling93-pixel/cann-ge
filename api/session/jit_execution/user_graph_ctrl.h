@@ -63,7 +63,7 @@ class UserGraphControl {
       });
     const auto ret = cmc_.RestoreCache(order_);
     if (ret != SUCCESS) {
-      GELOGE(ge::FAILED, "CompiledModelCache RestoreCache failed. The cache files are not valid. user_graph[%u].", user_graph_id);
+      GELOGW("CompiledModelCache RestoreCache failed. The cache files are not valid. user_graph[%u].", user_graph_id);
     }
   }
   ~UserGraphControl() {
