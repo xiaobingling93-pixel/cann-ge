@@ -26,6 +26,8 @@ BUILD_RELATIVE_PATH="build"
 BUILD_PATH="${BASEPATH}/${BUILD_RELATIVE_PATH}/"
 USE_ASAN=$(gcc -print-file-name=libasan.so)
 
+source ${BASEPATH}/scripts/support_multiple_versions_of_lcov.sh
+
 # print usage message
 usage()
 {
@@ -298,23 +300,6 @@ build_graphengine()
   echo "GraphEngine build success!"
 }
 
-get_lcov_major_version() {
-    local major_version
-    if ! major_version=$(set -o pipefail; lcov --version | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)*' | head -1 | cut -d. -f1); then
-        echo "Error: Failed to parse LCOV major version number, please check 'lcov --version'." >&2
-        exit 1
-    fi
-    echo "$major_version"
-}
-
-add_lcov_ops_by_major_version() {
-    local expected_major_version="$1"
-    local ops_to_be_added="$2"
-    if [ "$(get_lcov_major_version)" -ge $expected_major_version ]; then
-        echo $ops_to_be_added
-    fi   
-}
-
 generate_inc_coverage() {
   echo "Generating inc coverage, please wait..."
   rm -rf ${BASEPATH}/diff
@@ -426,7 +411,7 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
               -d ${BUILD_PATH}/tests/depends/llm_datadist -d ${BUILD_PATH}/dflow/llm_datadist -d ${BUILD_PATH}/api/python \
               -d ${BUILD_PATH}/api/python/llm_datadist_v1 -d ${BUILD_PATH}/api/python/llm_wrapper \
               -d ${BUILD_PATH}/tests/framework/CMakeFiles/graphengine.dir \
-              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch")
+              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错
@@ -585,7 +570,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
               -d ${BUILD_PATH}/runtime/v1/CMakeFiles/davinci_executor.dir \
               -d ${BUILD_PATH}/tests/graph_metadef/ut \
               -d ${BUILD_PATH}/tests/framework/CMakeFiles/metadef_graph.dir \
-              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch")
+              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错

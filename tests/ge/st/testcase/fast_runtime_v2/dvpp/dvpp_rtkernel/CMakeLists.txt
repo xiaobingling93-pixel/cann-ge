@@ -22,7 +22,7 @@ target_compile_options(st_dvpp_runtime2_test PRIVATE
         ${AIR_COMMON_COMPILE_OPTION}
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
-        --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        --coverage -fprofile-arcs -ftest-coverage
         )
 
 target_compile_definitions(st_dvpp_runtime2_test PRIVATE

@@ -16,7 +16,7 @@ file(GLOB_RECURSE UT_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/ge/ut/sc
 add_executable(ut_sc_check ${UT_FILES})
 
 target_compile_options(ut_sc_check PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -D_GLIBCXX_USE_CXX11_ABI=0

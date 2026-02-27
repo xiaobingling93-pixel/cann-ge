@@ -25,7 +25,7 @@ target_include_directories(ut_exe_graph PRIVATE
         )
 
 target_compile_options(ut_exe_graph PRIVATE
-        -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        -g --coverage -fprofile-arcs -ftest-coverage
 	    -Wno-deprecated-declarations
 	    -Wall -Wfloat-equal -Werror
         -fno-access-control

@@ -546,12 +546,14 @@ run_ut_acl() {
   cd ${BASEPATH}
   rm -rf ${BASEPATH}/cov
   mkdir ${BASEPATH}/cov
+  source ${BASEPATH}/scripts/support_multiple_versions_of_lcov.sh
   lcov -c -d ${BUILD_RELATIVE_PATH}/tests/acl_ut/ut/acl -o cov/tmp.info
   lcov -r cov/tmp.info '*/output/*' "*/${BUILD_RELATIVE_PATH}/opensrc/*" "*/${BUILD_RELATIVE_PATH}/proto/*" \
       '*/third_party/*' '*/tests/*' '/usr/local/*' '/usr/include/*' \
-      "${ASCEND_INSTALL_PATH}/*" "${ASCEND_3RD_LIB_PATH}/*" -o cov/coverage.info
+      "${ASCEND_INSTALL_PATH}/*" "${ASCEND_3RD_LIB_PATH}/*" \
+      -o cov/coverage.info $(add_lcov_ops_by_major_version 2 "--ignore-errors unused")
   cd ${BASEPATH}/cov
-  genhtml coverage.info
+  genhtml coverage.info -o cov/html
 }
 
 main() {

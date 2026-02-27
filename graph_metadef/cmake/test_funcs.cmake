@@ -31,7 +31,7 @@ endfunction()
 function(enable_gcov module)
     if (TARGET ${module})
         target_compile_options(${module} PRIVATE
-                --coverage -fprofile-arcs -fPIC -ftest-coverage -fprofile-update=atomic
+                --coverage -fprofile-arcs -fPIC -ftest-coverage
                 -Werror=format
                 )
         target_link_libraries(${module} PUBLIC -lgcov)

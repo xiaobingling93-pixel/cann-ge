@@ -11,14 +11,14 @@ target_compile_definitions(intf_llt_pub INTERFACE
 target_compile_options(intf_llt_pub INTERFACE
         -g
         -w
-        $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage -fprofile-update=atomic>
+        $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
         $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fno-omit-frame-pointer -static-libasan -fsanitize=undefined -static-libubsan -fsanitize=leak -static-libtsan>
         -fPIC
         -pipe
 )
 
 target_link_options(intf_llt_pub INTERFACE
-        $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage -fprofile-update=atomic>
+        $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
         $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -static-libasan -fsanitize=undefined -static-libubsan -fsanitize=leak -static-libtsan>
 )
 

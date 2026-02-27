@@ -136,7 +136,7 @@ target_compile_definitions(ut_acl_model_src PRIVATE
 
 target_compile_options(ut_acl_model_src PRIVATE
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic -fno-access-control
+    -g --coverage -fprofile-arcs -ftest-coverage -fno-access-control
     -Wall -Wextra -Wfloat-equal -Werror
 )
 
@@ -183,7 +183,7 @@ target_compile_definitions(ut_acl_cblas_src PRIVATE
 
 target_compile_options(ut_acl_cblas_src PRIVATE
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic -fno-access-control
+    -g --coverage -fprofile-arcs -ftest-coverage -fno-access-control
     -Wall -Wextra -Wfloat-equal -Werror
 )
 
@@ -234,7 +234,7 @@ target_compile_definitions(ut_acl_op_exec_src PRIVATE
 
 target_compile_options(ut_acl_op_exec_src PRIVATE
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic -fno-access-control
+    -g --coverage -fprofile-arcs -ftest-coverage -fno-access-control
     -Wall -Wextra -Wfloat-equal -Werror
 )
 
@@ -287,7 +287,7 @@ target_compile_definitions(ut_acl_op_compiler_src PRIVATE
 
 target_compile_options(ut_acl_op_compiler_src PRIVATE
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic -fno-access-control
+    -g --coverage -fprofile-arcs -ftest-coverage -fno-access-control
     -Wall -Wextra -Wfloat-equal -Werror
 )
 

@@ -11,7 +11,7 @@
 # ---- Test coverage ----
 
 if (ENABLE_GE_COV)
-    set(COVERAGE_COMPILER_FLAGS "-g --coverage -fprofile-arcs -fPIC -O0 -ftest-coverage -fprofile-update=atomic")
+    set(COVERAGE_COMPILER_FLAGS "-g --coverage -fprofile-arcs -fPIC -O0 -ftest-coverage")
     set(CMAKE_CXX_FLAGS "${COVERAGE_COMPILER_FLAGS}")
 endif()
 
@@ -370,7 +370,7 @@ target_compile_definitions(graphengine PRIVATE
 )
 
 target_compile_options(graphengine PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Werror=format
 )
 

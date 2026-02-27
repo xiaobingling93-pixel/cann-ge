@@ -14,7 +14,7 @@ add_executable(autofusion_st
 set(ASCGEN_DT_COMPILE_OPTION
         -O0
         -g
-        --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        --coverage -fprofile-arcs -ftest-coverage
 #        -fsanitize=address -fsanitize=leak -fsanitize-recover=address
         )
 

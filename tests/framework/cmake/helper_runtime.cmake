@@ -159,7 +159,7 @@ target_include_directories(helper_runtime PUBLIC
 )
 
 target_compile_options(helper_runtime PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Werror=format
 )
 
@@ -231,7 +231,7 @@ target_include_directories(helper_runtime_no_grpc PUBLIC
         )
 
 target_compile_options(helper_runtime_no_grpc PRIVATE
-        -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        -g --coverage -fprofile-arcs -ftest-coverage
         -Werror=format
         )
 

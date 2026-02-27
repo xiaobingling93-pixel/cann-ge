@@ -61,7 +61,7 @@ target_include_directories(ut_ascendcl_c_utest PRIVATE
 
 target_compile_options(ut_ascendcl_c_utest PRIVATE
     -fsanitize=address -fsanitize=leak
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wall -Wextra -Wfloat-equal
     # -Werror
 )

@@ -13,11 +13,11 @@ if (CMAKE_BUILD_TYPE MATCHES GCOV)
     set(AIR_COMMON_COMPILE_OPTION
             -O0
             -g
-            --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+            --coverage -fprofile-arcs -ftest-coverage
             -fsanitize=address -fsanitize=leak -fsanitize-recover=address
             )
     set(AIR_COV_COMPILE_OPTION
-            --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+            --coverage -fprofile-arcs -ftest-coverage
             )
     set(AIR_COMMON_DYNAMIC_COMPILE_OPTION ${AIR_COMMON_COMPILE_OPTION})
     if (TARGET_SYSTEM_NAME STREQUAL "Android")

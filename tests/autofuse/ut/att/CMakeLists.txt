@@ -68,7 +68,7 @@ target_include_directories(att_ut PRIVATE
         )
 
 target_compile_options(att_ut PRIVATE
-        -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        -g --coverage -fprofile-arcs -ftest-coverage
         -fPIC
         -fno-common
         -Wextra

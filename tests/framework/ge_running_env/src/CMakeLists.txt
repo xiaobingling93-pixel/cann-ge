@@ -30,7 +30,7 @@ target_compile_definitions(ge_running_env PRIVATE
         )
 
 target_compile_options(ge_running_env PRIVATE
-        -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        -g --coverage -fprofile-arcs -ftest-coverage
         -Werror=format
         )
 
