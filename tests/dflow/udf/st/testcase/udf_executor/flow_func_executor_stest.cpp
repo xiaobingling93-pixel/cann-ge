@@ -926,7 +926,7 @@ TEST_F(FlowFuncExecutorSTest, basic_test_with_exception_msg) {
       google::protobuf::io::ArrayInputStream stream(data_ptr, static_cast<int32_t>(data_len));
       ff::deployer::ExecutorResponse response;
       EXPECT_TRUE(response.ParseFromZeroCopyStream(&stream));
-      EXPECT_EQ(response.status_code(), 0);
+      EXPECT_EQ(response.error_code(), 0);
       EXPECT_EQ(response.error_message(), "Execute exception message success.");
       halMbufFree(rsp_mbuff);
       break;
@@ -957,7 +957,7 @@ TEST_F(FlowFuncExecutorSTest, basic_test_with_exception_msg) {
       google::protobuf::io::ArrayInputStream stream(data_ptr, static_cast<int32_t>(data_len));
       ff::deployer::ExecutorResponse response;
       EXPECT_TRUE(response.ParseFromZeroCopyStream(&stream));
-      EXPECT_EQ(response.status_code(), 0);
+      EXPECT_EQ(response.error_code(), 0);
       EXPECT_EQ(response.error_message(), "Execute exception message success.");
       halMbufFree(rsp_mbuff);
       break;
@@ -1044,7 +1044,7 @@ TEST_F(FlowFuncExecutorSTest, basic_test_with_suspend_msg) {
       google::protobuf::io::ArrayInputStream stream(data_ptr, static_cast<int32_t>(data_len));
       ff::deployer::ExecutorResponse response;
       EXPECT_TRUE(response.ParseFromZeroCopyStream(&stream));
-      EXPECT_EQ(response.status_code(), 0);
+      EXPECT_EQ(response.error_code(), 0);
       EXPECT_EQ(response.error_message(), "Execute suspend success.");
       halMbufFree(rsp_mbuff);
       break;
@@ -1125,7 +1125,7 @@ TEST_F(FlowFuncExecutorSTest, basic_test_with_suspend_and_recover_msg) {
       google::protobuf::io::ArrayInputStream stream(data_ptr, static_cast<int32_t>(data_len));
       ff::deployer::ExecutorResponse response;
       EXPECT_TRUE(response.ParseFromZeroCopyStream(&stream));
-      EXPECT_EQ(response.status_code(), 0);
+      EXPECT_EQ(response.error_code(), 0);
       EXPECT_EQ(response.error_message(), "Execute suspend success.");
       halMbufFree(rsp_mbuff);
       break;
@@ -1156,7 +1156,7 @@ TEST_F(FlowFuncExecutorSTest, basic_test_with_suspend_and_recover_msg) {
       google::protobuf::io::ArrayInputStream stream(data_ptr, static_cast<int32_t>(data_len));
       ff::deployer::ExecutorResponse response;
       EXPECT_TRUE(response.ParseFromZeroCopyStream(&stream));
-      EXPECT_EQ(response.status_code(), 0);
+      EXPECT_EQ(response.error_code(), 0);
       EXPECT_EQ(response.error_message(), "Execute recover success.");
       halMbufFree(rsp_mbuff);
       break;

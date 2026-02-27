@@ -108,6 +108,7 @@ message ExecutorRequest {
 }
 
 message ExecutorResponse {
-  uint32 status_code = 1;
-  string error_message = 2;
+  uint64 message_id = 1;
+  uint32 error_code = 2;
+  string error_message = 3;
 }

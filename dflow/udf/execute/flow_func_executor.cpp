@@ -1538,7 +1538,7 @@ int32_t FlowFuncExecutor::SendMessageByResponseQueue(const ControlMessageType &m
         msg = "Unknown operator " + std::to_string(static_cast<int32_t>(msg_type));
     }
     ff::deployer::ExecutorResponse response;
-    response.set_status_code(result);
+    response.set_error_code(result);
     if (result == FLOW_FUNC_SUCCESS) {
         msg += " success.";
     } else {
