@@ -40,7 +40,7 @@ namespace att
     static std::string GenCommonBaseClassesHead(std::vector<ArgsManager> args_managers);
     static std::string GenCommonBaseClassesFunc(std::vector<ArgsManager> args_managers);
     std::string GenClassPass();
-    std::pair<std::string, std::string> GenFuncPass(bool force_search = false);
+    std::pair<std::string, std::string> GenFuncPass();
 
     static std::string GenAxesReorderBaseClassesHead(bool enable_equal_order_tiling);
     static std::string GenAxesReorderBaseClassesFunc(bool enable_equal_order_tiling);
@@ -100,7 +100,7 @@ namespace att
 
     template<typename SpecificSolverGen>
     std::pair<std::string, std::string> GenerateSolverPassFunc(SpecificSolverGen solver_gen);
-    std::pair<std::string, std::string> SolverPassFuncGen(SolverType type, bool force_search);
+    std::pair<std::string, std::string> SolverPassFuncGen(SolverType type);
     std::pair<std::string, std::string> L0SolverPassFuncGen();
     std::pair<std::string, std::string> L2SolverPassFuncGen();
     

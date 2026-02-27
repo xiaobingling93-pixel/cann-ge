@@ -128,7 +128,7 @@ private:
   ge::Status CalculateReservedUbSize(const ge::AscGraph &graph);
 
   // 检测Reduce/Broadcast分核Store冲突场景
-  ge::Status CheckReduceBroadcastSplitStoreConflict(const ge::AscGraph &graph);
+  ge::Status CheckReduceBroadcastSplitStoreConflict();
 
   // 辅助方法：检查并标记轴是否为 Reduce 分核轴
   bool CheckAndMarkReduceSplitAxis(SubAxis *axis, const std::set<std::string> &reduce_axis_orig_names);

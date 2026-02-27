@@ -416,6 +416,11 @@ graphStatus LoweringManager::FusedSubgraphLoopToAscBackendOp(
       }
       auto asc_node = graph->InsertNode(expect_position, op_desc);
       GE_ASSERT_NOTNULL(asc_node);
+      bool disable_lifting = false;
+      if (AttrUtils::GetBool(node->GetOpDesc(), "_disable_lifting", disable_lifting) && disable_lifting) {
+        (void)AttrUtils::SetBool(asc_node->GetOpDesc(), "_disable_lifting", disable_lifting);
+        GELOGI("Success to set disable lifting flag to new ascbackend node: %s", asc_node->GetName().c_str());
+      }
       expect_position = asc_node;
       ascend_out_to_asc_out[target_buffer] = asc_node->GetOutDataAnchor(0).get();
       for (auto &input : inputs) {

@@ -356,9 +356,9 @@ class IrAttr {
 template <typename OpType>
 auto IrAttr<OpType>::GetTypeData() -> typename IrAttr<OpType>::TypeData& {
   static TypeData data = []() {
-    TypeData d;
-    d.type = {PyVarObject_HEAD_INIT(nullptr, 0)};
-    d.getsetters = {{nullptr}};  // 初始哨兵
+    TypeData d = {};
+    PyGetSetDef sentinel = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    d.getsetters.push_back(sentinel);  // 初始哨兵
     return d;
   }();
   return data;
@@ -381,7 +381,8 @@ PyObject *IrAttr<OpType>::FromAscNode(ge::AscNodeAttr &node_attr, const char *op
   if (handle_iter != attr_handlers.end()) {
     handle_iter->second(getsetters);  // 填充当前 OpType 的属性
   }
-  getsetters.push_back({nullptr});  // 重置哨兵
+  PyGetSetDef sentinel = {nullptr, nullptr, nullptr, nullptr, nullptr};
+  getsetters.push_back(sentinel);  // 重置哨兵
   type.tp_getset = getsetters.data();
   if (PyType_Ready(&type) < 0) {
     return nullptr;

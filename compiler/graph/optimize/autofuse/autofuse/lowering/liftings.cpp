@@ -137,6 +137,11 @@ bool IsSpecificConditionSkipLifting(const NodePtr &node) {
 bool IsSkipLifting(const NodePtr &node, size_t min_compute_nodes) {
   auto fuse_attrs = node->GetOpDesc()->GetAttrsGroup<AutoFuseAttrs>();
   GE_ASSERT_NOTNULL(fuse_attrs);
+  bool disable_lifting = false;
+  if (AttrUtils::GetBool(node->GetOpDesc(), "_disable_lifting", disable_lifting) && disable_lifting) {
+    GELOGI("Skip lifting node: %s, as it has disable lifting flag", node->GetName().c_str());
+    return true;
+  }
   // step1: cube type
   if (fuse_attrs->HasFuseType(loop::FuseType::kCube)) {
     return IsCubeSkipLifting(node, min_compute_nodes, fuse_attrs, GetInterAttrs(fuse_attrs).is_fuse_from_lowering);

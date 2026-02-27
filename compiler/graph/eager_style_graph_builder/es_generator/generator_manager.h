@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "gen_esb_options.h"
 #include "generator_interface.h"
 #include "utils_generator.h"
 
@@ -79,7 +80,7 @@ class GeneratorManager {
   std::unique_ptr<UtilsGenerator> utils_generator_;
 };
 void GeneratePerOpFiles(const std::string &output_dir, GeneratorManager &manager);
-void GenEsImpl(const std::string &output_dir, const std::string &module_name, const std::string &h_guard_prefix, const std::string &exclude_ops_str);
+void GenEsImpl(const GenEsbOptions &options);
 void Gen(GeneratorManager &manager, std::vector<std::string> &exclude_ops);
 void GenUnsupportedOpsInfo(GeneratorManager &manager,
                            const std::unordered_map<std::string, std::vector<std::string>> &unsupported_reasons_to_ops);
@@ -91,11 +92,14 @@ void ExecuteCodeGeneration(const std::string &output_dir, GeneratorManager &mana
 void GenAllOps(GeneratorManager &manager,
                std::unordered_map<std::string, std::vector<std::string>> &unsupported_reasons_to_ops,
                std::vector<std::string> &exclude_ops, size_t &supported_num);
-void DisplayGenerationParameters(const std::string &module_name, const std::string &h_guard_prefix);
+void DisplayGenerationParameters(const GenEsbOptions &options);
 std::unique_ptr<GeneratorManager> InitializeGenerators(const std::string &module_name, const std::string &guard_prefix);
 std::unique_ptr<GeneratorManager> CreateGenerators(const std::string &module_name, const std::string &guard_prefix);
 void GenerateAggregateHeaders(GeneratorManager &manager);
 std::vector<std::string> ParseExcludeGenOps(const std::string &exclude_ops_str);
+void GenerateHistoryRegistry(const std::string &output_dir, const std::string &release_version,
+                            const std::string &release_date, const std::string &branch_name);
+std::vector<OpDescPtr> CollectAndSortAllOps();
 }  // namespace es
 }  // namespace ge
 

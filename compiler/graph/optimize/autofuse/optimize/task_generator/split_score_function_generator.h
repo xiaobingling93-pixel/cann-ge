@@ -18,7 +18,6 @@ namespace optimize {
 class SplitScoreFunctionGenerator {
  public:
   SplitScoreFunctionGenerator(const ascir::HintGraph &graph, ge::AscNodePtr split_node, uint32_t split_dim);
-  ~SplitScoreFunctionGenerator() = default;
   Status Generate(std::string &score_func);
 
  private:

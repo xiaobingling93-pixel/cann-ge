@@ -461,12 +461,19 @@ struct ScoreTilingCase {
        extra_info_generator_(extra_info_config_, tiling_model_info, tiling_data_manager_),
        tiling_model_info_(tiling_model_info),
        is_uniq_group_(is_uniq_group),
-       score_funcs_(score_funcs) {
+       score_funcs_(score_funcs),
+       operator_level_cache_gen_(std::make_unique<cache::OperatorLevelCacheGen>()),
+       group_level_cache_gen_(std::make_unique<cache::GroupLevelCacheGen>()) {
    extra_info_config_.tiling_data_type_name = config_.tiling_data_type_name;
    if (config_.gen_extra_infos) {
      extra_info_config_.do_axes_calc = true;
      extra_info_config_.do_api_tiling = true;
    }
+
+   // 读取编译态缓存配置
+   const auto &att_config = AutoFuseConfig::GetAttStrategyConfig();
+   config_.cache_enabled_at_compile_time = (att_config.enable_tiling_cache == "true");
+
    for (const auto &model_info : tiling_model_info) {
      const auto &hardware_cons = model_info.hardware_cons;
      if (hardware_cons.find(HardwareDef::UB) != hardware_cons.cend()) {
@@ -747,95 +754,35 @@ struct ScoreTilingCase {
    return ge::SUCCESS;
  }
 
+size_t TilingCodeGenImpl::CollectInputVarsSize() const {
+  std::set<std::string> visited_var_names;
+  for (const auto &model_info : tiling_model_info_) {
+    ArgsManager args_manager(model_info);
+    GE_ASSERT_TRUE(args_manager.Process(false), "Args manager process failed.");
+    auto input_vars = args_manager.GetInputVars();
+    for (const auto &var : input_vars) {
+      visited_var_names.insert(Str(var));
+    }
+  }
+  return visited_var_names.size();
+}
+
 ge::Status TilingCodeGenImpl::GenCacheHashMapDef() {
-  auto fixed_size_hashmap_def_code =
-    "template <size_t INPUT_VARS_SIZE>\n" \
-    "struct InputKeyHash {\n" \
-    "  size_t operator()(const std::array<uint32_t, INPUT_VARS_SIZE>& key) const {\n" \
-    "    size_t hash = 0;\n" \
-    "    for (uint32_t value : key) {\n" \
-    "      hash ^= value + 0x9e3779b9 + (hash << 6) + (hash >> 2);\n" \
-    "    }\n" \
-    "    return hash;\n" \
-    "  }\n" \
-    "};\n" \
-    "\n" \
-    "template <size_t INPUT_VARS_SIZE, size_t CAPACITY>\n" \
-    "class FixedSizeHashMap {\n" \
-    "private:\n" \
-    "  using Key = std::array<uint32_t, INPUT_VARS_SIZE>;\n" \
-    "  using Value = TilingDataCopy;\n" \
-    "  enum BucketState { EMPTY, OCCUPIED, DELETED };\n" \
-    "  struct Bucket {\n" \
-    "    Key key;\n" \
-    "    Value value;\n" \
-    "    BucketState state;\n" \
-    "    Bucket() : state(EMPTY) {}\n" \
-    "  };\n" \
-    "  std::array<Bucket, CAPACITY> buckets;\n" \
-    "  InputKeyHash<INPUT_VARS_SIZE> hasher;\n" \
-    "  size_t size_ = 0;\n" \
-    "  size_t find_index(const Key& key) const {\n" \
-    "    size_t hash = hasher(key) % CAPACITY;\n" \
-    "    size_t start = hash;\n" \
-    "    do {\n" \
-    "      if (buckets[hash].state == EMPTY) {\n" \
-    "        return hash;\n" \
-    "      } else if (buckets[hash].state == OCCUPIED && buckets[hash].key == key) {\n" \
-    "        return hash;\n" \
-    "      }\n" \
-    "      hash = (hash + 1) % CAPACITY;\n" \
-    "    } while (hash != start);\n" \
-    "    return CAPACITY;\n" \
-    "  }\n" \
-    "public:\n" \
-    "  bool insert(const Key& key, const Value& value) {\n" \
-    "    if (size_ >= CAPACITY * 0.8) {\n" \
-    "      return false;\n" \
-    "    }\n" \
-    "    size_t index = find_index(key);\n" \
-    "    if (index >= CAPACITY) {\n" \
-    "      return false;\n" \
-    "    }\n" \
-    "    if (buckets[index].state != OCCUPIED) {\n" \
-    "      buckets[index].key = key;\n" \
-    "      buckets[index].value = value;\n" \
-    "      buckets[index].state = OCCUPIED;\n" \
-    "      size_++;\n" \
-    "    } else {\n" \
-    "      buckets[index].value = value;\n" \
-    "    }\n" \
-    "    return true;\n" \
-    "  }\n" \
-    "  Value* find(const Key& key) {\n" \
-    "    size_t index = find_index(key);\n" \
-    "    if (index < CAPACITY && buckets[index].state == OCCUPIED) {\n" \
-    "      return &buckets[index].value;\n" \
-    "    }\n" \
-    "    return nullptr;\n" \
-    "  }\n" \
-    "  const Value* find(const Key& key) const {\n" \
-    "    return const_cast<FixedSizeHashMap*>(this)->find(key);\n" \
-    "  }\n" \
-    "  bool erase(const Key& key) {\n" \
-    "    size_t index = find_index(key);\n" \
-    "    if (index < CAPACITY && buckets[index].state == OCCUPIED) {\n" \
-    "      buckets[index].state = DELETED;\n" \
-    "      size_--;\n" \
-    "      return true;\n" \
-    "    }\n" \
-    "    return false;\n" \
-    "  }\n" \
-    "  void clear() {\n" \
-    "    for (auto& bucket : buckets) {\n" \
-    "      bucket.state = EMPTY;\n" \
-    "    }\n" \
-    "    size_ = 0;\n" \
-    "  }\n" \
-    "  size_t size() const { return size_; }\n" \
-    "  bool empty() const { return size_ == 0; }\n" \
-    "};\n";
-  tiling_head_.AddLine(fixed_size_hashmap_def_code);
+  size_t input_vars_size = CollectInputVarsSize();
+
+  cache::OperatorLevelCacheGen::GenConstantDefs(tiling_head_, input_vars_size);
+
+  GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenFixedSizeHashMapDef(tiling_head_),
+                    "Generate FixedSizeHashMap definition failed.");
+
+  GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenOperatorCacheTypes(tiling_head_, config_.tiling_data_type_name),
+                    "Generate Operator cache types failed.");
+
+  if (config_.cache_enabled_at_compile_time) {
+    GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenTilingCacheContext(tiling_head_, config_.tiling_data_type_name),
+                      "Generate TilingCacheContext failed.");
+  }
+
   return ge::SUCCESS;
 }
 
@@ -1704,9 +1651,6 @@ static TilingOption tiling_option_default{};
  ge::Status TilingCodeGenImpl::GenExtraTilingData(const ModelInfo &model_info) {
    ArgsManager args_manager(model_info);
    GE_ASSERT_SUCCESS(GenExtraTilingFuncImpl(model_info), "Gen extra tiling func failed.");
-   std::string buf_occupy;
-   extra_info_generator_.GenExtraTilingData(args_manager, buf_occupy);
-   tiling_func_.AddLine(buf_occupy);
  
    std::string param = config_.tiling_data_type_name + " &tiling_data";
    tiling_func_.AddLine("  void ExtraTilingData(" + param + ") {");
@@ -1950,45 +1894,14 @@ static TilingOption tiling_option_default{};
 }
 
 ge::Status TilingCodeGenImpl::GenFindCacheAndSaveCache() {
-  ArgsManager args_manager(tiling_model_info_[0]);
-  GE_ASSERT_TRUE(args_manager.Process(false), "Args manager process failed.");
-  tiling_head_.AddLine("");
-  tiling_head_.AddLine("constexpr size_t INPUT_VARS_SIZE = " + std::to_string(args_manager.GetInputVars().size()) + ";");
-  tiling_head_.AddLine("");
-  tiling_head_.AddLine("using CacheMap = FixedSizeHashMap<INPUT_VARS_SIZE, " + std::to_string(cache_capacity_) + ">;");
-  tiling_head_.AddLine("");
+  size_t input_vars_size = CollectInputVarsSize();
 
-  tiling_func_.AddLine("bool FindCache(std::array<uint32_t, INPUT_VARS_SIZE> &input_shapes, "
-                       + config_.tiling_data_type_name + " &tiling_data, CacheMap &cache) {");
-  tiling_func_.AddLine("  auto* result = cache.find(input_shapes);");
-  tiling_func_.AddLine("  if (result != nullptr) {");
-  tiling_func_.AddLine("    GetScheduleGroupTilingData(*result, tiling_data);");
-  tiling_func_.AddLine("    return true;");
-  tiling_func_.AddLine("  }");
-  tiling_func_.AddLine("  return false;");
-  tiling_func_.AddLine("}");
-  tiling_func_.AddLine("");
-  tiling_func_.AddLine("bool SaveCache(std::array<uint32_t, INPUT_VARS_SIZE> &input_shapes, TilingDataCopy &tiling_data_copy, CacheMap &cache) {");
-  tiling_func_.AddLine("  return cache.insert(input_shapes, tiling_data_copy);");
-  tiling_func_.AddLine("}");
-  return ge::SUCCESS;
-}
+  GE_ASSERT_SUCCESS(group_level_cache_gen_->GenGroupCacheTypes(tiling_head_, input_vars_size, cache_capacity_),
+                    "Generate Group cache types failed.");
 
-ge::Status TilingCodeGenImpl::GenInitAndQueryCacheCode() {
-  ArgsManager args_manager(tiling_model_info_[0]);
-  GE_ASSERT_TRUE(args_manager.Process(false), "Args manager process failed.");
-  std::string input_shapes_code;
-  for (const auto &arg : args_manager.GetInputVars()) {
-    input_shapes_code += (std::string("tiling_data.get_") + Str(arg) + "(), ");
-  }
-  tiling_func_.AddLine("    std::array<uint32_t, INPUT_VARS_SIZE> input_shapes = {" + input_shapes_code + "};");
-  tiling_func_.AddLine("    if (cache != nullptr) {");
-  tiling_func_.AddLine("      if (FindCache(input_shapes, tiling_data, *cache)) {");
-  tiling_func_.AddLine("        OP_LOGD(OP_NAME, \"" + config_.tiling_data_type_name + " find cache for this shape.\");");
-  tiling_func_.AddLine("        return true;");
-  tiling_func_.AddLine("      }");
-  tiling_func_.AddLine("    }");
-  tiling_func_.AddLine("    OP_LOGD(OP_NAME, \"" + config_.tiling_data_type_name + " find no cache, turn to main tiling procedure.\");");
+  GE_ASSERT_SUCCESS(group_level_cache_gen_->GenGroupCacheFunctions(tiling_func_, config_.tiling_data_type_name),
+                    "Generate Group cache functions failed.");
+
   return ge::SUCCESS;
 }
 
@@ -1999,13 +1912,13 @@ void TilingCodeGenImpl::GenCalcScoreVarsDefine() {
       "&score_map, double &obj, double &ub_ratio, TilingDataCopy &tmp_tiling, bool &sub_case_flag, " +
       config_.tiling_data_type_name + " &tiling_data" + (is_uniq_group_ ? "" : ", std::unordered_map<int64_t, uint64_t> &workspace_map");
   const char_t *cache_args =
-      with_reuse_info_ ? ", std::array<uint32_t, INPUT_VARS_SIZE> &input_shapes, CacheMap *cache = nullptr" : "";
+      with_reuse_info_ ? ", std::array<uint32_t, kInputShapeSize> &input_shapes, GroupLevelCache *cache = nullptr" : "";
   tiling_func_.AddLine(function_signature.append(cache_args).append(") {"));
   tiling_func_.AddLine(GenTilingScoreFuncDefineHead(is_uniq_group_));
   tiling_func_.AddLine("    if (ret) {");
   if (with_reuse_info_) {
     tiling_func_.AddLine("      if (cache != nullptr) {");
-    tiling_func_.AddLine("        SaveCache(input_shapes, tmp_tiling, *cache);");
+    tiling_func_.AddLine("        SaveGroupCache(input_shapes, tmp_tiling, *cache);");
     tiling_func_.AddLine("      }");
   }
   tiling_func_.AddLine("      OP_LOGI(OP_NAME, \"[PROF]The score_map[%d] has been processed, tiling case %s%u of " +
@@ -2063,13 +1976,35 @@ ge::Status TilingCodeGenImpl::GenAllSameScoreTilingCases(
   return ge::SUCCESS;
 }
 
-ge::Status TilingCodeGenImpl::GenGetTilingbyCaseId() {
-  tiling_func_.AddLine("  if (tilingCaseId == -1) {");
+ge::Status TilingCodeGenImpl::GenGroupCacheLookupCode() {
+  ArgsManager args_manager(tiling_model_info_[0]);
+  GE_ASSERT_TRUE(args_manager.Process(false), "Args manager process failed.");
+  auto input_vars = args_manager.GetInputVars();
+
+  std::string input_shapes_init = "  std::array<uint32_t, kInputShapeSize> input_shapes = {";
+  for (size_t i = 0; i < input_vars.size(); ++i) {
+    if (i > 0) input_shapes_init += ", ";
+    input_shapes_init += "tiling_data.get_" + Str(input_vars[i]) + "()";
+  }
+  input_shapes_init += "};";
+  tiling_func_.AddLine(input_shapes_init);
+
+  tiling_func_.AddLine("  if (cache != nullptr) {");
+  tiling_func_.AddLine("    if (FindGroupCache(input_shapes, tiling_data, *cache)) {");
+  tiling_func_.AddLine(
+      "      OP_LOGD(OP_NAME, \"" + config_.tiling_data_type_name + " find cache for this shape.\");");
+  tiling_func_.AddLine("      return true;");
+  tiling_func_.AddLine("    }");
+  tiling_func_.AddLine("  }");
+  tiling_func_.AddLine(
+      "  OP_LOGD(OP_NAME, \"" + config_.tiling_data_type_name + " find no cache, turn to main tiling procedure.\");");
+  tiling_func_.AddLine("");
+  return ge::SUCCESS;
+}
+
+ge::Status TilingCodeGenImpl::GenTemplateIterationLogic() {
   tiling_func_.AddLine("    OP_LOGI(OP_NAME, \"The user didn't specify tilingCaseId, iterate all templates.\");");
   GE_ASSERT_SUCCESS(GenSaveCaseNumInfo(tiling_model_info_.size()), "Gen SaveCaseNumInfo failed.");
-  if (with_reuse_info_) {
-    GE_ASSERT_SUCCESS(GenInitAndQueryCacheCode(), "Gen QueryCacheCode failed.");
-  }
   // 1.对所有model info内的切分轴按照字符顺序进行排序
   std::map<std::string, std::vector<std::string>> graph_name_to_arg_list;
   for (const auto &i : tiling_model_info_) {
@@ -2104,6 +2039,16 @@ ge::Status TilingCodeGenImpl::GenGetTilingbyCaseId() {
                        tiling_model_info_[0].schedule_group_ident.GetItemPrefix() +
                        R"( is the best choice.", sub_case_flag ? "R" : "", tiling_data.get_tiling_key());)");
   tiling_func_.AddLine("    }");
+  return ge::SUCCESS;
+}
+
+ge::Status TilingCodeGenImpl::GenGetTilingbyCaseId() {
+  tiling_func_.AddLine("  if (tilingCaseId == -1) {");
+  // Group级缓存查询
+  if (with_reuse_info_) {
+    GE_ASSERT_SUCCESS(GenGroupCacheLookupCode(), "Gen group cache lookup failed.");
+  }
+  GE_ASSERT_SUCCESS(GenTemplateIterationLogic(), "Gen template iteration failed.");
   GE_ASSERT_SUCCESS(GenerateInputParamsAndTiling(), "Gen GenerateInputParamsAndTiling failed.");
   return ge::SUCCESS;
 }
@@ -2360,7 +2305,7 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
    std::string params = config_.tiling_data_type_name + " &tiling_data" +
                         ( is_uniq_group_ ? "" : ", std::unordered_map<int64_t, uint64_t> &workspace_map") +
                         ", int32_t tilingCaseId = -1";
-   const ge::char_t *cache_str = (with_reuse_info_) ? ", CacheMap *cache = nullptr" : "";
+   const ge::char_t *cache_str = (with_reuse_info_) ? ", GroupLevelCache *cache = nullptr" : "";
    GenCalcScoreVarsDefine();
    tiling_func_.AddLine("bool GetTilingKey(" + params + cache_str + ") {");
    tiling_func_.AddLine("  bool ret = false;");
@@ -2620,9 +2565,9 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
  void TilingCodeGenImpl::GenCacheInit() {
    if (with_reuse_info_) {
      std::unordered_set<std::string> declared_cache_types_; // 防止重复声明
-     for (const auto& pair : cache_reuse_info_) {
+     for (const auto &pair : cache_reuse_info_) {
        if (declared_cache_types_.find(pair.second) == declared_cache_types_.end()) {
-         tiling_func_.AddLine("  " + pair.second + "::CacheMap " + pair.second + "_Cache;");
+         tiling_func_.AddLine("  " + pair.second + "::GroupLevelCache " + pair.second + "_Cache;");
          declared_cache_types_.insert(pair.second);
        }
      }
@@ -2796,9 +2741,10 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
     std::string first_param = hardware_param + "_tiling_data, ";
     std::string cache_param;
     const auto &key = schedule_result_prefix;
-    for (const auto& pair : cache_reuse_info_) {
-      if (pair.first == key || pair.second == key) { // 看是否为复用方/被复用方
-        cache_param =  ", &" + pair.second + "_Cache";
+    for (const auto &pair : cache_reuse_info_) {
+      if (pair.first == key || pair.second == key) {
+        // 看是否为复用方/被复用方
+        cache_param = ", &" + pair.second + "_Cache";
         break;
       }
     }
@@ -3472,40 +3418,56 @@ ge::Status TilingCodeGenImpl::GenPGOGetScheduleResult(const size_t asc_graph_id,
    return ge::SUCCESS;
  }
 
-  ge::Status TilingCodeGenImpl::GenGetTilingWithCaseId(bool is_tail) {
-    bool use_cache = (!is_tail && with_reuse_info_);
-    bool use_workspace = !(is_uniq_group_ || is_tail);
-    int32_t min_tiling_case_size = INT32_MAX;
-    std::map<string, int32_t> group_tiling_case_ids;
-    for (auto &model : tiling_model_info_) {
-      group_tiling_case_ids[model.schedule_group_ident.GetItemPrefix()]++;
-    }
-    for (auto &group_tiling_case : group_tiling_case_ids) {
-      min_tiling_case_size = std::min(group_tiling_case.second, min_tiling_case_size);
-    }
-    GE_ASSERT_SUCCESS(ValidateForceTilingCase(group_tiling_case_ids, min_tiling_case_size));
-
-    std::string tiling_case = (config_.force_tiling_case.is_single_mode && config_.force_tiling_case.single_case < 0)
-                                ? "tilingCaseId"
-                                : std::to_string(config_.force_tiling_case.single_case);
-    const ge::char_t *cache_define_head = use_cache ? (", CacheMap *cache = nullptr") : "";
-    const ge::char_t *cache_define_func = use_cache ? (", CacheMap *cache") : "";
-    const ge::char_t *cache_used = use_cache ? (", cache") : "";
-    const ge::char_t *workspace_define = use_workspace ? (", std::unordered_map<int64_t, uint64_t> &workspace_map") : "";
-    const ge::char_t *workspace_used = use_workspace ? (", workspace_map") : "";
-    GE_ASSERT_TRUE(!tiling_model_info_.empty());
-    tiling_func_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
-        " &tiling_data" + workspace_define + ", int32_t tilingCaseId" + cache_define_func + ") {");
-    tiling_head_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
-        " &tiling_data" + workspace_define + ", int32_t tilingCaseId" + cache_define_head + ");");
-    tiling_func_.AddLine("  tiling_option_default.tiling_case_id = " + tiling_case + ";");
-    tiling_func_.AddLine(std::string("  return GetTiling(tiling_data") + workspace_used + ", &tiling_option_default" + cache_used + ");");
-    tiling_func_.AddLine("}");
-    return ge::SUCCESS;
+ge::Status TilingCodeGenImpl::GenGetTilingWithCaseId(bool is_tail) {
+  bool use_cache = (!is_tail && with_reuse_info_);
+  bool use_workspace = !(is_uniq_group_ || is_tail);
+  int32_t min_tiling_case_size = INT32_MAX;
+  std::map<string, int32_t> group_tiling_case_ids;
+  for (auto &model : tiling_model_info_) {
+    group_tiling_case_ids[model.schedule_group_ident.GetItemPrefix()]++;
   }
+  for (auto &group_tiling_case : group_tiling_case_ids) {
+    min_tiling_case_size = std::min(group_tiling_case.second, min_tiling_case_size);
+  }
+  GE_ASSERT_SUCCESS(ValidateForceTilingCase(group_tiling_case_ids, min_tiling_case_size));
+
+  std::string tiling_case = (config_.force_tiling_case.is_single_mode && config_.force_tiling_case.single_case < 0)
+                              ? "tilingCaseId"
+                              : std::to_string(config_.force_tiling_case.single_case);
+  const ge::char_t *cache_define_head = use_cache ? (", GroupLevelCache *cache = nullptr") : "";
+  const ge::char_t *cache_define_func = use_cache ? (", GroupLevelCache *cache") : "";
+  const ge::char_t *cache_used = use_cache ? (", cache") : "";
+  const ge::char_t *workspace_define = use_workspace
+                                         ? (", std::unordered_map<int64_t, uint64_t> &workspace_map")
+                                         : "";
+  const ge::char_t *workspace_used = use_workspace ? (", workspace_map") : "";
+  GE_ASSERT_TRUE(!tiling_model_info_.empty());
+  tiling_func_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
+                       " &tiling_data" + workspace_define + ", int32_t tilingCaseId" + cache_define_func + ") {");
+  tiling_head_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
+                       " &tiling_data" + workspace_define + ", int32_t tilingCaseId" + cache_define_head + ");");
+  bool need_operator_cache = is_tail || (!is_tail && is_uniq_group_);
+  // 第一级：算子级缓存查询（在GetTilingKey之前）
+   if (need_operator_cache) {
+     GE_ASSERT_SUCCESS(
+         cache::OperatorLevelCacheGen::GenInitAndQueryCacheCode(tiling_func_, tiling_model_info_, config_),
+         "Generate init and query cache code failed.");
+   }
+  tiling_func_.AddLine("  tiling_option_default.tiling_case_id = " + tiling_case + ";");
+  tiling_func_.AddLine(
+      std::string("  auto ret = GetTiling(tiling_data") + workspace_used + ", &tiling_option_default" + cache_used +
+      ");");
+  if (need_operator_cache) {
+    GE_ASSERT_SUCCESS(cache::OperatorLevelCacheGen::GenSaveCacheCalls(tiling_func_, tiling_model_info_, config_),
+                      "Generate save cache calls failed.");
+  }
+  tiling_func_.AddLine("  return ret;");
+  tiling_func_.AddLine("}");
+  return ge::SUCCESS;
+}
  
  ge::Status TilingCodeGenImpl::GenGetTilingWithOption() {
-   const ge::char_t *cache_define_func = with_reuse_info_ ? (", CacheMap* cache") : "";
+   const ge::char_t *cache_define_func = with_reuse_info_ ? (", GroupLevelCache* cache") : "";
    tiling_func_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
                         " &tiling_data, " + (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") +
                         "TilingOption *tiling_option" + cache_define_func + ") {");
@@ -3683,6 +3645,12 @@ ge::Status TilingCodeGenImpl::ValidateGroupModeForceTilingCase(
    tiling_func_.AddLine("#include \"" + kDefaultTilingHeadFileName + "\"");
    tiling_func_.AddLine("namespace optiling {");
    GE_ASSERT_SUCCESS(GenScheduleGroupTilingTail(), "Generate tiling data tail inner failed.");
+
+  // 生成TilingCacheContext静态成员变量定义（必须在cpp文件中，否则会链接错误）
+  if (config_.cache_enabled_at_compile_time) {
+    GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenTilingCacheContextStaticDefs(tiling_func_),
+                      "Generate TilingCacheContext static defs failed.");
+  }
    tiling_head_.AddLine("} // namespace optiling");
    tiling_func_.AddLine("} // namespace optiling");
    tiling_res[kTilingScheduleGroupTailIdentify] += tiling_func_.GetOutputStr();
@@ -3798,23 +3766,32 @@ ge::Status TilingCodeGenImpl::ValidateGroupModeForceTilingCase(
      std::map<ScheduleGroupIdent, ReuseScheduleGroupInfo>::const_iterator iter) {
    if (with_reuse_info_) {
      tiling_func_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
-     " &tiling_data, " + (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") + "int32_t tilingCaseId, " +
-     reuse_prefix + "::CacheMap* cache) {");
+                          " &tiling_data, " + (is_uniq_group_
+                                                 ? ""
+                                                 : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") +
+                          "int32_t tilingCaseId, " +
+                          reuse_prefix + "::GroupLevelCache* cache) {");
      tiling_head_.AddLine("bool GetTiling(" + config_.tiling_data_type_name +
-     " &tiling_data, " + (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") + "int32_t tilingCaseId, " +
-     reuse_prefix + "::CacheMap* cache = nullptr);");
+                          " &tiling_data, " + (is_uniq_group_
+                                                 ? ""
+                                                 : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") +
+                          "int32_t tilingCaseId, " +
+                          reuse_prefix + "::GroupLevelCache* cache = nullptr);");
    } else {
      tiling_func_.AddLine("bool GetTiling(" + config_.tiling_data_type_name + " &tiling_data, " +
-     (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") + "int32_t tilingCaseId) {");
+                          (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") +
+                          "int32_t tilingCaseId) {");
      tiling_head_.AddLine("bool GetTiling(" + config_.tiling_data_type_name + " &tiling_data, " +
-     (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") + "int32_t tilingCaseId);");
+                          (is_uniq_group_ ? "" : "std::unordered_map<int64_t, uint64_t> &workspace_map, ") +
+                          "int32_t tilingCaseId);");
    }
    auto reuse_tiling_data = "  auto reuse_tiling_data = RefToRef<" + cur_prefix + "TilingData, " + reuse_prefix +
                             "TilingData>(tiling_data);";
    tiling_func_.AddLine(reuse_tiling_data);
    GE_ASSERT_SUCCESS(GenCastReuseTilingDataCode(reuse_info, iter->second));
    tiling_func_.AddLine("  auto ret = " + reuse_prefix + "::GetTiling(reuse_tiling_data, " +
-   (is_uniq_group_ ? "" : "workspace_map, ") + "tilingCaseId" + (with_reuse_info_ ? ", cache" : "") + ");");
+                        (is_uniq_group_ ? "" : "workspace_map, ") + "tilingCaseId" + (with_reuse_info_ ? ", cache" : "")
+                        + ");");
    tiling_func_.AddLine("  tiling_data = RefToRef<" + reuse_prefix + "TilingData, " + cur_prefix +
                         "TilingData>(reuse_tiling_data);");
    tiling_func_.AddLine("  return ret;");

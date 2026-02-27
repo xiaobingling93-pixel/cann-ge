@@ -1005,20 +1005,22 @@ def create_cube_tiling_data(kernel_name, temp_dir, graph_name, tiling_info, cube
 
     # 根据is_batch设置结构体名称和数据访问路径
     struct_name = "BatchMatMulV3BasicTilingData" if is_batch else "MatMulV3BasicTilingData"
-    data_prefix = "tmpTilingData.matMulTilingData" if is_batch else "tmpTilingData"
+    data_prefix = "tmpTilingData->matMulTilingData" if is_batch else "(*tmpTilingData)"
 
     # 生成host端tiling数据
     host_tiling_data = f"""
 #include "arch35/mat_mul_tiling_data.h"
-GET_TILING_DATA_WITH_STRUCT({struct_name}, tmpTilingData, tmpTilingGM);
+const int32_t cube_output_type_size = {cube_output_type_size};
+inline int32_t compute_basen_basem_align() {{
+  GET_TILING_DATA_PTR_WITH_STRUCT({struct_name}, tmpTilingData, tmpTilingGM);
 """
 
     # 构建class_body，使用data_prefix处理不同的数据访问路径
-    class_body = f"const int32_t cube_output_type_size = {cube_output_type_size};\n"
-    class_body += f"const int32_t ub_align_value = 32 / cube_output_type_size;\n"
-    class_body += f"const int32_t basen_align = ({data_prefix}.baseN + ub_align_value - 1) " \
+    class_body = f"  const int32_t ub_align_value = 32 / cube_output_type_size;\n"
+    class_body += f"  const int32_t basen_align = ({data_prefix}.baseN + ub_align_value - 1) " \
                   f"/ ub_align_value * ub_align_value;\n"
-    class_body += f"const int32_t basen_basem_align = ({data_prefix}.baseM * basen_align) / 2 + basen_align;\n"
+    class_body += f"  return ({data_prefix}.baseM * basen_align) / 2 + basen_align;\n"
+    class_body += f"}}\n"
     class_body += f"int32_t get_g_basen_basem_align();\n"
     class_body += f"void set_g_basen_basem_align(int32_t value);\n"
     if (is_matmul_relu_fixpip(tiling_info, cube_info)):

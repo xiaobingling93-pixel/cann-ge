@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include "es_codegen_default_value.h"
 #include "cmd_flag_info.h"
+#include "gen_esb_options.h"
 namespace ge {
 namespace es {
 
@@ -21,25 +22,41 @@ DEFINE_string(output_dir, ge::es::kEsCodeGenDefaultOutputDir, "Output directory 
 DEFINE_string(module_name, ge::es::kEsCodeGenDefaultModelName, "Module name for aggregate header file naming");
 DEFINE_string(h_guard_prefix, ge::es::kEsCodeGenDefaultPrefixGuard, "Header guard prefix for generated headers");
 DEFINE_string(exclude_ops, ge::es::kEsCodeGenDefaultExcludeOps, "Exclude ops for code generation");
+DEFINE_string(history_registry, ge::es::kEsCodeGenDefaultHistoryRegistry, "History registry dir for codegen; empty disables history");
+DEFINE_string(release_version, ge::es::kEsCodeGenDefaultReleaseVersion, "Release version in history registry");
 DEFINE_bool(help, false, "show this help message");
+DEFINE_bool(extract_history, false, "Generate history registry data");
+DEFINE_string(release_date, ge::es::kEsCodeGenDefaultReleaseDate, "Release date for history registry generation");
+DEFINE_string(branch_name, ge::es::kEsCodeGenDefaultBranchName, "Branch name for history registry generation");
 
-void GenEsImpl(const std::string &output_dir, const std::string &module_name, const std::string &h_guard_prefix, const std::string &exclude_ops);
+void GenEsImpl(const GenEsbOptions &options);
 /**
- * ES (Eager Style) Graph Builder Code Generator
+ * ES (Eager Style) Graph Builder Generator
  *
  * 功能说明：
- * 本程序用于生成ES图构建器的C和C++,Python代码，包括：
+ * 本程序支持两种生成模式：
+ * 1. 代码生成模式
+ * 生成ES图构建器的C和C++,Python代码，包括：
  * - 所有支持的算子(ops)的C接口
  * - 所有支持的算子的C++接口
  * - 所有支持的算子的Python接口
  * - 聚合头文件，方便用户一次性包含所有算子
  * - 聚合Python文件，方便用户一次性导入所有算子
+ * 2. 历史原型库生成模式
+ * 生成历史原型结构化数据，包括：
+ * - 版本索引
+ * - 版本元信息
+ * - 该版本的算子原型数据
  *
  * 使用方法：
- * ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_TYPE1,OP_TYPE2]
+ * - 代码生成模式：
+ *   ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_LIST] [--history_registry=PKG_DIR] [--release_version=VER]
+ * - 历史原型库生成模式：
+ *  ./gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+ *
  * 参数说明：
- * --output_dir：可选参数，指定代码生成的目标目录
- *   如果不指定，默认输出到当前目录
+ * --output_dir：可选参数，指定生成的目标目录
+ *   - 如果不指定，默认输出到当前目录
  * --module_name：可选参数，控制聚合头文件的命名
  *   - "math" -> es_math_ops_c.h, es_math_ops.h, es_math_ops.py
  *   - "all" -> es_all_ops_c.h, es_all_ops.h, es_all_ops.py
@@ -48,8 +65,19 @@ void GenEsImpl(const std::string &output_dir, const std::string &module_name, co
  *   - 如果不指定，使用默认前缀
  *   - 指定时，拼接默认前缀
  *   - python文件不感知此参数，同名场景通过不同的路径避免冲突
- * --exclude_ops: 可选参数, 控制排除生成的算子
+ * --exclude_ops: 可选参数, 控制排除生成代码的算子
  *   - 根据','分隔算子名
+ * --history_registry：可选参数，指定代码生产的历史原型库目录
+ *   - 如果不指定，默认不启用历史原型库
+ *   - 指定时，生成的C++接口会包含历史原型库中兼容的版本信息
+ * --release_version：
+ *   - 代码生成模式：可选参数，与 `--history_registry` 配合使用，指定当前版本号，生成的C++接口包含该版本的兼容版本信息；如果不指定，生成当前日期为基准兼容的历史版本
+ *   - 历史原型库生成模式：必填参数，指定当前历史原型数据对应的版本号
+ * --extract_history：控制是否生成历史原型结构化数据，默认不生成
+ * --release_date：可选参数，控制历史原型结构化数据的发布日期，格式 `YYYY-MM-DD`
+ *   - 如果不指定，使用当前日期
+ * --branch_name：可选参数，控制历史原型结构化数据的发布分支名
+ *
  * 环境变量要求：
  * - ASCEND_OPP_PATH：必须设置，指向CANN安装目录下的ops路径
  *   例如：export ASCEND_OPP_PATH=<cann-install-path>/ops
@@ -57,6 +85,7 @@ void GenEsImpl(const std::string &output_dir, const std::string &module_name, co
  *   例如：export LD_LIBRARY_PATH=<cann-install-path>/x86_64-linux/lib64
  *
  * 输出文件说明：
+ * 代码生成模式输出：
  * - es_<module>_ops_c.h：C接口聚合头文件
  * - es_<module>_ops.h：C++接口聚合头文件
  * - es_<module>_ops.py：Python接口聚合文件
@@ -64,25 +93,44 @@ void GenEsImpl(const std::string &output_dir, const std::string &module_name, co
  * - es_<op_type>.cpp：单个算子的C接口实现文件
  * - es_<op_type>.h：单个算子的C++接口头文件
  * - es_<op_type>.py：单个算子的Python接口文件
+ * 历史原型库生成模式输出：
+ * - index.json：版本索引
+ * - registry/<ver>/metadata.json：版本元信息
+ * - registry/<ver>/operators.json：版本算子原型数据
  *
  * 使用示例：
- * # 生成到当前目录，使用默认模块名"all"，默认保护宏前缀
+ * # 生成代码到当前目录，使用默认模块名"all"，默认保护宏前缀
  * ./gen_esb
  *
- * # 生成到指定目录，使用默认模块名"all"，默认保护宏前缀
+ * # 生成代码到指定目录，使用默认模块名"all"，默认保护宏前缀
  * ./gen_esb --output_dir=./output
  *
- * # 生成到指定目录，使用"math"模块名，默认保护宏前缀
+ * # 生成代码到指定目录，使用"math"模块名，默认保护宏前缀
  * ./gen_esb --output_dir=./output --module_name=math
  *
- * # 生成到指定目录，使用"all"模块名，默认保护宏前缀
+ * # 生成代码到指定目录，使用"all"模块名，默认保护宏前缀
  * ./gen_esb --output_dir=./output --module_name=all
  *
- * # 生成到指定目录，使用"math"模块名，自定义保护宏前缀"MY_CUSTOM"
+ * # 生成代码到指定目录，使用"math"模块名，自定义保护宏前缀"MY_CUSTOM"
  * ./gen_esb --output_dir=./output --module_name=math --h_guard_prefix=MY_CUSTOM
  *
- * # 生成到指定目录，使用"math"模块名，自定义保护宏前缀"MY_CUSTOM", 并排除Add算子生成
+ * # 生成代码到指定目录，使用"math"模块名，自定义保护宏前缀"MY_CUSTOM", 并排除Add算子生成
  * ./gen_esb --output_dir=./output --module_name=math --h_guard_prefix=MY_CUSTOM --exclude_ops=Add
+ *
+ * # 生成代码到指定目录，使用"math"模块名，默认保护宏前缀，生成的C++接口会包含math历史原型目录中以当前日期为基准筛选的兼容版本信息
+ * ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+ *
+ * # 生成代码到指定目录，使用"math"模块名，默认保护宏前缀，生成的C++接口会包含math历史原型目录中"8.0.RC2"版本兼容的历史版本信息
+ * ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
+ *
+ * # 生成历史原型结构化数据到当前目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
+ * ./gen_esb --extract_history --release_version=8.0.RC1
+ *
+ * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
+ * ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+ *
+ * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，自定义发布日期"2024-09-30"，分支名为"master"
+ * ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master
  *
  * # 检查环境变量
  * echo $ASCEND_OPP_PATH
@@ -105,7 +153,7 @@ void GenEsImpl(const std::string &output_dir, const std::string &module_name, co
  */
 static void DisplayProgramHeader() {
   std::cout << "==========================================" << std::endl;
-  std::cout << "ES Graph Builder Code Generator v1.0" << std::endl;
+  std::cout << "ES Graph Builder Generator v1.0" << std::endl;
   std::cout << "Copyright (c) 2025 Huawei Technologies Co., Ltd." << std::endl;
   std::cout << "==========================================" << std::endl;
 }
@@ -114,26 +162,34 @@ static void DisplayProgramHeader() {
  * 解析命令行参数
  * @param argc 参数个数
  * @param argv 参数数组
- * @param output_dir 输出参数，输出目录
- * @param module_name 输出参数，模块名
- * @param h_guard_prefix 输出参数，保护宏前缀
+ * @param options gen_esb 参数
  * @return 是否解析成功
  */
-static bool ParseCommandLineArgs(int argc, char *argv[], std::string &output_dir, std::string &module_name,
-                          std::string &h_guard_prefix, std::string &exclude_ops) {
-  // 使用cmd_flag_info库解析参数
+static bool ParseCommandLineArgs(int argc, char *argv[], GenEsbOptions &options) {
   ge::flgs::SetUsageMessage(R"(
-ES Graph Builder Code Generator v1.0
-Usage: ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_TYPE]
+ES Graph Builder Generator
+Usage:
+  Code Generator:
+    ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_TYPE] [--history_registry=PKG_DIR] [--release_version=VER]
+  History Registry Generator:
+    ./gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
 
 Examples:
-  ./gen_esb                                    # Use all defaults
-  ./gen_esb --output_dir=./output             # Output to ./output directory
-  ./gen_esb --module_name=math                # Use 'math' module name
-  ./gen_esb --h_guard_prefix=MY_CUSTOM       # Custom header guard prefix
-  ./gen_esb --output_dir=./output --module_name=math --h_guard_prefix=MY_CUSTOM # Combine options
-  ./gen_esb --exclude_ops=Add,Conv2D
-  
+  Code Generator:
+    ./gen_esb                                    # Use all defaults
+    ./gen_esb --output_dir=./output             # Output to ./output directory
+    ./gen_esb --module_name=math                # Use 'math' module name
+    ./gen_esb --h_guard_prefix=MY_CUSTOM       # Custom header guard prefix
+    ./gen_esb --output_dir=./output --module_name=math --h_guard_prefix=MY_CUSTOM # Combine options
+    ./gen_esb --exclude_ops=Add,Conv2D
+    ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+    ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
+
+  History Registry Generator:
+    ./gen_esb --extract_history --release_version=8.0.RC1
+    ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+    ./gen_esb --extract_history --release_version=8.0.RC1 --release_date=2024-09-30 --branch_name=master
+
 Environment variables required:
   ASCEND_OPP_PATH        # Must be set, pointing to CANN ops path
   LD_LIBRARY_PATH        # Must be set, pointing to CANN lib path
@@ -150,12 +206,22 @@ Environment variables required:
     return false;
   }
 
-  // 从解析后的参数中获取值
-  output_dir = FLAGS_output_dir;
-  module_name = FLAGS_module_name;
-  h_guard_prefix = FLAGS_h_guard_prefix;
-  exclude_ops = FLAGS_exclude_ops;
+  options.output_dir = FLAGS_output_dir;
+  options.module_name = FLAGS_module_name;
+  options.h_guard_prefix = FLAGS_h_guard_prefix;
+  options.exclude_ops = FLAGS_exclude_ops;
+  options.history_registry = FLAGS_history_registry;
+  options.release_version = FLAGS_release_version;
+  options.extract_history = FLAGS_extract_history;
+  if (options.extract_history) {
+    options.release_date = FLAGS_release_date;
+    options.branch_name = FLAGS_branch_name;
+  }
   return true;
+}
+
+static const char *GetActionName(const bool extract_history) {
+  return extract_history ? "history registry generation" : "code generation";
 }
 
 /**
@@ -187,24 +253,21 @@ static bool CheckEnvironmentVariables() {
 }
 
 /**
- * 执行代码生成
- * @param output_dir 输出目录
- * @param module_name 模块名
- * @param h_guard_prefix 保护宏前缀
+ * 执行生成任务
+ * @param options gen_esb 参数
  * @return 是否成功
  */
-static bool ExecuteCodeGeneration(const std::string &output_dir, const std::string &module_name,
-                           const std::string &h_guard_prefix, const std::string &exclude_ops_str) {
+static bool ExecuteGeneration(const GenEsbOptions &options) {
   try {
-    GenEsImpl(output_dir, module_name, h_guard_prefix, exclude_ops_str);
+    GenEsImpl(options);
     return true;
   } catch (const std::exception &e) {
-    std::cerr << "\nError: Exception occurred during code generation:" << std::endl;
+    std::cerr << "\nError: Exception occurred during " << GetActionName(options.extract_history) << ":" << std::endl;
     std::cerr << "  " << e.what() << std::endl;
     std::cerr << "\nPlease check environment configuration and permissions." << std::endl;
     return false;
   } catch (...) {
-    std::cerr << "\nError: Unknown exception occurred during code generation!" << std::endl;
+    std::cerr << "\nError: Unknown exception occurred during " << GetActionName(options.extract_history) << "!" << std::endl;
     std::cerr << "Please check system environment and CANN installation status." << std::endl;
     return false;
   }
@@ -218,30 +281,32 @@ int main(int argc, char *argv[]) {
     // 1. 显示程序标题
     ge::es::DisplayProgramHeader();
 
-    // 2. 初始化默认参数
-    std::string output_dir = ge::es::kEsCodeGenDefaultOutputDir;
-    std::string module_name = ge::es::kEsCodeGenDefaultModelName;
-    std::string h_guard_prefix = ge::es::kEsCodeGenDefaultPrefixGuard;
-    std::string exclude_ops_str = ge::es::kEsCodeGenDefaultExcludeOps;
+    // 2. 初始化 gen esb 参数对象
+    ge::es::GenEsbOptions opts;
     // 3. 解析命令行参数
-    if (!ge::es::ParseCommandLineArgs(argc, argv, output_dir, module_name, h_guard_prefix, exclude_ops_str)) {
+    if (!ge::es::ParseCommandLineArgs(argc, argv, opts)) {
       // 显示帮助信息或参数解析失败
       return 0;  // 帮助信息正常退出
     }
 
     // 4. 开始执行
-    std::cout << "Starting code generation..." << std::endl;
+    std::cout << "Starting " << ge::es::GetActionName(opts.extract_history) << "..." << std::endl;
 
     // 5. 检查环境变量
     if (!ge::es::CheckEnvironmentVariables()) {
       return 1;
     }
 
-    // 6. 执行代码生成
-    if (ge::es::ExecuteCodeGeneration(output_dir, module_name, h_guard_prefix, exclude_ops_str)) {
+    // 6. 执行生成任务
+    if (ge::es::ExecuteGeneration(opts)) {
       std::cout << "\n==========================================" << std::endl;
-      std::cout << "Code generation completed!" << std::endl;
-      std::cout << "Module name: " << module_name << std::endl;
+      if (opts.extract_history) {
+        std::cout << "History registry generation completed!" << std::endl;
+        std::cout << "Release version: " << opts.release_version << std::endl;
+      } else {
+        std::cout << "Code generation completed!" << std::endl;
+        std::cout << "Module name: " << opts.module_name << std::endl;
+      }
       std::cout << "==========================================" << std::endl;
       return 0;
     } else {

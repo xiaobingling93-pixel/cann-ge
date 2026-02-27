@@ -889,7 +889,7 @@ ge::Status AscendGraphParser::ConvertToTuningSpace(const ge::AscGraph &graph) {
 
 // 检测Reduce/Broadcast分核Store冲突场景
 // 使用 AttUtils 的公共函数检测 Reduce/Broadcast 轴
-ge::Status AscendGraphParser::CheckReduceBroadcastSplitStoreConflict(const ge::AscGraph &graph) {
+ge::Status AscendGraphParser::CheckReduceBroadcastSplitStoreConflict() {
   // 首先收集所有Reduce轴和Brodacast轴的原始名称（从所有节点）
   std::set<std::string> reduce_axis_orig_names;
   std::set<std::string> broadcast_axis_orig_names;
@@ -959,7 +959,7 @@ ge::Status AscendGraphParser::GraphParser(const ge::AscGraph &graph) {
   GE_ASSERT_SUCCESS(ConvertToTuningSpace(graph), "Construct tuning space from infos failed");
 
   // 新增：检测Reduce/Broadcast分核Store冲突
-  GE_ASSERT_SUCCESS(CheckReduceBroadcastSplitStoreConflict(graph));
+  GE_ASSERT_SUCCESS(CheckReduceBroadcastSplitStoreConflict());
 
   std::string dump_debug_info;
   if (GetThreadLocalContext().GetOption(kDumpDebugInfo, dump_debug_info) != ge::SUCCESS) {

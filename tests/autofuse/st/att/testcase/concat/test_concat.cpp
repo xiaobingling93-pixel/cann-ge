@@ -67,6 +67,284 @@ int main() {
   return 0;
 }
 )";
+
+std::string kConcatTilingTestHead = R"(
+#ifndef ATT_TILING_TEST_CONCAT_H_
+#define ATT_TILING_TEST_CONCAT_H_
+#include <cstdint>
+#include <array>
+#include <iostream>
+#include <unordered_map>
+
+// 包含主头文件，获取 TilingData 类型定义
+#include "Concat_tiling_data.h"
+
+namespace optiling {
+
+// ATT缓存相关常量
+constexpr size_t kInputShapeSize = 1;
+constexpr size_t kOperatorCacheCapacity = 24;  // 算子级缓存容量
+constexpr double kLoadFactorThreshold = 0.8;   // 负载因子阈值
+
+// TilingDataCopy 结构体 - 用于 Group 级别缓存存储
+struct TilingDataCopy {
+  uint32_t ND;
+  void set_ND(uint32_t val) { ND = val; }
+  inline uint32_t get_ND() { return ND; }
+  uint32_t block_dim;
+  void set_block_dim(uint32_t val) { block_dim = val; }
+  inline uint32_t get_block_dim() { return block_dim; }
+  uint32_t ndb_size;
+  void set_ndb_size(uint32_t val) { ndb_size = val; }
+  inline uint32_t get_ndb_size() { return ndb_size; }
+  uint32_t ndbt_size;
+  void set_ndbt_size(uint32_t val) { ndbt_size = val; }
+  inline uint32_t get_ndbt_size() { return ndbt_size; }
+  uint32_t q0_size;
+  void set_q0_size(uint32_t val) { q0_size = val; }
+  inline uint32_t get_q0_size() { return q0_size; }
+  uint32_t q1_size;
+  void set_q1_size(uint32_t val) { q1_size = val; }
+  inline uint32_t get_q1_size() { return q1_size; }
+  uint32_t tiling_key;
+  void set_tiling_key(uint32_t val) { tiling_key = val; }
+  inline uint32_t get_tiling_key() { return tiling_key; }
+  uint32_t ub_size;
+  void set_ub_size(uint32_t val) { ub_size = val; }
+  inline uint32_t get_ub_size() { return ub_size; }
+};
+// FixedSizeHashMap 模板类 - 固定大小的哈希表，用于缓存
+template <size_t KEY_SIZE, size_t CAPACITY, typename VALUE_TYPE>
+class FixedSizeHashMap {
+private:
+  using Key = std::array<uint32_t, KEY_SIZE>;
+  using Value = VALUE_TYPE;
+
+  enum BucketState { kEmpty, kOccupied, kDeleted };
+  struct Bucket {
+    Key key;
+    Value value;
+    BucketState state;
+  };
+
+  std::array<Bucket, CAPACITY> buckets;
+  size_t size_ = 0;
+
+  // Hash - 大驼峰命名
+  size_t Hash(const Key &key) const {
+    size_t hash = 0;
+    for (const auto& value : key) {
+      constexpr uint32_t kHashPrime = 0x9e3779b9;  // 黄金比例的整数表示，用于hash混合
+      hash ^= value + kHashPrime + (hash << 6) + (hash >> 2);
+    }
+    return hash;
+  }
+
+  // FindIndex - 大驼峰命名
+  size_t FindIndex(const Key &key) const {
+    size_t hash = Hash(key) % CAPACITY;
+    size_t start = hash;
+    do {
+      if (buckets[hash].state == kEmpty) {
+        return CAPACITY;
+      } else if (buckets[hash].state == kOccupied && buckets[hash].key == key) {
+        return hash;
+      }
+      hash = (hash + 1) % CAPACITY;
+    } while (hash != start);
+    return CAPACITY;
+  }
+
+public:
+  FixedSizeHashMap() : size_(0) {
+    for (size_t i = 0; i < CAPACITY; ++i) {
+      buckets[i].state = kEmpty;
+    }
+  }
+
+  // Find - 大驼峰命名
+  Value* Find(const Key &key) {
+    size_t index = FindIndex(key);
+    if (index < CAPACITY && buckets[index].state == kOccupied) {
+      return &buckets[index].value;
+    }
+    return nullptr;
+  }
+const Value* Find(const Key &key) const {
+    return const_cast<FixedSizeHashMap*>(this)->Find(key);
+  }
+
+  // Insert - 大驼峰命名
+  bool Insert(const Key &key, const Value &value) {
+    if (size_ >= CAPACITY * kLoadFactorThreshold) {
+      return false;  // 80%容量阈值
+    }
+    size_t index = FindIndex(key);
+    if (index >= CAPACITY) {
+      size_t hash = Hash(key) % CAPACITY;
+      for (size_t i = 0; i < CAPACITY; ++i) {
+        index = (hash + i) % CAPACITY;
+        if (buckets[index].state == kEmpty) {
+          buckets[index].key = key;
+          buckets[index].value = value;
+          buckets[index].state = kOccupied;
+          size_++;
+          return true;
+        }
+      }
+      return false;
+    }
+    buckets[index].value = value;
+    return true;
+  }
+
+  // Erase - 大驼峰命名
+  bool Erase(const Key &key) {
+    size_t index = FindIndex(key);
+    if (index < CAPACITY && buckets[index].state == kOccupied) {
+      buckets[index].state = kDeleted;
+      size_--;
+      return true;
+    }
+    return false;
+  }
+// Clear - 大驼峰命名
+  void Clear() {
+    for (auto& bucket : buckets) {
+      bucket.state = kEmpty;
+    }
+    size_ = 0;
+  }
+
+  size_t Size() const { return size_; }
+  bool Empty() const { return size_ == 0; }
+};
+
+namespace AscGraph0ScheduleResult0G0 {
+
+// GroupLevelCache 类型别名 - Group 级别缓存
+using GroupLevelCache = FixedSizeHashMap<kInputShapeSize, 4, TilingDataCopy>;
+
+// 前向声明 - GetTiling 函数将在 Concat_tiling_func.cpp 中实现
+bool GetTiling(AscGraph0ScheduleResult0G0TilingData &tiling_data,
+               std::unordered_map<int64_t, uint64_t> &workspace_map,
+               int32_t tilingCaseId,
+               GroupLevelCache *cache = nullptr);
+
+} // namespace AscGraph0ScheduleResult0G0
+
+} // namespace optiling
+
+#endif
+)";
+
+std::string kRunTilingFuncMainSameND = R"(
+#include <iostream>
+#include <unordered_map>
+#include "Concat_tiling_data.h"
+#include "Concat_tiling_test.h"
+
+using namespace optiling;
+
+int main() {
+  // ========== Group 级别缓存测试 ==========
+  std::cout << "\n========== Group 级别缓存测试 ==========" << std::endl;
+  AscGraph0ScheduleResult0G0::GroupLevelCache group_cache;
+  // Test 1: ND = 1024，首次执行（不命中）
+  std::cout << "\n--- Test 1: ND = 1024 (首次执行) ---" << std::endl;
+  AscGraph0ScheduleResult0G0TilingData tilingData1;
+  tilingData1.set_ND(1024);
+  tilingData1.set_block_dim(64);
+  tilingData1.set_ub_size(245760);
+  std::unordered_map<int64_t, uint64_t> workspace_map1;
+  if (!AscGraph0ScheduleResult0G0::GetTiling(
+        tilingData1, workspace_map1, -1, &group_cache)) {
+    std::cout << "Test 1 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData1.get_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData1.get_ND() << std::endl;
+  // Test 2: ND = 1024，再次执行（应命中 Group 缓存）
+  std::cout << "\n--- Test 2: ND = 1024 (应命中 Group 缓存) ---" << std::endl;
+  AscGraph0ScheduleResult0G0TilingData tilingData2;
+  tilingData2.set_ND(1024);
+  tilingData2.set_block_dim(64);
+  tilingData2.set_ub_size(245760);
+
+  std::unordered_map<int64_t, uint64_t> workspace_map2;
+  if (!AscGraph0ScheduleResult0G0::GetTiling(
+        tilingData2, workspace_map2, -1, &group_cache)) {
+    std::cout << "Test 2 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData2.get_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData2.get_ND() << std::endl;
+  // Test 3: ND = 2048，首次执行（不命中）
+  std::cout << "\n--- Test 3: ND = 2048 (首次执行) ---" << std::endl;
+  AscGraph0ScheduleResult0G0TilingData tilingData3;
+  tilingData3.set_ND(2048);
+  tilingData3.set_block_dim(64);
+  tilingData3.set_ub_size(245760);
+
+  std::unordered_map<int64_t, uint64_t> workspace_map3;
+  if (!AscGraph0ScheduleResult0G0::GetTiling(
+        tilingData3, workspace_map3, -1, &group_cache)) {
+    std::cout << "Test 3 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData3.get_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData3.get_ND() << std::endl;
+
+  // Test 4: ND = 2048，再次执行（应命中 Group 缓存）
+  std::cout << "\n--- Test 4: ND = 2048 (应命中 Group 缓存) ---" << std::endl;
+  AscGraph0ScheduleResult0G0TilingData tilingData4;
+  tilingData4.set_ND(2048);
+  tilingData4.set_block_dim(64);
+  tilingData4.set_ub_size(245760);
+
+  std::unordered_map<int64_t, uint64_t> workspace_map4;
+  if (!AscGraph0ScheduleResult0G0::GetTiling(
+        tilingData4, workspace_map4, -1, &group_cache)) {
+    std::cout << "Test 4 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData4.get_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData4.get_ND() << std::endl;
+
+  // ========== Operator 级别缓存测试 ==========
+  std::cout << "\n========== Operator 级别缓存测试 ==========" << std::endl;
+
+  // Test 5: ND = 4096，首次执行（不命中）
+  std::cout << "\n--- Test 5: ND = 4096 (首次执行) ---" << std::endl;
+  graph_ndTilingData tilingData5;
+  tilingData5.set_block_dim(64);
+  tilingData5.set_ub_size(245760);
+  tilingData5.graph0_result0_g0_tiling_data.set_ND(4096);
+
+  if (!GetTiling(tilingData5)) {
+    std::cout << "Test 5 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData5.get_graph0_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData5.graph0_result0_g0_tiling_data.get_ND() << std::endl;
+
+  // Test 6: ND = 4096，再次执行（应命中 Operator 缓存）
+  std::cout << "\n--- Test 6: ND = 4096 (应命中 Operator 缓存) ---" << std::endl;
+  graph_ndTilingData tilingData6;
+  tilingData6.set_block_dim(64);
+  tilingData6.set_ub_size(245760);
+  tilingData6.graph0_result0_g0_tiling_data.set_ND(4096);
+
+  if (!GetTiling(tilingData6)) {
+    std::cout << "Test 6 failed" << std::endl;
+    return -1;
+  }
+  std::cout << "get_tiling_key = " << tilingData6.get_graph0_tiling_key() << std::endl;
+  std::cout << "ND = " << tilingData6.graph0_result0_g0_tiling_data.get_ND() << std::endl;
+  std::cout << "\n========== All tests passed ==========" << std::endl;
+  return 0;
+}
+)";
 }
 using namespace att;
 
@@ -83,12 +361,11 @@ class STestGenConcat : public ::testing::Test {
   void SetUp() override {
     // Code here will be called immediately after the constructor (right
     // before each test).
-    // dlog_setlevel(GE, 0, 1);
-    att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+    AutoFuseConfig::MutableAttStrategyConfig().Reset();
     setenv("ASCEND_GLOBAL_LOG_LEVEL", "4", 1);
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_tiling_case = "";
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_schedule_result = -1L;
+    AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
+    AutoFuseConfig::MutableAttStrategyConfig().force_tiling_case = "";
+    AutoFuseConfig::MutableAttStrategyConfig().force_schedule_result = -1L;
   }
 
   void TearDown() override {
@@ -97,6 +374,43 @@ class STestGenConcat : public ::testing::Test {
     unsetenv("ASCEND_GLOBAL_LOG_LEVEL");
     unsetenv("AUTOFUSE_DFX_FLAGS");
   }
+
+ protected:
+  // 辅助函数：验证Group缓存行为
+  void VerifyGroupCacheBehavior();
+  // 辅助函数：验证静态shape缓存行为
+  void VerifyStaticShapeCacheBehavior();
+
+  // 辅助函数：构建单个图到schedule_group
+  void BuildSingleGraphToScheduleGroup(
+      ascir::AscGraph& graph,
+      ascir::ScheduleGroup& schedule_group,
+      uint32_t tiling_key);
+
+  // 辅助函数：生成tiling函数并写入文件
+  void GenerateTilingFunctionAndWriteToFile(
+      const std::string& op_name,
+      const ascir::FusedScheduledResult& fused_scheduled_result,
+      std::map<std::string, std::string>& options);
+
+  // 辅助函数：生成tiling数据和头文件
+  void GenerateTilingDataAndHeader(
+      const std::string& op_name,
+      const std::string& graph_name,
+      const ascir::FusedScheduledResult& fused_scheduled_result,
+      std::map<std::string, std::string>& options);
+
+  // 辅助函数：准备测试环境文件
+  void PrepareTestEnvironmentFiles(const std::string& test_header_content = "");
+
+  // 辅助函数：编译生成的tiling代码
+  void CompileGeneratedTilingCode();
+
+  // 辅助函数：编译并运行tiling测试，验证输出
+  void CompileAndRunTilingTest(const std::string& output_file = "./info.log");
+
+  // 静态成员：静态shape缓存测试主函数代码
+  static const std::string kStaticShapeCacheTestMain;
 };
 
 void Concat_Normal_BeforeAutofuse(ascir::HintGraph &graph) {
@@ -648,13 +962,6 @@ namespace ascir {
 namespace cg {
 Status BuildConcatGroupAscendGraphND(ge::AscGraph &graph) {
   // create default axis
-  auto A = ge::Symbol("A");
-  auto R = ge::Symbol("R");
-  auto BL = ge::Symbol(8, "BL");
-  auto a = graph.CreateAxis("A", A);
-  auto r = graph.CreateAxis("R", R);
-  auto bl = graph.CreateAxis("BL", BL);
-
   auto ND = ge::Symbol("ND");
   auto nd = graph.CreateAxis("nd", ND);
   auto [ndB, ndb] = graph.BlockSplit(nd.id);
@@ -2210,6 +2517,209 @@ int main() {
   EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Got dynamic graph"), true);
 }
 
+void STestGenConcat::VerifyGroupCacheBehavior() {
+  // ========== 缓存校验 ==========
+  // Test 1: ND=1024 Group Cache MISS -> SAVE
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Group Cache] MISS! key=[1024]"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Group Cache] SAVE SUCCESS: key=[1024]"), true);
+
+  // Test 2: ND=1024 Group Cache HIT
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Group Cache] HIT"), true);
+
+  // Test 3: ND=2048 Group Cache MISS -> SAVE
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Group Cache] MISS! key=[2048]"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Group Cache] SAVE SUCCESS: key=[2048]"), true);
+
+  // Test 4: ND=2048 Group Cache HIT (已在上面通过 HIT 校验覆盖)
+
+  // Test 5: ND=4096 Operator Cache MISS -> SAVE
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Operator Cache] MISS! key=[4096]"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Operator Cache] SAVE SUCCESS: key=[4096]"), true);
+
+  // Test 6: ND=4096 Operator Cache HIT
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "[Operator Cache] HIT! key=[4096]"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Operator level cache hit, input_shapes[4096]"), true);
+}
+
+void STestGenConcat::VerifyStaticShapeCacheBehavior() {
+  // 用例描述：验证静态shape场景下的缓存功能
+  // 用例期望结果：
+  // 1. 生成的TilingFunc包含算子级缓存代码（即使kInputShapeSize=0）
+  // 2. 使用空key进行缓存查询和保存
+  // 3. 编译通过且运行时缓存正常工作
+
+  // 验证生成的代码包含kInputShapeSize = 0（静态shape）
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp", "constexpr size_t kInputShapeSize = 0;"), true);
+
+  // 验证生成的代码包含静态shape的缓存处理（空key）
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp", "std::array<uint32_t, kInputShapeSize> input_shapes = {};"), true);
+
+  // 验证生成的代码包含算子级缓存查询（静态shape）
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp", "Operator level cache hit (static shape)"), true);
+}
+
+void STestGenConcat::BuildSingleGraphToScheduleGroup(
+    ascir::AscGraph& graph,
+    ascir::ScheduleGroup& schedule_group,
+    uint32_t tiling_key) {
+  graph.SetTilingKey(tiling_key);
+  schedule_group.impl_graphs.emplace_back(graph);
+  GraphConstructUtils::UpdateGraphsVectorizedStride(schedule_group.impl_graphs);
+}
+
+void STestGenConcat::GenerateTilingFunctionAndWriteToFile(
+    const std::string& op_name,
+    const ascir::FusedScheduledResult& fused_scheduled_result,
+    std::map<std::string, std::string>& options) {
+  std::map<std::string, std::string> tiling_funcs;
+  auto res = GenTilingImplAutoFuseV3(op_name, fused_scheduled_result, options, tiling_funcs, true);
+  EXPECT_EQ(res, true);
+
+  std::string tiling_func;
+  CombineTilings(tiling_funcs, tiling_func);
+  std::ofstream oss;
+  oss.open("Concat_tiling_func.cpp", std::ios::out);
+  oss << "#include \"Concat_tiling_data.h\"\n";
+  oss << tiling_func;
+  oss.close();
+}
+
+void STestGenConcat::GenerateTilingDataAndHeader(
+    const std::string& op_name,
+    const std::string& graph_name,
+    const ascir::FusedScheduledResult& fused_scheduled_result,
+    std::map<std::string, std::string>& options) {
+  TilingCodeGenerator generator;
+  TilingCodeGenConfig generator_config;
+  std::map<std::string, std::string> tiling_res;
+  FusedParsedScheduleResult all_model_infos;
+  GetModelInfoMap(fused_scheduled_result, options, all_model_infos);
+  generator_config.type = TilingImplType::HIGH_PERF;
+  generator_config.tiling_data_type_name = options.at(kTilingDataTypeName);
+  generator_config.gen_tiling_data = true;
+  generator_config.gen_extra_infos = true;
+  EXPECT_EQ(generator.GenTilingCode(op_name, all_model_infos, generator_config, tiling_res), ge::SUCCESS);
+
+  std::ofstream oss;
+  oss.open("Concat_tiling_data.h", std::ios::out);
+  oss << tiling_res[graph_name + "TilingData"];
+  oss.close();
+}
+
+void STestGenConcat::PrepareTestEnvironmentFiles(const std::string& test_header_content) {
+  auto ret = std::system(std::string("cp ").append(TOP_DIR).append("/tests/autofuse/st/att/testcase/op_log.h ./ -f").c_str());
+  ret = autofuse::test::CopyStubFiles(TOP_DIR, "tests/autofuse/st/att/testcase/stub/");
+  EXPECT_EQ(ret, 0);
+
+  EXPECT_EQ(ResultCheckerUtils::ReplaceLogMacrosGeneric("Concat_tiling_func.cpp"), true);
+
+  if (!test_header_content.empty()) {
+    std::ofstream oss;
+    oss.open("Concat_tiling_test.h", std::ios::out);
+    oss << test_header_content;
+    oss.close();
+  }
+}
+
+void STestGenConcat::CompileGeneratedTilingCode() {
+  auto ret = std::system("g++ tiling_func_main_concat.cpp Concat_tiling_func.cpp -o tiling_func_main_concat -I ./ -DSTUB_LOG");
+  EXPECT_EQ(ret, 0);
+}
+
+void STestGenConcat::CompileAndRunTilingTest(const std::string& output_file) {
+  auto ret = std::system("g++ tiling_func_main_concat.cpp Concat_tiling_func.cpp -o tiling_func_main_concat -I ./ -DSTUB_LOG 2>&1");
+  EXPECT_EQ(ret, 0);
+
+  ret = std::system(("./tiling_func_main_concat > " + output_file + " 2>&1").c_str());
+  EXPECT_EQ(ret, 0);
+}
+
+const std::string STestGenConcat::kStaticShapeCacheTestMain = R"RAW(
+#include <iostream>
+#include "Concat_tiling_data.h"
+using namespace optiling;
+
+void PrintResult(graph_static_cacheTilingData& tilingData) {
+  std::cout << "====================================================" << std::endl;
+  std::cout << "Static shape cache test" << std::endl;
+  std::cout << "get_block_dim = " << tilingData.get_block_dim() << std::endl;
+  std::cout << "====================================================" << std::endl;
+}
+
+int main() {
+  graph_static_cacheTilingData tilingData;
+  tilingData.set_block_dim(64);
+  tilingData.set_ub_size(245760);
+
+  // First call: cache miss, normal solve
+  if (GetTiling(tilingData)) {
+    PrintResult(tilingData);
+  } else {
+    std::cout << "First tiling func execute failed." << std::endl;
+    return -1;
+  }
+
+  // Second call: cache should hit (static shape uses empty key)
+  if (GetTiling(tilingData)) {
+    std::cout << "Second call success - cache hit" << std::endl;
+  } else {
+    std::cout << "Second tiling func execute failed." << std::endl;
+    return -1;
+  }
+
+  return 0;
+}
+)RAW";
+
+TEST_F(STestGenConcat, reuse_schedule_group_with_same_input_axis_name)
+{
+  // 构建图
+  ascir::ScheduleGroup schedule_group1;
+  ascir::ScheduleGroup schedule_group2;
+  ascir::ScheduledResult schedule_result1;
+  std::vector<ascir::ScheduledResult> schedule_results;
+
+  const std::string kFirstGraphName = "graph_nd";
+  ascir::AscGraph graph_nd(kFirstGraphName.c_str());
+  ascir::AscGraph graph_s0("graph_s0");
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphND(graph_nd), ge::SUCCESS);
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphND(graph_s0), ge::SUCCESS);
+
+  // 使用辅助函数构建schedule_group
+  BuildSingleGraphToScheduleGroup(graph_nd, schedule_group1, 0U);
+  BuildSingleGraphToScheduleGroup(graph_s0, schedule_group2, 1U);
+
+  // 组装schedule_result
+  schedule_result1.schedule_groups.emplace_back(schedule_group1);
+  schedule_result1.schedule_groups.emplace_back(schedule_group2);
+  schedule_results.emplace_back(schedule_result1);
+
+  // 配置options
+  std::map<std::string, std::string> options;
+  std::string op_name = "Concat";
+  options.emplace(kGenConfigType, "AxesReorder");
+  ascir::FusedScheduledResult fused_scheduled_result;
+  fused_scheduled_result.node_idx_to_scheduled_results.emplace_back(schedule_results);
+
+  // 使用辅助函数生成tiling函数和数据
+  GenerateTilingFunctionAndWriteToFile(op_name, fused_scheduled_result, options);
+  GenerateTilingDataAndHeader(op_name, kFirstGraphName, fused_scheduled_result, options);
+
+  // 准备测试环境和编译
+  PrepareTestEnvironmentFiles(kConcatTilingTestHead);
+
+  std::ofstream oss;
+  oss.open("tiling_func_main_concat.cpp", std::ios::out);
+  oss << kRunTilingFuncMainSameND;
+  oss.close();
+  CompileGeneratedTilingCode();
+
+  auto ret = std::system("./tiling_func_main_concat > ./info.log");
+  EXPECT_EQ(ret, 0);
+
+  VerifyGroupCacheBehavior();
+}
+
 TEST_F(STestGenConcat, reuse_schedule_group_with_different_input_axis_name)
 {
   ascir::ScheduleGroup schedule_group1;
@@ -2994,8 +3504,7 @@ int main() {
 }
 
 // 测试ND为0时动态shape场景的空tensor处理
-TEST_F(STestGenConcat, empty_tensor_nd_zero_dynamic_shape)
-{
+TEST_F(STestGenConcat, empty_tensor_nd_zero_dynamic_shape) {
   const std::string kFirstGraphName = "graph_empty_tensor";
   ascir::ScheduledResult schedule_result1;
   std::vector<ascir::ScheduledResult> schedule_results;
@@ -3009,4 +3518,53 @@ TEST_F(STestGenConcat, empty_tensor_nd_zero_dynamic_shape)
 
   // 编译并运行测试
   CompileAndRunEmptyTensorTest(kFirstGraphName);
+}
+// 用例描述：验证静态shape场景下的缓存功能
+// 用例期望结果：
+// 1. 生成的TilingFunc包含算子级缓存代码（即使kInputShapeSize=0）
+// 2. 使用空key进行缓存查询和保存
+// 3. 编译通过且运行时缓存正常工作
+TEST_F(STestGenConcat, static_shape_cache_support)
+{
+  // 构建图
+  ascir::ScheduleGroup schedule_group1;
+  ascir::ScheduledResult schedule_result1;
+  std::vector<ascir::ScheduledResult> schedule_results;
+
+  const std::string kFirstGraphName = "graph_static_cache";
+  ascir::AscGraph graph_static(kFirstGraphName.c_str());
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphStatic(graph_static), ge::SUCCESS);
+
+  // 使用辅助函数构建schedule_group
+  BuildSingleGraphToScheduleGroup(graph_static, schedule_group1, 0U);
+
+  // 组装schedule_result
+  schedule_result1.schedule_groups.emplace_back(schedule_group1);
+  schedule_results.emplace_back(schedule_result1);
+
+  // 配置options
+  std::map<std::string, std::string> options;
+  std::string op_name = "Concat";
+  options.emplace(kGenConfigType, "AxesReorder");
+  ascir::FusedScheduledResult fused_scheduled_result;
+  fused_scheduled_result.node_idx_to_scheduled_results.emplace_back(schedule_results);
+
+  // 使用辅助函数生成tiling函数和数据
+  GenerateTilingFunctionAndWriteToFile(op_name, fused_scheduled_result, options);
+  GenerateTilingDataAndHeader(op_name, kFirstGraphName, fused_scheduled_result, options);
+
+  // 准备测试环境并验证生成的代码
+  PrepareTestEnvironmentFiles();
+  VerifyStaticShapeCacheBehavior();
+
+  // 生成静态shape缓存测试主函数
+  std::ofstream oss;
+  oss.open("tiling_func_main_concat.cpp", std::ios::out);
+  oss << kStaticShapeCacheTestMain;
+  oss.close();
+
+  // 编译并运行测试，验证输出
+  CompileAndRunTilingTest();
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Static shape cache test"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Second call success"), true);
 }

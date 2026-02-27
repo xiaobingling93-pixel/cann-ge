@@ -17,6 +17,10 @@ inline const char *kEsCodeGenDefaultOutputDir = "./";
 inline const char *kEsCodeGenDefaultModelName = "all";
 inline const char *kEsCodeGenDefaultPrefixGuard = "";
 inline const char *kEsCodeGenDefaultExcludeOps = "";
+inline const char *kEsCodeGenDefaultHistoryRegistry = "";
+inline const char *kEsCodeGenDefaultReleaseVersion = "";
+inline const char *kEsCodeGenDefaultReleaseDate = "";
+inline const char *kEsCodeGenDefaultBranchName = "";
 }  // namespace es
 }  // namespace ge
 #endif  //_ES_CODEGEN_DEFAULT_VALUE_H_

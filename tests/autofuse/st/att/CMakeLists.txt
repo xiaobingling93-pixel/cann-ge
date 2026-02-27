@@ -37,6 +37,7 @@ file(GLOB SOURCES
         ${TOP_DIR}/tests/autofuse/st/att/testcase/add_layer_norm/test_add_layer_norm.cpp
         ${TOP_DIR}/tests/autofuse/st/att/testcase/add_layer_norm/add_layer_norm.cpp
         ${TOP_DIR}/tests/autofuse/st/att/testcase/concat/*.cpp
+        ${TOP_DIR}/tests/autofuse/st/att/testcase/cache/*.cpp
         ${TOP_DIR}/tests/autofuse/st/att/testcase/reduce_split_penalty/*.cpp
         ${TOP_DIR}/tests/autofuse/st/att/testcase/e2e_st_test/*.cpp
         ${TOP_DIR}/tests/autofuse/st/att/testcase/profiler_e2e/*.cpp
@@ -69,6 +70,7 @@ target_include_directories(att_st PRIVATE
         ${ATT_DIR}/generator/preprocess
         ${ATT_DIR}/generator/solver_pass
         ${ATT_DIR}/generator/solver_pass_gen
+        ${ATT_DIR}/generator/cache
         ${ATT_DIR}/gen_model_info
         ${ATT_DIR}/sample/depends/fake
         ${ASCEND_INSTALL_PATH}/include

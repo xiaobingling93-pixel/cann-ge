@@ -582,8 +582,9 @@ domi::Status InitDomiOmgContext(const std::string &input_shape, const std::strin
     if (iter != ge::input_format_str_to_geformat.cend()) {
       domi::GetContext().format = iter->second;
     } else {
-      REPORT_INNER_ERR_MSG("E19999", "param input_format:%s is not supported, "
-                         "expect ND/NCHW/NHWC/CHWN/NC1HWC0/NHWC1C0.", input_format.c_str());
+      (void)REPORT_PREDEFINED_ERR_MSG(
+          "E10061", std::vector<const char *>({"value", "parameter", "expected_value"}),
+          std::vector<const char *>({input_format.c_str(), "input_format", "ND, NCHW, NHWC, CHWN, NC1HWC0 or NHWC1C0"}));
       GELOGE(PARAM_INVALID, "[Check][Param]Input format %s not support, "
              "expect ND/NCHW/NHWC/CHWN/NC1HWC0/NHWC1C0.", input_format.c_str());
       return PARAM_INVALID;

@@ -175,6 +175,7 @@ target_compile_options(aihac_codegen PRIVATE
     -Wfloat-equal
     -Wextra
     -Wall
+    -Werror
 )
 
 target_link_options(aihac_codegen PRIVATE

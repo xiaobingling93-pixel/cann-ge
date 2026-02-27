@@ -154,7 +154,6 @@ Tensor::Tensor(const ascir::TensorAttr &tensor, std::string &dtype_name, const s
       actual_size(this->name + "_actual_size"),
       que_depth(this->name + "_que_depth"),
       que_buf_num(this->name + "_que_buf_num"),
-      ub_scalar_name(this->name + "_ub_scalar"),
       que_share_offset("q" + std::to_string(tensor.attr.que.id) + "_reuse" + std::to_string(tensor.attr.mem.reuse_id) +
                        "_offset"),
       const_value(""),
@@ -162,7 +161,8 @@ Tensor::Tensor(const ascir::TensorAttr &tensor, std::string &dtype_name, const s
       que_depth_value(tensor.attr.que.depth),
       que_buf_num_value(tensor.attr.que.buf_num),
       merge_scope(tensor.attr.opt.merge_scope),
-      is_constant(ge::ascir::AscTensorUtils::IsConstTensor(tensor)) {
+      is_constant(ge::ascir::AscTensorUtils::IsConstTensor(tensor)),
+      ub_scalar_name(this->name + "_ub_scalar") {
   (void)tensor_name;
 }
 
@@ -1192,7 +1192,8 @@ Status TPipe::InitTBufBuffer(const TBuf &buf, std::string &result) const {
 std::string TPipe::TensorSizeCalc() const {
   stringstream ss;
 
-  for (auto &[id, t] : this->tensors) {
+  for (const auto &pair : this->tensors) {
+    const auto &t = pair.second;
     if (t.alloc_type == ge::AllocType::kAllocTypeQueue) {
       ss << t.size.DefineConst(this->tiler.TensorVectorizedSize(t)) << std::endl;
       ss << t.que_buf_num.DefineConst(to_string(t.que_buf_num_value)) << std::endl;
@@ -1221,7 +1222,8 @@ std::string TPipe::TensorActualSizeCalc(const ascir::TensorId id) const {
 Status TPipe::MergeScopeSizeCalc(std::string &result) const {
   stringstream ss;
 
-  for (auto &[id, merge_scope] : this->merge_scopes) {
+  for (const auto &pair : this->merge_scopes) {
+    const auto &merge_scope = pair.second;
     stringstream tensor_size_sum;
     stringstream tensor_bufnum_max;
 
@@ -1574,11 +1576,11 @@ Status TPipe::CollectQues(const ascir::ImplGraph &graph) {
       std::string dst_position;
       GE_CHK_STATUS_RET(PositionValue(ge::Position::kPositionVecOut, dst_position),
                         "Codegen get position value failed");
-      auto [new_que, is_insert] = this->ques.emplace(iter.first, TQue{iter.first, iter.second, position, dst_position});
-      GE_CHK_BOOL_RET_STATUS(is_insert, ge::FAILED, "Codegen emplace que [%ld] failed", iter.first);
+      auto new_que = this->ques.emplace(iter.first, TQue{iter.first, iter.second, position, dst_position});
+      GE_CHK_BOOL_RET_STATUS(new_que.second, ge::FAILED, "Codegen emplace que [%ld] failed", iter.first);
     } else {
-      auto [new_que, is_insert] = this->ques.emplace(iter.first, TQue{iter.first, iter.second, position});
-      GE_CHK_BOOL_RET_STATUS(is_insert, ge::FAILED, "Codegen emplace que [%ld] failed", iter.first);
+      auto new_que = this->ques.emplace(iter.first, TQue{iter.first, iter.second, position});
+      GE_CHK_BOOL_RET_STATUS(new_que.second, ge::FAILED, "Codegen emplace que [%ld] failed", iter.first);
     }
   }
   for (auto &[id, que] : this->ques) {
@@ -2558,7 +2560,6 @@ bool Loop::IsBodyContainLoop() const {
 
 static bool IsReduceDoubleTile(const Tiler &tiler, const TPipe &tpipe, bool has_reduce_node) {
   (void)tiler;
-  size_t tile_inner_size = 0;
   for (const auto &tensor : tpipe.tensors) {
     size_t tile_inner_size = 0;
     for (auto axis_id : tensor.second.vectorized_axis) {
@@ -3053,6 +3054,7 @@ Status Kernel::GlobalTensorInit(std::string &result) const {
 }
 
 Status Kernel::LocalTensorQueBufAlloc(std::string &result, const ascir::ImplGraph &graph) const {
+  (void)graph;
   stringstream ss;
   std::string tmp;
 
@@ -3303,13 +3305,13 @@ Status Kernel::ParseGraph(const ascir::ImplGraph &graph, const ascir::FusedSched
     }
     has_gather = (has_gather || IsOps<Gather>(node));
   }
-  for (const auto& [key, value] : kernel_inputs) {
-    kernel.inputs.emplace_back(GM_ADDR(GenValidName(value.first)));
-    kernel.input_tensors.emplace_back(value.second);
+  for (const auto &pair : kernel_inputs) {
+    kernel.inputs.emplace_back(GM_ADDR(GenValidName(pair.second.first)));
+    kernel.input_tensors.emplace_back(pair.second.second);
   }
-  for (const auto& [key, value] : kernel_outputs) {
-    kernel.outputs.emplace_back(GM_ADDR(GenValidName(value.first)));
-    kernel.output_tensors.emplace_back(value.second);
+  for (const auto &pair : kernel_outputs) {
+    kernel.outputs.emplace_back(GM_ADDR(GenValidName(pair.second.first)));
+    kernel.output_tensors.emplace_back(pair.second.second);
   }
 
   std::vector<ascir::TensorId> workspace_tensor_id = GetWorkspaceTensorIdListInOneScheduleResult(fused_schedule_result);

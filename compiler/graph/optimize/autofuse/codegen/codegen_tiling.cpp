@@ -1355,8 +1355,9 @@ extern "C" int64_t GenCVFusionTilingKey(char* config_file, int aiv_num, int ub_s
   ResLimit limit;
   limit.aiv_num = aiv_num;
   limit.ub_size = ub_size - 256;
+  int32_t basen_basem_align = compute_basen_basem_align();
   set_g_basen_basem_align(basen_basem_align);
-  OP_LOGI(OP_NAME, "basen_align=%d, basen_basem_align=%d, set_g_basen_basem_align=%d", basen_align, basen_basem_align, get_g_basen_basem_align());
+  OP_LOGI(OP_NAME, "basen_basem_align=%d, set_g_basen_basem_align=%d", basen_basem_align, get_g_basen_basem_align());
   auto ret = AutofuseTilingWithConfig(config_file, &TilingDataValue, &workspace_size, &block_dim, &limit, 0);
   if (ret == -1) {
     uint32_t basen_basem_align_tmp = (uint32_t)basen_basem_align;

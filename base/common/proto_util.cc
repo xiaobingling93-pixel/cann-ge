@@ -38,6 +38,7 @@ using google::protobuf::io::ZeroCopyInputStream;
  * the proto file can be divided into several small files or the limit value can be increased.
  */
 constexpr int32_t kProtoReadBytesLimit = INT_MAX;  // Max size of 2 GB minus 1 byte.
+constexpr size_t kMaxErrorStrLength = 128U;
 }  // namespace
 
 static bool ReadProtoFromCodedInputStream(CodedInputStream &coded_stream, google::protobuf::Message *const proto) {
@@ -77,7 +78,14 @@ bool ReadProtoFromText(const char_t *const file, google::protobuf::Message *cons
 
   std::ifstream fs(real_path.c_str(), std::ifstream::in);
   if (!fs.is_open()) {
-    REPORT_INNER_ERR_MSG("E19999", "open file:%s failed", real_path.c_str());
+    char_t err_buf[kMaxErrorStrLength + 1U] = {};
+    const std::string errmsg = "[Errno " + std::to_string(mmGetErrorCode()) + "] " +
+                               mmGetErrorFormatMessage(mmGetErrorCode(), &err_buf[0], kMaxErrorStrLength);
+    (void)REPORT_PREDEFINED_ERR_MSG(
+        "E13001",
+        std::vector<const char *>({"file", "errmsg"}),
+        std::vector<const char *>({real_path.c_str(), errmsg.c_str()})
+    );
     GELOGE(ge::FAILED, "[Open][ProtoFile]Failed, real path %s, orginal file path %s",
            real_path.c_str(), file);
     return false;

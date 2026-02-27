@@ -143,8 +143,10 @@ Status CheckRunGraphMode(const RunGraphMode &cur_mode, uint32_t graph_id, const 
 static Status CheckOptionsValid(const std::map<std::string, std::string> &options) {
   const auto &iter = options.find("ge.autoTuneMode");
   if ((iter != options.end()) && (!iter->second.empty())) {
-    REPORT_INNER_ERR_MSG("E19999",
-                         "Options unsupport, [ge.autoTuneMode] has been discarded. Please use AOE tool for tuning.");
+    (void)REPORT_PREDEFINED_ERR_MSG(
+          "E10060",
+          std::vector<const char *>({"reason"}),
+          std::vector<const char *>({"Options are not supported. ge.autoTuneMode has been discarded. Use the AOE tool for tuning."}));
     GELOGE(FAILED,
            "[Check][Param]Options unsupport, [ge.autoTuneMode] has been discarded. Please use AOE tool for tuning.");
     return FAILED;

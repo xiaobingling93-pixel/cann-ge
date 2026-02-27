@@ -22,6 +22,11 @@
 #include "graph/ge_context.h"
 #include "graph/utils/attr_utils.h"
 #include "base/err_msg.h"
+#include "mmpa/mmpa_api.h"
+
+namespace {
+constexpr size_t kMaxErrorStrLength = 128U;
+}  // namespace
 
 namespace ge {
 PropertiesManager::PropertiesManager() {}
@@ -62,7 +67,14 @@ bool PropertiesManager::LoadFileContent(const std::string &file_path) {
 
   if (!fs.is_open()) {
     GELOGE(PARAM_INVALID, "[Open][File]Failed, file path %s invalid", file_path.c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Open file failed, path %s invalid", file_path.c_str());
+    char_t err_buf[kMaxErrorStrLength + 1U] = {};
+    const std::string errmsg = "[Errno " + std::to_string(mmGetErrorCode()) + "] " +
+                               mmGetErrorFormatMessage(mmGetErrorCode(), &err_buf[0], kMaxErrorStrLength);
+    (void)REPORT_PREDEFINED_ERR_MSG(
+        "E13001",
+        std::vector<const char *>({"file", "errmsg"}),
+        std::vector<const char *>({resolved_file_path.c_str(), errmsg.c_str()})
+    );
     return false;
   }
 
@@ -71,7 +83,6 @@ bool PropertiesManager::LoadFileContent(const std::string &file_path) {
   while (getline(fs, line)) {  // line not with \n
     if (!ParseLine(line)) {
       GELOGE(PARAM_INVALID, "[Parse][Line]Failed, content is %s", line.c_str());
-      REPORT_INNER_ERR_MSG("E19999", "Parse line failed, content is %s", line.c_str());
       fs.close();
       return false;
     }

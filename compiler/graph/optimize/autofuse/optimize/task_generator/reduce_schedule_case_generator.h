@@ -75,6 +75,8 @@ public:
        phase1graph(phase1graph),
        phase_graph(phase_graph),
        reduce_node(std::move(reduce_node)) {};
+  RMulticorePhase2Graph(const RMulticorePhase2Graph&) = delete;
+  RMulticorePhase2Graph& operator=(const RMulticorePhase2Graph&) = delete;
   Status Construct();
 private:
   ge::Expression Rm_org_size;

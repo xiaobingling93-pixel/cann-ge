@@ -39,8 +39,6 @@ class ExtraInfoGenerator {
    */
   ge::Status GetExtraTilingVars(const uint32_t tiling_key, std::set<std::string> &tiling_vars);
 
-  // 用于获取buf等额外的tiling数据
-  ge::Status GenExtraTilingData(const ArgsManager &args_manager, std::string &impl_code);
  private:
   std::string WriteCoreParamData(const ModelInfo &model_info, const TilingDataGenType tiling_data_gen_type,
                                  std::set<std::string> &tiling_data_vars);

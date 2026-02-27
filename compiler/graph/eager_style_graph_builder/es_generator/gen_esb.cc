@@ -13,6 +13,7 @@
 #include "mmpa/mmpa_api.h"
 
 #include "ge_ir_collector.h"
+#include "history/history_registry_writer.h"
 #include "utils.h"
 #include "common/ge_common/string_util.h"
 #include "generator_manager.h"
@@ -28,9 +29,12 @@ namespace es {
  * 创建并配置所有代码生成器
  * @param module_name 模块名
  * @param guard_prefix 保护宏前缀
+ * @param history_registry 历史原型结构化数据目录
+ * @param release_version 当前版本号
  * @return 配置好的生成器管理器
  */
-std::unique_ptr<GeneratorManager> CreateGenerators(const std::string &module_name, const std::string &guard_prefix) {
+std::unique_ptr<GeneratorManager> CreateGenerators(const std::string &module_name, const std::string &guard_prefix,
+                                                  const std::string &history_registry, const std::string &release_version) {
   // 外部统一捕获make_unique失败等异常
   auto manager = std::make_unique<GeneratorManager>();
 
@@ -44,6 +48,8 @@ std::unique_ptr<GeneratorManager> CreateGenerators(const std::string &module_nam
   auto cpp_gen = std::make_unique<CppGenerator>();
   cpp_gen->SetModuleName(module_name);
   cpp_gen->SetHGuardPrefix(guard_prefix);
+  cpp_gen->SetHistoryRegistry(history_registry);
+  cpp_gen->SetReleaseVersion(release_version);
   manager->AddGenerator(std::move(cpp_gen));
 
   // 创建Python生成器
@@ -58,6 +64,18 @@ std::unique_ptr<GeneratorManager> CreateGenerators(const std::string &module_nam
   return manager;
 }
 
+std::vector<OpDescPtr> CollectAndSortAllOps() {
+  auto env_opp_path = std::getenv("ASCEND_OPP_PATH");
+  std::cout << "ASCEND_OPP_PATH is: " << env_opp_path << std::endl;
+
+  auto all_ops = GeIrCollector::CollectAndCreateAllOps();
+  std::cout << "Get ops num: " << all_ops.size() << std::endl;
+
+  std::sort(all_ops.begin(), all_ops.end(),
+            [](const OpDescPtr &a, const OpDescPtr &b) { return a->GetType() < b->GetType(); });
+  return all_ops;
+}
+
 /**
  * 生成所有算子的代码
  * @param manager 生成器管理器
@@ -68,21 +86,12 @@ void GenAllOps(GeneratorManager &manager,
                std::unordered_map<std::string, std::vector<std::string>> &unsupported_reasons_to_ops,
                std::vector<std::string> &exclude_ops,
                size_t &supported_num) {
-  auto env_opp_path = std::getenv("ASCEND_OPP_PATH");
-  std::cout << "ASCEND_OPP_PATH is: " << env_opp_path << std::endl;
-
-  auto all_ops = GeIrCollector::CollectAndCreateAllOps();
-  std::cout << "Get ops num: " << all_ops.size() << std::endl;
-
+  auto all_ops = CollectAndSortAllOps();
   if (all_ops.empty()) {
     std::cerr << "ERROR: no ops to generate, please check the ops proto path constructed from env ASCEND_OPP_PATH:"
-              << env_opp_path << std::endl;
+              << std::getenv("ASCEND_OPP_PATH") << std::endl;
     return;
   }
-
-  std::sort(all_ops.begin(), all_ops.end(),
-            [](const OpDescPtr &a, const OpDescPtr &b) { return a->GetType() < b->GetType(); });
-
   manager.GenAllOps(all_ops, unsupported_reasons_to_ops, exclude_ops, supported_num);
 }
 
@@ -177,11 +186,15 @@ void GeneratePerUtilFiles(const std::string &output_dir, GeneratorManager &manag
  * 初始化代码生成器
  * @param module_name 模块名
  * @param guard_prefix 保护前缀
+ * @param history_registry 历史原型结构化数据目录
+ * @param release_version 当前版本号
  * @return 初始化后的生成器管理器
  */
 std::unique_ptr<GeneratorManager> InitializeGenerators(const std::string &module_name,
-                                                       const std::string &guard_prefix) {
-  return CreateGenerators(module_name, guard_prefix);
+                                                       const std::string &guard_prefix,
+                                                       const std::string &history_registry,
+                                                       const std::string &release_version) {
+  return CreateGenerators(module_name, guard_prefix, history_registry, release_version);
 }
 
 /**
@@ -237,14 +250,35 @@ void ExecuteCodeGeneration(const std::string &output_dir, GeneratorManager &mana
 }
 
 /**
- * 显示代码生成参数信息
- * @param module_name 模块名
- * @param h_guard_prefix 保护宏前缀
+ * 显示 gen_esb 参数信息
+ * @param options gen_esb 参数
  */
-void DisplayGenerationParameters(const std::string &module_name, const std::string &h_guard_prefix) {
-  std::cout << "Module name: " << module_name << std::endl;
-  if (!h_guard_prefix.empty()) {
-    std::cout << "Header guard prefix: " << h_guard_prefix << std::endl;
+void DisplayGenerationParameters(const GenEsbOptions &options) {
+  if (options.extract_history) {
+    if (!options.release_version.empty()) {
+      std::cout << "Release version: " << options.release_version << std::endl;
+    }
+    if (!options.release_date.empty()) {
+      std::cout << "Release date: " << options.release_date << std::endl;
+    }
+    if (!options.branch_name.empty()) {
+      std::cout << "Branch name: " << options.branch_name << std::endl;
+    }
+    return;
+  }
+
+  std::cout << "Module name: " << options.module_name << std::endl;
+  if (!options.h_guard_prefix.empty()) {
+    std::cout << "Header guard prefix: " << options.h_guard_prefix << std::endl;
+  }
+  if (!options.exclude_ops.empty()) {
+    std::cout << "Exclude ops: " << options.exclude_ops << std::endl;
+  }
+  if (!options.history_registry.empty()) {
+    std::cout << "History registry: " << options.history_registry << std::endl;
+  }
+  if (!options.release_version.empty()) {
+    std::cout << "Release version: " << options.release_version << std::endl;
   }
 }
 
@@ -255,24 +289,58 @@ std::vector<std::string> ParseExcludeGenOps(const std::string &exclude_ops_str) 
   return exclude_vec;
 }
 
-void GenEsImpl(const std::string &output_dir, const std::string &module_name, const std::string &h_guard_prefix, const std::string &exclude_ops_str) {
+/**
+ * 生成历史原型结构化数据
+ * @param output_dir 输出目录
+ * @param release_version 发布版本号
+ * @param release_date 发布日期
+ * @param branch_name 分支名
+ */
+void GenerateHistoryRegistry(const std::string &output_dir, const std::string &release_version,
+                            const std::string &release_date, const std::string &branch_name) {
+  auto all_ops = CollectAndSortAllOps();
+  if (all_ops.empty()) {
+    std::cerr << "ERROR: no ops to generate, please check the ops proto path constructed from env ASCEND_OPP_PATH:"
+              << std::getenv("ASCEND_OPP_PATH") << std::endl;
+    return;
+  }
+
+  ge::es::history::HistoryRegistryWriter::WriteRegistry(output_dir, release_version, release_date, branch_name, all_ops);
+}
+
+/**
+ * 生成代码
+ * @param output_dir 输出目录
+ * @param options 生成代码参数
+ */
+void GenerateCode(const std::string &output_dir, const GenEsbOptions &options) {
+  // 1. 初始化代码生成器
+  auto manager = InitializeGenerators(options.module_name, options.h_guard_prefix,
+                                                               options.history_registry, options.release_version);
+
+  // 2. 生成聚合文件头部
+  GenerateAggregateHeaders(*manager);
+
+  auto exclude_ops = ParseExcludeGenOps(options.exclude_ops);
+
+  // 3. 执行完整的代码生成流程
+  ExecuteCodeGeneration(output_dir, *manager, exclude_ops);
+}
+
+void GenEsImpl(const GenEsbOptions &options) {
   // 1. 处理输出目录路径和创建目录
-  std::string processed_output_dir = output_dir;
+  std::string processed_output_dir = options.output_dir;
   ProcessOutputDirectory(processed_output_dir);
 
   // 2. 显示生成参数信息
-  DisplayGenerationParameters(module_name, h_guard_prefix);
+  DisplayGenerationParameters(options);
 
-  // 3. 初始化代码生成器
-  auto manager = InitializeGenerators(module_name, h_guard_prefix);
-
-  // 4. 生成聚合文件头部
-  GenerateAggregateHeaders(*manager);
-  
-  auto exclude_ops = ParseExcludeGenOps(exclude_ops_str);
-
-  // 5. 执行完整的代码生成流程
-  ExecuteCodeGeneration(processed_output_dir, *manager, exclude_ops);
+  // 3. 执行 ES 生成任务
+  if (options.extract_history) {
+    GenerateHistoryRegistry(processed_output_dir, options.release_version, options.release_date, options.branch_name);
+  } else {
+    GenerateCode(processed_output_dir, options);
+  }
 }
 }  // namespace es
 }  // namespace ge

@@ -211,7 +211,7 @@ std::pair<std::string, std::string> SolverPassManager::GenerateSolverPassFunc(Sp
   return codes;
 }
 
-std::pair<std::string, std::string> SolverPassManager::SolverPassFuncGen(SolverType type, bool force_search) {
+std::pair<std::string, std::string> SolverPassManager::SolverPassFuncGen(SolverType type) {
   GE_ASSERT_TRUE((type != SolverType::L0_TILE) || (type != SolverType::L2_TILE) || (type != SolverType::SEARCH_TILE),
                  "Solver type[%u] is invalid", type);
   std::pair<std::string, std::string> codes;
@@ -226,14 +226,14 @@ std::pair<std::string, std::string> SolverPassManager::SolverPassFuncGen(SolverT
   return codes;
 }
 
-std::pair<std::string, std::string> SolverPassManager::GenFuncPass(bool force_search) {
+std::pair<std::string, std::string> SolverPassManager::GenFuncPass() {
   std::string impl_codes;
   std::string invoke_codes;
   std::pair<std::string, std::string> pass_codes;
   args_manager_.Process(false);
   for (uint32_t i = 0; i < static_cast<std::uint32_t>(SolverType::ERROR); i++) {
     SolverType type = static_cast<SolverType>(i);
-    auto codes = SolverPassFuncGen(type, force_search);
+    auto codes = SolverPassFuncGen(type);
     impl_codes += codes.first;
     invoke_codes += codes.second;
   }

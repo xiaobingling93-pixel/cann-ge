@@ -208,7 +208,7 @@ TEST_F(HistoryRegistryWriterUT, WriteRegistryThrowsOnEmptyReleaseVersion) {
 
   ExpectInvalidArgumentErrorContains([&]() {
     HistoryRegistryWriter::WriteRegistry(output_dir_, "", "2024-09-30", "master", ops);
-  }, "The required parameter release_version for history registry extractor is not set.");
+  }, "The required parameter release_version for history registry generator is not set.");
 }
 
 TEST_F(HistoryRegistryWriterUT, WriteRegistryThrowsOnDuplicateReleaseVersion) {
@@ -229,7 +229,7 @@ TEST_F(HistoryRegistryWriterUT, WriteRegistryThrowsOnInvalidReleaseDate) {
 
   ExpectInvalidArgumentErrorContains([&]() {
     HistoryRegistryWriter::WriteRegistry(output_dir_, "8.0.RC1", "not-a-date", "master", ops);
-  }, "Given release_date parameter for history registry extractor is not in the correct format (YYYY-MM-DD).");
+  }, "Given release_date parameter for history registry generator is not in the correct format (YYYY-MM-DD).");
 }
 
 TEST_F(HistoryRegistryWriterUT, WriteRegistryEmptyReleaseDateUsesCurrentDate) {

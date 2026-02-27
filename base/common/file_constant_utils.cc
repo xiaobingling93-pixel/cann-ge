@@ -110,8 +110,13 @@ Status FileConstantUtils::GetFileIdToPathMapFromOption(std::map<std::string, std
   try {
     options = nlohmann::json::parse(opt);
   } catch (nlohmann::json::exception &ex) {
-    REPORT_INNER_ERR_MSG("E19999", "Failed to parse option FILE_CONSTANT_PATH, which [%s] is invalid, err:%s", opt.c_str(),
-                      ex.what());
+    const auto readable_name = ge::GetContext().GetReadableName(FILE_CONSTANT_PATH);
+    std::string reason = "it is not a valid json string, exception: " + std::string(ex.what());
+    (void)REPORT_PREDEFINED_ERR_MSG(
+        "E10001", 
+        std::vector<const char *>({"value", "parameter", "reason"}),
+        std::vector<const char *>({opt.c_str(), readable_name.c_str(), reason.c_str()})
+    );
     GELOGE(FAILED, "Failed to parse option FILE_CONSTANT_PATH, which [%s] is invalid, err:%s", opt.c_str(), ex.what());
     return FAILED;
   }

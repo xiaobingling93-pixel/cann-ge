@@ -115,7 +115,7 @@ nlohmann::json BuildOperatorsJson(const std::vector<OpDescPtr> &ops) {
       const nlohmann::json op_json = IrProtoCodec::ToJson(proto);
       operators.emplace_back(op_json);
     } catch (const std::exception &e) {
-      std::cerr << "Extract op " << op->GetType() << " failed, skip: " << e.what() << std::endl;
+      std::cerr << "Failed to build structured data for op " << op->GetType() << ", skip: " << e.what() << std::endl;
     }
   }
   nlohmann::json root = nlohmann::json::object();
@@ -160,10 +160,10 @@ void HistoryRegistryWriter::WriteRegistry(const std::string &output_dir, const s
     }
   } else if (!ValidateReleaseDateFormat(date)) {
     throw std::invalid_argument(
-      "Given release_date parameter for history registry extractor is not in the correct format (YYYY-MM-DD).");
+      "Given release_date parameter for history registry generator is not in the correct format (YYYY-MM-DD).");
   }
   if (release_version.empty()) {
-    throw std::invalid_argument("The required parameter release_version for history registry extractor is not set.");
+    throw std::invalid_argument("The required parameter release_version for history registry generator is not set.");
   }
   const std::string version_dir = output_dir + "registry/" + release_version + "/";
   EnsureVersionDirectory(version_dir);
@@ -171,7 +171,7 @@ void HistoryRegistryWriter::WriteRegistry(const std::string &output_dir, const s
   WriteMetadataJson(version_dir, release_version, branch_name);
   WriteOperatorsJson(version_dir, all_ops);
   WriteIndexJson(output_dir, release_version, date);
-  std::cout << "History registry extracted at: " << output_dir << std::endl;
+  std::cout << "History registry generated at: " << output_dir << std::endl;
 }
 }  // namespace history
 }  // namespace es

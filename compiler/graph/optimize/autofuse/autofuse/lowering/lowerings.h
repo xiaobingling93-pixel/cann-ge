@@ -12,8 +12,6 @@
 #define AUTOFUSE_LOWERING_LOWERINGS_H_
 
 #include <functional>
-#include <memory>
-#include <vector>
 
 #include "graph/node.h"
 #include "asc_lowerer/loop_api.h"
@@ -35,16 +33,10 @@ class LoweringManager {
   static graphStatus Lowering(const NodePtr &node);
   static graphStatus LoweringGraph(const ComputeGraphPtr &graph, const LoweringConfig &config = kLoweringConfig);
 
-  static OpDescPtr BuildOpDescForKernelBox(loop::KernelBox &kernel_box, std::vector<const ge::OutDataAnchor *> &origin_inputs,
-                                           CounterPtr counter);
   static graphStatus FusedLoopToAscBackendOp(const ComputeGraphPtr &graph,
                                              const AscBackendFuseConfig &config = kAscBackendFuseConfig, CounterPtr counter = nullptr);
-  static graphStatus FusedSubgraphLoopToAscBackendOp(
-    const ComputeGraphPtr &graph, const AscBackendFuseConfig &config,
-    std::map<const ge::OutDataAnchor *, ge::OutDataAnchor *> &ascend_out_to_asc_out, CounterPtr counter);
 
   static graphStatus GetFusedOriginComputeGraph(const AutoFuseAttrs &attrs, const NodePtr &node);
-  static graphStatus PostPrecessAfterLoweringNode(const NodePtr &node, const LoweringConfig &config);
 
   [[nodiscard]] bool IsLoweringRegistered(const std::string &op_type) const;
   static void Register(const std::string &op_type, const std::function<graphStatus(const NodePtr &)> &lower);
@@ -56,6 +48,16 @@ class LoweringManager {
   static LoweringManager &Instance();
   void RegisterImpl(const std::string &op_type, const std::function<graphStatus(const NodePtr &)> &lower);
   graphStatus LowerImpl(const NodePtr &node);
+
+  static graphStatus PostPrecessAfterLoweringNode(const NodePtr &node, const LoweringConfig &config);
+
+  static OpDescPtr BuildOpDescForKernelBox(loop::KernelBox &kernel_box, std::vector<const ge::OutDataAnchor *> &origin_inputs, 
+                                           CounterPtr counter);
+
+  static graphStatus FusedSubgraphLoopToAscBackendOp(
+    const ComputeGraphPtr &graph, const AscBackendFuseConfig &config,
+    std::map<const ge::OutDataAnchor *, ge::OutDataAnchor *> &ascend_out_to_asc_out, CounterPtr counter);
+
   std::map<std::string, std::function<graphStatus(const NodePtr &)>> lowerings_;
 };
 

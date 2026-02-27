@@ -61,8 +61,6 @@ Status FileSaver::OpenFile(int32_t &fd, const std::string &file_path, const bool
   if (CheckPathValid(file_path) != SUCCESS) {
     GELOGE(FAILED, "[Check][FilePath]Check output file failed, file_path:%s.",
            file_path.c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Check output file failed, file_path:%s.",
-                      file_path.c_str());
     return FAILED;
   }
 
@@ -292,8 +290,12 @@ Status FileSaver::CheckPathValid(const std::string &file_path) {
   if (file_path.size() >= static_cast<size_t>(MMPA_MAX_PATH)) {
     GELOGE(FAILED, "[Check][FilePath]Failed, file path's length:%zu >= mmpa_max_path:%d",
            file_path.size(), MMPA_MAX_PATH);
-    REPORT_INNER_ERR_MSG("E19999", "Check file path failed, file path's length:%zu >= "
-                       "mmpa_max_path:%d", file_path.size(), MMPA_MAX_PATH);
+    std::string max_path_str = std::to_string(MMPA_MAX_PATH);
+    (void)REPORT_PREDEFINED_ERR_MSG(
+        "E13002", 
+        std::vector<const char *>({"filepath", "size"}),
+        std::vector<const char *>({file_path.c_str(), max_path_str.c_str()})
+    );
     return FAILED;
   }
 
@@ -323,11 +325,18 @@ Status FileSaver::CheckPathValid(const std::string &file_path) {
 
 Status FileSaver::SaveToFile(const std::string &file_path, const ge::ModelData &model,
                              const ModelFileHeader *const model_file_header) {
-  if (file_path.empty() || (model.model_data == nullptr) || (model.model_len == 0U)) {
-    GELOGE(FAILED, "[Save][File]Incorrect input param, "
-           "file_path is empty or model_data is nullptr or model_len is 0");
+  if (file_path.empty()) {
+    GELOGE(FAILED, "[Save][File]Incorrect input param, file_path is empty");
+    (void)REPORT_PREDEFINED_ERR_MSG(
+          "E10059", std::vector<const char *>({"stage", "reason"}),
+          std::vector<const char *>({"SaveToFile", "Input parameter file_path is empty"}));
+    return FAILED;
+  }
+
+  if ((model.model_data == nullptr) || (model.model_len == 0U)) {
+    GELOGE(FAILED, "[Save][File]Incorrect input param, model_data is nullptr or model_len is 0");
     REPORT_INNER_ERR_MSG("E19999", "Save file failed, at least one of the "
-                       "input parameters(file_path, model_data, model_len) is incorrect");
+                       "input parameters(model_data, model_len) is incorrect");
     return FAILED;
   }
 

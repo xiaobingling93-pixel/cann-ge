@@ -21,7 +21,10 @@
 namespace optimize {
 class FusionCaseGenerator {
  public:
+  FusionCaseGenerator() = default;
   virtual ~FusionCaseGenerator() = default;
+  FusionCaseGenerator(const FusionCaseGenerator&) = delete;
+  FusionCaseGenerator &operator=(const FusionCaseGenerator&) = delete;
   virtual Status Generate(ascir::HintGraph &graph, std::vector<ascir::ImplGraph> &graphs,
                           std::vector<std::string> &score_functions) = 0;
   virtual Status GeneratorTask(ascir::HintGraph &optimize_graph, std::vector<ScheduleTask> &tasks,

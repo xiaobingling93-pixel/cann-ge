@@ -18,7 +18,6 @@ namespace optimize {
 class ConcatScoreFunctionGenerator {
  public:
   ConcatScoreFunctionGenerator(const ascir::HintGraph &graph, ge::AscNodePtr concat_node, uint32_t concat_dim);
-  ~ConcatScoreFunctionGenerator() = default;
   Status Generate(std::string &score_func);
   Status GenerateForCheckSmallTail(std::string &score_func);
   static void GenerateScoreOne(std::string &score_func);

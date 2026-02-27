@@ -39,7 +39,6 @@ class TransposeFusionCaseGenerator : public FusionCaseGenerator {
 class TransposeScoreFunctionGenerator {
 public:
   TransposeScoreFunctionGenerator(const ascir::HintGraph &graph, ge::AscNodePtr transpose_node);
-  ~TransposeScoreFunctionGenerator() = default;
   Status Generate(std::string &score_func);
 
 private:

@@ -140,6 +140,16 @@ class CppGenerator : public ICodeGenerator {
     h_guard_prefix_ = h_guard_prefix;
   }
 
+  // 设置历史原型库分包目录
+  void SetHistoryRegistry(const std::string &history_registry) {
+    history_registry_ = history_registry;
+  }
+
+  // 设置当前版本号
+  void SetReleaseVersion(const std::string &release_version) {
+    release_version_ = release_version;
+  }
+
   static std::string PerOpHeaderFileName(const std::string &op_type) {
     return std::string("es_") + op_type + ".h";
   }
@@ -528,6 +538,8 @@ namespace es {
   std::unordered_map<std::string, std::stringstream> op_type_to_hss_;
   std::string module_name_{};
   std::string h_guard_prefix_{};
+  std::string history_registry_{};
+  std::string release_version_{};
 };
 }  // namespace es
 }  // namespace ge

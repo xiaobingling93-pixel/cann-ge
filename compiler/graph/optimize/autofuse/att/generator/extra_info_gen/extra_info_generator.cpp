@@ -58,12 +58,6 @@ ge::Status ExtraInfoGenerator::GetExtraTilingVars(const uint32_t tiling_key, std
   return ge::SUCCESS;
 }
 
-ge::Status ExtraInfoGenerator::GenExtraTilingData(const ArgsManager &args_manager, std::string &impl_code) {
-  const auto model_info = GetModelInfo(args_manager.GetTilingCaseId());
-  GE_ASSERT_NOTNULL(model_info);
-  return ge::SUCCESS;
-}
-
 const ModelInfo *ExtraInfoGenerator::GetModelInfo(const uint32_t tiling_key) const {
   for (const auto &model_info : model_info_list_) {
     if (model_info.tiling_case_id == tiling_key) {

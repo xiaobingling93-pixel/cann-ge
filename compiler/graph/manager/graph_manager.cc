@@ -190,7 +190,10 @@ ge::Status CheckFpCeilingMode() {
   auto ret = ge::GetContext().GetOption("ge.fpCeilingMode", mode);
   if (ret == ge::GRAPH_SUCCESS) {
     if (kValidFpCeilingMode.count(mode) == 0) {
-      REPORT_INNER_ERR_MSG("E19999", "Option ge.fpCeilingMode is invalid, value:%s", mode.c_str());
+      const auto readable_name = ge::GetContext().GetReadableName("ge.fpCeilingMode");
+      (void)REPORT_PREDEFINED_ERR_MSG(
+          "E10061", std::vector<const char *>({"value", "parameter", "expected_value"}),
+          std::vector<const char *>({mode.c_str(), readable_name.c_str(), "0, 1, or 2"}));
       GELOGE(ge::GE_GRAPH_OPTIONS_INVALID, "[Get][Option] The fp_ceiling_mode %s is invalid, options are 0, 1, and 2.",
              mode.c_str());
       return ge::GE_GRAPH_OPTIONS_INVALID;

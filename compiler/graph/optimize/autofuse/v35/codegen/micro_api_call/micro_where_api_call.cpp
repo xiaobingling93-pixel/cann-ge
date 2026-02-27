@@ -15,6 +15,7 @@
 namespace codegen {
 Status MicroWhereApiCall::Generate(const codegen::TensorManager &tensor_mng, [[maybe_unused]] const TPipe &tpipe,
                                    CallParam &param, string &result) {
+  (void)param;
   std::stringstream ss;
   ss << "AscendC::MicroAPI::" << this->api_name_ << "(";
   for (auto out_arg : this->outputs_) {

@@ -19,6 +19,15 @@
 namespace ge {
 namespace {
 const std::string kInnerTensorMoveAttr = "_inner_tensor_move";
+bool IsInputFromData(const NodePtr &node) {
+  for (const auto &input: node->GetInDataNodes()) {
+    GE_ASSERT_NOTNULL(input);
+    if (OpTypeUtils::IsDataNode(input->GetType())) {
+      return true;
+    }
+  }
+  return false;
+}
 bool HasTensorMemoryScope(const NodePtr &node) {
   auto op_desc = node->GetOpDesc();
   GE_ASSERT_NOTNULL(op_desc);
@@ -29,10 +38,23 @@ bool HasTensorMemoryScope(const NodePtr &node) {
   }
   return false;
 }
-// nano形态下，是根据编译出来的kernel决定基地址来自于ioa/workspace/weight，所以连着输入的算子不能轻易删除，后续会有正式方案解决.
-// 临时方案:根据ATTR_NAME_TENSOR_MEMORY_SCOPE属性判断nano形态，并且判断是否连着输入data，如果连着就不删除
+
+// nano形态下，是根据编译出来的kernel决定基地址来自于ioa/workspace/weight，而打着ATTR_NAME_TENSOR_MEMORY_SCOPE属性的算子的输出一定是分配的ioa地址，所以不能将其轻易删除，后续会有正式方案解决。临时方案如下：
+// 1. 如果tensormove算子打了ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出是ioa地址，如果其输入不来自于Data算子，则说明其输入不是ioa地址，这种情况下不可以删除这个TensorMove算子。否则可以删除，因为输入输出都是ioa地址。
+//    Data(ioa) -> (ioa)transdata(workspace) -> (workspace)tensormove(ioa) -> (ioa)ref   不可以删除
+//    Data(ioa) -> (ioa)tensormove(ioa) -> (ioa)ref   可以删除
+// 2. 如果tensormove算子没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出不是ioa地址，如果其输出直连的算子中没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性的算子，则可以删除。否则如果其输入来自于Data算子，则说明其输入是ioa地址，这种情况下不可以删除这个TensorMove算子。
+//    Data(ioa) -> (ioa)relu(workspace) -> (workspace)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   可以删除
+//    Data(ioa) -> (ioa)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   不可以删除
 bool IsCannotDelete(const NodePtr &tensor_move) {
   bool has_tensor_memory_scope = HasTensorMemoryScope(tensor_move);
+  // tensormove直连ref算子，如果输入不来自于Data，则不可以删除。否则可以删除，因为Data也是ioa地址。
+  if (has_tensor_memory_scope) {
+    if (!IsInputFromData(tensor_move)) {
+      return true;
+    }
+    return false;
+  }
   for (const auto &node : tensor_move->GetOutDataNodes()) {
     GE_ASSERT_NOTNULL(node);
     if (HasTensorMemoryScope(node)) {
@@ -40,16 +62,13 @@ bool IsCannotDelete(const NodePtr &tensor_move) {
       break;
     }
   }
+  // tensormove的输出没有直连ref，所以可以删除
   if (!has_tensor_memory_scope) {
     return false;
   }
-  for (const auto &node: tensor_move->GetInDataNodes()) {
-    GE_ASSERT_NOTNULL(node);
-    if (OpTypeUtils::IsDataNode(node->GetType())) {
-      return true;
-    }
-  }
-  return false;
+  // Data(ioa) -> (ioa)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref
+  // tensormove的输出直连ref，且tensormove的输入来自于Data则不可以删除
+  return IsInputFromData(tensor_move);
 }
 
 bool IsInnerTensorMove(const NodePtr &node) {

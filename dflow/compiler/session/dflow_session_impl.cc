@@ -144,7 +144,7 @@ void DFlowFinalizeInner() {
 }
 
 DFlowSessionImpl::DFlowSessionImpl(uint64_t session_id, const std::map<std::string, std::string> &options)
-    : is_initialized_(false), session_id_(session_id), options_(options) {}
+    : session_id_(session_id), options_(options) {}
 
 DFlowSessionImpl::~DFlowSessionImpl() {
   (void)Finalize();
@@ -210,11 +210,13 @@ Status DFlowSessionImpl::AddGraph(uint32_t graph_id, const dflow::FlowGraph &gra
   const auto &ge_graph = graph.ToGeGraph();
   auto compute_graph = GraphUtilsEx::GetComputeGraph(ge_graph);
   GE_CHECK_NOTNULL(compute_graph);
-  compute_graph->SetSessionID(session_id_);
-  std::string session_graph_id = std::to_string(session_id_) + "_" + std::to_string(graph_id);
+  const uint64_t ge_session_id = ge_session_->GetSessionId();
+  // graph use ge session id.
+  compute_graph->SetSessionID(ge_session_id);
+  std::string session_graph_id = std::to_string(ge_session_id) + "_" + std::to_string(graph_id);
   (void)AttrUtils::SetStr(*compute_graph, ATTR_NAME_SESSION_GRAPH_ID, session_graph_id);
   for (auto &sub_graph : compute_graph->GetAllSubgraphs()) {
-    sub_graph->SetSessionID(session_id_);
+    sub_graph->SetSessionID(ge_session_id);
     (void)AttrUtils::SetStr(*sub_graph, ATTR_NAME_SESSION_GRAPH_ID, session_graph_id);
   }
   UpdateThreadContext(options);
@@ -229,11 +231,13 @@ Status DFlowSessionImpl::AddGraph(uint32_t graph_id, const Graph &graph,
   std::lock_guard<std::mutex> lock(resource_mutex_);
   auto compute_graph = GraphUtilsEx::GetComputeGraph(graph);
   GE_CHECK_NOTNULL(compute_graph);
-  compute_graph->SetSessionID(session_id_);
-  std::string session_graph_id = std::to_string(session_id_) + "_" + std::to_string(graph_id);
+  const uint64_t ge_session_id = ge_session_->GetSessionId();
+  // graph use ge session id.
+  compute_graph->SetSessionID(ge_session_id);
+  std::string session_graph_id = std::to_string(ge_session_id) + "_" + std::to_string(graph_id);
   (void)AttrUtils::SetStr(*compute_graph, ATTR_NAME_SESSION_GRAPH_ID, session_graph_id);
   for (auto &sub_graph : compute_graph->GetAllSubgraphs()) {
-    sub_graph->SetSessionID(session_id_);
+    sub_graph->SetSessionID(ge_session_id);
     (void)AttrUtils::SetStr(*sub_graph, ATTR_NAME_SESSION_GRAPH_ID, session_graph_id);
   }
   UpdateThreadContext(options);
@@ -489,7 +493,8 @@ void DFlowSessionImpl::UpdateGlobalSessionContext() const {
     GetThreadLocalContext().SetGlobalOption(GetMutableGlobalOptions());
   }
   GetThreadLocalContext().SetSessionOption(options_);
-  GetContext().SetSessionId(session_id_);
+  // Context use ge session id.
+  GetContext().SetSessionId(ge_session_->GetSessionId());
   domi::GetContext().train_flag = false;
   SetRtSocVersion();
 }

@@ -578,6 +578,39 @@ const std::string ge_error_code = R"(
     },
     {
       "errClass": "GE Errors",
+      "errTitle": "Invalid_Argument",
+      "ErrCode": "E10059",
+      "ErrMessage": "%s failed. Reason: %s.",
+      "Arglist": "stage, reason",
+      "suggestion": {
+        "Possible Cause": "N/A",
+        "Solution": "N/A."
+      }
+    },
+    {
+      "errClass": "GE Errors",
+      "errTitle": "Invalid_Argument",
+      "ErrCode": "E10060",
+      "ErrMessage": "Parameter is invalid. Reason: %s.",
+      "Arglist": "reason",
+      "suggestion": {
+        "Possible Cause": "N/A",
+        "Solution": "N/A."
+      }
+    },
+    {
+      "errClass": "GE Errors",
+      "errTitle": "Invalid_Argument",
+      "ErrCode": "E10061",
+      "ErrMessage": "Value %s for parameter %s is invalid. Expected value: %s.",
+      "Arglist": "value, parameter, expected_value",
+      "suggestion": {
+        "Possible Cause": "N/A",
+        "Solution": "N/A."
+      }
+    },
+    {
+      "errClass": "GE Errors",
       "errTitle": "Invalid_Argument_Operator_Input_Count",
       "ErrCode": "E10401",
       "ErrMessage": "The number of operator inputs %s exceeds the allowed maximum %s.",

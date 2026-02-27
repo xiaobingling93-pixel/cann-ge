@@ -245,7 +245,34 @@ TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveCannotDelete1) 
   EXPECT_NE(tensor_move, nullptr);
 }
 
-TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, InnerTensorMoveCannotDelete2) {
+// Data(ioa) -> (ioa)transdata(workspace) -> (workspace)tensormove(ioa) -> (ioa)ref
+TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, NanoCannotDelete1) {
+  DEF_GRAPH(g1) {
+    auto assign = OP_CFG(ASSIGN)
+        .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+        .InCnt(2)
+        .OutCnt(1)
+        .InNames({"ref", "value"})
+        .OutNames({"ref"})
+        .Attr(ATTR_NAME_REFERENCE, true)
+        .Build("assign");
+    auto tensormove = OP_CFG(TENSORMOVE)
+        .InCnt(1)
+        .OutCnt(1)
+        .Attr("_inner_tensor_move", true)
+        .OutputAttr(0, ATTR_NAME_TENSOR_MEMORY_SCOPE, 2)
+        .Build("tensormove");
+    CHAIN(NODE("data1", DATA)->NODE("transdata", TRANSDATA)->NODE(tensormove)->NODE(assign)->NODE("net_output", NETOUTPUT));
+    CHAIN(NODE("data2", DATA)->EDGE(0, 1)->NODE(assign));
+  };
+  auto compute_graph = ToComputeGraph(g1);
+  InnerTensorMoveDeletePass pass;
+  ASSERT_EQ(pass.Run(compute_graph), SUCCESS);
+  auto tensor_move = compute_graph->FindNode("tensormove");
+  EXPECT_NE(tensor_move, nullptr);
+}
+
+TEST_F(UtestGraphPassesInnerTensorMoveDeletePass, NanoCannotDelete2) {
   DEF_GRAPH(g1) {
     auto test_op = OP_CFG("TESTOP")
         .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})

@@ -3433,8 +3433,8 @@ Status DavinciModel::LoadWithHardwareQueue() {
   GE_ASSERT_SUCCESS(LaunchOutputZeroCpyCfg());
 
   GE_ASSERT_RT_OK(rtModelExecute(rt_model_handle_, rt_entry_stream_, 0));
-  GE_ASSERT_RT_OK(LaunchDqsTask(RT_DQS_TASK_FREE));
   GE_ASSERT_RT_OK(LaunchDqsTask(RT_DQS_TASK_ENQUEUE));
+  GE_ASSERT_RT_OK(LaunchDqsTask(RT_DQS_TASK_FREE));
   GE_ASSERT_RT_OK(LaunchDqsTask(RT_DQS_TASK_SCHED_END));
   return SUCCESS;
 }

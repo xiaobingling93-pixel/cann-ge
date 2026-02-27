@@ -31,6 +31,7 @@
 #include "pattern_fusion/transpose_with_broadcast_eliminate_pass.h"
 #include "pattern_fusion/slice_forward_fusion_pass.h"
 #include "pattern_fusion/cast_remove_pass.h"
+#include "pattern_fusion/pattern_fusion_utils.h"
 #include "utils/autofuse_utils.h"
 #include "graph_metadef/graph/debug/ge_util.h"
 #include "graph/symbolizer/symbolic_utils.h"
@@ -654,6 +655,367 @@ TEST_F(PatternFusionPassTest, SliceForwardStopAtDtypeChange) {
   EXPECT_EQ(ge::SymbolicUtils::ToString(relu2_input_symbol_shape.GetDim(0)), "2");
   EXPECT_EQ(ge::SymbolicUtils::ToString(relu2_input_symbol_shape.GetDim(1)), "s1");
   EXPECT_EQ(ge::SymbolicUtils::ToString(relu2_input_symbol_shape.GetDim(2)), "s2");
+}
+
+TEST_F(PatternFusionPassTest, SliceForwardMultiInputElemwise) {
+  // 测试多输入 elementwise 的 slice 上提
+  // 图结构: Data -> Relu -> mul(Relu, Relu) -> Slice -> Output
+  // 前移后:  Data -> Slice -> Relu -> mul(Relu, Relu) -> Output
+  [this]() {
+    auto data = es_graph_->CreateInput(0, "data0", nullptr);
+    data.SetSymbolShape({"s0", "s1", "s2"});
+    data.SetShape({8, 3, 4});
+
+    auto relu = es::Relu(data);
+    relu.SetSymbolShape({"s0", "s1", "s2"});
+    relu.SetShape({8, 3, 4});
+
+    // Mul需要两个输入，这里都来自relu
+    auto mul = es::Mul(relu, relu);
+    mul.SetSymbolShape({"s0", "s1", "s2"});
+    mul.SetShape({8, 3, 4});
+
+    auto offset = CreateConst(*es_graph_, ge::DT_INT64, {3}, std::vector<int64_t>{0, 0, 0});
+    auto size = CreateConst(*es_graph_, ge::DT_INT32, {3}, std::vector<int32_t>{4, 3, 4});
+    auto slice = es::Slice(mul, offset, size);
+    slice.SetSymbolShape({"4", "s1", "s2"});
+    slice.SetShape({4, 3, 4});
+
+    es_graph_->SetOutput(slice, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  // 修复：es构图只刷了output_shape，input_shape是空的
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Relu" || node->GetType() == "Mul") {
+      auto input_desc = node->GetOpDesc()->MutableInputDesc(0);
+      auto output_desc = node->GetOpDesc()->MutableOutputDesc(0);
+      input_desc->SetShape(output_desc->GetShape());
+      input_desc->SetOriginShape(output_desc->GetOriginShape());
+      input_desc->CopyAttrsFrom(*output_desc);
+    }
+  }
+
+  // 修复：Mul节点需要设置SymbolicDescAttr
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Mul") {
+      // 获取Relu节点的symbolic shape作为模板
+      auto relu_node = cg->FindFirstNodeMatchType("Relu");
+      if (relu_node != nullptr) {
+        auto relu_output_attr = ge::pattern_fusion::GetNodeMutableOutputAttr(relu_node);
+        if (relu_output_attr != nullptr) {
+          // 为Mul的输入输出设置SymbolicDescAttr
+          for (const auto &input_desc : node->GetOpDesc()->GetAllInputsDescPtr()) {
+            auto input_attr = input_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+            if (input_attr == nullptr) {
+              // 如果没有SymbolicDescAttr，则复制一份
+              auto relu_input_desc = relu_node->GetOpDesc()->MutableInputDesc(0);
+              auto relu_input_attr = relu_input_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+              if (relu_input_attr != nullptr) {
+                input_desc->CopyAttrsFrom(*relu_input_desc);
+              }
+            } else {
+              input_attr->symbolic_tensor.MutableOriginSymbolShape() =
+                  relu_output_attr->symbolic_tensor.GetOriginSymbolShape();
+            }
+          }
+          for (const auto &output_desc : node->GetOpDesc()->GetAllOutputsDescPtr()) {
+            auto output_attr = output_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+            if (output_attr == nullptr) {
+              auto relu_output_desc = relu_node->GetOpDesc()->MutableOutputDesc(0);
+              output_desc->CopyAttrsFrom(*relu_output_desc);
+            } else {
+              output_attr->symbolic_tensor.MutableOriginSymbolShape() =
+                  relu_output_attr->symbolic_tensor.GetOriginSymbolShape();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  EXPECT_EQ(SliceForwardFusionPass().Run(cg), GRAPH_SUCCESS);
+
+  // 验证 slice 被前移到 Data 后面
+  auto slice_node = cg->FindFirstNodeMatchType("Slice");
+  ASSERT_NE(slice_node, nullptr);
+  EXPECT_EQ(slice_node->GetInDataNodes().at(0)->GetType(), "Data");
+
+  // 验证 relu 的输入来自 slice
+  auto relu_node = cg->FindFirstNodeMatchType("Relu");
+  ASSERT_NE(relu_node, nullptr);
+  EXPECT_EQ(relu_node->GetInDataNodes().at(0)->GetType(), "Slice");
+
+  // 验证 mul 的两个输入都来自 relu
+  auto mul_node = cg->FindFirstNodeMatchType("Mul");
+  ASSERT_NE(mul_node, nullptr);
+  EXPECT_EQ(mul_node->GetInDataNodes().at(0)->GetType(), "Relu");
+  EXPECT_EQ(mul_node->GetInDataNodes().at(1)->GetType(), "Relu");
+
+  // 验证 relu 和 mul 的 shape 已更新为 slice 的输出 shape
+  const auto &relu_shape = relu_node->GetOpDesc()->GetOutputDesc(0).GetShape();
+  EXPECT_EQ(relu_shape.GetDims(), std::vector<int64_t>({4, 3, 4}));
+
+  const auto &mul_shape = mul_node->GetOpDesc()->GetOutputDesc(0).GetShape();
+  EXPECT_EQ(mul_shape.GetDims(), std::vector<int64_t>({4, 3, 4}));
+}
+
+TEST_F(PatternFusionPassTest, SliceForwardMultiInputElemwiseWithChain) {
+  // 测试多输入 elementwise 链的 slice 上提
+  // 图结构: Data -> Relu -> mul(Relu, Relu) -> add(mul, mul) -> Slice -> Output
+  // 前移后:  Data -> Slice -> Relu -> mul(Relu, Relu) -> add(mul, mul) -> Output
+  [this]() {
+    auto data = es_graph_->CreateInput(0, "data0", nullptr);
+    data.SetSymbolShape({"s0", "s1", "s2"});
+    data.SetShape({8, 3, 4});
+
+    auto relu = es::Relu(data);
+    relu.SetSymbolShape({"s0", "s1", "s2"});
+    relu.SetShape({8, 3, 4});
+
+    // Mul需要两个输入，这里都来自relu
+    auto mul = es::Mul(relu, relu);
+    mul.SetSymbolShape({"s0", "s1", "s2"});
+    mul.SetShape({8, 3, 4});
+
+    // Add需要两个输入，这里都来自mul
+    auto add = es::Add(mul, mul);
+    add.SetSymbolShape({"s0", "s1", "s2"});
+    add.SetShape({8, 3, 4});
+
+    auto offset = CreateConst(*es_graph_, ge::DT_INT64, {3}, std::vector<int64_t>{0, 0, 0});
+    auto size = CreateConst(*es_graph_, ge::DT_INT32, {3}, std::vector<int32_t>{4, 3, 4});
+    auto slice = es::Slice(add, offset, size);
+    slice.SetSymbolShape({"4", "s1", "s2"});
+    slice.SetShape({4, 3, 4});
+
+    es_graph_->SetOutput(slice, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  // 修复：es构图只刷了output_shape，input_shape是空的
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Relu" || node->GetType() == "Mul" || node->GetType() == "Add") {
+      auto input_desc = node->GetOpDesc()->MutableInputDesc(0);
+      auto output_desc = node->GetOpDesc()->MutableOutputDesc(0);
+      input_desc->SetShape(output_desc->GetShape());
+      input_desc->SetOriginShape(output_desc->GetOriginShape());
+      input_desc->CopyAttrsFrom(*output_desc);
+    }
+  }
+
+  // 修复：Mul和Add节点需要设置SymbolicDescAttr
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Mul" || node->GetType() == "Add") {
+      // 获取Relu节点的symbolic shape作为模板
+      auto relu_node = cg->FindFirstNodeMatchType("Relu");
+      if (relu_node != nullptr) {
+        auto relu_output_attr = ge::pattern_fusion::GetNodeMutableOutputAttr(relu_node);
+        if (relu_output_attr != nullptr) {
+          // 为节点设置SymbolicDescAttr
+          for (size_t i = 0; i < node->GetOpDesc()->GetInputsSize(); ++i) {
+            auto input_desc = node->GetOpDesc()->MutableInputDesc(i);
+            auto input_attr = input_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+            if (input_attr == nullptr) {
+              auto relu_input_desc = relu_node->GetOpDesc()->MutableInputDesc(0);
+              auto relu_input_attr = relu_input_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+              if (relu_input_attr != nullptr) {
+                input_desc->CopyAttrsFrom(*relu_input_desc);
+              }
+            } else {
+              input_attr->symbolic_tensor.MutableOriginSymbolShape() =
+                  relu_output_attr->symbolic_tensor.GetOriginSymbolShape();
+            }
+          }
+          for (size_t i = 0; i < node->GetOpDesc()->GetOutputsSize(); ++i) {
+            auto output_desc = node->GetOpDesc()->MutableOutputDesc(i);
+            auto output_attr = output_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+            if (output_attr == nullptr) {
+              auto relu_output_desc = relu_node->GetOpDesc()->MutableOutputDesc(0);
+              output_desc->CopyAttrsFrom(*relu_output_desc);
+            } else {
+              output_attr->symbolic_tensor.MutableOriginSymbolShape() =
+                  relu_output_attr->symbolic_tensor.GetOriginSymbolShape();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  EXPECT_EQ(SliceForwardFusionPass().Run(cg), GRAPH_SUCCESS);
+
+  // 验证 slice 被前移到 Data 后面
+  auto slice_node = cg->FindFirstNodeMatchType("Slice");
+  ASSERT_NE(slice_node, nullptr);
+  EXPECT_EQ(slice_node->GetInDataNodes().at(0)->GetType(), "Data");
+
+  // 验证各节点的连接关系
+  auto relu_node = cg->FindFirstNodeMatchType("Relu");
+  auto mul_node = cg->FindFirstNodeMatchType("Mul");
+  auto add_node = cg->FindFirstNodeMatchType("Add");
+
+  ASSERT_NE(relu_node, nullptr);
+  ASSERT_NE(mul_node, nullptr);
+  ASSERT_NE(add_node, nullptr);
+
+  EXPECT_EQ(relu_node->GetInDataNodes().at(0)->GetType(), "Slice");
+  EXPECT_EQ(mul_node->GetInDataNodes().at(0)->GetType(), "Relu");
+  EXPECT_EQ(mul_node->GetInDataNodes().at(1)->GetType(), "Relu");
+  EXPECT_EQ(add_node->GetInDataNodes().at(0)->GetType(), "Mul");
+  EXPECT_EQ(add_node->GetInDataNodes().at(1)->GetType(), "Mul");
+}
+
+TEST_F(PatternFusionPassTest, SliceForwardMultiInputDifferentSource) {
+  // 测试多输入来自不同源节点时，slice 不能上提
+  // 图结构: Data1 -> Relu1 --\
+  //                         -> mul -> Slice -> Output
+  //        Data2 -> Relu2 --/
+  [this]() {
+    auto data1 = es_graph_->CreateInput(0, "data0", nullptr);
+    data1.SetSymbolShape({"s0", "s1", "s2"});
+    data1.SetShape({8, 3, 4});
+
+    auto data2 = es_graph_->CreateInput(1, "data1", nullptr);
+    data2.SetSymbolShape({"s0", "s1", "s2"});
+    data2.SetShape({8, 3, 4});
+
+    auto relu1 = es::Relu(data1);
+    relu1.SetSymbolShape({"s0", "s1", "s2"});
+    relu1.SetShape({8, 3, 4});
+
+    auto relu2 = es::Relu(data2);
+    relu2.SetSymbolShape({"s0", "s1", "s2"});
+    relu2.SetShape({8, 3, 4});
+
+    // Mul需要两个输入，这里分别来自relu1和relu2
+    auto mul = es::Mul(relu1, relu2);
+    mul.SetSymbolShape({"s0", "s1", "s2"});
+    mul.SetShape({8, 3, 4});
+
+    auto offset = CreateConst(*es_graph_, ge::DT_INT64, {3}, std::vector<int64_t>{0, 0, 0});
+    auto size = CreateConst(*es_graph_, ge::DT_INT32, {3}, std::vector<int32_t>{4, 3, 4});
+    auto slice = es::Slice(mul, offset, size);
+    slice.SetSymbolShape({"4", "s1", "s2"});
+    slice.SetShape({4, 3, 4});
+
+    es_graph_->SetOutput(slice, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  // 修复：es构图只刷了output_shape，input_shape是空的
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Relu" || node->GetType() == "Mul") {
+      auto input_desc = node->GetOpDesc()->MutableInputDesc(0);
+      auto output_desc = node->GetOpDesc()->MutableOutputDesc(0);
+      input_desc->SetShape(output_desc->GetShape());
+      input_desc->SetOriginShape(output_desc->GetOriginShape());
+      input_desc->CopyAttrsFrom(*output_desc);
+    }
+  }
+
+  EXPECT_EQ(SliceForwardFusionPass().Run(cg), GRAPH_SUCCESS);
+
+  // 验证 slice 没有被前移（因为 mul 的两个输入来自不同的源）
+  auto slice_node = cg->FindFirstNodeMatchType("Slice");
+  ASSERT_NE(slice_node, nullptr);
+  EXPECT_EQ(slice_node->GetInDataNodes().at(0)->GetType(), "Mul");
+}
+
+TEST_F(PatternFusionPassTest, SliceForwardMultiInputFromSameSource) {
+  // 测试多输入 elementwise 的输入来自同一个源节点时，slice 应该上提
+  // 图结构: Data -> Mul(Data, Data) -> Slice -> Output
+  // 前移后:    Data -> Slice -> Mul(Slice输出, Slice输出) -> Output
+  [this]() {
+    auto data = es_graph_->CreateInput(0, "data0", nullptr);
+    data.SetSymbolShape({"s0", "s1", "s2"});
+    data.SetShape({8, 3, 4});
+
+    // Mul 的两个输入都直接来自 data
+    auto mul = es::Mul(data, data);
+    mul.SetSymbolShape({"s0", "s1", "s2"});
+    mul.SetShape({8, 3, 4});
+
+    auto offset = CreateConst(*es_graph_, ge::DT_INT64, {3}, std::vector<int64_t>{0, 0, 0});
+    auto size = CreateConst(*es_graph_, ge::DT_INT32, {3}, std::vector<int32_t>{4, 3, 4});
+    auto slice = es::Slice(mul, offset, size);
+    slice.SetSymbolShape({"4", "s1", "s2"});
+    slice.SetShape({4, 3, 4});
+
+    es_graph_->SetOutput(slice, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  // 修复：es构图只刷了output_shape，input_shape是空的
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Mul") {
+      auto input_desc = node->GetOpDesc()->MutableInputDesc(0);
+      auto output_desc = node->GetOpDesc()->MutableOutputDesc(0);
+      if (input_desc != nullptr && output_desc != nullptr) {
+        input_desc->SetShape(output_desc->GetShape());
+        input_desc->SetOriginShape(output_desc->GetOriginShape());
+        input_desc->CopyAttrsFrom(*output_desc);
+      }
+      // 处理第二个输入
+      auto input_desc1 = node->GetOpDesc()->MutableInputDesc(1);
+      if (input_desc1 != nullptr) {
+        input_desc1->SetShape(output_desc->GetShape());
+        input_desc1->SetOriginShape(output_desc->GetOriginShape());
+        input_desc1->CopyAttrsFrom(*output_desc);
+      }
+    }
+  }
+
+  // 修复：Mul节点需要设置SymbolicDescAttr，从Data节点的output复制
+  for (const auto &node : cg->GetAllNodes()) {
+    if (node->GetType() == "Mul") {
+      auto data_node = cg->FindFirstNodeMatchType("Data");
+      if (data_node != nullptr) {
+        auto data_output_desc = data_node->GetOpDesc()->MutableOutputDesc(0);
+        if (data_output_desc != nullptr) {
+          auto data_output_attr = data_output_desc->GetAttrsGroup<ge::SymbolicDescAttr>();
+          // 为Mul的输入输出设置SymbolicDescAttr
+          for (size_t i = 0; i < node->GetOpDesc()->GetInputsSize(); ++i) {
+            auto input_desc = node->GetOpDesc()->MutableInputDesc(i);
+            if (input_desc != nullptr) {
+              input_desc->CopyAttrsFrom(*data_output_desc);
+            }
+          }
+          for (size_t i = 0; i < node->GetOpDesc()->GetOutputsSize(); ++i) {
+            auto output_desc = node->GetOpDesc()->MutableOutputDesc(i);
+            if (output_desc != nullptr) {
+              output_desc->CopyAttrsFrom(*data_output_desc);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  EXPECT_EQ(SliceForwardFusionPass().Run(cg), GRAPH_SUCCESS);
+
+  // 验证 slice 的输入来自 Data
+  auto slice_node = cg->FindFirstNodeMatchType("Slice");
+  ASSERT_NE(slice_node, nullptr);
+  EXPECT_EQ(slice_node->GetInDataNodes().at(0)->GetType(), "Data");
+
+  // 验证 mul 的两个输入都来自 Slice
+  auto mul_node = cg->FindFirstNodeMatchType("Mul");
+  ASSERT_NE(mul_node, nullptr);
+  EXPECT_EQ(mul_node->GetInDataNodes().at(0)->GetType(), "Slice");
+  EXPECT_EQ(mul_node->GetInDataNodes().at(1)->GetType(), "Slice");
+
+  // 验证 mul 的 shape 已更新为 slice 的输出 shape
+  const auto &mul_shape = mul_node->GetOpDesc()->GetOutputDesc(0).GetShape();
+  EXPECT_EQ(mul_shape.GetDims(), std::vector<int64_t>({4, 3, 4}));
 }
 
 }  // namespace ge

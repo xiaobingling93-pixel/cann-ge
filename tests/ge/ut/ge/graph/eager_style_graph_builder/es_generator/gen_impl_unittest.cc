@@ -20,12 +20,13 @@
 #include "utils.h"
 #include "graph/op_desc.h"
 #include "es_codegen_default_value.h"
-
+#include "history/history_registry_utils.h"
+#include "ge_running_env/path_utils.h"
+#include "gen_esb_options.h"
 
 namespace ge {
 namespace es {
-void GenEsImpl(const std::string &output_dir, const std::string &module_name, const std::string &h_guard_prefix,
-                       const std::string &exclude_ops);
+void GenEsImpl(const GenEsbOptions &options);
 }  // namespace es
 }  // namespace ge
 namespace {
@@ -35,13 +36,30 @@ auto Normalize = [](const std::string &code) {
   return str;
 };
 
+template <typename F>
+void ExpectInvalidArgumentErrorContains(F &&fn, const std::string &expected_msg) {
+  try {
+    fn();
+    FAIL() << "Expected std::invalid_argument";
+  } catch (const std::invalid_argument &e) {
+    EXPECT_NE(std::string(e.what()).find(expected_msg), std::string::npos);
+  } catch (...) {
+    FAIL() << "Expected std::invalid_argument";
+  }
+}
+
 }
 class GenImplLLT : public ::testing::Test {
  protected:
   void SetUp() override {
     // 创建测试输出目录
     test_output_dir_ = "./test_gen_output/";
-    ge::es::GenEsImpl(test_output_dir_, ge::es::kEsCodeGenDefaultModelName, ge::es::kEsCodeGenDefaultPrefixGuard, "phony_all");
+    ge::es::GenEsbOptions opts;
+    opts.output_dir = test_output_dir_;
+    opts.module_name = ge::es::kEsCodeGenDefaultModelName;
+    opts.h_guard_prefix = ge::es::kEsCodeGenDefaultPrefixGuard;
+    opts.exclude_ops = "phony_all";
+    ge::es::GenEsImpl(opts);
   }
 
   void TearDown() override {
@@ -50,6 +68,21 @@ class GenImplLLT : public ::testing::Test {
   }
 
   std::string test_output_dir_;
+};
+
+class GenImplLLTExtractHistory : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    opts.extract_history = true;
+    opts.output_dir = "./test_history_gen_output_" + std::to_string(getpid()) + "/";
+  }
+
+  void TearDown() override {
+    const std::string command = "rm -rf " + opts.output_dir;
+    (void) std::system(command.c_str());
+  }
+
+  ge::es::GenEsbOptions opts;
 };
 
 // 测试生成的文件结构
@@ -4277,4 +4310,124 @@ inline EsTensorHolder phony_1opi_1o(const EsTensorLike &x1, const EsGraphBuilder
   EXPECT_EQ(Normalize(cpp_content.str()), Normalize(expected_cpp_content)) << "Generated C++ header content does not "
                                                                               "match "
                                                                               "expected content";
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryGeneratesFiles) {
+  opts.release_version = "8.0.RC1";
+  opts.release_date = "2024-09-30";
+  opts.branch_name = "master";
+
+  ge::es::GenEsImpl(opts);
+
+  const std::string index_path = opts.output_dir + "index.json";
+  const std::string metadata_path = opts.output_dir + "registry/8.0.RC1/metadata.json";
+  const std::string operators_path = opts.output_dir + "registry/8.0.RC1/operators.json";
+
+  EXPECT_TRUE(ge::IsFile(index_path.c_str()));
+  EXPECT_TRUE(ge::IsFile(metadata_path.c_str()));
+  EXPECT_TRUE(ge::IsFile(operators_path.c_str()));
+
+  nlohmann::json index_json;
+  std::string error_msg;
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(index_path, index_json, error_msg));
+  ASSERT_TRUE(index_json.contains("version"));
+  EXPECT_EQ(index_json["version"], "1.0.0");
+  ASSERT_TRUE(index_json.contains("releases"));
+  ASSERT_TRUE(index_json["releases"].is_array());
+  ASSERT_EQ(index_json["releases"].size(), 1U);
+  EXPECT_EQ(index_json["releases"][0]["release_version"], "8.0.RC1");
+  EXPECT_EQ(index_json["releases"][0]["release_date"], "2024-09-30");
+
+  nlohmann::json meta_json;
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(metadata_path, meta_json, error_msg));
+  EXPECT_EQ(meta_json["release_version"], "8.0.RC1");
+  EXPECT_EQ(meta_json["branch_name"], "master");
+
+  nlohmann::json ops_json;
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(operators_path, ops_json, error_msg));
+  ASSERT_TRUE(ops_json.contains("operators"));
+  ASSERT_TRUE(ops_json["operators"].is_array());
+  EXPECT_GT(ops_json["operators"].size(), 0U);
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryWithEmptyReleaseDate) {
+  opts.release_version = "8.0.RC2";
+  opts.branch_name = "develop";
+
+  ge::es::GenEsImpl(opts);
+
+  const std::string index_path = opts.output_dir + "index.json";
+  nlohmann::json index_json;
+  std::string error_msg;
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(index_path, index_json, error_msg));
+  ASSERT_EQ(index_json["releases"].size(), 1U);
+  EXPECT_EQ(index_json["releases"][0]["release_version"], "8.0.RC2");
+
+  std::string date = index_json["releases"][0]["release_date"].get<std::string>();
+  EXPECT_TRUE(ge::es::history::ValidateReleaseDateFormat(date));
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryUpdatesIndex) {
+  opts.release_version = "8.0.RC1";
+  opts.release_date = "2024-09-30";
+  opts.branch_name = "master";
+
+  ge::es::GenEsImpl(opts);
+
+  const std::string index_path = opts.output_dir + "index.json";
+  nlohmann::json index_json;
+  std::string error_msg;
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(index_path, index_json, error_msg));
+  ASSERT_EQ(index_json["releases"].size(), 1U);
+
+  opts.release_version = "8.0.RC2";
+  opts.release_date = "2024-10-15";
+  ge::es::GenEsImpl(opts);
+
+  ASSERT_TRUE(ge::es::history::ReadJsonFile(index_path, index_json, error_msg));
+  ASSERT_EQ(index_json["releases"].size(), 2U);
+  EXPECT_EQ(index_json["releases"][0]["release_version"], "8.0.RC1");
+  EXPECT_EQ(index_json["releases"][1]["release_version"], "8.0.RC2");
+
+  const std::string metadata_path_1 = opts.output_dir + "registry/8.0.RC1/metadata.json";
+  const std::string metadata_path_2 = opts.output_dir + "registry/8.0.RC2/metadata.json";
+  EXPECT_TRUE(ge::IsFile(metadata_path_1.c_str()));
+  EXPECT_TRUE(ge::IsFile(metadata_path_2.c_str()));
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryThrowsOnEmptyReleaseVersion) {
+  opts.release_version = "";
+  opts.release_date = "2024-09-30";
+  opts.branch_name = "master";
+
+  ExpectInvalidArgumentErrorContains([&]() {
+    ge::es::GenEsImpl(opts);
+  }, "release_version");
+
+  ExpectInvalidArgumentErrorContains([&]() {
+    ge::es::GenEsImpl(opts);
+  }, "The required parameter release_version for history registry generator is not set.");
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryThrowsOnInvalidReleaseDate) {
+  opts.release_version = "8.0.RC1";
+  opts.release_date = "20240930";
+  opts.branch_name = "master";
+
+  ExpectInvalidArgumentErrorContains([&]() {
+    ge::es::GenEsImpl(opts);
+  }, "Given release_date parameter for history registry generator is not in the correct format (YYYY-MM-DD).");
+}
+
+TEST_F(GenImplLLTExtractHistory, ExtractHistoryThrowsOnDuplicateReleaseVersion) {
+  opts.release_version = "8.0.RC1";
+  opts.release_date = "2024-09-30";
+  opts.branch_name = "master";
+
+  ge::es::GenEsImpl(opts);
+
+  opts.release_date = "2024-10-01";
+  ExpectInvalidArgumentErrorContains([&]() {
+    ge::es::GenEsImpl(opts);
+  }, "Given release_version already exists in index, please check index.json or use another version: ");
 }

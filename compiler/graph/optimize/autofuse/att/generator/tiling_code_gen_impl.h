@@ -21,6 +21,8 @@
 #include "extra_info_gen/extra_info_generator.h"
 #include "util/duration.h"
 #include "gen_model_info/api_tiling_gen/gen_api_tiling.h"
+#include "cache/operator_level_cache_gen.h"
+#include "cache/group_level_cache_gen.h"
 
 namespace att {
 struct GenTilingTailImplExtParams {
@@ -184,8 +186,6 @@ class TilingCodeGenImpl {
   virtual ge::Status ValidateSingleResultAndGroup();
   // 保存模板数
   ge::Status GenSaveCaseNumInfo(uint32_t case_num);
-  // 生成初始化缓存并查询缓存逻辑
-  virtual ge::Status GenInitAndQueryCacheCode();
   // 根据caseid生成选择逻辑
   virtual ge::Status GenGetTilingbyCaseId();
   virtual ge::Status GenPGODefaultTiling();
@@ -253,6 +253,10 @@ class TilingCodeGenImpl {
   bool with_reuse_info_{false};
   std::string arrange_code_;
 
+  // 缓存代码生成器
+  std::unique_ptr<cache::OperatorLevelCacheGen> operator_level_cache_gen_;
+  std::unique_ptr<cache::GroupLevelCacheGen> group_level_cache_gen_;
+
  private:
   ge::Status GenExpressionMacro();
   // 用于获取不同硬件信息的获取代码
@@ -312,6 +316,9 @@ class TilingCodeGenImpl {
   ge::Status GenTilingKeyFunc();
   void GenTilingHeadMultiGroup();
 
+  // 辅助函数：从所有model info中收集输入变量名并返回数量
+  size_t CollectInputVarsSize() const;
+
   // -----------------------生成固定的入口函数---------------------------
   ge::Status GenGetTilingImpl();
   ge::Status GenIsStaticShape();
@@ -319,6 +326,11 @@ class TilingCodeGenImpl {
   ge::Status GenGeneralTiling(const ModelInfo &model_info);
   
   ge::Status GenVariableAnnotation(const ArgsManager &args_manager);
+
+  // 辅助函数：生成Group级缓存查询代码
+  ge::Status GenGroupCacheLookupCode();
+  // 辅助函数：生成模板迭代排序逻辑
+  ge::Status GenTemplateIterationLogic();
 
   ge::Status GenOpLog(const std::string &indent, const std::string &log);
   ge::Status GenOpLog(const std::string &indent, const std::string &uniq_log, const std::string &sched_log);

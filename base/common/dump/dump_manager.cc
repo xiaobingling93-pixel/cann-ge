@@ -394,8 +394,15 @@ Status DumpManager::SetDumpPath(const DumpConfig &dump_config, DumpProperties &d
     dump_path = dump_path + "/";
   }
   dump_path = dump_path + CurrentTimeInStr() + "/";
-  const std::string adump_dump_path = acldumpGetPath(DATA_DUMP);
-  dump_path = !adump_dump_path.empty() ? adump_dump_path : dump_path;
+  const char *adump_dump_path = acldumpGetPath(DATA_DUMP);
+  if (adump_dump_path != nullptr) {
+    std::string adump_dump_path_str(adump_dump_path);
+    if (!adump_dump_path_str.empty()) {
+      GELOGI("acldumpGetPath is not empty, use adump_dump_path=%s instead of %s", adump_dump_path_str.c_str(),
+             dump_path.c_str());
+      dump_path = adump_dump_path_str;
+    }
+  }
   GELOGI("Dump path is %s", dump_path.c_str());
   dump_properties.SetDumpPath(dump_path);
   return SUCCESS;
