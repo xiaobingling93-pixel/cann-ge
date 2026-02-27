@@ -96,6 +96,12 @@ bool AddParentIndexForNetoutput(ComputeGraphPtr &root_graph, NetoutputParentInde
   }
   return true;
 }
+
+void SetRefOutput(const NodePtr &node, const uint32_t output_idx = 0U, const int32_t input_idx = 0) {
+  auto out_desc = node->GetOpDescBarePtr()->MutableOutputDesc(output_idx);
+  ge::TensorUtils::SetReuseInput(*out_desc, true);
+  ge::TensorUtils::SetReuseInputIndex(*out_desc, input_idx);
+}
 }
 
 class UtestTensorMoveDeletePass : public Test {
@@ -301,6 +307,122 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataViaRefOp_WithBranch_Kept) {
   names_to_pass.emplace_back("TensorMoveDeletePass", &tensor_move_delete_pass);
   EXPECT_EQ(pass.Run(names_to_pass), SUCCESS);
   EXPECT_NE(builder.GetGraph()->FindNode("TensorMove"), nullptr);
+
+  ge::GetThreadLocalContext().SetGraphOption({});
+}
+
+/**
+ *        Data
+ *       /   \
+ * TensorMove1 Add
+ *      |
+ *    RefOp
+ *      |
+ * TensorMove2
+ *      |
+ *   NetOutput
+ *
+ * 说明：
+ * - Data 被 TensorMove1 和 Add 同时使用，TensorMove1 不能删除
+ * - TensorMove2 向上溯源经过 RefOp 后遇到 TensorMove1，停止穿透
+ *
+ * 预期：
+ * - TensorMove1 保留
+ * - TensorMove2 删除
+ */
+TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtUpstreamTensorMove_DataBranched_DownstreamDeleted) {
+  setenv("DUMP_GRAPH_LEVEL", "2", 1);
+  setenv("DUMP_GE_GRAPH", "2", 1);
+  dlog_setlevel(0, 0, 0);
+  std::map<std::string, std::string> options;
+  options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
+  ge::GetThreadLocalContext().SetGraphOption(options);
+
+  auto builder = ut::GraphBuilder("g1");
+  auto data_node = builder.AddNode("Data", DATA, 1, 1);
+  auto tensor_move1_node = builder.AddNode("TensorMove1", TENSORMOVE, 1, 1);
+  auto ref_node = builder.AddNode("RefOp", ADD, 1, 1);
+  auto tensor_move2_node = builder.AddNode("TensorMove2", TENSORMOVE, 1, 1);
+  auto add_node = builder.AddNode("Add", ADD, 1, 1);
+  auto netoutput_node = builder.AddNode("NetOutput", NETOUTPUT, 2, 1);
+
+  SetRefOutput(ref_node, 0, 0);
+  AttrUtils::SetInt(data_node->GetOpDesc(), ATTR_NAME_INDEX, 0);
+
+  GraphUtils::AddEdge(data_node->GetOutDataAnchor(0), tensor_move1_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(tensor_move1_node->GetOutDataAnchor(0), ref_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(ref_node->GetOutDataAnchor(0), tensor_move2_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(tensor_move2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(data_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(add_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(1));
+
+  ge::GEPass pass(builder.GetGraph());
+  TensorMoveDeletePass tensor_move_delete_pass;
+  ge::NamesToPass names_to_pass;
+  names_to_pass.emplace_back("TensorMoveDeletePass", &tensor_move_delete_pass);
+  EXPECT_EQ(pass.Run(names_to_pass), SUCCESS);
+
+  EXPECT_NE(builder.GetGraph()->FindNode("TensorMove1"), nullptr);
+  EXPECT_EQ(builder.GetGraph()->FindNode("TensorMove2"), nullptr);
+
+  ge::GetThreadLocalContext().SetGraphOption({});
+}
+
+/**
+ *         Data
+ *          |
+ *   TensorMove1(reserved)
+ *      /         \
+ *   RefOp        Add
+ *    |            |
+ * TensorMove2  NetOutput
+ *    |
+ * NetOutput
+ *
+ * 说明：
+ * - TensorMove1 通过保留属性禁止删除
+ * - TensorMove1 输出有分支（RefOp 与 Add）
+ * - TensorMove2 溯源遇到 TensorMove1 停止，随后按单路径规则校验失败
+ *
+ * 预期：
+ * - TensorMove1 保留
+ * - TensorMove2 保留
+ */
+TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtReservedUpstreamTensorMove_WithBranch_DownstreamKept) {
+  setenv("DUMP_GRAPH_LEVEL", "2", 1);
+  setenv("DUMP_GE_GRAPH", "2", 1);
+  dlog_setlevel(0, 0, 0);
+  std::map<std::string, std::string> options;
+  options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
+  ge::GetThreadLocalContext().SetGraphOption(options);
+
+  auto builder = ut::GraphBuilder("g1");
+  auto data_node = builder.AddNode("Data", DATA, 1, 1);
+  auto tensor_move1_node = builder.AddNode("TensorMove1", TENSORMOVE, 1, 1);
+  auto ref_node = builder.AddNode("RefOp", ADD, 1, 1);
+  auto tensor_move2_node = builder.AddNode("TensorMove2", TENSORMOVE, 1, 1);
+  auto add_node = builder.AddNode("Add", ADD, 1, 1);
+  auto netoutput_node = builder.AddNode("NetOutput", NETOUTPUT, 2, 1);
+
+  SetRefOutput(ref_node, 0, 0);
+  AttrUtils::SetInt(data_node->GetOpDesc(), ATTR_NAME_INDEX, 0);
+  AttrUtils::SetBool(tensor_move1_node->GetOpDesc(), ATTR_NAME_CANNOT_BE_DELETED, true);
+
+  GraphUtils::AddEdge(data_node->GetOutDataAnchor(0), tensor_move1_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(tensor_move1_node->GetOutDataAnchor(0), ref_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(ref_node->GetOutDataAnchor(0), tensor_move2_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(tensor_move2_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(tensor_move1_node->GetOutDataAnchor(0), add_node->GetInDataAnchor(0));
+  GraphUtils::AddEdge(add_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(1));
+
+  ge::GEPass pass(builder.GetGraph());
+  TensorMoveDeletePass tensor_move_delete_pass;
+  ge::NamesToPass names_to_pass;
+  names_to_pass.emplace_back("TensorMoveDeletePass", &tensor_move_delete_pass);
+  EXPECT_EQ(pass.Run(names_to_pass), SUCCESS);
+
+  EXPECT_NE(builder.GetGraph()->FindNode("TensorMove1"), nullptr);
+  EXPECT_NE(builder.GetGraph()->FindNode("TensorMove2"), nullptr);
 
   ge::GetThreadLocalContext().SetGraphOption({});
 }
