@@ -1018,7 +1018,7 @@ graphStatus ComputeGraphImpl::RemoveNode(const NodePtr &node) {
   // if the node save as input node, delete it
   (void)RemoveInputNode(node);
 
-  // if the node save as input node, delete it
+  // if the node save as output node, delete it
   (void)RemoveOutputNode(node);
 
   if (IsolateNode(node) != GRAPH_SUCCESS) {
@@ -1057,6 +1057,11 @@ graphStatus ComputeGraphImpl::RemoveOutputNode(const NodePtr &node) {
     REPORT_INNER_ERR_MSG("E18888", "The node ptr should not be null, graph:%s.", name_.c_str());
     GELOGE(GRAPH_FAILED, "[Check][Param] The node ptr should not be null.");
     return GRAPH_FAILED;
+  }
+
+  auto target_iter = targets_.find(node);
+  if (target_iter != targets_.end()) {
+    targets_.erase(target_iter);
   }
 
   auto iter = output_nodes_info_.begin();
