@@ -29,6 +29,7 @@ using Edge = std::pair<const ge::OutDataAnchor *, const ge::InDataAnchor *>;
 struct ExtraKernelBoxMeta {
   size_t num_ops = 0U;
   size_t num_loads = 0U;
+  size_t num_slices = 0U;
   std::vector<const ge::Node *> ascend_ir_nodes;
   std::set<const ge::OutDataAnchor *> used_ascend_buffers;
   std::set<const ge::OutDataAnchor *> optimized_ascend_buffers;
@@ -102,6 +103,9 @@ struct KernelBoxMeta {
         extra->num_loads++;
       } else if (op->Type() != "ops.Store") {
         extra->num_ops++;
+      }
+      if (op->Type() == "ops.StoreStridedSlice") {
+        extra->num_slices++;
       }
       const auto node = op->GetAscendIrNode();
       if (node != nullptr && seen_nodes.insert(node).second) {
@@ -310,6 +314,10 @@ class KernelBox {
   size_t NumLoads() {
     return GetExtraMeta().num_loads;
   }
+
+  size_t NumSlices() {
+    return GetExtraMeta().num_slices;
+  }  
 
   std::string StreamLabel() {
     return GetExtraMeta().stream_label;

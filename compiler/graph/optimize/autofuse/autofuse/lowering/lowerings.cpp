@@ -64,6 +64,39 @@ bool IsNodeHasControlEdges(const NodePtr &node) {
   return true;
 }
 
+std::vector<loop::KernelBox> GetNodeKernelBoxes(const NodePtr &node) {
+  std::vector<loop::KernelBox> kernel_boxes;
+  for (auto &anchor : node->GetAllOutDataAnchors()) {
+    kernel_boxes.push_back(loop::GetKernelBox(anchor));
+  }
+  return kernel_boxes;
+}
+
+bool KernelBoxHasSliceAndReduce(const NodePtr &node) {
+  bool kernelbox_has_slice_ops = false;
+  std::vector<loop::KernelBox> kernel_boxes = GetNodeKernelBoxes(node);
+  for (auto &kernel_box : kernel_boxes) { 
+    if (kernel_box.NumSlices() != 0U) {
+      kernelbox_has_slice_ops = true;
+      GELOGI("kernelbox has slice node: %s", kernel_box.DebugString().c_str());      
+      break;
+    }
+  }
+  if (kernelbox_has_slice_ops == false) {
+    return false;
+  }  
+  bool out_node_is_reduce = false;
+  for (auto out_node : node->GetOutNodes()) {  
+    GE_ASSERT_NOTNULL(out_node);
+    if (find(reduce_types.begin(), reduce_types.end(), out_node->GetType()) != reduce_types.end()) {
+      out_node_is_reduce = true;
+      GELOGI("output nodes is reduce type: %s", node->GetName().c_str());
+      break;
+    }
+  }
+  return out_node_is_reduce;
+}
+
 std::string WhyRealizeByNodeCategory(const ge::NodePtr &node) {
   if (IsNodeHasControlEdges(node)) {
     return "has control edges";
@@ -71,6 +104,9 @@ std::string WhyRealizeByNodeCategory(const ge::NodePtr &node) {
   const static std::set<std::string> kHeavyOps = {"Exp"};
   if (kHeavyOps.count(node->GetType()) > 0U) {
     return "is heavy op";
+  }
+  if (KernelBoxHasSliceAndReduce(node)) {
+    return "slice can not fuse reduce at lowering";
   }
   return "";
 }
@@ -229,14 +265,6 @@ void RealizeUnusedBuffers(loop::KernelBox &kernel_box) {
         Anchor::DynamicAnchorCast<OutDataAnchor>(const_cast<OutDataAnchor *>(buffer)->shared_from_this()))
         .Realize();
   }
-}
-
-std::vector<loop::KernelBox> GetNodeKernelBoxes(const NodePtr &node) {
-  std::vector<loop::KernelBox> kernel_boxes;
-  for (auto &anchor : node->GetAllOutDataAnchors()) {
-    kernel_boxes.push_back(loop::GetKernelBox(anchor));
-  }
-  return kernel_boxes;
 }
 
 bool IsNodeShouldLowering(const NodePtr &node) {

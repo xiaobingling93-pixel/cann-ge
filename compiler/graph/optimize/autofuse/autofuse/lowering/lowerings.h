@@ -18,6 +18,8 @@
 #include "lowering_utils.h"
 
 namespace ge {
+const std::vector<std::string> reduce_types = {"ReduceMean", "ReduceMax", "ReduceMin", "ReduceSum", "ReduceProd",
+                                               "ReduceMeanD", "ReduceMaxD", "ReduceMinD", "ReduceSumD", "ReduceProdD"};
 constexpr LoweringConfig kLoweringConfig;
 
 struct AscBackendFuseConfig {

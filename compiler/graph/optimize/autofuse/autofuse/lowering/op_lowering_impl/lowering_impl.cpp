@@ -99,8 +99,6 @@ constexpr int help_min_precision = 50;
 constexpr double pow_base_two = 2.0;
 constexpr size_t kMaxConcatDynInputNum = 32UL;
 constexpr size_t kTileToConcatMaxMultiple = 6UL;
-const std::vector<std::string> reduce_types = {"ReduceMean", "ReduceMax", "ReduceMin", "ReduceSum", "ReduceProd",
-                                               "ReduceMeanD", "ReduceMaxD", "ReduceMinD", "ReduceSumD", "ReduceProdD"};
 using Permutation = std::vector<int64_t>;
 const std::set<Permutation> SUPPORTED_TWO_PERMS = {
     {1,0}
