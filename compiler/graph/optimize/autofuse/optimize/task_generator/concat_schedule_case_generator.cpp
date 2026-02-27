@@ -742,7 +742,9 @@ Status ConcatFusionCaseGenerator::AddExtraShapeEnv(const ge::AscNodePtr &concat_
     for (size_t i = output_repeats.size() - 1; i > concat_dim; --i) {
       input_axis_size = input_axis_size * input_repeats[i];
       output_axis_size = output_axis_size * output_repeats[i];
-      GE_ASSERT_TRUE(EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size));
+      GE_LOGW_IF(!EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size),
+                 "expect axis eq failed, concat_dim = %zu, cur_dim = %zu, input_axis_size = %s, output_axis_size = %s",
+                 concat_dim, i, input_axis_size.Str().get(), output_axis_size.Str().get());
     }
   }
   for (uint32_t k = 1; k < concat_node->inputs.Size(); ++k) {
@@ -752,7 +754,9 @@ Status ConcatFusionCaseGenerator::AddExtraShapeEnv(const ge::AscNodePtr &concat_
     for (size_t i = concat_dim + 1; i < output_repeats.size(); ++i) {
       input_axis_size = input_axis_size * input_repeats[i];
       output_axis_size = output_axis_size * output_repeats[i];
-      GE_ASSERT_TRUE(EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size));
+      GE_LOGW_IF(!EXPECT_SYMBOL_EQ(input_axis_size, output_axis_size),
+                 "expect axis eq failed, concat_dim = %zu, cur_dim = %zu, input_axis_size = %s, output_axis_size = %s",
+                 concat_dim, i, input_axis_size.Str().get(), output_axis_size.Str().get());
     }
   }
   return ge::SUCCESS;
