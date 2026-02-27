@@ -342,8 +342,6 @@ class RuntimeStub {
 
   virtual rtError_t rtsFuncGetByEntry(const rtBinHandle binHandle, const uint64_t funcEntry,
       rtFuncHandle *funcHandle) {
-    rtFuncHandle tmp_funcHandle = nullptr;
-    *funcHandle = &tmp_funcHandle;
     return RT_ERROR_NONE;
   }
 

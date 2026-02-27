@@ -277,12 +277,12 @@ void AclResourceManager::CleanAllocators(const void * const cacheKey)
 std::shared_ptr<gert::Allocators> AclResourceManager::UpdateExternalAllocators(aclrtStream stream)
 {
     void *cacheKey = stream;
-    aclrtAllocatorDesc new_desc;
-    aclrtAllocator allocator;
-    aclrtAllocatorAllocFunc allocFunc;
-    aclrtAllocatorFreeFunc freeFunc;
-    aclrtAllocatorAllocAdviseFunc allocAdviseFunc;
-    aclrtAllocatorGetAddrFromBlockFunc getAddrFromBlockFunc;
+    aclrtAllocatorDesc new_desc = nullptr;
+    aclrtAllocator allocator = nullptr;
+    aclrtAllocatorAllocFunc allocFunc = nullptr;
+    aclrtAllocatorFreeFunc freeFunc = nullptr;
+    aclrtAllocatorAllocAdviseFunc allocAdviseFunc = nullptr;
+    aclrtAllocatorGetAddrFromBlockFunc getAddrFromBlockFunc = nullptr;
     bool new_desc_exist = aclrtAllocatorGetByStream(stream, &new_desc, &allocator, &allocFunc,
                             &freeFunc, &allocAdviseFunc, &getAddrFromBlockFunc) == ACL_SUCCESS;
     const auto iter_old_desc = streamExternalAllocator_.find(cacheKey);

@@ -13,6 +13,8 @@
 #include <regex>
 #include <map>
 #include <fstream>
+#include <stdint.h>
+
 namespace att {
 bool CheckValidTilingkey();
 bool ExistOutput(const std::string& pattern);
