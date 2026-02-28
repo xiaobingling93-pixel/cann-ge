@@ -169,8 +169,6 @@ message SubmodelDesc {
   repeated int32 status_input_queue_indices = 13;
   repeated int32 status_output_queue_indices = 14;
   string rank_id = 15;
-  int32 process_mode = 16;
-  int32 load_mode = 17;
   int32 execute_times = 18;
   int32 process_id = 19;
   int32 phy_device_id = 21;
@@ -373,7 +371,6 @@ message ExecutorRequest {
     uint32 model_uuid = 14;
     bool is_dynamic_sched = 15;
     bool need_report_status = 16;
-    int32 load_mode = 17;
     int32 execute_times = 18;
     repeated int32 input_fusion_offsets = 19;
     int32 phy_device_id = 21;

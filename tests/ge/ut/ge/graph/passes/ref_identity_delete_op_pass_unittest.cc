@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -13,6 +13,8 @@
 #include <string>
 #include <gtest/gtest.h>
 #include "graph/passes/variable_optimize/ref_identity_delete_op_pass.h"
+#include "graph/passes/pass_manager.h"
+#include "graph/utils/node_utils.h"
 
 using namespace domi;
 using namespace ge;
@@ -65,29 +67,29 @@ class NodeBuilder {
 TEST_F(UTestRefIdentityDeleteOpPass, ref_identity_delete_without_transnode_success) {
   ge::ComputeGraphPtr graph = std::make_shared<ComputeGraph>("test");
   ge::NodePtr variable_node = NodeBuilder("variable", VARIABLE)
-          .AddInputDesc("input", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .AddOutputDesc("output", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .Build(graph);
+                                  .AddInputDesc("input", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                  .AddOutputDesc("output", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                  .Build(graph);
 
   ge::NodePtr ref_identity_node = NodeBuilder("RefIdentity", REFIDENTITY)
-          .AddInputDesc("input", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .AddOutputDesc("output", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .Build(graph);
+                                      .AddInputDesc("input", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                      .AddOutputDesc("output", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                      .Build(graph);
 
   ge::NodePtr apply_monetum_node = NodeBuilder("Applymomentum", APPLYMOMENTUM)
-          .AddInputDesc("var", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .AddOutputDesc("no_var", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .Build(graph);
+                                       .AddInputDesc("var", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                       .AddOutputDesc("no_var", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                       .Build(graph);
 
   ge::NodePtr add_node = NodeBuilder("Add", ADD)
-          .AddInputDesc("x", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .AddOutputDesc("y", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .Build(graph);
-          
+                             .AddInputDesc("x", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                             .AddOutputDesc("y", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                             .Build(graph);
+
   ge::NodePtr variable_ref = NodeBuilder("VariableRef", VARIABLE)
-          .AddInputDesc("x", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .AddOutputDesc("y", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
-          .Build(graph);
+                                 .AddInputDesc("x", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                 .AddOutputDesc("y", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                 .Build(graph);
 
   ge::GraphUtils::AddEdge(variable_node->GetOutDataAnchor(0), ref_identity_node->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(ref_identity_node->GetOutDataAnchor(0), apply_monetum_node->GetInDataAnchor(0));
@@ -99,8 +101,16 @@ TEST_F(UTestRefIdentityDeleteOpPass, ref_identity_delete_without_transnode_succe
   desc.SetRefPortByIndex({0});
   apply_monetum_node->GetOpDesc()->UpdateInputDesc(0, desc);
 
-  ge::RefIdentityDeleteOpPass pass_;
-  ge::Status status = pass_.Run(graph);
+  ge::ComputeGraphPtr root_graph = std::make_shared<ComputeGraph>("root_graph");
+  ge::NodePtr parent_node = NodeBuilder("parent_node", "PartitionedCall")
+                                .AddInputDesc("input", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                .AddOutputDesc("output", {2, 16, 2, 2}, FORMAT_NHWC, DT_FLOAT)
+                                .Build(root_graph);
+  ASSERT_EQ(ge::NodeUtils::AddSubgraph(*parent_node, "test", graph), ge::GRAPH_SUCCESS);
+
+  PassManager pass_manager;
+  pass_manager.AddPass("RefIdentityDeleteOpPass", new (std::nothrow) ge::RefIdentityDeleteOpPass);
+  ge::Status status = pass_manager.Run(root_graph);
   EXPECT_EQ(status, ge::SUCCESS);
 
   EXPECT_EQ(variable_node->GetOutDataNodes().size(), 2);
@@ -150,7 +160,8 @@ TEST_F(UTestRefIdentityDeleteOpPass, ref_identity_delete_without_ref_identity) {
   desc.SetRefPortByIndex({0});
   apply_monetum_node->GetOpDesc()->UpdateInputDesc(0, desc);
 
-  ge::RefIdentityDeleteOpPass pass_;
-  ge::Status status = pass_.Run(graph);
+  PassManager pass_manager;
+  pass_manager.AddPass("RefIdentityDeleteOpPass", new (std::nothrow) ge::RefIdentityDeleteOpPass);
+  ge::Status status = pass_manager.Run(graph);
   EXPECT_EQ(status, ge::SUCCESS);
 }

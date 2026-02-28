@@ -20,11 +20,6 @@
 #include "dflow/base/deploy/exchange_service.h"
 
 namespace ge {
-enum class DeployProcessMode {
-  kProcess = 0,
-  kThread = 1
-};
-
 class PneExecutorClient {
  public:
   struct ClientContext {
@@ -98,19 +93,17 @@ class PneExecutorClientFactory {
  public:
   static PneExecutorClientFactory &GetInstance();
   std::unique_ptr<PneExecutorClient> CreateClient(const std::string &engine_name,
-                                                  DeployProcessMode process_mode,
                                                   bool is_proxy,
                                                   int32_t device_id);
 
   using CreateFunc = std::function<PneExecutorClientPtr(int32_t device_id)>;
 
   void RegisterCreateFunc(const std::string &engine_name,
-                          DeployProcessMode process_mode,
                           bool is_proxy,
                           CreateFunc func);
 
  private:
-  std::string GenerateClientKey(const std::string &engine_name, DeployProcessMode process_mode, bool is_proxy) const;
+  std::string GenerateClientKey(const std::string &engine_name, bool is_proxy) const;
 
   std::map<std::string, CreateFunc> create_funcs_;
 };
@@ -119,25 +112,15 @@ template<typename T>
 class PneExecutorClientCreatorRegistrar {
  public:
   explicit PneExecutorClientCreatorRegistrar(const std::string &engine_name) {
-    PneExecutorClientCreatorRegistrar(engine_name, DeployProcessMode::kProcess, false);
-  }
-
-  PneExecutorClientCreatorRegistrar(const std::string &engine_name, DeployProcessMode process_mode) {
-    PneExecutorClientCreatorRegistrar(engine_name, process_mode, false);
-  }
-
-  PneExecutorClientCreatorRegistrar(const std::string &engine_name, bool is_proxy) {
-    PneExecutorClientCreatorRegistrar(engine_name, DeployProcessMode::kProcess, is_proxy);
+    PneExecutorClientCreatorRegistrar(engine_name, false);
   }
 
   PneExecutorClientCreatorRegistrar(const std::string &engine_name,
-                                    DeployProcessMode process_mode,
                                     bool is_proxy) {
     auto func = [](int32_t device_id) -> PneExecutorClientPtr  {
       return ::ge::MakeUnique<T>(device_id);
     };
     PneExecutorClientFactory::GetInstance().RegisterCreateFunc(engine_name,
-                                                               process_mode,
                                                                is_proxy,
                                                                std::move(func));
   }

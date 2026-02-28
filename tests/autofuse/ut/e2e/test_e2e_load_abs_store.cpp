@@ -1396,6 +1396,7 @@ TEST_F(E2E_LoadAbsStore, Codegen_Tiling_With_LambdaWithPGO)
 #include <cfloat>
 #include <vector>
 #include <unordered_set>
+#include <array>
 
 typedef long int (*ProfilingCallback)(void *stream, uint32_t workspaceSize, AutofuseTilingData *tiling_data, double *cost_time);
 typedef long int (*ProfilingBatchCallback)(void *stream, uint32_t workspaceSize, std::vector<AutofuseTilingDataPerf> *profiles);

@@ -254,6 +254,8 @@ Status InnerTensorMoveDeletePass::Run(ComputeGraphPtr graph) {
   for (const auto &node : graph->GetDirectNode()) {
     if (IsInnerTensorMove(node)) {
       if (IsCannotDelete(node)) {
+        GE_ASSERT_TRUE(AttrUtils::SetBool(node->GetOpDesc(), ATTR_NAME_CANNOT_BE_DELETED, true));
+        GELOGI("Inner Tensormove %s cannot be deleted", node->GetNamePtr());
         continue;
       }
       GE_ASSERT_SUCCESS(DeleteInnerTensorMove(node), "Inner TensorMove %s delete failed", node->GetNamePtr());

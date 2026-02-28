@@ -29,7 +29,7 @@ file(GLOB_RECURSE FAKER_SRCS CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/depends/f
 add_executable(ut_graph ${UT_FILES} ${FAKE_FILES} ${UTILS_FILES} ${FAKER_SRCS})
 
 target_compile_options(ut_graph PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control

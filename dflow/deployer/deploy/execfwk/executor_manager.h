@@ -32,7 +32,6 @@ class ExecutorManager {
     std::string engine_name;
     std::string rank_id;
     int32_t process_id;
-    DeployProcessMode process_mode = DeployProcessMode::kProcess;
     bool is_proxy = false;
 
     bool operator < (const ExecutorKey &other) const {

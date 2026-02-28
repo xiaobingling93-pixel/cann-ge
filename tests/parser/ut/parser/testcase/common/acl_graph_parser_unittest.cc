@@ -380,6 +380,6 @@ TEST_F(UtestAclGraphParser, test_ParseAclInputShape) {
   std::map<AscendString, AscendString> param4 = {
     {AscendString(ge::ir_option::INPUT_SHAPE), AscendString("input1:")}};
   ret = acl_graph_parse_util.ParseParamsBeforeGraph(param4, graph_name);
-  ASSERT_NE(ret, SUCCESS);
+  ASSERT_EQ(ret, SUCCESS);
 }
 } // namespace ge

@@ -119,6 +119,8 @@ checkopts() {
   ENABLE_ST_WHOLE_PROCESS="off"
   ENABLE_GE_C="off"
   ENABLE_GE_AUTOFUSE="off"
+  ENABLE_GE_AUTOFUSE_FRAMEWORK="off"
+  ENABLE_GE_AUTOFUSE_ASCENDC_API="off"
   ENABLE_ACL_UT="off"
 
   ENABLE_GE_BENCHMARK="off"
@@ -242,6 +244,14 @@ checkopts() {
             ;;
           "autofuse")
             ENABLE_GE_AUTOFUSE="on"
+            shift 2
+            ;;
+          "autofuse_framework")
+            ENABLE_GE_AUTOFUSE_FRAMEWORK="on"
+            shift 2
+            ;;
+          "autofuse_ascendc_api")
+            ENABLE_GE_AUTOFUSE_ASCENDC_API="on"
             shift 2
             ;;
           *)
@@ -536,12 +546,14 @@ run_ut_acl() {
   cd ${BASEPATH}
   rm -rf ${BASEPATH}/cov
   mkdir ${BASEPATH}/cov
+  source ${BASEPATH}/scripts/support_multiple_versions_of_lcov.sh
   lcov -c -d ${BUILD_RELATIVE_PATH}/tests/acl_ut/ut/acl -o cov/tmp.info
   lcov -r cov/tmp.info '*/output/*' "*/${BUILD_RELATIVE_PATH}/opensrc/*" "*/${BUILD_RELATIVE_PATH}/proto/*" \
       '*/third_party/*' '*/tests/*' '/usr/local/*' '/usr/include/*' \
-      "${ASCEND_INSTALL_PATH}/*" "${ASCEND_3RD_LIB_PATH}/*" -o cov/coverage.info
+      "${ASCEND_INSTALL_PATH}/*" "${ASCEND_3RD_LIB_PATH}/*" \
+      -o cov/coverage.info $(add_lcov_ops_by_major_version 2 "--ignore-errors unused")
   cd ${BASEPATH}/cov
-  genhtml coverage.info
+  genhtml coverage.info -o cov/html
 }
 
 main() {
@@ -737,6 +749,20 @@ main() {
     # executor_c st
     if [ "X$ENABLE_ST" = "Xon" ]; then
       bash scripts/test/run_autofuse_test.sh -s -j $THREAD_NUM $VERBOSE $COVERAGE
+    fi
+  fi
+
+  # module autofuse_framework
+  if [ "X$ENABLE_GE_AUTOFUSE_FRAMEWORK" == "Xon" ]; then
+    if [ "X$ENABLE_UT" = "Xon" ]; then
+      bash scripts/test/run_autofuse_test.sh -u -m framework -j $THREAD_NUM $VERBOSE $COVERAGE
+    fi
+  fi
+
+  # module autofuse_ascendc_api
+  if [ "X$ENABLE_GE_AUTOFUSE_ASCENDC_API" == "Xon" ]; then
+    if [ "X$ENABLE_UT" = "Xon" ]; then
+      bash scripts/test/run_autofuse_test.sh -u -m ascendc_api -j $THREAD_NUM $VERBOSE $COVERAGE
     fi
   fi
 

@@ -33,7 +33,7 @@ file(GLOB_RECURSE UTILS_FILES CONFIGURE_DEPENDS "${GE_METADEF_DIR}/graph/ascendc
 add_executable(ut_ascendc_ir ${UT_FILES} ${UTILS_FILES} ${FAKE_FILES})
 
 target_compile_options(ut_ascendc_ir PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wno-error=unused-variable
     -Wall -Wfloat-equal -Werror

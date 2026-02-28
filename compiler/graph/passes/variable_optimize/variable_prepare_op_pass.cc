@@ -412,6 +412,8 @@ ge::NodePtr VariablePrepareOpPass::CreateRefIdentity(const std::string &ref_iden
                   return nullptr);
   NodePtr ref_identity_node = node->GetOwnerComputeGraph()->AddNode(ref_identity_op_desc);
   GE_IF_BOOL_EXEC(ref_identity_node == nullptr, GELOGW("ref_identity_node is null"); return nullptr);
+  GELOGI("Successfully created node[%s]", ref_identity_node->GetNamePtr());
+
   return ref_identity_node;
 }
 

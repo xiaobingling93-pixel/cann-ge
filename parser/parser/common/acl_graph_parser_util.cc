@@ -60,7 +60,6 @@ const size_t kInputShapePairSize = 2U;
 const char *const kInputShapeSample1 = "\"input_name1:n1,c1,h1,w1\"";
 const char *const kInputShapeSample2 = "\"input_name1:1,3,224,224\"";
 const char *const kSplitError1 = "The shape must contain two parts: name and value";
-const char *const kEmptyError = "The shape has a parameter name whose value cannot be empty";
 const std::set<domi::FrameworkType> kSupportTensorAsOutput = {
     domi::CAFFE,
     domi::ONNX
@@ -741,13 +740,13 @@ domi::Status AclGraphParserUtil::ParseAclInputShape(const string &input_shape) c
              shape.c_str(), kSplitError1, kInputShapeSample1);
       return FAILED;
     }
-    if (shape_pair_vec[1].empty()) {
-      REPORT_PREDEFINED_ERR_MSG("E10002", std::vector<const char *>({"shape", "reason", "sample"}),
-                                std::vector<const char *>({shape.c_str(), kEmptyError, kInputShapeSample1}));
-      GELOGE(FAILED, "Parse input parameter [--input_shape]'s shape[%s] failed, reason: %s correct sample is %s.",
-             shape.c_str(), kEmptyError, kInputShapeSample1);
-      return FAILED;
-    }
+    // 支持设置成标量: []
+	if (shape_pair_vec[1].empty()) {
+	  const auto node_name = StringUtils::Trim(shape_pair_vec[0]);
+	  ge::GetParserContext().input_dims.emplace(make_pair(node_name, std::vector<int64_t>{}));
+	  GELOGD("Input node name:%s, with shape:[]", node_name.c_str());
+	  continue;
+	}
 
     std::vector<std::string> shape_value_split = StringUtils::Split(shape_pair_vec[1], ',');
     std::vector<int64_t> shape_values;

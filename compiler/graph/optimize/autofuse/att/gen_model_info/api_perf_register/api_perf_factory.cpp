@@ -24,6 +24,6 @@ std::unique_ptr<ApiPerf> ApiPerfFactory::Create(const std::string &class_name) {
   }
   auto &func = creator_map_[class_name];
   GELOGD("Create ApiPerf success, class_name: %s", class_name.c_str());
-  return std::move(func(class_name));
+  return func(class_name);
 }
 }  // namespace att

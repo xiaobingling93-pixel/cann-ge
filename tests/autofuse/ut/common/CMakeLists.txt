@@ -19,7 +19,7 @@ target_include_directories(test_common PRIVATE
 set(ASCGEN_DT_COMPILE_OPTION
         -O0
         -g
-        --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        --coverage -fprofile-arcs -ftest-coverage
 )
 
 target_compile_options(test_common PRIVATE ${ASCGEN_DT_COMPILE_OPTION}

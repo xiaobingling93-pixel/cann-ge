@@ -211,17 +211,37 @@ build_test_ascendc_api_test() {
                     test_ascendc_api_v35 \
                     test_load_broadcast_store_codegen \
                     test_load_broadcast_multi_axis_store_codegen"
+  echo "[UT AUTOFUSE ASCENDC API] make -j${THREAD_NUM} start"
   make -j${THREAD_NUM} $MAKE_TEST_TARGET
-  echo "make test_ascendc_api success!"
+  if [ $? -ne 0 ]; then
+    env
+    echo "[UT AUTOFUSE ASCENDC API] make failed."
+    return 1
+  fi
+  echo "[UT AUTOFUSE ASCENDC API] make success!"
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}
-
   ctest --output-on-failure -j${THREAD_NUM} --test-dir ${BUILD_PATH}/tests/autofuse/ut/ascendc --no-tests=error \
         -O ${BUILD_PATH}/ctest_test_ascendc_api.log
+  if [ $? -ne 0 ]; then
+    env
+    echo "[UT AUTOFUSE ASCENDC API] test ascendc failed."
+    return 1
+  fi
   ctest --output-on-failure -j${THREAD_NUM} --test-dir ${BUILD_PATH}/tests/autofuse/v35/ut/ascendc --no-tests=error \
         -O ${BUILD_PATH}/ctest_test_ascendc_api_arch35.log
+  if [ $? -ne 0 ]; then
+    env
+    echo "[UT AUTOFUSE ASCENDC API] test ascendc_v35 failed."
+    return 1
+  fi
   ctest --output-on-failure -j${THREAD_NUM} --test-dir ${BUILD_PATH}/tests/autofuse/ut/e2e --no-tests=error \
           -O ${BUILD_PATH}/ctest_ut_e2e.log
-  echo "ascendc_api test success!"
+  if [ $? -ne 0 ]; then
+    env
+    echo "[UT AUTOFUSE ASCENDC API] test e2e failed."
+    return 1
+  fi
+  echo "[UT AUTOFUSE ASCENDC API] test success!"
 }
 
 build_test() {
@@ -838,7 +858,7 @@ build_ut_att() {
 }
 
 build_st_att() {
-  echo "$(date '+%F %T') create build directory and build att st";
+  echo "$(date '+%F %T') create build directory and build att st"
   cd "${BUILD_PATH}"
 
   CMAKE_ARGS="-D CMAKE_C_COMPILER=gcc \
@@ -896,7 +916,7 @@ build_ut() {
     "ascendc_api")
       build_test_ascendc_api_test || { echo "failed to build and run ascendc_api ."; exit 1; }
       ;;
-    "all_but_ascendc_api")
+    "framework")
       build_ut_att || { echo "failed to build and run att ut."; exit 1; }
       build_ut_optimize || { echo "failed to build and run optimize ut."; exit 1; }
       build_ut_autofusion || { echo "failed to build and run autofusion ut."; exit 1; }
@@ -948,7 +968,6 @@ build_st() {
       build_backend || { echo "run backend st failed."; exit 1; }
       ;;
     "all")
-
       build_st_att || { echo "failed to build and run att st."; exit 1; }
       build_test_ascir_st || { echo "run ascir st failed."; exit 1; }
       build_st_autofuse || { echo "run autofuse st failed."; exit 1; }

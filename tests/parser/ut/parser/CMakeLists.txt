@@ -307,7 +307,7 @@ target_compile_definitions(ut_parser_common PRIVATE
 )
 
 target_compile_options(ut_parser_common PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Werror=format
 )
 

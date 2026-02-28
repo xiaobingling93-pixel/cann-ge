@@ -37,7 +37,6 @@ class ExecutorContext {
   class ModelHandle {
    public:
     struct LoadParam {
-      int32_t load_mode = 0;
       uint32_t replica_num = 1U;
       uint32_t replica_idx = 0U;
       std::vector<QueueAttrs> input_queues;

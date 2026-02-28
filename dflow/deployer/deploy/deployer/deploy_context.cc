@@ -657,7 +657,6 @@ Status DeployContext::SetModelInfo(const DeployState &deploy_state,
     model_info->set_is_dynamic(submodel_desc.is_dynamic());
     model_info->set_replica_num(submodel_desc.replica_num());
     model_info->set_replica_idx(submodel_desc.replica_idx());
-    model_info->set_load_mode(submodel_desc.load_mode());
     model_info->set_execute_times(submodel_desc.execute_times());
     model_info->set_phy_device_id(submodel_desc.phy_device_id());
     model_info->set_is_dynamic_proxy_controlled(is_dynamic_proxy_controlled);

@@ -790,6 +790,7 @@ ge::Status TilingCodeGenImpl::GenCacheHashMapDef() {
    tiling_data_.AddLine("#include <stdint.h>");
    tiling_data_.AddLine("#include <vector>");
    tiling_data_.AddLine("#include <unordered_map>");
+   tiling_data_.AddLine("#include <array>");
    tiling_data_.AddLine("#include \"register/tilingdata_base.h\"");
    tiling_data_.AddLine("#include \"tiling/tiling_api.h\"");
    return ge::SUCCESS;

@@ -122,7 +122,6 @@ void DeployState::AddLocalSubmodelDesc(int32_t device_id, int32_t device_type,
   key.engine_name = submodel_desc.engine_name();
   key.rank_id = submodel_desc.rank_id();
   key.process_id = submodel_desc.process_id();
-  key.process_mode = static_cast<DeployProcessMode>(submodel_desc.process_mode());
 
   key.is_proxy = device_type != CPU;
   // 当前只有udf存在 proxy场景

@@ -65,7 +65,6 @@ void InitBatchLoadDynamicModelMessage(const std::vector<QueueAttrs> &input_queue
   }
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");

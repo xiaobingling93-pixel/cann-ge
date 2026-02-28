@@ -1007,7 +1007,6 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
     MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
 
     PneExecutorClientCreatorRegistrar<MockPneExecutorClient> npu_registrar(PNE_ID_NPU);
-    PneExecutorClientCreatorRegistrar<MockPneExecutorClient> npu_thread_registrar(PNE_ID_NPU, DeployProcessMode::kThread);
     PneExecutorClientCreatorRegistrar<MockHostCpuExecutorClient> cpu_registrar(PNE_ID_CPU);
     // default config
     auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
@@ -1979,11 +1978,9 @@ TEST_F(STEST_helper_runtime, TestUpdateDeployPlan) {
 
   auto submodel_desc = pre_deploy_req->add_submodel_descs();
   submodel_desc->set_engine_name(PNE_ID_NPU);
-  submodel_desc->set_process_mode(1);
 
   auto submodel_desc2 = pre_deploy_req->add_submodel_descs();
   submodel_desc2->set_engine_name(PNE_ID_NPU);
-  submodel_desc2->set_process_mode(1);
   submodel_desc2->set_rank_id("0");
 
   DeployContext context;
@@ -3650,7 +3647,6 @@ TEST_F(STEST_helper_runtime, TestHeterogeneousProfiler) {
 }
 
 TEST_F(STEST_helper_runtime, TestDeployWithFlowOnServerWithSharedContent) {
-  PneExecutorClientCreatorRegistrar<MockPneExecutorClient> npu_thread_registrar(PNE_ID_NPU, DeployProcessMode::kThread);
   VarManager::Instance(0)->Destory();
   ge::GetContext().SetSessionId(0);
   setenv("GE_PROFILING_TO_STD_OUT", "2", true);
@@ -3970,7 +3966,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModel_Execute_Success) {
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4066,7 +4061,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModel_Execute_Without_Max_attr_Succ
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4161,7 +4155,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModel_with_retcode) {
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4258,7 +4251,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModel_null_data_flag) {
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4366,7 +4358,6 @@ TEST_F(STEST_helper_runtime, TestDynamicModel_WithInputAlign_Execute_Success) {
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4435,7 +4426,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModel_WithInputAlign_Execute_Succes
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -4536,7 +4526,6 @@ TEST_F(STEST_helper_runtime, TestProxyDynamicModelWithDummy_Execute_Success) {
 
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");
@@ -5477,7 +5466,6 @@ TEST_F(STEST_helper_runtime, TestHostCpuEngineModel_Execute_Success) {
   status_output_queues->set_device_id(0);
   model_request.set_root_model_id(0);
   model_request.set_model_id(0);
-  model_request.set_load_mode(static_cast<int32_t>(DeployPlan::LoadMode::kLoadWithQ));
   model_request.set_replica_num(1);
   model_request.set_replica_idx(0);
   model_request.set_model_path("./");

@@ -449,7 +449,6 @@ Status ExecutorContext::AttachQueues(const deployer::ExecutorRequest_LoadModelRe
 
 Status ExecutorContext::LoadModel(const deployer::ExecutorRequest_LoadModelRequest &request) {
   ModelHandle::LoadParam param;
-  param.load_mode = request.load_mode();
   for (const auto &input_queue : request.model_queues_attrs().input_queues_attrs()) {
     QueueAttrs in_queue_attrs;
     in_queue_attrs.queue_id = input_queue.queue_id();

@@ -36,7 +36,7 @@ set(UT_FILES
 add_executable(ut_libgraph ${UT_FILES} ${AIR_CODE_DIR}/base/common/types.cc)
 
 target_compile_options(ut_libgraph PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control

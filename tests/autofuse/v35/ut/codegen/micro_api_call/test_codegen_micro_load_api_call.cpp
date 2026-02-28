@@ -120,7 +120,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Load) {
 
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy(vreg_1, local_0 + offset);\n"});
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::LoadAlign(vreg_1, local_0 + offset);\n"});
 }
 
 TEST(CodegenKernel, LoadMicroApiCall_Load_Cast_in8_out16) {
@@ -213,7 +213,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Load_Cast_in8_out16) {
 
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy<int8_t, "
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::LoadAlign<int8_t, "
                                 "AscendC::MicroAPI::LoadDist::DIST_UNPACK_B8>(vreg_0, local_0 + offset);\n"});
 }
 
@@ -305,7 +305,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Load_Cast_in16_out32) {
 
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy<half, "
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::LoadAlign<half, "
                                 "AscendC::MicroAPI::LoadDist::DIST_UNPACK_B16>(vreg_0, local_0 + offset);\n"});
 }
 
@@ -397,7 +397,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Load_Cast_in8_out32) {
 
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy<int8_t, "
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::LoadAlign<int8_t, "
                                 "AscendC::MicroAPI::LoadDist::DIST_UNPACK4_B8>(vreg_0, local_0 + offset);\n"});
 }
 
@@ -489,6 +489,6 @@ TEST(CodegenKernel, LoadMicroApiCall_Load_Cast_in32_out64) {
 
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy<float, "
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::LoadAlign<float, "
                                 "AscendC::MicroAPI::LoadDist::DIST_UNPACK_B32>(vreg_0, local_0 + offset);\n"});
 }

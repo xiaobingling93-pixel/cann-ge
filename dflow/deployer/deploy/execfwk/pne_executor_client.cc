@@ -109,31 +109,26 @@ PneExecutorClientFactory &PneExecutorClientFactory::GetInstance() {
 }
 
 std::string PneExecutorClientFactory::GenerateClientKey(const std::string &engine_name,
-                                                        DeployProcessMode process_mode,
                                                         bool is_proxy) const {
-  std::string key = engine_name + "_" +
-                    std::to_string(static_cast<uint32_t>(process_mode)) + "_" +
-                    std::to_string(static_cast<uint32_t>(is_proxy));
+  std::string key = engine_name + "_" + std::to_string(static_cast<uint32_t>(is_proxy));
   return key;
 }
 
 void PneExecutorClientFactory::RegisterCreateFunc(const std::string &engine_name,
-                                                  DeployProcessMode process_mode,
                                                   bool is_proxy,
                                                   PneExecutorClientFactory::CreateFunc func) {
-  std::string key = GenerateClientKey(engine_name, process_mode, is_proxy);
+  std::string key = GenerateClientKey(engine_name, is_proxy);
   create_funcs_[key] = std::move(func);
 }
 
 std::unique_ptr<PneExecutorClient> PneExecutorClientFactory::CreateClient(const std::string &engine_name,
-                                                                          DeployProcessMode process_mode,
                                                                           bool is_proxy,
                                                                           int32_t device_id) {
-  std::string key = GenerateClientKey(engine_name, process_mode, is_proxy);
+  std::string key = GenerateClientKey(engine_name, is_proxy);
   auto func = create_funcs_[key];
   if (func == nullptr) {
-    GELOGE(UNSUPPORTED, "Unsupported client, engine type = %s, process type = %d, is_proxy = %d",
-           engine_name.c_str(), process_mode, is_proxy);
+    GELOGE(UNSUPPORTED, "Unsupported client, engine type = %s, is_proxy = %d",
+           engine_name.c_str(), is_proxy);
     return nullptr;
   }
   return func(device_id);

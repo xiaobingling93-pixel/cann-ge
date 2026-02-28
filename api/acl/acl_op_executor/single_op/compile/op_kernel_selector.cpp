@@ -69,7 +69,7 @@ aclError OpKernelSelector::InsertAclop2KernelDesc(const AclOp &op, const std::sh
 
     // if aclOp.opAttr is nullptr, desc->opAttr is a empty attr object
     if (op.opAttr != nullptr) {
-        for (const auto attrVal : op.opAttr->Attrs()) {
+        for (const auto &attrVal : op.opAttr->Attrs()) {
             (void)desc->opAttr.EmplaceAttr(attrVal.first, attrVal.second);
         }
     }

@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   InitScheduleResultsByImplGraphs(impl_graphs_multi_axis, fused_schedule_result);
   codegen::CodegenResult result;
   c.Generate(fused_schedule_result, result);
-  kernel_file << tilig_stub << result.kernel;
+  kernel_file << tilig_stub << RemoveSubDirInclude(result.kernel);
   tiling_data_file << result.tiling_data;
 
   // BroadCast_11CtoABC
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
   fused_schedule_result_2.node_idx_to_scheduled_results.push_back(schedule_results_2);
   InitScheduleResultsByImplGraphs(impl_graphs_multi_axis_2, fused_schedule_result_2);
   c_2.Generate(fused_schedule_result_2, result);
-  kernel_file_2 << tilig_stub_2 << result.kernel;
+  kernel_file_2 << tilig_stub_2 << RemoveSubDirInclude(result.kernel);
   tiling_data_file_2 << result.tiling_data;
 
   // BroadCast_A1CtoABC
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
   fused_schedule_result_3.node_idx_to_scheduled_results.push_back(schedule_results_3);
   InitScheduleResultsByImplGraphs(impl_graphs_multi_axis_3, fused_schedule_result_3);
   c_3.Generate(fused_schedule_result_3, result);
-  kernel_file_3 << tilig_stub_3 << result.kernel;
+  kernel_file_3 << tilig_stub_3 << RemoveSubDirInclude(result.kernel);
   tiling_data_file_3 << result.tiling_data;
 
   return 0;

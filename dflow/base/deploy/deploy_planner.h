@@ -155,24 +155,10 @@ class DeployPlan {
     std::vector<int32_t> fetch_queue_indices;
   };
 
-  enum class ProcessMode {
-    kProcess
-  };
-
-  enum class LoadMode {
-    kLoadWithQ
-  };
-
-  struct LoadInfo {
-    ProcessMode process_mode = ProcessMode::kProcess;
-    LoadMode load_mode = LoadMode::kLoadWithQ;
-  };
-
   struct SubmodelInfo {
     int32_t process_id = 0;
     DeviceInfo device_info;
     DeviceInfo queue_device_info;
-    LoadInfo load_info;
     PneModelPtr model;
     std::vector<int32_t> input_queue_indices;
     std::vector<int32_t> control_input_queue_indices;

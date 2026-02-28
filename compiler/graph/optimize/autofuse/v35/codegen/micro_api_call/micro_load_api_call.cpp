@@ -26,7 +26,7 @@ Status MicroLoadApiCall::Generate(const TensorManager &tensor_mng, const TPipe &
   std::stringstream ss;
   auto tensor_id = GetOutputTensorIdByIndex(0);
   GE_ASSERT_NOTNULL(tensor_mng.GetTensor(tensor_id));
-  ss << "AscendC::MicroAPI::DataCopy";
+  ss << "AscendC::MicroAPI::LoadAlign";
   if (!dist_.empty()) {
     auto dtype = tensor_mng.GetTensor(tensor_id)->dtype_;
     string dtype_name;

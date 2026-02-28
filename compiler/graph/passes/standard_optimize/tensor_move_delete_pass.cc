@@ -224,11 +224,6 @@ Status TraceRealSourceNode(const NodePtr &start_node, int32_t index, std::vector
         continue;
       }
     }
-    // 5. 遇到TensorMove，穿透
-    if (IsTensorMove(cur_node)) {
-      cur_in_anchor = cur_node->GetInDataAnchor(0);
-      continue;
-    }
     // 到达终点，打印路径信息，期望格式: Data(out:0)-->RefOp(out:0)-->(in:0)TensorMove
     LogTraceRealSourcePath(start_node, index, source_path);
     return SUCCESS;

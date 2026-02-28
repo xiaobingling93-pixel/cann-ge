@@ -30,7 +30,6 @@ std::string ExecutorManager::ExecutorKeyGetter::GetKey(const ExecutorManager::Ex
                     std::to_string(executor_key.context_id) + "_" +
                     executor_key.engine_name + "_" +
                     std::to_string(executor_key.process_id) + "_" +
-                    std::to_string(static_cast<int32_t>(executor_key.process_mode)) + "_" +
                     executor_key.rank_id;
   return key;
 }
@@ -75,7 +74,6 @@ Status ExecutorManager::GetOrCreateExecutorClient(const ExecutorManager::Executo
            context_id, device_id, executor_key.device_type, engine_name.c_str(), rank_id.c_str(), process_id);
     std::unique_ptr<PneExecutorClient>
         executor_client = PneExecutorClientFactory::GetInstance().CreateClient(engine_name,
-                                                                               executor_key.process_mode,
                                                                                executor_key.is_proxy,
                                                                                device_id);
     GE_CHECK_NOTNULL(executor_client);

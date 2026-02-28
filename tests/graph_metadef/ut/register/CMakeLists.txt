@@ -28,7 +28,7 @@ add_executable(ut_register
 )
 add_compile_definitions(CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\")
 target_compile_options(ut_register PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control

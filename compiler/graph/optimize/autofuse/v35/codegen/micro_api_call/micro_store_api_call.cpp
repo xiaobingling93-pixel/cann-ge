@@ -26,7 +26,7 @@ Status MicroStoreApiCall::Generate(const codegen::TensorManager &tensor_mng, con
   std::stringstream ss;
   auto tensor_id = GetInputTensorIdByIndex(0);
   GE_ASSERT_NOTNULL(tensor_mng.GetTensor(tensor_id));
-  ss << "AscendC::MicroAPI::DataCopy";
+  ss << "AscendC::MicroAPI::StoreAlign";
   if (!dist_.empty()) {
     auto dtype = tensor_mng.GetTensor(tensor_id)->dtype_;
     string dtype_name;
@@ -34,10 +34,11 @@ Status MicroStoreApiCall::Generate(const codegen::TensorManager &tensor_mng, con
     ss << "<" << dtype_name << ", AscendC::MicroAPI::StoreDist::" << this->dist_ << ">";
   }
   ss << "(" << *(tpipe.GetTensor(this->GetOutputTensorIdByIndex(0))) << " + " << param.offset << ", "
-     << *(tensor_mng.GetTensor(tensor_id)) << ", " << param.p_reg << ");" << std::endl;
+     << *(tensor_mng.GetTensor(tensor_id))
+     << (tensor_mng.GetTensor(tensor_id)->init_as_mask_reg_ == true ? "" : ", " + param.p_reg)
+     << ");" << std::endl;
   result = ss.str();
   return ge::SUCCESS;
-  ;
 }
 
 Status MicroStoreApiCall::Init(const ascir::NodeView &node) {

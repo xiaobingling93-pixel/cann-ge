@@ -16,12 +16,11 @@
 namespace ge {
 Status RefIdentityDeleteOpPass::Run(ComputeGraphPtr graph) {
   GE_CHECK_NOTNULL(graph);
-  for (auto &node : graph->GetAllNodes()) {
+  for (auto &node : graph->GetDirectNode()) {
     if (node->GetType() != REFIDENTITY) {
       continue;
     }
     int32_t input_index = 0;
-    NodePtr ref_node = GetRefNode(node, input_index);
     CHECK_FALSE_EXEC(GetRefNode(node, input_index) != nullptr,
                      REPORT_INNER_ERR_MSG("E19999", "Get Ref node of node:%s(%s) failed",
                                        node->GetName().c_str(), node->GetType().c_str());
@@ -69,6 +68,8 @@ Status RefIdentityDeleteOpPass::DealNoOutputRef(const NodePtr &ref_identity, con
            ref_identity->GetName().c_str(), ref_identity->GetType().c_str(), graph->GetName().c_str());
     return FAILED;
   }
+  GELOGI("Successfully removed node[%s] from graph[%s]", ref_identity->GetName().c_str(), graph->GetName().c_str());
+
   return SUCCESS;
 }
 

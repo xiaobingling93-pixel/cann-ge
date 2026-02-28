@@ -15,7 +15,7 @@
 using namespace AscendC;
 
 #include "utils.h"
-#include "subs.h"
+#include "scalar_sub.h"
 
 template<class T>
 void GmToUb(LocalTensor<T>& local, T* gm, int size) {

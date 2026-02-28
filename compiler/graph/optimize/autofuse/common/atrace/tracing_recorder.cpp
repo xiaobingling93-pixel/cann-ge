@@ -166,7 +166,7 @@ void TracingRecorder::RecordDuration(const std::vector<std::string> &tracing_msg
 }
 
 TracingRecord *TracingRecorder::RecordMsgs(const std::vector<std::string> &tracing_msg, const TracingEvent ev) {
-  TracingRecord record;
+  TracingRecord record{};
   record.pid = mmGetPid();
   record.thread = mmGetTid();
   record.tracing_msgs = tracing_msg;

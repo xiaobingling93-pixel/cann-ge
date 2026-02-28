@@ -121,7 +121,7 @@ TEST(CodegenKernel, StoreMicroApiCall_Store) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   printf("res: %s\n", result.c_str());
-  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::DataCopy(local_1 + offset, vreg_0, p_reg);\n"});
+  EXPECT_EQ(result, std::string{"AscendC::MicroAPI::StoreAlign(local_1 + offset, vreg_0, p_reg);\n"});
 }
 
 TEST(CodegenKernel, LoadMicroApiCall_Store_Cast_in16_out8) {
@@ -256,7 +256,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Cast_in16_out8) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<int16_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B16>(local_3 + offset, "
+    "AscendC::MicroAPI::StoreAlign<int16_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B16>(local_3 + offset, "
     "vreg_0, p_reg);\n"
   });
 }
@@ -393,7 +393,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Cast_in32_out16) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<int32_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B32>(local_3 + offset, "
+    "AscendC::MicroAPI::StoreAlign<int32_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B32>(local_3 + offset, "
     "vreg_0, p_reg);\n"
   });
 }
@@ -530,7 +530,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Cast_in64_out32) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<int64_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B64>(local_3 + offset, "
+    "AscendC::MicroAPI::StoreAlign<int64_t, AscendC::MicroAPI::StoreDist::DIST_PACK_B64>(local_3 + offset, "
     "vreg_0, p_reg);\n"
   });
 }
@@ -667,7 +667,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Cast_in32_out8) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<int32_t, AscendC::MicroAPI::StoreDist::DIST_PACK4_B32>(local_3 + offset, "
+    "AscendC::MicroAPI::StoreAlign<int32_t, AscendC::MicroAPI::StoreDist::DIST_PACK4_B32>(local_3 + offset, "
     "vreg_0, p_reg);\n"
   });
 }
@@ -775,7 +775,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Out_Int8) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<int8_t, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B8>(local_2 + offset, vreg_1,"
+    "AscendC::MicroAPI::StoreAlign<int8_t, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B8>(local_2 + offset, vreg_1,"
     " p_reg);\n"
   });
 }
@@ -883,7 +883,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Out_Half) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<half, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B16>(local_2 + offset, vreg_1,"
+    "AscendC::MicroAPI::StoreAlign<half, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B16>(local_2 + offset, vreg_1,"
     " p_reg);\n"
   });
 }
@@ -991,7 +991,7 @@ TEST(CodegenKernel, LoadMicroApiCall_Store_Out_Float) {
   std::string result;
   call_0.Generate(tensor_mng, tpipe, cp, result);
   EXPECT_EQ(result, std::string{
-    "AscendC::MicroAPI::DataCopy<float, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B32>(local_2 + offset, vreg_1,"
+    "AscendC::MicroAPI::StoreAlign<float, AscendC::MicroAPI::StoreDist::DIST_FIRST_ELEMENT_B32>(local_2 + offset, vreg_1,"
     " p_reg);\n"
   });
 }

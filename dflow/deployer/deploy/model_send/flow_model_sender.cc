@@ -638,8 +638,6 @@ Status FlowModelSender::BuildSubmodelDescs(
         submodel_desc.set_engine_name(submodel_info.model->GetModelType());
         submodel_desc.set_replica_num(replica_num);
         submodel_desc.set_replica_idx(replica_idx);
-        submodel_desc.set_process_mode(static_cast<int32_t>(submodel_info.load_info.process_mode));
-        submodel_desc.set_load_mode(static_cast<int32_t>(submodel_info.load_info.load_mode));
         submodel_desc.set_phy_device_id(submodel_info.device_info.GetProxyDeviceId());
         if (input_align_attrs.align_max_cache_num > 0) {
           auto *proto_input_align_attrs = submodel_desc.mutable_input_align_attrs();

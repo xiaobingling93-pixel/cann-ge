@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-set(CMAKE_CXX_FLAGS_GCOV  "--coverage -fprofile-arcs -fPIC -ftest-coverage -fprofile-update=atomic -O0 -g")
+set(CMAKE_CXX_FLAGS_GCOV  "--coverage -fprofile-arcs -fPIC -ftest-coverage -O0 -g")
 set(CMAKE_SHARED_LINKER_FLAGS_GCOV  "-lgcov")
 
 if (ENABLE_METADEF_UT OR ENABLE_METADEF_ST OR ENABLE_METADEF_COV)

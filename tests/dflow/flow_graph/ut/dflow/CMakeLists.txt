@@ -31,7 +31,7 @@ target_include_directories(ut_flow_graph PRIVATE
 )
 
 target_compile_options(ut_flow_graph PRIVATE
-        -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+        -g --coverage -fprofile-arcs -ftest-coverage
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -D_GLIBCXX_USE_CXX11_ABI=0

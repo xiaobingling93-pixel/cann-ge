@@ -44,11 +44,11 @@ int main(int argc, char *argv[]) {
   InitScheduleResultsByImplGraphs({impl_graph}, fused_schedule_result);
   codegen::CodegenResult result;
   if (c.Generate(fused_schedule_result, result) != ge::SUCCESS) {
-    std::cout<<"graph generate faild"<<std::endl;
+    std::cout<<"graph generate failed"<<std::endl;
   }
 
   std::cout << "***************************************20250822***0*****" << std::endl;
-  std::cout << tilig_stub << result.kernel;
+  std::cout << tilig_stub << RemoveSubDirInclude(result.kernel);
   std::fstream kernel_file("load_broadcast_store_kernel.cpp", std::ios::out);
   std::cout << "***************************************20250822****1****" << std::endl;
   std::cout << result.tiling;
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   std::fstream tiling_data_file("autofuse_tiling_data.h", std::ios::out);
   std::cout << "***************************************20250822*****3***" << std::endl;
 
-  kernel_file << tilig_stub << result.kernel;
+  kernel_file << tilig_stub << RemoveSubDirInclude(result.kernel);
   tiling_file << result.tiling;
   tiling_data_file << result.tiling_data;
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   std::fstream kernel_file_int64("load_broadcast_store_int64_kernel.cpp", std::ios::out);
   std::fstream tiling_data_file_int64("autofuse_tiling_data.h", std::ios::out);
 
-  kernel_file_int64 << tilig_stub_int64 << result.kernel;
+  kernel_file_int64 << tilig_stub_int64 << RemoveSubDirInclude(result.kernel);
   tiling_data_file_int64 << result.tiling_data;
 
   ge::AscGraph graph_uint8("load_broadcast_store_uint8");
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
   std::fstream kernel_file_uint8("load_broadcast_store_uint8_kernel.cpp", std::ios::out);
   std::fstream tiling_data_file_uint8("autofuse_tiling_data.h", std::ios::out);
 
-  kernel_file_uint8 << tilig_stub_uint8 << result.kernel;
+  kernel_file_uint8 << tilig_stub_uint8 << RemoveSubDirInclude(result.kernel);
   tiling_data_file_uint8 << result.tiling_data;
 
   std::cout << "***************************************20250822*****6***" << std::endl;

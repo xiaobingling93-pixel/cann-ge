@@ -76,7 +76,7 @@ target_include_directories(ut_ge_executor_c_utest PRIVATE
 )
 
 target_compile_options(ut_ge_executor_c_utest PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wextra
     -Wall
     # -Werror
@@ -148,7 +148,7 @@ target_include_directories(ut_ge_executor_c_liteos_utest PRIVATE
 )
 
 target_compile_options(ut_ge_executor_c_liteos_utest PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wextra
     -Wall
     # -Werror
@@ -210,7 +210,7 @@ target_include_directories(ut_dbg_liteos_static_utest PRIVATE
 )
 
 target_compile_options(ut_dbg_liteos_static_utest PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage -fprofile-update=atomic
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wextra
     -Wall
     # -Werror
