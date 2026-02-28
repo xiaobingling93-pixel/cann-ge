@@ -1098,7 +1098,7 @@ TEST_F(TestCanfusePass, test_canfuse_bro_and_bro_vertical_fusion) {
   node_types_to_count.emplace("Data", 3);
   node_types_to_count.emplace("Load", 3);
   node_types_to_count.emplace("Relu", 1);
-  node_types_to_count.emplace("Broadcast", 3);
+  node_types_to_count.emplace("Broadcast", 2);
   node_types_to_count.emplace("Add", 2);
   node_types_to_count.emplace("Store", 1);
   node_types_to_count.emplace("Output", 1);
