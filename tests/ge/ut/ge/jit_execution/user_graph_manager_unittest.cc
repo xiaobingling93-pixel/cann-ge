@@ -793,4 +793,32 @@ TEST_F(UserGraphsManagerlUT, set_memory_skip_by_slice_scheduler_enable) {
   EXPECT_EQ(GEFinalize(), SUCCESS);
   unsetenv("AUTOFUSE_FLAGS");
 }
+
+// 跳过断图调度的场景
+TEST_F(UserGraphsManagerlUT, graph_skip_slice_schedule) {
+  dlog_setlevel(0, 0, 0);
+  mmSetEnv("AUTOFUSE_FLAGS", "--enable_autofuse=true;--experimental_enable_jit_executor_v2=true", 1); // 开启自动融合
+
+  ModelExecutor model_executor;
+  model_executor.Initialize({}, 0);
+  GraphManager graph_manager;
+  EXPECT_EQ(graph_manager.Initialize({}, &model_executor), SUCCESS);
+  UserGraphsManager user_graph_manager(graph_manager);
+  rtStream_t new_stream;
+  (void)rtStreamCreate(&new_stream, 0);
+
+  uint32_t user_graph_id = 0u;
+  auto graph = JitShareGraph::AllNormalNodes({1, 2, 3, 4});
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(*graph.get());
+  std::map<std::string, std::string> options;
+
+  // 动态分档场景
+  options.insert({"ge.dynamicDims","xxxx"});
+  EXPECT_NE(user_graph_manager.AddGraph(user_graph_id, *graph, options), SUCCESS);
+  EXPECT_EQ(user_graph_manager.Finalize(), SUCCESS);
+  EXPECT_EQ(graph_manager.Finalize(), SUCCESS);
+  rtStreamDestroy(new_stream);
+  dlog_setlevel(GE_MODULE_NAME, 3, 1);
+  unsetenv("AUTOFUSE_FLAGS");
+}
 }  // namespace ge
