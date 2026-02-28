@@ -673,7 +673,7 @@ TEST_F(ConstantFoldingTest, test_Not_ConstantFolding) {
   auto ret = session.BuildGraph(1, inputs);
   EXPECT_EQ(ret, SUCCESS);
   CHECK_GRAPH(PreRunAfterBuild) {
-    ASSERT_EQ(graph->GetDirectNode().size(), 4);
+    ASSERT_EQ(graph->GetDirectNode().size(), 3);
   };
 }
 

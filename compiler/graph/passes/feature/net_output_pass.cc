@@ -58,8 +58,15 @@ Status NetOutputPass::Run(ge::ComputeGraphPtr graph) {
   GE_ASSERT_SUCCESS(graph->CreateOrUpdateNetoutput());
   NodePtr output_node = graph->FindFirstNodeMatchType(NETOUTPUT);
   GE_ASSERT_NOTNULL(output_node);
-  GE_ASSERT_SUCCESS(SetNetOutputFormat(output_node));
-  GE_ASSERT_SUCCESS(AddCtrlEdgesBetweenLeafAndNetOutput(graph, output_node));
+  auto op_desc = output_node->GetOpDesc();
+  GE_ASSERT_NOTNULL(op_desc);
+  bool is_inner_net_output = false;
+  (void) AttrUtils::GetBool(op_desc, "_inner_net_output", is_inner_net_output);
+  if (is_inner_net_output) {
+    GE_ASSERT_SUCCESS(SetNetOutputFormat(output_node));
+    GE_ASSERT_SUCCESS(AddCtrlEdgesBetweenLeafAndNetOutput(graph, output_node));
+  }
+
   (void)TryToSetOutputNodeName(output_node);
   GE_CHK_STATUS_RET(TryToSetOutputMaxSize(output_node), "Failed to set output max size");
   // Add userdef attrs to netoutput node
@@ -294,11 +301,6 @@ Status NetOutputPass::AddCtrlEdgesBetweenLeafAndNetOutput(const ComputeGraphPtr 
 Status NetOutputPass::SetNetOutputFormat(const ge::NodePtr &net_output) const {
   auto op_desc = net_output->GetOpDesc();
   GE_ASSERT_NOTNULL(op_desc);
-  bool is_inner_net_output = false;
-  (void) AttrUtils::GetBool(op_desc, "_inner_net_output", is_inner_net_output);
-  if (!is_inner_net_output) {
-    return SUCCESS;
-  }
   for (size_t i = 0U; i < op_desc->GetAllInputsDesc().size(); i++) {
     auto input_desc = op_desc->MutableInputDesc(i);
     GE_ASSERT_NOTNULL(input_desc);
