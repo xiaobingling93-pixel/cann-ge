@@ -451,15 +451,15 @@ Status AscGraphAxisMapping::FindAxisIndex(std::vector<ge::Expression> &node_repe
   std::unordered_set<size_t> used_indices;
   size_t start_index = 0;
 
-  // 1. 优先尝试找到连续匹配
-  for (size_t i = 0U; i < node_repeats.size(); ++i) {
+  // 1. 优先尝试找到连续匹配（从右到左）
+  for (int i = static_cast<int>(node_repeats.size()) - 1; i >= 0; --i) {
     bool found = false;
-    for (size_t j = start_index; j < base_repeats.size(); ++j) {
+    for (int j = static_cast<int>(base_repeats.size()) - 1; j >= static_cast<int>(start_index); --j) {
       if ((base_repeats[j] == node_repeats[i]) && (used_indices.find(j) == used_indices.end())) {
-        axis_index.push_back(j);
+        axis_index.insert(axis_index.begin(), j);
         used_indices.insert(j);
         found = true;
-        start_index = j + 1;
+        start_index = j;
         break;
       }
     }
@@ -475,15 +475,15 @@ Status AscGraphAxisMapping::FindAxisIndex(std::vector<ge::Expression> &node_repe
     return SUCCESS;
   }
 
-  // 2. 如果连续匹配失败，回退到随机匹配
+  // 2. 如果连续匹配失败，回退到随机匹配（从右到左）
   axis_index.clear();
   used_indices.clear();
 
-  for (size_t i = 0U; i < node_repeats.size(); ++i) {
+  for (int i = static_cast<int>(node_repeats.size()) - 1; i >= 0; --i) {
     bool found = false;
-    for (size_t j = 0U; j < base_repeats.size(); ++j) {
+    for (int j = static_cast<int>(base_repeats.size()) - 1; j >= 0; --j) {
       if ((base_repeats[j] == node_repeats[i]) && (used_indices.find(j) == used_indices.end())) {
-        axis_index.push_back(j);
+        axis_index.insert(axis_index.begin(), j);
         used_indices.insert(j);
         found = true;
         break;
