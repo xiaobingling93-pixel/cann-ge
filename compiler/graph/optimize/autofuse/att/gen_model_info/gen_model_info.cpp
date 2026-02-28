@@ -406,7 +406,9 @@ ge::Status GetModelInfoMap(const ascir::FusedScheduledResult &schedule_results,
       auto &schedule_groups = asc_graph_list[impl_graph_id];
       auto &out_schedule_groups = out_asc_graph_model_infos[impl_graph_id];
       const auto &schedule_result = schedule_results.node_idx_to_scheduled_results[asc_graph_id][impl_graph_id];
-      GELOGD("Set score func to %s of schedule result %zu.", schedule_result.score_func.GetString());
+      GELOGD(
+          "out_schedule_groups input values: score_func=%s, enable_group_parallel=%d, asc_graph_id=%zu, impl_graph_id=%zu",
+          schedule_result.score_func.GetString(), schedule_result.enable_group_parallel, asc_graph_id, impl_graph_id);
       out_schedule_groups.score_func = schedule_result.score_func.GetString();
       out_schedule_groups.enable_group_parallel = schedule_result.enable_group_parallel;
       out_schedule_groups.asc_graph_id = asc_graph_id;

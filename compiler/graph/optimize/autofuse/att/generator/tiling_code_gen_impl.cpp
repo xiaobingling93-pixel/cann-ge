@@ -472,7 +472,7 @@ struct ScoreTilingCase {
 
    // 读取编译态缓存配置
    const auto &att_config = AutoFuseConfig::GetAttStrategyConfig();
-   config_.cache_enabled_at_compile_time = (att_config.enable_tiling_cache == "true");
+   config_.cache_enabled_at_compile_time = (!config_.is_cube) && (att_config.enable_tiling_cache == "true");
 
    for (const auto &model_info : tiling_model_info) {
      const auto &hardware_cons = model_info.hardware_cons;
