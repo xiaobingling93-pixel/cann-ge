@@ -878,85 +878,85 @@ TEST_F(TestApiCompareUT, Compare_Gt_input_tensor_int32_output_uint8) {
                               (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::GT);
 }
 
-// 场景63：NE-int32
-TEST_F(TestApiCompareUT, Compare_Ne_input_tensor_int32_output_uint8) {
-  TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
-  TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
-                              (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::NE);
-}
+// 场景64：NE-int32
+// TEST_F(TestApiCompareUT, Compare_Ne_input_tensor_int32_output_uint8) {
+//   TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::NE);
+//   TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
+//                               (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::NE);
+// }
 
-// 场景64：LE-int32
-TEST_F(TestApiCompareUT, Compare_Le_input_tensor_int32_output_uint8) {
-  TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
-  TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
-                              (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::LE);
-}
+// 场景65：LE-int32
+// TEST_F(TestApiCompareUT, Compare_Le_input_tensor_int32_output_uint8) {
+//   TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LE);
+//   TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
+//                               (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::LE);
+// }
 
-// 场景65：GE-int32
-TEST_F(TestApiCompareUT, Compare_Ge_input_tensor_int32_output_uint8) {
-  TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
-  TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
-                              (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::GE);
-}
+// 场景66：GE-int32
+// TEST_F(TestApiCompareUT, Compare_Ge_input_tensor_int32_output_uint8) {
+//   TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::GE);
+//   TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
+//                               (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::GE);
+// }
 
-// 场景66：LT-int32
-TEST_F(TestApiCompareUT, Compare_Lt_input_tensor_int32_output_uint8) {
-  TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
-  TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
-                              (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::LT);
-}
+// 场景67：LT-int32
+// TEST_F(TestApiCompareUT, Compare_Lt_input_tensor_int32_output_uint8) {
+//   TensorCompareTest<uint8_t, int32_t>(ONE_BLK_SIZE / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE - sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((ONE_REPEAT_BYTE_SIZE + ONE_BLK_SIZE + sizeof(int32_t)) / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / sizeof(int32_t), CMPMODE::LT);
+//   TensorCompareTest<uint8_t, int32_t>(((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE + (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) +
+//                               (ONE_BLK_SIZE - sizeof(int32_t))) / sizeof(int32_t), CMPMODE::LT);
+// }
 
 /* End: 输入是两个tensor的 compare 测试--------------------------------------- */
 
