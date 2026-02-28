@@ -14,10 +14,26 @@
 #include <vector>
 
 #include "history_registry_reader.h"
-
 namespace ge {
 namespace es {
 namespace history {
+bool LoadHistoryWindowVersions(const std::string &pkg_dir,
+                               const std::string &baseline_version,
+                               std::vector<VersionMeta> &window_versions,
+                               std::string &error_msg) {
+  std::vector<VersionMeta> all_versions;
+  try {
+    all_versions = HistoryRegistryReader::LoadIndex(pkg_dir);
+  } catch (const std::exception &e) {
+    window_versions.clear();
+    error_msg = e.what();
+    return false;
+  }
+  window_versions = HistoryRegistryReader::SelectWindowVersions(all_versions, baseline_version);
+  error_msg.clear();
+  return true;
+}
+
 HistoryContext LoadHistoryChain(const std::string &pkg_dir, const std::vector<VersionMeta> &window_versions,
                                 const std::string &op_type, std::vector<std::string> &warnings) {
   HistoryContext ctx;
@@ -34,6 +50,7 @@ HistoryContext LoadHistoryChain(const std::string &pkg_dir, const std::vector<Ve
   }
   return ctx;
 }
+
 }  // namespace history
 }  // namespace es
 }  // namespace ge

@@ -29,6 +29,20 @@ struct HistoryContext {
 };
 
 /**
+ * 加载历史窗口版本列表（不含具体算子原型）
+ *
+ * @param pkg_dir 历史原型库分包目录
+ * @param baseline_version 基线版本，若为空则以当前日期为锚点
+ * @param window_versions 输出窗口内版本，按 release_date 升序
+ * @param error_msg 失败时返回错误信息
+ * @return true 成功，false 失败
+ */
+bool LoadHistoryWindowVersions(const std::string &pkg_dir,
+                               const std::string &baseline_version,
+                               std::vector<VersionMeta> &window_versions,
+                               std::string &error_msg);
+
+/**
  * 加载历史原型链
  *
  * @param pkg_dir 历史原型库分包目录
@@ -41,8 +55,9 @@ HistoryContext LoadHistoryChain(const std::string &pkg_dir,
                                 const std::vector<VersionMeta> &window_versions,
                                 const std::string &op_type,
                                 std::vector<std::string> &warnings);
-}  // namespace history
-}  // namespace es
-}  // namespace ge
+
+} // namespace history
+} // namespace es
+} // namespace ge
 
 #endif  // AIR_CXX_COMPILER_GRAPH_EAGER_STYLE_EAGER_STYLE_GRAPH_BUILDER_ES_GENERATOR_HISTORY_REGISTRY_INTERFACE_H_

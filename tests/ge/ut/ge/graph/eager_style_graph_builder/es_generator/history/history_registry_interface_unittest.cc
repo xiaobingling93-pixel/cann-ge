@@ -26,12 +26,20 @@ void EnsureDir(const std::string &path) {
   std::string cmd = "mkdir -p " + path;
   (void)std::system(cmd.c_str());
 }
+
+std::string DirName(const std::string &path) {
+  const auto pos = path.find_last_of("/\\");
+  if (pos == std::string::npos) {
+    return ".";
+  }
+  return path.substr(0, pos);
+}
 }  // namespace
 
 class HistoryRegistryInterfaceUT : public ::testing::Test {
  protected:
   void SetUp() override {
-    fixture_root_ = "./fixtures/history_registry/math/";
+    fixture_root_ = DirName(__FILE__) + "/fixtures/history_registry/math/";
   }
 
   std::string fixture_root_;
@@ -44,7 +52,7 @@ TEST_F(HistoryRegistryInterfaceUT, LoadHistoryChainReturnsMatchingVersionsAndPro
   HistoryContext ctx = LoadHistoryChain(fixture_root_, window, "phony_1i_1o", warnings);
   EXPECT_TRUE(warnings.empty());
   ASSERT_EQ(ctx.versions.size(), ctx.proto_chain.size());
-  EXPECT_EQ(ctx.versions.size(), 2U);
+  ASSERT_EQ(ctx.versions.size(), 2U);
 
   EXPECT_EQ(ctx.versions[0].release_version, "8.0.RC1");
   EXPECT_EQ(ctx.versions[0].release_date, "2024-09-30");
@@ -69,6 +77,24 @@ TEST_F(HistoryRegistryInterfaceUT, LoadHistoryChainPassesVersionMetaDirectly) {
   EXPECT_EQ(ctx.versions[0].release_version, "8.0.RC1");
   EXPECT_EQ(ctx.versions[0].release_date, "2024-09-30");
   EXPECT_EQ(ctx.versions[0].branch_name, "master");
+}
+
+TEST_F(HistoryRegistryInterfaceUT, LoadHistoryWindowVersionsSelectsWindowOnce) {
+  std::vector<VersionMeta> window_versions;
+  std::string error_msg;
+  EXPECT_TRUE(LoadHistoryWindowVersions(fixture_root_, "8.0.RC2", window_versions, error_msg));
+  EXPECT_TRUE(error_msg.empty());
+  ASSERT_EQ(window_versions.size(), 2U);
+  EXPECT_EQ(window_versions[0].release_version, "8.0.RC1");
+  EXPECT_EQ(window_versions[1].release_version, "8.0.RC2");
+}
+
+TEST_F(HistoryRegistryInterfaceUT, LoadHistoryWindowVersionsReturnsErrorOnEmptyPkgDir) {
+  std::vector<VersionMeta> window_versions;
+  std::string error_msg;
+  EXPECT_FALSE(LoadHistoryWindowVersions("", "8.0.RC2", window_versions, error_msg));
+  EXPECT_TRUE(window_versions.empty());
+  EXPECT_FALSE(error_msg.empty());
 }
 
 TEST_F(HistoryRegistryInterfaceUT, LoadHistoryChainEmptyWindowReturnsEmpty) {

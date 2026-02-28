@@ -22,7 +22,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include "history_registry_interface.h"
 #include "history_registry_utils.h"
 #include "ir_proto_codec.h"
 

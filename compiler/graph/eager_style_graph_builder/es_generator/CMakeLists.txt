@@ -36,10 +36,14 @@ add_library(gen_esb_impl STATIC
         utils.cc
         generator_manager.cc
         history/history_registry_interface.cc
+        history/warning_formatter.cc
         history/history_registry_reader.cc
         history/history_registry_writer.cc
         history/history_registry_utils.cc
         history/ir_proto_codec.cc
+        history/attr_type_traits.cc
+        history/ambiguity_checker.cc
+        history/overload_planner.cc
         )
 
 target_compile_options(gen_esb_impl PRIVATE ${AIR_COMMON_COMPILE_OPTION})

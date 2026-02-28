@@ -17,6 +17,7 @@
 #include "graph/op_desc.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/op_type_utils.h"
+#include "history/history_registry_types.h"
 
 namespace ge {
 namespace es {
@@ -153,6 +154,15 @@ inline bool IsDupNameInInputs(const std::string &name, const OpDescPtr &op_desc)
   }
 
   return input_names.count(name) > 0;
+}
+
+inline bool IsDupNameInInputs(const std::string &name, const std::vector<ge::es::history::IrInput> &inputs) {
+  for (const auto &input : inputs) {
+    if (input.name == name) {
+      return true;
+    }
+  }
+  return false;
 }
 
 enum class OutputType { kNoOutput, kOneOutput, kMultiOutput, kDynamicOutput };
@@ -318,6 +328,15 @@ inline std::string AttrName(const std::string &name, const OpDescPtr &op_desc, G
   if (type == GenLanType::GenPy) {
     return IsPyKeyword(name) ? "attr_" + name : name;
   } 
+  return IsKeyword(name) ? "attr_" + name : name;
+}
+
+// 仅基于 IR 原型中的输入列表生成属性名
+inline std::string AttrName(const std::string &name, const std::vector<ge::es::history::IrInput> &inputs) {
+  if (IsDupNameInInputs(name, inputs)) {
+    // 若属性与输入名称相同，则参照输入名规则并添加前缀"attr_"
+    return "attr_" + InName(name, GenLanType::GenCpp);
+  }
   return IsKeyword(name) ? "attr_" + name : name;
 }
 
