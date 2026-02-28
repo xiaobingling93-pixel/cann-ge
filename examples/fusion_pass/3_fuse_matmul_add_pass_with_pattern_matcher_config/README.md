@@ -112,7 +112,7 @@
 2. 使用ATC离线推理。
    - 进入data目录执行.py文件导出air（文件中使用了 es 的 python 接口来构图）：
      ```
-     python torch_gen_air.py
+     python es_gen_air.py
      ```
      - 执行结束后，在data目录下生成.air格式的模型文件，名称为graph.air。
      - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](https://www.hiascend.com)查看文档“ATC离线模型编译工具”)，`soc_version`请根据实际环境修改：
@@ -128,14 +128,14 @@
 3. 在线推理
    - 进入data目录执行.py文件进行在线推理（在线推理请确保已安装torch_npu插件）：
       ```
-      python torch_forward_1.py/torch_forward_2.py/torch_forward_3.py
+      python es_forward_1.py/es_forward_2.py/es_forward_3.py
       ```  
-   - 对于torch_forward_1.py，日志中出现如下打印：
+   - 对于es_forward_1.py，日志中出现如下打印：
      ```
      Define pattern for MatMulAddFusionPass in matcher config sample
      Define replacement for MatMulAddFusionPass in matcher config sample
      ```
-   - 对于torch_forward_2.py和torch_forward_3.py，日志中出现如下打印：
+   - 对于es_forward_2.py和es_forward_3.py，日志中出现如下打印：
       ```
       Define pattern for FuseMatMulAndAddPass in matcher config sample
       ```

@@ -107,7 +107,7 @@
       ```
     - 进入data目录执行.py文件导出air：
       ```
-      python torch_gen_air.py
+      python es_gen_air.py
       ```
     - 执行结束后，在data目录下生成.air格式的模型文件，名称为graph.air。
     - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](https://www.hiascend.com)搜索ATC离线模型编译工具)，`soc_version`请根据实际环境修改：
