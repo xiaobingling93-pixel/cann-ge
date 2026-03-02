@@ -758,25 +758,11 @@ class NegAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
 
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
-    std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> conversion_dtype;
-    AscNodeInputs node_inputs = node.inputs;
-    AscNodeOutputs node_outputs = node.outputs;
-    for (size_t i = 0; i < node_inputs().size(); i++) {
-      if (node_inputs[i].attr.dtype == ge::DataType::DT_BF16) {
-        conversion_dtype.first.emplace_back(ge::DataType::DT_FLOAT);
-      } else {
-        conversion_dtype.first.emplace_back(node_inputs[i].attr.dtype);
-      }
-    }
-    for (size_t i = 0; i < node_outputs().size(); i++) {
-      if (!conversion_dtype.first.empty()) {
-        conversion_dtype.second.emplace_back(conversion_dtype.first[0]);
-      } else {
-        // 回退到输出原类型或其他默认类型
-        conversion_dtype.second.emplace_back(node_outputs[i].attr.dtype);
-      }
-    }
-    return conversion_dtype;
+    const std::map<ge::DataType, ge::DataType> neg_dtype_map = {
+      {ge::DataType::DT_INT8, ge::DataType::DT_INT16},
+      {ge::DataType::DT_BF16, ge::DataType::DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, neg_dtype_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -931,25 +917,10 @@ class MaxAscIrCodegenImplV2 : public AscIrCodegenV2 {
     return {"reduce_init_reg_base.h"};
   }
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
-    std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> conversion_dtype;
-    AscNodeInputs node_inputs = node.inputs;
-    AscNodeOutputs node_outputs = node.outputs;
-    for (size_t i = 0; i < node_inputs().size(); i++) {
-      if (node_inputs[i].attr.dtype == ge::DataType::DT_UINT8) {
-        conversion_dtype.first.emplace_back(ge::DataType::DT_INT16);
-      } else {
-        conversion_dtype.first.emplace_back(node_inputs[i].attr.dtype);
-      }
-    }
-    for (size_t i = 0; i < node_outputs().size(); i++) {
-      if (!conversion_dtype.first.empty()) {
-        conversion_dtype.second.emplace_back(conversion_dtype.first[0]);
-      } else {
-        // 回退到输出原类型或其他默认类型
-        conversion_dtype.second.emplace_back(node_outputs[i].attr.dtype);
-      }
-    }
-    return conversion_dtype;
+    const std::map<ge::DataType, ge::DataType> max_dtype_map = {
+      {ge::DataType::DT_UINT8, ge::DataType::DT_INT16}
+    };
+    return GetConversionFromDtypeMap(node, max_dtype_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -976,25 +947,13 @@ class SumAscIrCodegenImplV2 : public AscIrCodegenV2 {
     return {"reduce_init_reg_base.h"};
   }
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
-    std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> conversion_dtype;
-    AscNodeInputs node_inputs = node.inputs;
-    AscNodeOutputs node_outputs = node.outputs;
-    for (size_t i = 0; i < node_inputs().size(); i++) {
-      if (node_inputs[i].attr.dtype == ge::DataType::DT_BF16 || node_inputs[i].attr.dtype == ge::DataType::DT_FLOAT16 || node_inputs[i].attr.dtype == ge::DataType::DT_INT8 || node_inputs[i].attr.dtype == ge::DataType::DT_INT16) {
-        conversion_dtype.first.emplace_back(ge::DataType::DT_FLOAT);
-      } else {
-        conversion_dtype.first.emplace_back(node_inputs[i].attr.dtype);
-      }
-    }
-    for (size_t i = 0; i < node_outputs().size(); i++) {
-      if (!conversion_dtype.first.empty()) {
-        conversion_dtype.second.emplace_back(conversion_dtype.first[0]);
-      } else {
-        // 回退到输出原类型或其他默认类型
-        conversion_dtype.second.emplace_back(node_outputs[i].attr.dtype);
-      }
-    }
-    return conversion_dtype;
+    const std::map<ge::DataType, ge::DataType> sum_dtype_map = {
+      {ge::DataType::DT_BF16, ge::DataType::DT_FLOAT},
+      {ge::DataType::DT_FLOAT16, ge::DataType::DT_FLOAT},
+      {ge::DataType::DT_INT8, ge::DataType::DT_FLOAT},
+      {ge::DataType::DT_INT16, ge::DataType::DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, sum_dtype_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -1021,25 +980,10 @@ class MinAscIrCodegenImplV2 : public AscIrCodegenV2 {
     return {"reduce_init_reg_base.h"};
   }
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
-    std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> conversion_dtype;
-    AscNodeInputs node_inputs = node.inputs;
-    AscNodeOutputs node_outputs = node.outputs;
-    for (size_t i = 0; i < node_inputs().size(); i++) {
-      if (node_inputs[i].attr.dtype == ge::DataType::DT_UINT8) {
-        conversion_dtype.first.emplace_back(ge::DataType::DT_INT16);
-      } else {
-        conversion_dtype.first.emplace_back(node_inputs[i].attr.dtype);
-      }
-    }
-    for (size_t i = 0; i < node_outputs().size(); i++) {
-      if (!conversion_dtype.first.empty()) {
-        conversion_dtype.second.emplace_back(conversion_dtype.first[0]);
-      } else {
-        // 回退到输出原类型或其他默认类型
-        conversion_dtype.second.emplace_back(node_outputs[i].attr.dtype);
-      }
-    }
-    return conversion_dtype;
+    const std::map<ge::DataType, ge::DataType> min_dtype_map = {
+      {ge::DataType::DT_UINT8, ge::DataType::DT_INT16}
+    };
+    return GetConversionFromDtypeMap(node, min_dtype_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -1652,25 +1596,11 @@ class MulAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
 
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
-    std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> conversion_dtype;
-    AscNodeInputs node_inputs = node.inputs;
-    AscNodeOutputs node_outputs = node.outputs;
-    for (size_t i = 0; i < node_inputs().size(); i++) {
-      if (node_inputs[i].attr.dtype == ge::DataType::DT_INT8 || node_inputs[i].attr.dtype == ge::DataType::DT_UINT8) {
-        conversion_dtype.first.emplace_back(ge::DataType::DT_INT16);
-      } else {
-        conversion_dtype.first.emplace_back(node_inputs[i].attr.dtype);
-      }
-    }
-    for (size_t i = 0; i < node_outputs().size(); i++) {
-      if (!conversion_dtype.first.empty()) {
-        conversion_dtype.second.emplace_back(conversion_dtype.first[0]);
-      } else {
-        // 回退到输出原类型或其他默认类型
-        conversion_dtype.second.emplace_back(node_outputs[i].attr.dtype);
-      }
-    }
-    return conversion_dtype;
+    const std::map<ge::DataType, ge::DataType> mul_dtype_map = {
+      {ge::DataType::DT_INT8, ge::DataType::DT_INT16},
+      {ge::DataType::DT_UINT8, ge::DataType::DT_INT16}
+    };
+    return GetConversionFromDtypeMap(node, mul_dtype_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
