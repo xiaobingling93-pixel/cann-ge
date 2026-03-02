@@ -236,9 +236,8 @@ Status GEFinalize() {
   if (g_session_manager != nullptr) {
     (void)g_session_manager->Finalize();  // always success.
   }
-  if (ExecutionRuntimeUtils::IsHeterogeneous()) {
-    DFlowFinalizeInner();
-  }
+  // dflow support finalize even if uninitialized
+  DFlowFinalizeInner();
   return GEFinalizeV2();
 }
 
