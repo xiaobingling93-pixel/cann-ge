@@ -853,6 +853,7 @@ message(STATUS \"[ES Wrapper] Total operators included: \${NUM_OPS}\")
         set(ES_COMMON_COMPILE_OPTION
                 -fPIC
                 -Wall
+                -fstack-protector-all
                 -std=c++17
                 -D_GLIBCXX_USE_CXX11_ABI=0  # 使用旧的 ABI，确保与依赖库兼容
                 -O2
@@ -869,8 +870,13 @@ message(STATUS \"[ES Wrapper] Total operators included: \${NUM_OPS}\")
         message(STATUS "add_es_library: Set _GLIBCXX_USE_CXX11_ABI=0 for ABI compatibility")
     endif ()
 
-    # 13.1.1 在 Release 配置下添加 -s 选项去除符号表（仅对共享库）
-    target_link_options(${SO_NAME} PRIVATE $<$<CONFIG:Release>:-s>)
+    # 13.1.1 动态库安全链接选项
+    target_link_options(${SO_NAME} PRIVATE
+        -Wl,-z,relro
+        -Wl,-z,now
+        -Wl,-z,noexecstack
+        # 在 Release 配置下添加 -s 选项去除符号表
+        $<$<CONFIG:Release>:-s>)
 
     # 清除so中的RPATH，避免安全风险（仅对共享库）
     set_target_properties(${SO_NAME} PROPERTIES
