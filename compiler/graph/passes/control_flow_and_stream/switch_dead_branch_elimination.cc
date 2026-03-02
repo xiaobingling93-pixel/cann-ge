@@ -187,8 +187,6 @@ Status SwitchDeadBranchElimination::Run(NodePtr &node) {
     std::vector<NodePtr> end_nodes;
     Status ret = PassUtils::RemoveInactiveBranchToMerge(inactive_out_data_anchor, del_nodes, end_nodes);
     if (ret != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "Remove inactive branch from node:%s(%s) to merge failed",
-                        node->GetName().c_str(), node->GetType().c_str());
       GELOGE(FAILED, "[Remove][InactiveBranch] from node:%s(%s) to merge failed",
              node->GetName().c_str(), node->GetType().c_str());
       return ret;

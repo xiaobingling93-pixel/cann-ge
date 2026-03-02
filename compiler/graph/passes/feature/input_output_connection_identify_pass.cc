@@ -47,7 +47,6 @@ Status InputOutputConnectionIdentifyPass::Run(ComputeGraphPtr graph) {
   }
 
   if (GraphUtils::GetRefMapping(graph, symbol_to_anchors_, anchor_to_symbol_) != GRAPH_SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get ref mapping from graph:%s failed", graph->GetName().c_str());
     GELOGE(INTERNAL_ERROR, "[Get][RefMapping] for graph:%s failed.", graph->GetName().c_str());
     return INTERNAL_ERROR;
   }

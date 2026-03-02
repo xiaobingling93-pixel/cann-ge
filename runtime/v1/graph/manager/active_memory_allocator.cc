@@ -586,8 +586,6 @@ Status ExpandableActiveMemoryAllocatorImp::MallocPhysicalMemory(uint8_t *const v
     unmap_func(pa_list_size);
     (void)ProcPageRecordByPaList(virtual_memory_addr, pa_list, PageRecordAction::kDel);
     vapa_check_failed_ = true;
-    REPORT_INNER_ERR_MSG("E19999", "malloc failed. virtual_memory_addr: %p, pa_list_size: %zu",
-                       virtual_memory_addr, pa_list_size);
     GELOGE(FAILED, "malloc failed. virtual_memory_addr: %p, pa_list_size: %zu", virtual_memory_addr, pa_list_size);
     return FAILED;
   }

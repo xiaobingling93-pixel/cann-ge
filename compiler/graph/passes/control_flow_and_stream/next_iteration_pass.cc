@@ -331,8 +331,6 @@ NodePtr NextIterationPass::CreateActiveNode(ComputeGraphPtr &graph, const std::s
   }
 
   if (SetSwitchBranchNodeLabel(active_node, name) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Set switch branch node label:%s to node:%s(%s) failed",
-                      name.c_str(), op_desc->GetName().c_str(), op_desc->GetType().c_str());
     GELOGE(INTERNAL_ERROR, "[Set][SwitchBranchNodeLabel] %s to node:%s(%s) failed",
            name.c_str(), op_desc->GetName().c_str(), op_desc->GetType().c_str());
     return nullptr;

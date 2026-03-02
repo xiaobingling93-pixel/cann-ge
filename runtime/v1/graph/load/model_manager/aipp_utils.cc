@@ -182,7 +182,6 @@ Status AippUtils::SetAippInfoImpl(const NamedAttrs &aipp_attr, const OpDescPtr &
   domi::AippOpParams aipp_params;
   Status ret = OpUtils::ConvertAippParams(aipp_attr, aipp_params);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Failed to convert aipp params, op:%s.", op_desc->GetName().c_str());
     GELOGE(INTERNAL_ERROR, "[Convert][AippParams] Failed to convert aipp params, op:%s.", op_desc->GetName().c_str());
     return INTERNAL_ERROR;
   }
@@ -192,7 +191,6 @@ Status AippUtils::SetAippInfoImpl(const NamedAttrs &aipp_attr, const OpDescPtr &
   AippConfigInfo aipp_info;
   ret = AippUtils::ConvertAippParams2AippInfo(aipp_params, aipp_info);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Failed to convert params to info, op:%s.", op_desc->GetName().c_str());
     GELOGE(INTERNAL_ERROR, "[Convert][AippInfo]Failed to convert params to info, op:%s.", op_desc->GetName().c_str());
     return INTERNAL_ERROR;
   }

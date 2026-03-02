@@ -129,8 +129,6 @@ Status SwitchLogicRemovePass::RemoveSwitchNodeLogically(int32_t parent_index, No
     std::vector<NodePtr> end_nodes;
     auto ret = PassUtils::RemoveInactiveBranchToMerge(out_anchor, deleted_nodes, end_nodes);
     if (ret != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "Remove inactivate branch from node:%s(%s) to merge failed",
-                        switch_node->GetName().c_str(), switch_node->GetType().c_str());
       GELOGE(FAILED, "[Remove][InactiveBranch] from node:%s(%s) to merge failed",
              switch_node->GetName().c_str(), switch_node->GetType().c_str());
       return ret;

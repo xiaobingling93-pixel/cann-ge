@@ -47,12 +47,10 @@ Status OnnxFileConstantParser::ParseParams(const Message *op_src, ge::Operator &
     return FAILED;
   }
   if (ParseDataType(tensor_proto, op_def) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "node[%s] parse data type failed", node->name().c_str());
     GELOGE(domi::PARAM_INVALID, "[Parse][Shape] node[%s] parse data type failed", node->name().c_str());
     return FAILED;
   }
   if (ParsePath(tensor_proto, op_def) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "node[%s] parse file path failed", node->name().c_str());
     GELOGE(domi::PARAM_INVALID, "[Parse][Shape] node[%s] parse file path failed", node->name().c_str());
     return FAILED;
   }
@@ -99,7 +97,6 @@ Status OnnxFileConstantParser::ParsePath(const ge::onnx::TensorProto &tensor_pro
   for (int32_t i = 0; i < tensor_proto.external_data_size(); ++i) {
     const ge::onnx::StringStringEntryProto &string_proto = tensor_proto.external_data(i);
     if (SetPathAttr(string_proto, op_def) != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "external tensor proto[%s] parse attrs failed.", tensor_proto.name().c_str());
       GELOGE(domi::PARAM_INVALID, "external tensor proto[%s] parse attrs failed.", tensor_proto.name().c_str());
       return FAILED;
     }

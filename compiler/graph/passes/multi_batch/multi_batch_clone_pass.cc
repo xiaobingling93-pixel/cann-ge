@@ -391,7 +391,6 @@ Status MultiBatchClonePass::CreateRootGraph(const ComputeGraphPtr &graph) {
   uint32_t input_num = 0;
   uint32_t output_num = 0;
   if (GetInputAndOutputNum(input_num, output_num) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get input and output num of graph: %s failed.", graph->GetName().c_str());
     GELOGE(FAILED, "[Get][Num] Get input and output num of graph: %s failed.", graph->GetName().c_str());
     return FAILED;
   }

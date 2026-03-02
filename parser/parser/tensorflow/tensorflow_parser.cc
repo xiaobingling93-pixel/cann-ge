@@ -3480,7 +3480,6 @@ Status TensorFlowModelParser::OptimizeConstNodes4CustomOp(domi::tensorflow::Grap
     // 2.4 remove the input const nodes
     Status ret = RemoveInputs(graph_def, current_node, unused_inputs, all_nodedef_map);
     if (ret != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "remove input for op:%s failed", current_op_name.c_str());
       GELOGE(INTERNAL_ERROR, "Op[%s] remove input failed.", current_op_name.c_str());
       return ret;
     }
@@ -3989,10 +3988,6 @@ Status TensorFlowModelParser::AddFusionNodeDef(shared_ptr<ge::ScopeGraph> &scope
       } else {
         Status ret = AddFusionInnerNodeDef(scope_graph, op_node_name, node_name_list_new);
         if (ret != SUCCESS) {
-          REPORT_INNER_ERR_MSG("E19999",
-                             "Failed to add fusion inner nodes for fusion op:%s, "
-                             "please check FusionScopesResult set in scope fusion pass",
-                             op_node_name.c_str());
           GELOGE(ret, "Failed to add fusion inner node, fusion_op_name:%s.", op_node_name.c_str());
           return ret;
         }

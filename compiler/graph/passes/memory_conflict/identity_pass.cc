@@ -122,7 +122,6 @@ Status IdentityPass::Run(NodePtr &node) {
   std::string type;
   Status status_ret = GetOriginalType(node, type);
   if (status_ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get original type of node:%s failed", node->GetName().c_str());
     GELOGE(status_ret, "[Get][OriginalType] of node:%s failed.", node->GetName().c_str());
     return status_ret;
   }

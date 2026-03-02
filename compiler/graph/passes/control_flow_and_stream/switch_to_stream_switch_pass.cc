@@ -198,8 +198,6 @@ Status SwitchToStreamSwitchPass::ReplaceSwitchNode(const ComputeGraphPtr &graph,
                          "[Create][StreamSwitchNode] for switch node:%s in graph:%s failed.",
                          switch_node->GetName().c_str(), graph->GetName().c_str());
         if (SetSwitchTrueBranchFlag(stream_switch, true_branch_flag) != SUCCESS) {
-          REPORT_INNER_ERR_MSG("E19999", "Set switch true branch flag from node:%s(%s) failed",
-                            stream_switch->GetName().c_str(), stream_switch->GetType().c_str());
           GELOGE(FAILED, "[Set][SwitchTrueBranchFlag] for node %s failed.", stream_switch->GetName().c_str());
           return FAILED;
         }
@@ -234,8 +232,6 @@ Status SwitchToStreamSwitchPass::ReplaceSwitchNode(const ComputeGraphPtr &graph,
       MoveCtrlEdges(switch_node, stream_switch);
       switch_node_map_[stream_switch] = out_node_list;
       if (SetOriginalNodeName(stream_switch, switch_node->GetName()) != SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "Set original node name:%s to node:%s(%s) failed", switch_node->GetName().c_str(),
-                          stream_switch->GetName().c_str(), stream_switch->GetType().c_str());
         GELOGE(FAILED, "[Set][OriginalNodeName] for node %s failed.", stream_switch->GetName().c_str());
         return FAILED;
       }
@@ -547,9 +543,6 @@ Status SwitchToStreamSwitchPass::CombineSwitchNode(const ComputeGraphPtr &graph)
         GE_CHECK_NOTNULL(switch_desc);
         // set stream_label
         if (SetStreamLabel(stream_switch, cast_node->GetName()) != SUCCESS) {
-          REPORT_INNER_ERR_MSG("E19999", "Set stream_label:%s to op:%s(%s) failed",
-                            cast_node->GetName().c_str(), stream_switch->GetName().c_str(),
-                            stream_switch->GetType().c_str());
           GELOGE(FAILED, "[Set][StreamLabel] %s to op:%s(%s) failed", cast_node->GetName().c_str(),
                  stream_switch->GetName().c_str(), stream_switch->GetType().c_str());
           return FAILED;

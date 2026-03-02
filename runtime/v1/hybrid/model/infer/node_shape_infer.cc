@@ -107,8 +107,6 @@ Status NodeShapeInfer::CalcOutputTensorSizes(const bool fallback_with_range) con
     auto dims = shape.GetDims();
     auto status_result = CanonicalizeShape(*tensor_desc, dims, fallback_with_range);
     if (status_result != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "CanonicalizeShape failed, node:%s(%s), output:%zu.",
-                        NodeName().c_str(), NodeType().c_str(), output_index);
       GELOGE(ge::FAILED, "[Canonicalize][Shape] failed for [%s(%s)], output %zu.",
              NodeName().c_str(), NodeType().c_str(), output_index);
       return status_result;

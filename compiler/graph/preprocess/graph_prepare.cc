@@ -296,8 +296,6 @@ Status RecoverTransRoadForVar(const NodePtr &var, const VarTransRoad &road) {
     auto trans_name = var->GetName() + "_trans_" + std::to_string(index++);
     auto ret = RecoverOneTransNodeForVar(trans_name, *iter, last_node, last_node);
     if (ret != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "Failed to recover trans node for variable %s, index %s, type %s",
-                        var->GetName().c_str(), std::to_string(index).c_str(), iter->node_type.c_str());
       GELOGE(INTERNAL_ERROR, "[Recover][TransNode] for variable %s, index %s, type %s", var->GetName().c_str(),
              std::to_string(index).c_str(), iter->node_type.c_str());
       return INTERNAL_ERROR;
@@ -342,8 +340,6 @@ Status RecoverTransRoadForVarRef(const std::set<NodePtr> &nodes, const VarTransR
       auto trans_name = var->GetName() + "_trans_" + std::to_string(index++);
       auto ret = RecoverOneTransNodeForVarRef(trans_name, *iter, last_node, last_node);
       if (ret != SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "Failed to recover trans node for variable %s, index %s, type %s",
-                          var->GetName().c_str(), std::to_string(index).c_str(), iter->node_type.c_str());
         GELOGE(INTERNAL_ERROR, "[Recover][TransNode] for variable %s failed, index %s, type %s",
                var->GetName().c_str(), std::to_string(index).c_str(), iter->node_type.c_str());
         return INTERNAL_ERROR;
@@ -793,7 +789,6 @@ Status UpdateSubgraphDataOfCase(const NodePtr &mbatch_node, const DataType &dt_s
 
   std::vector<ComputeGraphPtr> subgraphs;
   if (NodeUtils::GetDirectSubgraphs(mbatch_node, subgraphs) != GRAPH_SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get subgraphs of node %s failed", mbatch_node->GetName().c_str());
     GELOGE(FAILED, "[Check][Param] Get subgraphs of node %s failed", mbatch_node->GetName().c_str());
     return FAILED;
   }
@@ -1441,7 +1436,6 @@ Status GraphPrepare::CheckGraphAndUpdateOriginShape() const {
     if (IsInEdgeZeroNode(node)) {
       auto ret = UpdateUninitializedOriginShape(node);
       if (ret != SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "update original shape for node:%s failed", node->GetName().c_str());
         GELOGE(GE_GRAPH_INIT_FAILED, "[Update][OriginalShape]update original shape for node:%s failed.",
                node->GetName().c_str());
         return ret;

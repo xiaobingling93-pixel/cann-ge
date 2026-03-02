@@ -127,7 +127,6 @@ Status AutoMappingSubgraphIndexByDataNodeAndOutputNodesInfo(
 
   auto ret = AutoMappingSubgraphIndexByDataNode(compute_graph, input);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Auto mapping graph:%s input index failed,", compute_graph->GetName().c_str());
     GELOGE(ret, "[Mapping][InputIndex] Auto mapping graph:%s input index failed,", compute_graph->GetName().c_str());
     return ret;
   }

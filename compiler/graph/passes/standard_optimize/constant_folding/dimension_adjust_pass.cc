@@ -33,8 +33,6 @@ Status DimensionAdjustPass::Run(ge::NodePtr &node) {
   std::string type;
   Status ret = GetOriginalType(node, type);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get OriginalType of op:%s(%s) failed",
-                      node->GetName().c_str(), node->GetType().c_str());
     GELOGE(ret, "[Get][OriginalType] of op:%s(%s) failed", node->GetName().c_str(), node->GetType().c_str());
     return ret;
   }

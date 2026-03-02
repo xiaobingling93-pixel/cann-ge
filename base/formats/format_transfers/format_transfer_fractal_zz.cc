@@ -128,13 +128,6 @@ Status CheckShapeRelation(const TransArgs &args, ShapeVector &hw_shape) {
            ShapeToString(args.dst_shape).c_str(),
            ShapeToString(args.src_shape).c_str(),
            TypeUtils::DataTypeToSerialString(args.src_data_type).c_str(), c0);
-    REPORT_INNER_ERR_MSG("E19999", "Failed to trans shape from %s to %s, shape %s to %s, data type %s, c0 is ["
-                                "%" PRId64 "] ",
-                      TypeUtils::FormatToSerialString(args.dst_format).c_str(),
-                      TypeUtils::FormatToSerialString(args.src_format).c_str(),
-                      ShapeToString(args.dst_shape).c_str(),
-                      ShapeToString(args.src_shape).c_str(),
-                      TypeUtils::DataTypeToSerialString(args.src_data_type).c_str(), c0);
     return ret;
   }
   if (!IsTransShapeSrcCorrect(args, expect_src_shape)) {

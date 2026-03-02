@@ -646,7 +646,6 @@ Status OnnxModelParser::ParseAllNodeProto(ge::onnx::GraphProto &onnx_graph, ge::
     Status status = AdapterOpType(node_proto, ori_type, op_type);
     if (status != SUCCESS) {
       GELOGE(status, "[Adapt][OpType] Adapter op type for ori type %s failed.", ori_type.c_str());
-      REPORT_INNER_ERR_MSG("E19999", "Adapter op type for ori type %s failed.", ori_type.c_str());
       return status;
     }
     node_proto->set_op_type(ori_type);
@@ -775,7 +774,6 @@ Status OnnxModelParser::GetModelFromFile(const char *file, ge::onnx::ModelProto 
   }
 
   if (SetExternalPath(file, onnx_model) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Set external path failed, file[%s]", file);
     GELOGE(PARAM_INVALID, "[Set][ExternalPath] failed.");
     return PARAM_INVALID;
   }

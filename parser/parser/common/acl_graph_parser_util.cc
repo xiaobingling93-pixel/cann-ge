@@ -600,7 +600,6 @@ domi::Status AclGraphParserUtil::SetOutputNodeInfo(ge::Graph &graph,
   // default output node (leaf)
   if (user_out_nodes.empty()) {
     if (GetDefaultOutInfo(compute_graph, output_nodes_info) != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "GetDefaultOutInfo failed for graph:%s", compute_graph->GetName().c_str());
       GELOGE(domi::FAILED, "[Invoke][GetDefaultOutInfo] failed, graph:%s.", compute_graph->GetName().c_str());
       return domi::FAILED;
     }

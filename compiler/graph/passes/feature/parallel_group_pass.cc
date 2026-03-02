@@ -200,8 +200,6 @@ Status ParallelGroupPass::ProcessGroupNodeInSwitch(ComputeGraphPtr graph,
     GE_CHECK_NOTNULL(cast_node);
     if (MappingNodeToSwitchAndMerge(group_nodes, merge_nodes, cast_node, node, node_2_switch_merge) != SUCCESS) {
       GELOGE(FAILED, "[Mapping][Node]Mapping node to switch and merge failed, graph:%s.", graph->GetName().c_str());
-      REPORT_INNER_ERR_MSG("E19999", "[Mapping][Node]Mapping node to switch and merge failed, graph:%s.",
-                        graph->GetName().c_str());
       return FAILED;
     }
   }

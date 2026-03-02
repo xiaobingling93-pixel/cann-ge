@@ -300,7 +300,6 @@ Status OpsKernelManager::Finalize() {
   Status ret = FinalizeOpsKernel();
   if (ret != SUCCESS) {
     GELOGE(ret, "[Free][Ops Kernel Resource] failed.");
-    REPORT_INNER_ERR_MSG("E19999", "FinalizeOpsKernel failed, Free Ops kernel resource failed.");
     return ret;
   }
   graph_optimizers_.clear();

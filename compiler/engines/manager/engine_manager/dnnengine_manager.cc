@@ -637,7 +637,6 @@ Status DNNEngineManager::ParserJsonFile() {
   Status status = ReadJsonFile(path, &scheduler_json_file);
   if (status != SUCCESS) {
     GELOGE(FAILED, "[Read][JsonFile]Failed, file %s", path.c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Read json file %s failed", path.c_str());
     return FAILED;
   }
   if (scheduler_json_file.is_null()) {

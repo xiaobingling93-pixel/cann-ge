@@ -1865,8 +1865,6 @@ Status StreamAllocator::RefreshEventsAndNotifiesWithReuse() {
   Status ret = ParseAllNodeEventMultiplexing(whole_graph_, name_to_node_map, node_to_send, node_to_recv);
   if (ret != SUCCESS) {
     GELOGE(ret, "[Parse][AllNodeEventMultiplexing]Graph:%s.", whole_graph_->GetName().c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Failed to parse all node event multiplexing, graph:%s.",
-                       whole_graph_->GetName().c_str());
     return ret;
   }
   if (node_to_send.empty() && node_to_recv.empty()) {
@@ -1876,7 +1874,6 @@ Status StreamAllocator::RefreshEventsAndNotifiesWithReuse() {
   ret = ReuseEvent(true, name_to_node_map, node_to_send);
   if (ret != SUCCESS) {
     GELOGE(ret, "[Reuse][Event]Phase:Send, graph:%s.", whole_graph_->GetName().c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Failed to reuse event, phase:Send, graph:%s.", whole_graph_->GetName().c_str());
     return ret;
   }
 
@@ -1891,7 +1888,6 @@ Status StreamAllocator::RefreshEventsAndNotifiesWithReuse() {
   Status status = StreamUtils::RefreshContinuousEvents(event_num_, node_to_send_events_, node_to_recv_events_);
   if (status != SUCCESS) {
     GELOGE(status, "[Refresh][ContinuousEvents]Graph:%s.", whole_graph_->GetName().c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Failed to refresh continuous events, graph:%s.", whole_graph_->GetName().c_str());
     return status;
   }
   GE_ASSERT_SUCCESS(

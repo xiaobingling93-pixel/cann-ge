@@ -632,8 +632,6 @@ Status ModelHelper::SaveAllModelPartiton(std::shared_ptr<OmFileSaveHelper> &om_f
   if (SaveModelDef(om_file_save_helper, ge_model, model_buffer, model_index) != SUCCESS) {
     GELOGE(FAILED, "[Save][ModelDef]Failed, model %s, model index %zu",
            ge_model->GetName().c_str(), model_index);
-    REPORT_INNER_ERR_MSG("E19999", "ModelHelper save model def failed, model %s, model index %zu",
-                      ge_model->GetName().c_str(), model_index);
     return FAILED;
   }
 
@@ -664,8 +662,6 @@ Status ModelHelper::SaveAllModelPartiton(std::shared_ptr<OmFileSaveHelper> &om_f
   if (SaveModelTaskDef(om_file_save_helper, ge_model, task_buffer, model_index) != SUCCESS) {
     GELOGE(FAILED, "[Save][TaskDef]Failed, model %s, model index %zu",
            ge_model->GetName().c_str(), model_index);
-    REPORT_INNER_ERR_MSG("E19999", "ModelHelper save task def failed, model %s, model index %zu",
-                      ge_model->GetName().c_str(), model_index);
     return FAILED;
   }
   return SUCCESS;

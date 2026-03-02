@@ -1800,7 +1800,6 @@ Status GraphManager::ExecuteGraphWithStreamAsync(const GraphId &graph_id, const 
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "graph id = %u does not exist in graph_map, check invalid.", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, Execute graph with stream async, graph does not exist, "
       "graph id = %u.", graph_id);
     return ret;
@@ -1842,7 +1841,6 @@ Status GraphManager::RunGraphWithStreamAsync(const GraphId &graph_id, const rtSt
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "graph id = %u does not exist in graph_map, check invalid.", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, Run graph with stream async, graph does not exist, graph id = %u.", graph_id);
     return ret;
   }
@@ -2017,7 +2015,6 @@ Status GraphManager::GenerateInfershapeGraph(GraphId &graph_id) {
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Graph:%u does not exist in graph_map, check invalid", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, graph does not exist, graph_id = %u.", graph_id);
     return ret;
   }
@@ -2047,8 +2044,6 @@ Status GraphManager::BuildGraphForUnregisteredOp(const GraphId &graph_id, const 
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Graph:%u does not exist in graph_map, check invalid",
-                       graph_id);
     GELOGE(ret, "[Get][GraphNode] graph does not exist, graph_id = %u.", graph_id);
     return ret;
   }
@@ -2706,7 +2701,6 @@ Status GraphManager::GetCompiledModel(uint32_t graph_id, ModelBufferData &model_
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Graph:%u does not exist in graph_map, check invalid", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, graph does not exist, graph_id = %u.", graph_id);
     return ret;
   }
@@ -3775,7 +3769,6 @@ bool GraphManager::IsGraphNeedRebuild(uint32_t graph_id) {
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Graph:%u does not exist in graph_map, check invalid", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, graph does not exist, graph_id:%u.", graph_id);
     return true;
   }
@@ -3826,7 +3819,6 @@ const std::map<std::string, std::string> *GraphManager::GetGraphOptions(uint32_t
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Graph:%u does not exist in graph_map, check invalid", graph_id);
     GELOGE(ret, "[Get][GraphNode] failed, graph does not exist, graph_id:%u.", graph_id);
     return nullptr;
   }

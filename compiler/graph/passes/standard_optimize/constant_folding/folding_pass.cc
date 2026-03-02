@@ -150,8 +150,6 @@ Status FoldingPass::Folding(NodePtr &node, std::vector<GeTensorPtr> &outputs) {
   auto in_data_nodes = node->GetInDataNodes();
   OrderedNodeSet in_data_nodes_set(in_data_nodes.begin(), in_data_nodes.end());
   if (IsolateAndDeleteNode(node, {}) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Isolate and delete node:%s(%s) failed",
-                       node->GetName().c_str(), node->GetType().c_str());
     GELOGE(INTERNAL_ERROR, "[IsolateAndDelete][Node] %s(%s) failed.",
            node->GetName().c_str(), node->GetType().c_str());
     return INTERNAL_ERROR;

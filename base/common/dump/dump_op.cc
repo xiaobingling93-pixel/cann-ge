@@ -403,8 +403,6 @@ Status DumpOp::UpdateAddrs(const std::vector<uintptr_t> &input_addrs,
       if (ret != SUCCESS) {
         GELOGE(ret, "[Dump][Input]Update dump output Failed, node %s(%s), ret 0x%X",
               op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
-        REPORT_INNER_ERR_MSG("E19999", "Update dump output failed, node %s(%s), ret 0x%X",
-                          op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
         return ret;
       }
     }
@@ -671,7 +669,6 @@ Status DumpOp::ExecuteDump(toolkit::aicpu::dump::Task &task, bool need_device_ar
   const auto ret = ExecutorDumpOp(need_device_args);
   if (ret != SUCCESS) {
     GELOGE(ret, "[Dump][Op]Failed, ret 0x%X", ret);
-    REPORT_INNER_ERR_MSG("E19999", "Executor dump op failed, ret 0x%X", ret);
     return ret;
   }
   GELOGI("Dump %s success", op_desc_->GetName().c_str());
@@ -684,8 +681,6 @@ Status DumpOp::LaunchDump(toolkit::aicpu::dump::Task &task) {
     if (ret != SUCCESS) {
       GELOGE(ret, "[Dump][Output]Failed, node %s(%s), ret 0x%X",
              op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
-      REPORT_INNER_ERR_MSG("E19999", "Dump Output failed, node %s(%s), ret 0x%X",
-                        op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
       return ret;
     }
   } else if (dump_properties_.GetDumpMode() == kDumpModeInput) {
@@ -703,8 +698,6 @@ Status DumpOp::LaunchDump(toolkit::aicpu::dump::Task &task) {
     if (ret != SUCCESS) {
       GELOGE(ret, "[Dump][Output]Failed when in dumping all, node %s(%s), ret 0x%X",
              op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
-      REPORT_INNER_ERR_MSG("E19999", "Dump Output failed when in dumping all, node %s(%s), ret 0x%X",
-                        op_desc_->GetName().c_str(), op_desc_->GetType().c_str(), ret);
       return ret;
     }
     ret = DumpInput(task, op_desc_, input_addrs_);

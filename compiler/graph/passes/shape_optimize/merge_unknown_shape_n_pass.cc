@@ -36,8 +36,6 @@ Status MergeUnknownShapeNPass::Run(ComputeGraphPtr graph) {
   }
   auto ret = MergeShapeN(graph);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "MergeUnknownShapeN graph:%s failed",
-                      graph->GetName().c_str());
     GELOGE(FAILED, "[Merge][ShapeN] graph:%s failed",
            graph->GetName().c_str());
     return FAILED;

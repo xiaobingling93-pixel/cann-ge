@@ -187,7 +187,6 @@ Status EnginePlacer::AssignCompositeEngine() {
   std::vector<ComputeGraphPtr> subgraphs;
   if (GraphUtils::GetSubgraphsRecursively(compute_graph_, subgraphs) != GRAPH_SUCCESS) {
     GE_CHECK_NOTNULL(compute_graph_);
-    REPORT_INNER_ERR_MSG("E19999", "Get subgraphs contained in graph %s failed", compute_graph_->GetName().c_str());
     GELOGE(FAILED, "[Get][Subgraphs] Get subgraphs contained in graph %s failed", compute_graph_->GetName().c_str());
     return FAILED;
   }

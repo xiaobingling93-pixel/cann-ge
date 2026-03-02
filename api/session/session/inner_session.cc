@@ -194,7 +194,6 @@ Status InnerSession::Initialize() {
   Status ret = CheckReuseMemoryOption(all_options);
   if (ret != SUCCESS) {
     GELOGE(ret, "[CheckReuse][MemoryOption] failed, [InnerSession:%lu].", session_id_);
-    REPORT_INNER_ERR_MSG("E19999", "CheckReuseMemoryOption failed, InnerSession=%lu.", session_id_);
     return ret;
   }
 

@@ -33,8 +33,6 @@ Status OpdebugRegister::RegisterDebugForModel(rtModel_t const model_handle, cons
   const auto ret = MallocMemForOpdebug();
   if (ret != SUCCESS) {
     GELOGE(ret, "[Malloc][MemForOpdebug]Failed when debug for model overflow, ret:0x%X", ret);
-    REPORT_INNER_ERR_MSG("E19999",  "Malloc memory for opdebug failed when debug "
-                      "for model in overflow, ret 0x%X", ret);
     return ret;
   }
   uint32_t debug_stream_id = 0U;

@@ -171,9 +171,6 @@ Status BufferPoolMemAssigner::AssignOutput() {
       if (ret != SUCCESS) {
         GELOGE(ret, "[Assign][OneBufferPool]Batch label:%s, pool id:%ld, pool size:%ld, offset base:%ld.",
                batch_label.c_str(), buffer_pool_id, buffer_pool_size, output_offset_base);
-        REPORT_INNER_ERR_MSG("E19999", "Failed to assign output memory, batch label:%s, "
-                           "pool id:%ld, pool size:%ld, offset base:%ld.",
-                           batch_label.c_str(), buffer_pool_id, buffer_pool_size, output_offset_base);
         return ret;
       }
       GELOGI("[Assign][Output]Assign output successfully, batch label:%s, pool id:%ld, pool size:%ld, offset base:%ld.",

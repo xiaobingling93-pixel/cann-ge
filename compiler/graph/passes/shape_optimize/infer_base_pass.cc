@@ -137,7 +137,6 @@ graphStatus InferBasePass::UpdateTensorDescToPeerInputs(const NodePtr &node, Ord
       bool changed = false;
       auto ret = UpdateTensorDesc(output_tensor, peer_input_desc, changed);
       if (ret != GRAPH_SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "Update peer input desc failed, node %s.", node->GetName().c_str());
         GELOGE(ret, "[Update][TensorDesc] failed, node %s.", node->GetName().c_str());
         return ret;
       }
@@ -242,8 +241,6 @@ graphStatus InferBasePass::UpdateTensorDescToSubgraphData(const NodePtr &node) {
       auto data_input_td = data_opdesc->MutableInputDesc(0);
       auto ret = UpdateTensorDesc(input_desc, data_input_td, has_tensor_desc_changed);
       if (ret != GRAPH_SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "Failed to update input desc of data %s on the sub graph %s parent node %s",
-                          node_sub->GetName().c_str(), sub_graph->GetName().c_str(), node->GetName().c_str());
         GELOGE(GRAPH_FAILED, "[Update][InputDesc] of data %s on the sub graph %s parent node %s failed",
                node_sub->GetName().c_str(), sub_graph->GetName().c_str(), node->GetName().c_str());
         return ret;
@@ -252,8 +249,6 @@ graphStatus InferBasePass::UpdateTensorDescToSubgraphData(const NodePtr &node) {
       auto data_output_td = data_opdesc->MutableOutputDesc(0);
       ret = UpdateTensorDesc(input_desc, data_output_td, has_tensor_desc_changed);
       if (ret != GRAPH_SUCCESS) {
-        REPORT_INNER_ERR_MSG("E19999", "Failed to update output desc of data %s on the sub graph %s parent node %s",
-                          node_sub->GetName().c_str(), sub_graph->GetName().c_str(), node->GetName().c_str());
         GELOGE(GRAPH_FAILED, "[Update][OutputDesc] of data %s on the sub graph %s parent node %s failed",
                node_sub->GetName().c_str(), sub_graph->GetName().c_str(), node->GetName().c_str());
         return ret;

@@ -210,7 +210,6 @@ Status GELib::InnerInitialize(std::map<std::string, std::string> &options) {
   GE_INIT_TRACE_TIMESTAMP_END(EngineInitialize, "InnerInitialize::EngineInitialize");
   if (initEmStatus != SUCCESS) {
     GELOGE(initEmStatus, "[Init][EngineManager]GE engine manager initial failed.");
-    REPORT_INNER_ERR_MSG("E19999", "EngineManager initialize failed.");
     RollbackInit();
     return initEmStatus;
   }
@@ -254,7 +253,6 @@ Status GELib::InnerInitialize(std::map<std::string, std::string> &options) {
   GE_INIT_TRACE_TIMESTAMP_END(AnalyzerInitialize, "InnerInitialize::AnalyzerInitialize");
   if (init_analyzer_status != SUCCESS) {
     GELOGE(init_analyzer_status, "[Init][Analyzer]Failed to initialize Analyzer.");
-    REPORT_INNER_ERR_MSG("E19999", "ge::Analyzer initialize failed.");
     RollbackInit();
     return init_analyzer_status;
   }

@@ -78,16 +78,12 @@ Status HcclTaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *const dav
   // Only in Horovod scenario should get the inputName and GeShape
   auto ret = HcomOmeUtil::GetHorovodInputs(hccl_op_desc_, kernel_hccl_infos_);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Call GetHorovodInputs fail for op:%s(%s)",
-                      hccl_op_desc_->GetName().c_str(), hccl_op_desc_->GetType().c_str());
     GELOGE(ret, "[Get][HorovodInputs] fail for op:%s(%s)",
         hccl_op_desc_->GetName().c_str(), hccl_op_desc_->GetType().c_str());
     return ret;
   }
   Status dmrt = HcomOmeUtil::GetHcclDataType(hccl_op_desc_, kernel_hccl_infos_);
   if (dmrt != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Call GetHcclDataType fail for op:%s(%s)",
-                      hccl_op_desc_->GetName().c_str(), hccl_op_desc_->GetType().c_str());
     GELOGE(dmrt, "[Get][HcomDataType] fail for op:%s(%s)",
         hccl_op_desc_->GetName().c_str(), hccl_op_desc_->GetType().c_str());
     return dmrt;

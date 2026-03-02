@@ -400,8 +400,6 @@ Status TransOpSymmetryEliminationPass::RemoveTransOpWithoutOutput(NodePtr &pre_n
     // 6.2 Isolate and delete T1
     ret = IsolateAndDeleteNode(trans_node, {});
     if (ret != GRAPH_SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "Isolate and delete node:%s(%s) failed",
-                        trans_node->GetName().c_str(), trans_node->GetType().c_str());
       GELOGE(INTERNAL_ERROR, "[IsolateAndDelete][Node] %s(%s) failed", trans_node->GetName().c_str(),
              trans_node->GetType().c_str());
       return ret;

@@ -83,8 +83,6 @@ Status MergePass::DealWithMergeNode(NodePtr &node) {
       auto in_node = in_data_nodes.at(0);
       if (IsMergeInputNeedOptimized(in_node)) {
         if (IsolateAndDeleteNode(in_node, {0}) != SUCCESS) {
-          REPORT_INNER_ERR_MSG("E19999", "Isolate and delete node:%s(%s) failed",
-                            in_node->GetName().c_str(), in_node->GetType().c_str());
           GELOGE(FAILED, "[Remove][Node] %s failed.", in_node->GetName().c_str());
           return FAILED;
         }

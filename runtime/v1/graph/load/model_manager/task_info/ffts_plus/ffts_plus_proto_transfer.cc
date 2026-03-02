@@ -1340,8 +1340,6 @@ Status FftsPlusProtoTransfer::UpdateEventIdForAicpuBlockingOp(
     return FAILED;
   }
   if (ext_handle->UpdateEventId(event_id) != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Update event id failed for op:%s(%s).", op_desc->GetName().c_str(),
-                      op_desc->GetType().c_str());
     GELOGE(FAILED, "[Update][EventId] Update event id failed for op:%s(%s)", op_desc->GetName().c_str(),
            op_desc->GetType().c_str());
     return FAILED;

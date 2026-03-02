@@ -472,8 +472,6 @@ Status KernelExTaskInfo::UpdateEventIdForAicpuBlockingOp(const OpDescPtr &op_des
     }
     uint32_t event_id = 0U;
     if (davinci_model_->GetEventIdForBlockingAicpuOp(op_desc, stream_, event_id) != SUCCESS) {
-      REPORT_INNER_ERR_MSG("E19999", "Get event id failed for op:%s(%s).", op_desc->GetName().c_str(),
-                        op_desc->GetType().c_str());
       GELOGE(FAILED, "[Get][EventId] Get event id failed for op:%s(%s)", op_desc->GetName().c_str(),
              op_desc->GetType().c_str());
       return FAILED;

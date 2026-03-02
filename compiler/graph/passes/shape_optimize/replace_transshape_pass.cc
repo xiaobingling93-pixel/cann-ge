@@ -37,8 +37,6 @@ Status ReplaceTransShapePass::ReplaceTransShapeNode(ComputeGraphPtr &graph, Node
   std::string op_type;
   auto ret = GetOriginalType(trans_shape_node, op_type);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get OriginalType of op:%s(%s) failed",
-                      trans_shape_node->GetName().c_str(), trans_shape_node->GetType().c_str());
     GELOGE(FAILED, "[Get][OriginalType] of op:%s(%s) failed",
            trans_shape_node->GetName().c_str(), trans_shape_node->GetType().c_str());
     return FAILED;

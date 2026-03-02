@@ -32,7 +32,6 @@ domi::Status IfSubgraphAdapter::AdaptAndFindAllSubgraphs(
   auto ret = ParseIfNodeSubgraphs(*parent_node, onnx_graphs, name_to_onnx_graph, parent_graph_name);
   if (ret != SUCCESS) {
     GELOGE(ret, "[Parse][Node] Parse if node failed.");
-    REPORT_INNER_ERR_MSG("E19999", "[Parse][Node] Parse if node:%s failed.", parent_node->name().c_str());
     return ret;
   }
 
@@ -77,7 +76,6 @@ domi::Status IfSubgraphAdapter::ParseIfNodeSubgraphs(
     auto ret = GetSubgraphsAllInputs(*onnx_graph, all_inputs);
     if (ret != SUCCESS) {
       GELOGE(ret, "[Get][Inputs] Get subgraph all inputs failed, attr_name:%s.", attr_name.c_str());
-      REPORT_INNER_ERR_MSG("E19999", "Get subgraph all inputs failed, attr_name:%s.", attr_name.c_str());
       return ret;
     }
   }

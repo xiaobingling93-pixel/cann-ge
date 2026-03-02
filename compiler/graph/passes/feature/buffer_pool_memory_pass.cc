@@ -207,7 +207,6 @@ Status BufferPoolMemoryPass::CopyOutForMultiUsedOutput(ComputeGraphPtr &graph) c
         // single input and single output.
         if (InsertMemCpyNodeAfter(node) != SUCCESS) {
           GELOGE(INTERNAL_ERROR, "[Insert][MemCpy]Node:%s.", node->GetName().c_str());
-          REPORT_INNER_ERR_MSG("E19999", "Failed to insert mem copy node after %s.", node->GetName().c_str());
           return INTERNAL_ERROR;
         }
         changed = true;
@@ -257,8 +256,6 @@ Status BufferPoolMemoryPass::GetBufferPoolAndPeerCalcNodes(const ComputeGraphPtr
         Status ret = SetBufferPoolSize(batch_label, buffer_pool_id, buffer_pool_size);
         if (ret != SUCCESS) {
           GELOGE(ret, "[Set][BufferPoolSize]Node:%s", in_node->GetName().c_str());
-          REPORT_INNER_ERR_MSG("E19999", "Failed to set buffer pool size, something wrong with the info of node:%s",
-                             in_node->GetName().c_str());
           return ret;
         }
       }

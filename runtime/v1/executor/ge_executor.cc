@@ -690,7 +690,6 @@ Status GeExecutor::UnloadModel(const uint32_t model_id) {
   GELOGD("unload model %u begin.", model_id);
   Status ret = ModelManager::GetInstance().DestroyAicpuSessionForInfer(model_id);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Destroy Aicpu Session For Infer failed, model id:%u", model_id);
     GELOGE(ret, "[Destroy][AicpuSession] For Infer failed. model id:%u", model_id);
     return ret;
   }
@@ -824,7 +823,6 @@ Status GeExecutor::GetCombinedDynamicDims(const uint32_t model_id,
 
   const auto ret = GraphExecutor::GetCombinedDynamicDims(model_id, batch_info);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get Combined DynamicDims failed, model id:%u.", model_id);
     GELOGE(ret, "[Get][CombinedDynamicDims] failed, model id:%u.", model_id);
     return ret;
   }
@@ -850,7 +848,6 @@ Status GeExecutor::GetUserDesignateShapeOrder(const uint32_t model_id,
 
   const auto ret = GraphExecutor::GetUserDesignateShapeOrder(model_id, user_designate_shape_order);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "GetUserDesignateShapeOrder failed, model id:%u.", model_id);
     GELOGE(ret, "[Call][GetUserDesignateShapeOrder] failed, model id:%u.", model_id);
     return ret;
   }
@@ -926,7 +923,6 @@ Status GeExecutor::GetModelAttr(const uint32_t model_id, std::vector<std::string
   }
   const auto ret = GraphExecutor::GetOutputShapeInfo(model_id, dynamic_output_shape_info);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get Model Attr failed, model id:%u.", model_id);
     GELOGE(ret, "[Get][ModelAttr] failed, model id:%u.", model_id);
     return ret;
   }
@@ -1351,7 +1347,6 @@ Status GeExecutor::GetOrigInputInfo(const uint32_t model_id, const uint32_t inde
 
   const auto ret = GraphExecutor::GetOrigInputInfo(model_id, index, orig_input_info);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get Orig Input Info failed, model id:%u.", model_id);
     GELOGE(ret, "[Get][OrigInputInfo] failed, model id:%u.", model_id);
     return ret;
   }
@@ -1372,7 +1367,6 @@ Status GeExecutor::GetAllAippInputOutputDims(const uint32_t model_id, const uint
 
   const auto ret = GraphExecutor::GetAllAippInputOutputDims(model_id, index, input_dims, output_dims);
   if (ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get All Aipp Input Output Dims failed, model id:%u.", model_id);
     GELOGE(ret, "[Get][AllAippInputOutputDims] failed, model id:%u.", model_id);
     return ret;
   }

@@ -21,8 +21,6 @@ Status StopGradientPass::Run(NodePtr &node) {
   std::string type;
   Status status_ret = GetOriginalType(node, type);
   if (status_ret != SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Get OriginalType of op:%s(%s) failed",
-                      node->GetName().c_str(), node->GetType().c_str());
     GELOGE(status_ret, "[Get][OriginalType] of op:%s(%s) failed",
            node->GetName().c_str(), node->GetType().c_str());
     return status_ret;

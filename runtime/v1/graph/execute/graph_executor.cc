@@ -309,7 +309,6 @@ Status GraphExecutor::GetNodeAttr(const uint32_t model_id, const std::string &op
   const auto ret = ModelManager::GetInstance().GetNodeAttr(model_id, op_name, attr_name, attr_value);
   if (ret != SUCCESS) {
     GELOGE(ret, "[Get][OpAttr]Get op:%s attr:%s failed.", op_name.c_str(), attr_name.c_str());
-    REPORT_INNER_ERR_MSG("E19999", "Get op:%s attr:%s failed.", op_name.c_str(), attr_name.c_str());
     return ret;
   }
   return SUCCESS;
