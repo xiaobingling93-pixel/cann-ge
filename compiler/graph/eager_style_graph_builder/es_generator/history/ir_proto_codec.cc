@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "graph/utils/attr_utils.h"
+#include "graph/utils/type_utils.h"
 #include "../utils.h"
 
 namespace ge {
@@ -153,10 +154,10 @@ std::vector<IrInput> ParseInputsFromJson(const nlohmann::json &op_json) {
                               ctx + ".type invalid: ");
     auto dtype_it = input_json.find("dtype");
     if (dtype_it != input_json.end()) {
-      if (!dtype_it->is_array()) {
-        throw std::runtime_error(ctx + ".dtype is not an array");
+      if (!dtype_it->is_string()) {
+        throw std::runtime_error(ctx + ".dtype is not a string");
       }
-      input.dtype = dtype_it->get<std::vector<std::string>>();
+      input.dtype = dtype_it->get<std::string>();
     }
     inputs.emplace_back(std::move(input));
   }
@@ -181,10 +182,10 @@ std::vector<IrOutput> ParseOutputsFromJson(const nlohmann::json &op_json) {
                                ctx + ".type invalid: ");
     auto dtype_it = output_json.find("dtype");
     if (dtype_it != output_json.end()) {
-      if (!dtype_it->is_array()) {
-        throw std::runtime_error(ctx + ".dtype is not an array");
+      if (!dtype_it->is_string()) {
+        throw std::runtime_error(ctx + ".dtype is not a string");
       }
-      output.dtype = dtype_it->get<std::vector<std::string>>();
+      output.dtype = dtype_it->get<std::string>();
     }
     outputs.emplace_back(std::move(output));
   }
@@ -245,20 +246,29 @@ IrOpProto IrProtoCodec::FromOpDesc(const OpDescPtr &op_desc) {
   GE_ASSERT_NOTNULL(op_desc);
   IrOpProto proto;
   proto.op_type = op_desc->GetType();
-
-  for (const auto &ir_input : op_desc->GetIrInputs()) {
+  std::vector<std::string> inputs_dtypes;
+  GE_ASSERT_GRAPH_SUCCESS(OpDescUtils::GetIrInputDtypeSymIds(op_desc, inputs_dtypes));
+  const auto &ir_inputs = op_desc->GetIrInputs();
+  GE_ASSERT_EQ(inputs_dtypes.size(), ir_inputs.size());
+  for (size_t i = 0U; i < ir_inputs.size(); ++i) {
+    const auto &ir_input = ir_inputs[i];
     IrInput input;
     input.name = ir_input.first;
     input.type = ir_input.second;
-    // ttodo 补充dtype
+    input.dtype = inputs_dtypes[i];
     proto.inputs.emplace_back(std::move(input));
   }
 
-  for (const auto &ir_output : op_desc->GetIrOutputs()) {
+  const auto &ir_outputs = op_desc->GetIrOutputs();
+  std::vector<std::string> outputs_dtypes;
+  GE_ASSERT_GRAPH_SUCCESS(OpDescUtils::GetIrOutputDtypeSymIds(op_desc, outputs_dtypes));
+  GE_ASSERT_EQ(outputs_dtypes.size(), ir_outputs.size());
+  for (size_t i = 0U; i < ir_outputs.size(); ++i) {
+    const auto &ir_output = ir_outputs[i];
     IrOutput output;
     output.name = ir_output.first;
     output.type = ir_output.second;
-    // ttodo 补充dtype
+    output.dtype = outputs_dtypes[i];
     proto.outputs.emplace_back(std::move(output));
   }
 

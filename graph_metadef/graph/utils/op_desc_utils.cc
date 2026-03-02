@@ -1104,6 +1104,42 @@ graphStatus OpDescUtils::GetIrOutputDescRange(const OpDescPtr &op,
   return ge::GetIrOutputDescRange(op, ir_output_2_range);
 }
 
+graphStatus OpDescUtils::GetIrInputDtypeSymIds(const OpDescPtr &op_desc, std::vector<std::string> &dtype_sym_ids) {
+  GE_CHECK_NOTNULL(op_desc);
+  GE_CHECK_NOTNULL(op_desc->impl_);
+  const auto &sym_store = op_desc->impl_->GetIRMeta().GetIRDataTypeSymbolStore();
+
+  dtype_sym_ids.clear();
+  dtype_sym_ids.resize(op_desc->GetIrInputs().size());
+  for (const auto &sym_holder : sym_store.GetSymbols()) {
+    GE_CHECK_NOTNULL(sym_holder);
+    const auto ir_input_indexes = sym_holder->GetDirectIrInputIndexes();
+    if (ir_input_indexes.empty()) {
+      continue;
+    }
+    for (const auto idx : ir_input_indexes) {
+      dtype_sym_ids[idx] = sym_holder->Id();
+    }
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
+graphStatus OpDescUtils::GetIrOutputDtypeSymIds(const OpDescPtr &op_desc, std::vector<std::string> &dtype_sym_ids) {
+  GE_CHECK_NOTNULL(op_desc);
+  GE_CHECK_NOTNULL(op_desc->impl_);
+  const auto &sym_store = op_desc->impl_->GetIRMeta().GetIRDataTypeSymbolStore();
+
+  dtype_sym_ids.clear();
+  dtype_sym_ids.resize(op_desc->GetIrOutputs().size());
+  const auto &out_syms = sym_store.GetOutSymbols();
+  GE_ASSERT_EQ(out_syms.size(), dtype_sym_ids.size());
+  for (size_t i = 0U; i < out_syms.size(); ++i) {
+    dtype_sym_ids[i] = out_syms[i]->Id();
+  }
+
+  return ge::GRAPH_SUCCESS;
+}
+
 graphStatus OpDescUtils::GetPromoteIrInputList(const OpDescPtr &op_desc,
                                                std::vector<std::vector<size_t>> &promote_index_list) {
   GE_ASSERT_NOTNULL(op_desc);

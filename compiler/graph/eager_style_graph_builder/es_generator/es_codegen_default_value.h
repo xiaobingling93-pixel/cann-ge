@@ -13,6 +13,7 @@
 
 namespace ge {
 namespace es {
+inline const char *kEsCodeGenDefaultMode = "codegen";
 inline const char *kEsCodeGenDefaultOutputDir = "./";
 inline const char *kEsCodeGenDefaultModelName = "all";
 inline const char *kEsCodeGenDefaultPrefixGuard = "";
@@ -21,6 +22,7 @@ inline const char *kEsCodeGenDefaultHistoryRegistry = "";
 inline const char *kEsCodeGenDefaultReleaseVersion = "";
 inline const char *kEsCodeGenDefaultReleaseDate = "";
 inline const char *kEsCodeGenDefaultBranchName = "";
+inline const char *kEsExtractHistoryMode = "extract_history";
 }  // namespace es
 }  // namespace ge
 #endif  //_ES_CODEGEN_DEFAULT_VALUE_H_

@@ -117,6 +117,12 @@ class SymDtype : public SymDtypeExpression {
 
   const std::string &DebugString() const;
 
+  // 仅返回当前Sym对应的输入实体索引
+  std::vector<size_t> GetDirectIrInputIndexes() const;
+
+  // 返回当前Sym涉及的输入实体索引：
+  // - 由Sym组成的表达式，返回表达式中所有Sym对应的输入实体索引
+  // - 非表达式，返回该Sym对应的输入实体索引
   std::vector<size_t> GetIrInputIndexes() const override;
 
   TensorType GetTensorType() const {

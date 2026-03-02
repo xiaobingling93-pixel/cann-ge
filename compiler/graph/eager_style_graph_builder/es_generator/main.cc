@@ -18,6 +18,7 @@ namespace ge {
 namespace es {
 
 // 定义命令行参数
+DEFINE_string(mode, ge::es::kEsCodeGenDefaultMode, "Generate mode, extract_history|codegen");
 DEFINE_string(output_dir, ge::es::kEsCodeGenDefaultOutputDir, "Output directory for generated code files");
 DEFINE_string(module_name, ge::es::kEsCodeGenDefaultModelName, "Module name for aggregate header file naming");
 DEFINE_string(h_guard_prefix, ge::es::kEsCodeGenDefaultPrefixGuard, "Header guard prefix for generated headers");
@@ -25,7 +26,6 @@ DEFINE_string(exclude_ops, ge::es::kEsCodeGenDefaultExcludeOps, "Exclude ops for
 DEFINE_string(history_registry, ge::es::kEsCodeGenDefaultHistoryRegistry, "History registry dir for codegen; empty disables history");
 DEFINE_string(release_version, ge::es::kEsCodeGenDefaultReleaseVersion, "Release version in history registry");
 DEFINE_bool(help, false, "show this help message");
-DEFINE_bool(extract_history, false, "Generate history registry data");
 DEFINE_string(release_date, ge::es::kEsCodeGenDefaultReleaseDate, "Release date for history registry generation");
 DEFINE_string(branch_name, ge::es::kEsCodeGenDefaultBranchName, "Branch name for history registry generation");
 
@@ -52,9 +52,11 @@ void GenEsImpl(const GenEsbOptions &options);
  * - 代码生成模式：
  *   ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_LIST] [--history_registry=PKG_DIR] [--release_version=VER]
  * - 历史原型库生成模式：
- *  ./gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+ *  ./gen_esb --mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
  *
  * 参数说明：
+ * --mode：可选参数，指定生成模式，extract_history|codegen
+ *   - 如果不指定，默认codegen
  * --output_dir：可选参数，指定生成的目标目录
  *   - 如果不指定，默认输出到当前目录
  * --module_name：可选参数，控制聚合头文件的命名
@@ -73,7 +75,6 @@ void GenEsImpl(const GenEsbOptions &options);
  * --release_version：
  *   - 代码生成模式：可选参数，与 `--history_registry` 配合使用，指定当前版本号，生成的C++接口包含该版本的兼容版本信息；如果不指定，生成当前日期为基准兼容的历史版本
  *   - 历史原型库生成模式：必填参数，指定当前历史原型数据对应的版本号
- * --extract_history：控制是否生成历史原型结构化数据，默认不生成
  * --release_date：可选参数，控制历史原型结构化数据的发布日期，格式 `YYYY-MM-DD`
  *   - 如果不指定，使用当前日期
  * --branch_name：可选参数，控制历史原型结构化数据的发布分支名
@@ -124,13 +125,13 @@ void GenEsImpl(const GenEsbOptions &options);
  * ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
  *
  * # 生成历史原型结构化数据到当前目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
- * ./gen_esb --extract_history --release_version=8.0.RC1
+ * ./gen_esb --mode=extract_history --release_version=8.0.RC1
  *
  * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
- * ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+ * ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
  *
  * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，自定义发布日期"2024-09-30"，分支名为"master"
- * ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master
+ * ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master
  *
  * # 检查环境变量
  * echo $ASCEND_OPP_PATH
@@ -167,12 +168,12 @@ static void DisplayProgramHeader() {
  */
 static bool ParseCommandLineArgs(int argc, char *argv[], GenEsbOptions &options) {
   ge::flgs::SetUsageMessage(R"(
-ES Graph Builder Generator
+ES Graph Builder Generator v1.0
 Usage:
   Code Generator:
     ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_TYPE] [--history_registry=PKG_DIR] [--release_version=VER]
   History Registry Generator:
-    ./gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+    ./gen_esb --mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
 
 Examples:
   Code Generator:
@@ -186,9 +187,9 @@ Examples:
     ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
 
   History Registry Generator:
-    ./gen_esb --extract_history --release_version=8.0.RC1
-    ./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
-    ./gen_esb --extract_history --release_version=8.0.RC1 --release_date=2024-09-30 --branch_name=master
+    ./gen_esb --mode=extract_history --release_version=8.0.RC1
+    ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+    ./gen_esb --mode=extract_history --release_version=8.0.RC1 --release_date=2024-09-30 --branch_name=master
 
 Environment variables required:
   ASCEND_OPP_PATH        # Must be set, pointing to CANN ops path
@@ -206,22 +207,26 @@ Environment variables required:
     return false;
   }
 
+  options.mode = FLAGS_mode;
+  if (options.mode != kEsCodeGenDefaultMode && options.mode != kEsExtractHistoryMode) {
+    std::cerr << "Error: Invalid mode! Please use codegen or extract_history" << std::endl;
+    return false;
+  }
   options.output_dir = FLAGS_output_dir;
   options.module_name = FLAGS_module_name;
   options.h_guard_prefix = FLAGS_h_guard_prefix;
   options.exclude_ops = FLAGS_exclude_ops;
   options.history_registry = FLAGS_history_registry;
   options.release_version = FLAGS_release_version;
-  options.extract_history = FLAGS_extract_history;
-  if (options.extract_history) {
+  if (options.mode == kEsExtractHistoryMode) {
     options.release_date = FLAGS_release_date;
     options.branch_name = FLAGS_branch_name;
   }
   return true;
 }
 
-static const char *GetActionName(const bool extract_history) {
-  return extract_history ? "history registry generation" : "code generation";
+static const char *GetActionName(const std::string &mode) {
+  return mode == kEsExtractHistoryMode ? "history registry generation" : "code generation";
 }
 
 /**
@@ -262,12 +267,12 @@ static bool ExecuteGeneration(const GenEsbOptions &options) {
     GenEsImpl(options);
     return true;
   } catch (const std::exception &e) {
-    std::cerr << "\nError: Exception occurred during " << GetActionName(options.extract_history) << ":" << std::endl;
+    std::cerr << "\nError: Exception occurred during " << GetActionName(options.mode) << ":" << std::endl;
     std::cerr << "  " << e.what() << std::endl;
     std::cerr << "\nPlease check environment configuration and permissions." << std::endl;
     return false;
   } catch (...) {
-    std::cerr << "\nError: Unknown exception occurred during " << GetActionName(options.extract_history) << "!" << std::endl;
+    std::cerr << "\nError: Unknown exception occurred during " << GetActionName(options.mode) << "!" << std::endl;
     std::cerr << "Please check system environment and CANN installation status." << std::endl;
     return false;
   }
@@ -290,7 +295,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 4. 开始执行
-    std::cout << "Starting " << ge::es::GetActionName(opts.extract_history) << "..." << std::endl;
+    std::cout << "Starting " << ge::es::GetActionName(opts.mode) << "..." << std::endl;
 
     // 5. 检查环境变量
     if (!ge::es::CheckEnvironmentVariables()) {
@@ -300,7 +305,7 @@ int main(int argc, char *argv[]) {
     // 6. 执行生成任务
     if (ge::es::ExecuteGeneration(opts)) {
       std::cout << "\n==========================================" << std::endl;
-      if (opts.extract_history) {
+      if (opts.mode == ge::es::kEsExtractHistoryMode) {
         std::cout << "History registry generation completed!" << std::endl;
         std::cout << "Release version: " << opts.release_version << std::endl;
       } else {

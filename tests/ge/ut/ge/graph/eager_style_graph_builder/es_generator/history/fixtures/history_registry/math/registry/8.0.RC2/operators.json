@@ -3,10 +3,10 @@
     {
       "op_type": "phony_1i_1o",
       "inputs": [
-        {"name": "x", "type": "INPUT"},
-        {"name": "dx", "type": "DYNAMIC_INPUT"}
+        {"name": "x", "type": "INPUT", "dtype": "TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32})"},
+        {"name": "dx", "type": "DYNAMIC_INPUT", "dtype": "TensorType({DT_FLOAT, DT_INT32})"}
       ],
-      "outputs": [{"name": "y", "type": "OUTPUT"}],
+      "outputs": [{"name": "y", "type": "OUTPUT", "dtype": "TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32})"}],
       "attrs": [{"name": "index", "type": "Int", "required": false, "default_value": "0"}],
       "subgraphs": []
     }

@@ -254,7 +254,7 @@ void ExecuteCodeGeneration(const std::string &output_dir, GeneratorManager &mana
  * @param options gen_esb 参数
  */
 void DisplayGenerationParameters(const GenEsbOptions &options) {
-  if (options.extract_history) {
+  if (options.mode == ge::es::kEsExtractHistoryMode) {
     if (!options.release_version.empty()) {
       std::cout << "Release version: " << options.release_version << std::endl;
     }
@@ -336,7 +336,7 @@ void GenEsImpl(const GenEsbOptions &options) {
   DisplayGenerationParameters(options);
 
   // 3. 执行 ES 生成任务
-  if (options.extract_history) {
+  if (options.mode == ge::es::kEsExtractHistoryMode) {
     GenerateHistoryRegistry(processed_output_dir, options.release_version, options.release_date, options.branch_name);
   } else {
     GenerateCode(processed_output_dir, options);

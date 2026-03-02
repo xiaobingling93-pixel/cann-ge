@@ -14,13 +14,13 @@
 namespace ge {
 namespace es {
 struct GenEsbOptions {
+  std::string mode;
   std::string output_dir;
   std::string module_name;
   std::string h_guard_prefix;
   std::string exclude_ops;
   std::string history_registry;
   std::string release_version;
-  bool extract_history{false};
   std::string release_date;
   std::string branch_name;
 };

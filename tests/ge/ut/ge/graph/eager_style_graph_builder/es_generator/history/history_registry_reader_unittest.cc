@@ -209,11 +209,14 @@ TEST_F(HistoryRegistryReaderUT, LoadOpProtoFindsOpAndParses) {
   ASSERT_EQ(proto.inputs.size(), 2U);
   EXPECT_EQ(proto.inputs[0].name, "input");
   EXPECT_EQ(proto.inputs[0].type, ge::kIrInputRequired);
+  EXPECT_EQ(proto.inputs[0].dtype, "TensorType({DT_FLOAT, DT_INT32})");
   EXPECT_EQ(proto.inputs[1].name, "dy_input");
   EXPECT_EQ(proto.inputs[1].type, ge::kIrInputDynamic);
+  EXPECT_EQ(proto.inputs[1].dtype, "TensorType({DT_FLOAT, DT_INT32, DT_INT64})");
   ASSERT_EQ(proto.outputs.size(), 1U);
   EXPECT_EQ(proto.outputs[0].name, "output");
   EXPECT_EQ(proto.outputs[0].type, ge::kIrOutputDynamic);
+  EXPECT_EQ(proto.outputs[0].dtype, "TensorType({DT_FLOAT, DT_INT32})");
   ASSERT_EQ(proto.attrs.size(), 1U);
   EXPECT_EQ(proto.attrs[0].name, "index");
   EXPECT_EQ(proto.attrs[0].av_type, "Int");

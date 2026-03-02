@@ -231,13 +231,18 @@ const std::string &SymDtype::DebugString() const {
   return id_;
 }
 
+std::vector<size_t> SymDtype::GetDirectIrInputIndexes() const {
+  std::vector<size_t> ir_input_indexes;
+  ir_input_indexes.reserve(ir_inputs_.size());
+  for (const auto &ir_input : ir_inputs_) {
+    ir_input_indexes.push_back(ir_input.index);
+  }
+  return ir_input_indexes;
+}
+
 std::vector<size_t> SymDtype::GetIrInputIndexes() const {
   if (expression_ == nullptr) {
-    std::vector<size_t> ir_input_indexes;
-    for (const auto &ir_input : ir_inputs_) {
-      ir_input_indexes.push_back(ir_input.index);
-    }
-    return ir_input_indexes;
+    return GetDirectIrInputIndexes();
   } else {
     return expression_->GetIrInputIndexes();
   }

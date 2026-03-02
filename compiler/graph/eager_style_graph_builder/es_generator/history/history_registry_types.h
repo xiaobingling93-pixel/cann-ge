@@ -22,13 +22,13 @@ namespace history {
 struct IrInput {
   std::string name;
   IrInputType type;
-  std::vector<std::string> dtype;
+  std::string dtype;
 };
 
 struct IrOutput {
   std::string name;
   IrOutputType type;
-  std::vector<std::string> dtype;
+  std::string dtype;
 };
 
 struct IrAttr {

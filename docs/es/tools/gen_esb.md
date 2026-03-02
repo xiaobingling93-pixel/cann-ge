@@ -31,11 +31,13 @@ gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exc
 ```
 ### 历史原型库生成模式
 ```bash
-gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+gen_esb --mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
 ```
 
 注：因为[前置要求](#前置要求)中已经配置过环境变量，此时`gen_esb`已经被添加到了`PATH`环境变量中，因此可直接执行
 ### 参数说明
+- --mode：可选参数，指定生成模式，支持 `codegen` 和 `extract_history`
+  如果不指定，默认codegen
 - --output_dir：可选参数，指定生成的目标目录
   如果不指定，默认输出到当前目录
 - --module_name：可选参数，控制聚合头文件的命名
@@ -54,7 +56,6 @@ gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_da
 - --release_version：
   - 代码生成模式：可选参数，与 `--history_registry` 配合使用，指定当前版本号，生成的C++接口包含该版本的兼容版本信息；如果不指定，生成当前日期为基准兼容的历史版本
   - 历史原型库生成模式：必填参数，指定当前历史原型数据对应的版本号
-- --extract_history：控制是否生成历史原型结构化数据，默认不生成
 - --release_date：可选参数，控制历史原型结构化数据的发布日期，格式 `YYYY-MM-DD`
   - 如果不指定，使用当前日期
 - --branch_name：可选参数，控制历史原型结构化数据的发布分支名
@@ -100,13 +101,13 @@ gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_da
 `./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2`
 
 ### 生成历史原型结构化数据到当前目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
-`./gen_esb --extract_history --release_version=8.0.RC1`
+`./gen_esb --mode=extract_history --release_version=8.0.RC1`
  
 ### 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
-`./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math`
+`./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math`
  
 ### 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，自定义发布日期"2024-09-30"，分支名为"master"
-`./gen_esb --extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master`
+`./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master`
 
 ## 注意事项
 1. 确保[环境变量](#环境变量要求)已正确设置
@@ -118,5 +119,3 @@ gen_esb --extract_history --release_version=VER [--output_dir=DIR] [--release_da
 - 如果环境变量未设置，程序会提示错误并退出
 - 如果输出目录创建失败，会回退到当前目录
 - 不支持的算子会被记录在生成的代码注释中
-
-

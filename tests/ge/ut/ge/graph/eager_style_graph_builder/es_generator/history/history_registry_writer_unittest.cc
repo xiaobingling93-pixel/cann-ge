@@ -59,11 +59,13 @@ void ExpectOpJsonPhony1i1o(const nlohmann::json &op_1i_1o_json) {
   ASSERT_EQ(op_1i_1o_json["inputs"].size(), 1U);
   EXPECT_EQ(op_1i_1o_json["inputs"][0]["name"], "x");
   EXPECT_EQ(op_1i_1o_json["inputs"][0]["type"], "INPUT");
+  EXPECT_EQ(op_1i_1o_json["inputs"][0]["dtype"], "TensorType::ALL()");
 
   ASSERT_TRUE(op_1i_1o_json["outputs"].is_array());
   ASSERT_EQ(op_1i_1o_json["outputs"].size(), 1U);
   EXPECT_EQ(op_1i_1o_json["outputs"][0]["name"], "y");
   EXPECT_EQ(op_1i_1o_json["outputs"][0]["type"], "OUTPUT");
+  EXPECT_EQ(op_1i_1o_json["outputs"][0]["dtype"], "TensorType::ALL()");
 
   ASSERT_TRUE(op_1i_1o_json["attrs"].is_array());
   ASSERT_EQ(op_1i_1o_json["attrs"].size(), 1U);
@@ -88,13 +90,16 @@ void ExpectOpJsonPhonyIf(const nlohmann::json &op_if_json) {
   ASSERT_EQ(op_if_json["inputs"].size(), 2U);
   EXPECT_EQ(op_if_json["inputs"][0]["name"], "cond");
   EXPECT_EQ(op_if_json["inputs"][0]["type"], "INPUT");
+  EXPECT_EQ(op_if_json["inputs"][0]["dtype"], "TensorType::ALL()");
   EXPECT_EQ(op_if_json["inputs"][1]["name"], "input");
   EXPECT_EQ(op_if_json["inputs"][1]["type"], "DYNAMIC_INPUT");
+  EXPECT_EQ(op_if_json["inputs"][1]["dtype"], "TensorType::ALL()");
 
   ASSERT_TRUE(op_if_json["outputs"].is_array());
   ASSERT_EQ(op_if_json["outputs"].size(), 1U);
   EXPECT_EQ(op_if_json["outputs"][0]["name"], "output");
   EXPECT_EQ(op_if_json["outputs"][0]["type"], "DYNAMIC_OUTPUT");
+  EXPECT_EQ(op_if_json["outputs"][0]["dtype"], "TensorType::ALL()");
 
   ASSERT_TRUE(op_if_json["attrs"].is_array());
   EXPECT_TRUE(op_if_json["attrs"].empty());

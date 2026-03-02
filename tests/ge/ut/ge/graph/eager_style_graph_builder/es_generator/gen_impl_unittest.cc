@@ -55,6 +55,7 @@ class GenImplLLT : public ::testing::Test {
     // 创建测试输出目录
     test_output_dir_ = "./test_gen_output/";
     ge::es::GenEsbOptions opts;
+    opts.mode = ge::es::kEsCodeGenDefaultMode;
     opts.output_dir = test_output_dir_;
     opts.module_name = ge::es::kEsCodeGenDefaultModelName;
     opts.h_guard_prefix = ge::es::kEsCodeGenDefaultPrefixGuard;
@@ -73,7 +74,7 @@ class GenImplLLT : public ::testing::Test {
 class GenImplLLTExtractHistory : public ::testing::Test {
  protected:
   void SetUp() override {
-    opts.extract_history = true;
+    opts.mode = ge::es::kEsExtractHistoryMode;
     opts.output_dir = "./test_history_gen_output_" + std::to_string(getpid()) + "/";
   }
 

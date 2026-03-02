@@ -28,13 +28,13 @@ nlohmann::json PhonyAllOpJson() {
   return {
       {"op_type", "phony_all"},
       {"inputs", nlohmann::json::array({
-                     {{"name", "x"}, {"type", "INPUT"}},
-                     {{"name", "xo"}, {"type", "OPTIONAL_INPUT"}},
-                     {{"name", "dx"}, {"type", "DYNAMIC_INPUT"}},
+                     {{"name", "x"}, {"type", "INPUT"}, {"dtype", "TensorType({DT_FLOAT, DT_FLOAT16})"}},
+                     {{"name", "xo"}, {"type", "OPTIONAL_INPUT"}, {"dtype", "T"}},
+                     {{"name", "dx"}, {"type", "DYNAMIC_INPUT"}, {"dtype", "TensorType({RealNumberType(), DT_VARIANT})"}},
                  })},
       {"outputs", nlohmann::json::array({
-                      {{"name", "y"}, {"type", "OUTPUT"}},
-                      {{"name", "dy"}, {"type", "DYNAMIC_OUTPUT"}},
+                      {{"name", "y"}, {"type", "OUTPUT"}, {"dtype", "TensorType::NumberType()"}},
+                      {{"name", "dy"}, {"type", "DYNAMIC_OUTPUT"}, {"dtype", "T"}},
                  })},
       {"subgraphs", nlohmann::json::array({
                  {{"name", "g"}, {"type", "STATIC"}},
@@ -72,18 +72,23 @@ void ExpectPhonyAllInputs(const IrOpProto &proto) {
   ASSERT_EQ(proto.inputs.size(), 3U);
   EXPECT_EQ(proto.inputs[0].name, "x");
   EXPECT_EQ(proto.inputs[0].type, kIrInputRequired);
+  EXPECT_EQ(proto.inputs[0].dtype, "TensorType({DT_FLOAT, DT_FLOAT16})");
   EXPECT_EQ(proto.inputs[1].name, "xo");
   EXPECT_EQ(proto.inputs[1].type, kIrInputOptional);
+  EXPECT_EQ(proto.inputs[1].dtype, "T");
   EXPECT_EQ(proto.inputs[2].name, "dx");
   EXPECT_EQ(proto.inputs[2].type, kIrInputDynamic);
+  EXPECT_EQ(proto.inputs[2].dtype, "TensorType({RealNumberType(), DT_VARIANT})");
 }
 
 void ExpectPhonyAllOutputs(const IrOpProto &proto) {
   ASSERT_EQ(proto.outputs.size(), 2U);
   EXPECT_EQ(proto.outputs[0].name, "y");
   EXPECT_EQ(proto.outputs[0].type, kIrOutputRequired);
+  EXPECT_EQ(proto.outputs[0].dtype, "TensorType::NumberType()");
   EXPECT_EQ(proto.outputs[1].name, "dy");
   EXPECT_EQ(proto.outputs[1].type, kIrOutputDynamic);
+  EXPECT_EQ(proto.outputs[1].dtype, "T");
 }
 
 void ExpectPhonyAllSubgraphs(const IrOpProto &proto) {
@@ -232,9 +237,9 @@ void ExpectRuntimeErrorWithMessage(F &&fn, const std::string &expected) {
 }  // namespace
 
 REG_OP(phony_all)
-  .INPUT(x, TensorType::ALL())
-  .OPTIONAL_INPUT(xo, TensorType::ALL())
-  .DYNAMIC_INPUT(dx, TensorType::ALL())
+  .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+  .OPTIONAL_INPUT(xo, "T")
+  .DYNAMIC_INPUT(dx, TensorType({RealNumberType(), DT_VARIANT}))
   .GRAPH(g)
   .DYNAMIC_GRAPH(dg)
   .REQUIRED_ATTR(ri, Int)
@@ -252,7 +257,8 @@ REG_OP(phony_all)
   .ATTR(ls, ListString, {"a", "b"})
   .REQUIRED_ATTR(rlb, ListBool)
   .OUTPUT(y, TensorType::NumberType())
-  .DYNAMIC_OUTPUT(dy, TensorType::All())
+  .DYNAMIC_OUTPUT(dy, "T")
+  .DATATYPE(T, TensorType::ALL())
   .OP_END_FACTORY_REG(phony_all);
 
 class IrProtoCodecUT : public ::testing::Test {};

@@ -115,6 +115,8 @@ class OpDescUtils {
                                                std::vector<std::vector<size_t>> &promote_index_list);
   static ge::graphStatus GetPromoteInstanceInputList(const OpDescPtr &op_desc,
                                                      std::vector<std::vector<size_t>> &promote_index_list);
+  static ge::graphStatus GetIrInputDtypeSymIds(const OpDescPtr &op_desc, std::vector<std::string> &dtype_sym_ids);
+  static ge::graphStatus GetIrOutputDtypeSymIds(const OpDescPtr &op_desc, std::vector<std::string> &dtype_sym_ids);
  private:
   static GeTensorPtr MutableWeights(ge::OpDesc& op_desc);
   static GeTensorPtr MutableWeights(const ge::OpDescPtr op_desc);

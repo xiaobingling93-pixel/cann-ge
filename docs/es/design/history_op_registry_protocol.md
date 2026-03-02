@@ -78,8 +78,8 @@
 最小字段：
 - `operators[]`
   - `op_type`
-  - `inputs[]`：每项至少包含 `name/type/dtype[]`
-  - `outputs[]`：每项至少包含 `name/type/dtype[]`
+  - `inputs[]`：每项至少包含 `name/type/dtype`
+  - `outputs[]`：每项至少包含 `name/type/dtype`
   - `attrs[]`：每项至少包含 `name/type/required`，可包含 `default_value`
   - `subgraphs[]`：每项至少包含 `name/type`
 
@@ -167,11 +167,11 @@ gen_esb --extract-history --output-dir <out> --release-version <ver>
     {
       "op_type": "Foo",
       "inputs": [
-        { "name": "x", "type": "INPUT", "dtype": ["DT_FLOAT"] },
-        { "name": "xo1", "type": "OPTIONAL_INPUT", "dtype": ["DT_FLOAT"] }
+        { "name": "x", "type": "INPUT", "dtype": "TensorType({DT_FLOAT})" },
+        { "name": "xo1", "type": "OPTIONAL_INPUT", "dtype": "TensorType({DT_FLOAT})" }
       ],
       "outputs": [
-        { "name": "y", "type": "OUTPUT", "dtype": ["DT_FLOAT"] }
+        { "name": "y", "type": "OUTPUT", "dtype": "TensorType({DT_FLOAT})" }
       ],
       "attrs": [
         { "name": "a", "type": "Int", "required": false, "default_value": "0" },
