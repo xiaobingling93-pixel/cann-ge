@@ -764,15 +764,25 @@ main() {
 
   # module autofuse_framework
   if [ "X$ENABLE_GE_AUTOFUSE_FRAMEWORK" == "Xon" ]; then
+    # autofuse_framework ut
     if [ "X$ENABLE_UT" = "Xon" ]; then
       bash scripts/test/run_autofuse_test.sh -u -m framework -j $THREAD_NUM $VERBOSE $COVERAGE
+    fi
+    # autofuse_framework st
+    if [ "X$ENABLE_ST" = "Xon" ]; then
+      bash scripts/test/run_autofuse_test.sh -s -m framework -j $THREAD_NUM $VERBOSE $COVERAGE
     fi
   fi
 
   # module autofuse_ascendc_api
   if [ "X$ENABLE_GE_AUTOFUSE_ASCENDC_API" == "Xon" ]; then
+    # autofuse_ascendc_api ut
     if [ "X$ENABLE_UT" = "Xon" ]; then
       bash scripts/test/run_autofuse_test.sh -u -m ascendc_api -j $THREAD_NUM $VERBOSE $COVERAGE
+    fi
+    # autofuse_ascendc_api st
+    if [ "X$ENABLE_ST" = "Xon" ]; then
+      bash scripts/test/run_autofuse_test.sh -s -m ascendc_api -j $THREAD_NUM $VERBOSE $COVERAGE
     fi
   fi
 
