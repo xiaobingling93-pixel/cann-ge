@@ -10,8 +10,6 @@
 
 #include "ge/fusion/pass/pattern_fusion_pass.h"
 
-#include <boost/core/demangle.hpp>
-
 #include "framework/common/debug/ge_log.h"
 #include "common/checker.h"
 #include "common/plugin/ge_make_unique_util.h"
@@ -20,7 +18,6 @@
 #include "ge/fusion/graph_rewriter.h"
 #include "ge/fusion/pattern_matcher.h"
 #include "graph/utils/graph_utils_ex.h"
-#include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
 namespace ge {
 namespace fusion {

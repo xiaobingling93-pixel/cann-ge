@@ -17,8 +17,6 @@
 #include "ge/fusion/subgraph_boundary.h"
 #include "ge/fusion/graph_rewriter.h"
 #include "graph/fusion/fusion_utils.h"
-#include <boost/core/demangle.hpp>
-#include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
 namespace ge {
 namespace fusion {
