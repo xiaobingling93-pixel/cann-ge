@@ -63,6 +63,7 @@ target_include_directories(data_flow_base SYSTEM PRIVATE
     ${AIR_CODE_DIR}/dflow
     ${AIR_CODE_DIR}/dflow/inc
     ${AIR_CODE_DIR}/dflow/inc/data_flow
+    ${AIR_CODE_DIR}/dflow/deployer
 )
 
 target_link_options(data_flow_base PRIVATE

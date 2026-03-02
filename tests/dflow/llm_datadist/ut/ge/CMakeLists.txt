@@ -56,10 +56,15 @@ add_executable(ut_llm_engine_utest
         ${LLM_ENGINE_TEST_FILES}
         )
 
-target_compile_options(ut_llm_engine_utest PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+add_dependencies(ut_llm_engine_utest
+        profiler_stub
+        )
+
+target_compile_options(ut_llm_engine_utest PRIVATE
         -Werror=format
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
+        -fno-access-control
         )
 
 target_compile_definitions(ut_llm_engine_utest PRIVATE
@@ -105,7 +110,7 @@ target_link_libraries(ut_llm_engine_utest
         intf_pub
         ascendcl_stub
         llm_engine_base
-        ${AIR_COMMON_LINK_OPTION}
+        llm_engine
         -Wl,--whole-archive
         -Wl,--no-whole-archive
         GTest::gtest GTest::gtest_main GTest::gmock_main

@@ -354,5 +354,11 @@ void AclResourceManager::HandleReleaseSourceByStream(aclrtStream stream, aclrtSt
     (void)CleanAllocators(stream);
     ACL_LOG_INFO("successfully execute HandleReleaseSourceByStream.");
 }
+
+AclResourceManager &AclResourceManager::GetInstance()
+{
+  static AclResourceManager instance;
+  return instance;
+}
 }
 

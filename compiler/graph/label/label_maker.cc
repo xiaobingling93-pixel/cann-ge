@@ -433,4 +433,9 @@ NodePtr LabelMaker::AddLabelSwitchIndex(const ComputeGraphPtr &graph, const std:
 
   return op_data;
 }
+
+LabelMakerFactory &LabelMakerFactory::Instance() {
+  static LabelMakerFactory instance;
+  return instance;
+}
 }  // namespace ge

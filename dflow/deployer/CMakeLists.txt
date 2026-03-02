@@ -186,12 +186,7 @@ target_include_directories(model_deployer PRIVATE
         )
 
 target_compile_options(model_deployer PRIVATE
-        -O2
-        -fPIC
-        -fno-common
-        -Wextra
-        -Wfloat-equal
-        -Werror
+        ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
         )
 
 add_dependencies(model_deployer graphengine_protos data_flow_base_proto)
@@ -234,23 +229,56 @@ target_link_libraries(model_deployer PRIVATE
         dl
         -Wl,--as-needed
         json
+        ${AIR_COMMON_LINK_OPTION}
         )
 
+message(STATUS "CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_SHARED_LINKER_FLAGS is ${CMAKE_SHARED_LINKER_FLAGS}")
+
 ########################################## model_deployer_daemon ###############################
-set(DEPLOYER_DAEMON_SRC_FILE
+set(DEPLOYER_DAEMON_INC_LIST
+        ${AIR_CODE_DIR}/inc
+        ${AIR_CODE_DIR}/inc/external
+        ${AIR_CODE_DIR}/base
+        ${CMAKE_BINARY_DIR}/proto_grpc/deployer
+        ${AIR_CODE_DIR}/dflow/deployer
+        )
+
+############ libdeployer_daemon_static.a ############
+add_library(deployer_daemon_static STATIC
         daemon/daemon_client_manager.cc
         daemon/daemon_service.cc
         daemon/deployer_daemon_client.cc
         daemon/model_deployer_daemon.cc
         daemon/deployer_daemon.cc
+        ${GRPC_SERVER_PROTO_HDRS}
         )
 
-set(DEPLOYER_DAEMON_INC_LIST
-        ${AIR_CODE_DIR}/inc
-        ${AIR_CODE_DIR}/inc/external
-        ${AIR_CODE_DIR}/base
-        .
-        ${CMAKE_BINARY_DIR}/proto_grpc/deployer
+target_compile_definitions(deployer_daemon_static PRIVATE
+        google=ascend_private
+        )
+
+target_include_directories(deployer_daemon_static PUBLIC
+        ${AIR_CODE_DIR}
+        ${AIR_CODE_DIR}/inc/graph_metadef
+        ${DEPLOYER_DAEMON_INC_LIST}
+        ${METADEF_DIR}/pkg_inc
+        )
+
+target_link_libraries(deployer_daemon_static PRIVATE
+        intf_pub
+        msprof_headers
+        datagw_headers
+        air_headers
+        -Wl,--no-as-needed
+        unified_dlog
+        ascend_protobuf
+        json
+        runtime
+        dgw_client
+        mmpa
+        rt
+        dl
         )
 
 add_executable(deployer_daemon
@@ -309,6 +337,9 @@ target_link_libraries(deployer_daemon PRIVATE
         ge_executor_shared
         -Wl,--as-needed
         json
+        -Wl,--whole-archive
+        deployer_daemon_static
+        -Wl,--no-whole-archive
         )
 
 ########################################## npu_executor ###############################
@@ -347,8 +378,44 @@ set(NPU_EXECUTOR_SRC_LIST
         executor/proxy_dynamic_model_executor.cc
         )
 
-add_executable(npu_executor_main
+############ libnpu_executor_static.a ############
+add_library(npu_executor_static STATIC
         ${NPU_EXECUTOR_SRC_LIST}
+        ${DEPLOYER_PROTO_HDRS}
+        )
+
+target_compile_options(npu_executor_static PRIVATE
+        ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
+        )
+
+target_compile_definitions(npu_executor_static PRIVATE
+        google=ascend_private
+        )
+
+target_include_directories(npu_executor_static PUBLIC
+        ${AIR_CODE_DIR}
+        ${AIR_CODE_DIR}/inc/graph_metadef
+        ${NPU_EXECUTOR_INC_LIST}
+        ${METADEF_DIR}/pkg_inc
+        )
+
+target_link_libraries(npu_executor_static PRIVATE
+        intf_pub
+        msprof_headers
+        datagw_headers
+        air_headers
+        -Wl,--no-as-needed
+        unified_dlog
+        ascend_protobuf
+        json
+        runtime
+        adump_server
+        rt
+        dl
+        ${AIR_COMMON_LINK_OPTION}
+        )
+
+add_executable(npu_executor_main
         ${EXECUTOR_COMMON_SRC_LIST}
         ${DEPLOYER_PROTO_HDRS}
         ${DEPLOYER_PROTO_SRCS}
@@ -389,6 +456,9 @@ target_link_libraries(npu_executor_main PRIVATE
         cce_headers
         hccl_headers
         air_headers
+        -Wl,--whole-archive
+        npu_executor_static
+        -Wl,--no-whole-archive
         -Wl,--no-as-needed
         ascend_protobuf
         unified_dlog

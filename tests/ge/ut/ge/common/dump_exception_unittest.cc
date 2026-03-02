@@ -302,16 +302,16 @@ TEST_F(UTEST_dump_exception, dump_node_info_wrong) {
   op_desc_info.output_data_type = {DT_FLOAT};
   op_desc_info.output_addrs = {nullptr};
   op_desc_info.output_size = {2};
-  op_desc_info.space_addrs = {reinterpret_cast<void *>(5000)};
-  op_desc_info.workspace_bytes = {0};
+  op_desc_info.space_addrs = {reinterpret_cast<void *>(mock_arg.data())};
+  op_desc_info.workspace_bytes = {8};
   ExceptionDumper exception_dumper;
   gert::GertRuntimeStub runtime_stub;
   dlog_setlevel(GE_MODULE_NAME, DLOG_INFO, 0);
-  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var", false, false, dump_properties), ge::SUCCESS);
+  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var/", false, false, dump_properties), ge::SUCCESS);
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
 
   // exception dump logs for tools analysis, don't modify!!!
-  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var", true, false, dump_properties), ge::SUCCESS);
+  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var/", true, false, dump_properties), ge::SUCCESS);
   EXPECT_TRUE(CheckLogExpected(runtime_stub.GetSlogStub().GetLogs(), "[Dump][Exception] dump exception to file, file:"));
 }
 

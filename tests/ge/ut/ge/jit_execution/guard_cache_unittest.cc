@@ -118,6 +118,8 @@ protected:
      setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
      graph_ = EsCreateGraphBuilder("Hello");
      guardCheckCache_ = new GuardCheckCache(2, nullptr);
+     env = getenv("LD_PRELOAD");
+     unsetenv("LD_PRELOAD");
  }
  void TearDown() override {
      EsDestroyGraphBuilder(graph_);
@@ -125,6 +127,9 @@ protected:
      unsetenv("ASCEND_OPP_PATH");
      unsetenv("LD_LIBRARY_PATH");
      delete guardCheckCache_;
+     if (env != nullptr) {
+       setenv("LD_PRELOAD", env, 1);
+     }
  }
     EsCGraphBuilder *graph_{nullptr};
     EsCGraphBuilder *graph1_{nullptr};
@@ -132,6 +137,7 @@ protected:
     EsCGraphBuilder *graph3_{nullptr};
 
     GuardCheckCache *guardCheckCache_{nullptr};
+    const char *env;
 };
 
 TEST_F(GuardCacheUT, load_guard_check_func) {

@@ -20,6 +20,7 @@ target_include_directories(df_st_stubs PRIVATE
         ${METADEF_DIR}/pkg_inc
         ${AIR_CODE_DIR}/dflow/base
         ${AIR_CODE_DIR}/dflow/base/exec_runtime
+        ${CMAKE_BINARY_DIR}/proto/metadef_protos
 )
 
 target_include_directories(df_st_stubs PUBLIC
@@ -30,7 +31,7 @@ target_compile_definitions(df_st_stubs PRIVATE
 )
 
 target_compile_options(df_st_stubs PRIVATE
-    ${AIR_COMMON_COMPILE_OPTION}
+    -fno-access-control
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
 )

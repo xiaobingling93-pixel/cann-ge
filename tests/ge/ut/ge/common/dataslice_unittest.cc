@@ -227,10 +227,12 @@ TEST_F(DataSlice, data_slice_helper_get_avinci_slice_info_Add_NC1HWC0_reshape) {
   GeTensorDesc input_desc0(ge::GeShape({10, 3, 20, 30, 16}), ge::Format::FORMAT_NC1HWC0);
   input_desc0.SetOriginShape(ge::GeShape({10, 20, 30, 40}));
   input_desc0.SetOriginFormat(ge::Format::FORMAT_NHWC);
+  ge::AttrUtils::SetStr(input_desc0, ge::ATTR_NAME_RESHAPE_INFER_TYPE, "NH");
   op_desc->AddInputDesc("input0", input_desc0);
   GeTensorDesc input_desc1(ge::GeShape({40}), ge::Format::FORMAT_NHWC);
   input_desc1.SetOriginShape(ge::GeShape({40}));
   input_desc1.SetOriginFormat(ge::Format::FORMAT_NHWC);
+  ge::AttrUtils::SetStr(input_desc1, ge::ATTR_NAME_RESHAPE_INFER_TYPE, "NH");
   op_desc->AddInputDesc("input1", input_desc1);
   NodePtr node = test_graph->AddNode(op_desc);
   std::vector<AxisTypeInfo> axis_type_info;

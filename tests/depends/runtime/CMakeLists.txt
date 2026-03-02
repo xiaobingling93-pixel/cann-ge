@@ -26,3 +26,4 @@ target_link_libraries(runtime_stub
 )
 
 stub_module(runtime runtime_stub)
+stub_module(acl_rt runtime_stub)

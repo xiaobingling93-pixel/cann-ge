@@ -107,10 +107,7 @@ class VISIBILITY_EXPORT GlobalProfilingWrapper {
   GlobalProfilingWrapper &operator=(const GlobalProfilingWrapper &) = delete;
   GlobalProfilingWrapper &operator=(GlobalProfilingWrapper &&) = delete;
 
-  static GlobalProfilingWrapper *GetInstance() {
-    static GlobalProfilingWrapper global_prof_wrapper;
-    return &global_prof_wrapper;
-  }
+  static GlobalProfilingWrapper *GetInstance();
 
   static void OnGlobalProfilingSwitch(void *ins, uint64_t enable_flags);
 

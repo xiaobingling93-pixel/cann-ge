@@ -90,9 +90,9 @@ TEST_F(UTEST_file_saver, save_model_data_to_buff2_success) {
 
 TEST_F(UTEST_file_saver, SaveToFile1_success) {
   std::string file_path("");
-  std::string model_data_str = "123456789";
+  std::string model_data_str(256, '1');
   ge::ModelData modelData;
-  modelData.model_data = &model_data_str;
+  modelData.model_data = reinterpret_cast<void*>(const_cast<char*>(model_data_str.c_str()));
   modelData.model_len = model_data_str.size();
 
   ModelFileHeader *model_file_header = reinterpret_cast<ModelFileHeader *>(modelData.model_data);
@@ -105,10 +105,10 @@ TEST_F(UTEST_file_saver, SaveToFile1_success) {
 TEST_F(UTEST_file_saver, SaveToFile2_success) {
   std::string model_data_str = "123456789";
   ge::ModelData modelData;
-  modelData.model_data = &model_data_str;
+  modelData.model_data = reinterpret_cast<void*>(const_cast<char*>(model_data_str.c_str()));;
   modelData.model_len = model_data_str.size();
   EXPECT_EQ(FileSaver::SaveToFile("", &model_data_str, model_data_str.size()), FAILED);
-  EXPECT_EQ(FileSaver::SaveToFile("./test.om", &model_data_str, model_data_str.size()), SUCCESS);
+  EXPECT_EQ(FileSaver::SaveToFile("./test.om", modelData.model_data, modelData.model_len), SUCCESS);
   system("rm -rf ./test.om");
 }
 

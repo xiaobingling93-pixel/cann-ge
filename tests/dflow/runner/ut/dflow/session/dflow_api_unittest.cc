@@ -40,6 +40,7 @@
 #include "graph/manager/graph_manager.h"
 #include "dflow/compiler/session/dflow_session_impl.h"
 #include "dflow/compiler/pne/npu/npu_process_node_engine.h"
+#include "register/ops_kernel_builder_registry.h"
 
 namespace ge {
 class MockExchangeService : public ExchangeService {
@@ -286,6 +287,7 @@ class UtestDflowApi : public testing::Test {
       }
     }
     ge::ExecutionRuntime::SetExecutionRuntime(nullptr);
+    ge::OpsKernelBuilderRegistry::GetInstance().UnregisterAll();
   }
 };
 

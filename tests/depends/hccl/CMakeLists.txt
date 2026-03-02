@@ -26,7 +26,6 @@ target_link_libraries(hccl_stub
         cce_headers
         runtime_headers
         msprof_headers
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         hccl_headers
 )

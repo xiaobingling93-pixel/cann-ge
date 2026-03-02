@@ -313,7 +313,7 @@ TEST_F(UtestGeLocalNodeExecutor, test_DependInputShapeTask) {
   ge_root_model->SetSubgraphInstanceNameToModel("sub", ge_sub_model);
   HybridModel hybrid_model(ge_root_model);
 
-  NodePtr node = CreateNode(*graph, "shape", SHAPE, 2, 1);
+  NodePtr node = CreateNode(*graph, "shape", SHAPE, 1, 1);
 
   std::unique_ptr<NodeItem> new_node;
   ASSERT_EQ(NodeItem::Create(node, new_node), SUCCESS);
@@ -383,8 +383,10 @@ TEST_F(UtestGeLocalNodeExecutor, test_DependInputShapeTask) {
   const_cast<NodeItem *>(node_state->GetTaskContext()->node_item_)->num_outputs = 1;
   delete[] (uint8_t*)t1;
   delete[] (uint8_t*)t2;
-  delete[] (TensorValue*)(node_state->GetTaskContext()->outputs_start_);
   delete[] (uint8_t*)test1;
+  node_state->GetTaskContext()->outputs_start_->ref_buffer_ = nullptr;
+  delete[] (TensorValue*)(node_state->GetTaskContext()->outputs_start_);
+  node_state->GetTaskContext()->outputs_start_ = nullptr;
 }
 
 TEST_F(UtestGeLocalNodeExecutor, test_LoadTaskFail) {

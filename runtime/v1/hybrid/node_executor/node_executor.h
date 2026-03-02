@@ -204,10 +204,7 @@ class NodeExecutorManager {
     RESERVED
   };
 
-  static NodeExecutorManager &GetInstance() {
-    static NodeExecutorManager instance;
-    return instance;
-  }
+  static NodeExecutorManager &GetInstance();
 
   /**
    * Register build of executor

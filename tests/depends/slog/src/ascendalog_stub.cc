@@ -119,3 +119,32 @@ void DlogReportStop(int devId) {}
 int DlogReportStart(int devId, int mode) {
   return 0;
 }
+
+void DlogFlush() {}
+
+void DlogVaList(int module_id, int level, const char *fmt, va_list valist) {
+  auto log_level = dlog_getlevel(module_id, nullptr);
+  if (log_level > level) {
+    return;
+  }
+  const int FMT_BUFF_SIZE = 1024;
+  char fmt_buff[FMT_BUFF_SIZE] = {0};
+  vsnprintf(fmt_buff, FMT_BUFF_SIZE, fmt, valist);
+  switch (level) {
+    case DLOG_DEBUG:
+      printf("[DEBUG]%s\n", fmt_buff);
+      break;
+    case DLOG_INFO:
+      printf("[INFO]%s\n", fmt_buff);
+      break;
+    case DLOG_WARN:
+      printf("[WARN]%s\n", fmt_buff);
+      break;
+    case DLOG_ERROR:
+      printf("[ERROR]%s\n", fmt_buff);
+      break;
+    default:
+      printf("[UNKNOWN]%s\n", fmt_buff);
+      break;
+  }
+}

@@ -183,4 +183,9 @@ void CpuSchedEventDispatcher::Deregister(uint32_t model_id) {
   std::lock_guard<std::mutex> lk(mu_);
   models_.erase(model_id);
 }
+
+CpuSchedEventDispatcher &CpuSchedEventDispatcher::GetInstance() {
+  static CpuSchedEventDispatcher instance;
+  return instance;
+}
 }  // namespace ge

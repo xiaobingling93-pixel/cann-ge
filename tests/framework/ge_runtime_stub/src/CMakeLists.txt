@@ -12,9 +12,12 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cc" "*.CC" "*.cpp" "*.CPP" "*.c++
 
 add_library(ge_runtime_stub STATIC ${SOURCES})
 
-target_compile_options(ge_runtime_stub PRIVATE ${AIR_COMMON_COMPILE_OPTION})
+target_compile_options(ge_runtime_stub PRIVATE
+        -g -O0
+)
 
 target_compile_definitions(ge_runtime_stub PRIVATE
+        google=ascend_private
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         AIR_CODE_DIR=\"${AIR_CODE_DIR}\"
         ASCEND_INSTALL_PATH=\"${ASCEND_INSTALL_PATH}\")
@@ -29,6 +32,8 @@ target_include_directories(ge_runtime_stub PUBLIC
         ${OP_PROTO_DIR}
         ${AIR_CODE_DIR}/tests/depends/runtime/src
         ${AIR_CODE_DIR}/tests/framework/ge_runtime_stub/include
+        ${CMAKE_BINARY_DIR}/proto/metadef_protos
+        ${CMAKE_BINARY_DIR}/proto/metadef_protos/proto
 )
 
 target_link_libraries(ge_runtime_stub PRIVATE
@@ -36,12 +41,18 @@ target_link_libraries(ge_runtime_stub PRIVATE
         msprof_headers
         runtime_headers
         opp_registry
+        aihac_ir
+        runtime
         json
+        ascend_protobuf
+        graphengine_inc
         datagw_headers
-        ${AIR_COMMON_LINK_OPTION}
         ge_runtime_stub_inc
         ge_graph_dsl
         ge_common
         ge_common_base
         es_ge_test
+        symengine
+        Boost::boost
+        ascendcl_stub
         )

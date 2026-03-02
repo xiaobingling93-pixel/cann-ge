@@ -48,6 +48,8 @@ protected:
   }
 
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     CommonSetupUtil::CommonSetup();
     GetThreadLocalContext().SetSessionOption({});
     GetThreadLocalContext().SetGraphOption({});
@@ -60,6 +62,9 @@ protected:
   void TearDown() override {
     CommonSetupUtil::CommonTearDown();
     DNNEngineManager::GetInstance().plugin_mgr_.ClearHandles_();
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
 
   std::string cache_dir_ = "./build_cache_dir";
@@ -73,6 +78,8 @@ protected:
   map<std::string, std::string> global_options_ = {{"ge.graph_compiler_cache_dir", cache_dir_},
                                                {"ge.graph_key", user_graph_key_}};
   map<std::string, std::string> graph_options_ = {{"ge.graph_key", user_graph_key_}};
+
+  const char *env;
 };
 
 TEST_F(CompiledModelCacheUT, check_add_gep_graph_key) {

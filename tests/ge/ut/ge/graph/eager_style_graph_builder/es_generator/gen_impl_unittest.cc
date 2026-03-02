@@ -170,7 +170,11 @@ extern "C" {
  * Does not support V1 control Operators(8): [Enter, Exit, LoopCond, Merge, NextIteration, StreamMerge, StreamSwitch, Switch, ]
  */
 #include "es_Add_c.h"
+#include "es_AscBackend_c.h"
+#include "es_AscBackendNoKernelOp_c.h"
+#include "es_AscGraph_c.h"
 #include "es_Const_c.h"
+#include "es_FusedAscBackend_c.h"
 #include "es_While_c.h"
 #include "es_phony_1i1dyi_1dyo_c.h"
 #include "es_phony_1i1dyi_1o_c.h"
@@ -239,7 +243,11 @@ TEST_F(GenImplLLT, AggregatePyGeneration) {
  # Does not support V1 control Operators(8): [Enter, Exit, LoopCond, Merge, NextIteration, StreamMerge, StreamSwitch, Switch, ]
 """
 from .es_Add import *
+from .es_AscBackendimport *
+from .es_AscBackendNoKernelOpimport *
+from .es_AscGraphimport *
 from .es_Const import *
+from .es_FusedAscBackendimport *
 from .es_While import *
 from .es_phony_1i1dyi_1dyo import *
 from .es_phony_1i1dyi_1o import *

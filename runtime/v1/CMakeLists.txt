@@ -405,6 +405,7 @@ target_link_libraries(davinci_executor
     -Wl,--as-needed
     $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
     -ldl
+    ${AIR_COMMON_LINK_OPTION}
   PUBLIC
     air_headers
 )
@@ -440,8 +441,7 @@ add_dependencies(hybrid_executor
 )
 
 target_compile_options(hybrid_executor PRIVATE
-    -fno-common -Werror -Wextra -Wfloat-equal -fvisibility=default
-    -O2
+    ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
 )
 
 target_compile_definitions(hybrid_executor PRIVATE
@@ -504,6 +504,7 @@ target_link_libraries(hybrid_executor
     -Wl,--as-needed
     $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
     -ldl
+    ${AIR_COMMON_LINK_OPTION}
   PUBLIC
     air_headers
 )

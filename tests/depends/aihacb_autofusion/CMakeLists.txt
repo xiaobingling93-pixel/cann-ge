@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${GE_METADEF_DIR}/graph/ascendc_ir/generator/external_generator.cmake)
+include(${GE_METADEF_DIR}/graph/ascendc_ir/generator/generator.cmake)
 file(GLOB_RECURSE ASC_SRC_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "src/*.cc"
         "${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/autofuse/*.cpp"
@@ -23,29 +23,6 @@ file(GLOB_RECURSE ASC_SRC_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         "${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/common/autofuse_config/*.cpp"
 )
 
-# Only create ascir_ops_header_generator if it doesn't already exist
-if(NOT TARGET ascir_ops_header_generator)
-add_executable(ascir_ops_header_generator
-        ${GE_METADEF_DIR}/graph/ascendc_ir/generator/ascir_ops_generator_main.cc
-        ${GE_METADEF_DIR}/graph/ascendc_ir/generator/generator.cc
-        )
-target_include_directories(ascir_ops_header_generator PUBLIC
-        ${ASCEND_INSTALL_PATH}/include/experiment
-        ${METADEF_DIR}/inc/external
-        ${C_SEC_INCLUDE}
-        ${GE_METADEF_DIR}/graph
-        ${GE_METADEF_INC_DIR}
-        ${GE_METADEF_INC_DIR}/graph
-        )
-target_link_libraries(ascir_ops_header_generator PRIVATE
-        -Wl,--no-as-needed
-        $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
-        -ldl
-        aihac_ir_register
-        PUBLIC
-        metadef_headers)
-endif()
-
 file(GLOB ASCIR_SOURCES
         "${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/ascir/generator/ascir_builtin_ops.cpp"
         "${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/ascir/reg_func/*.cpp"
@@ -54,6 +31,9 @@ file(GLOB ASCIR_SOURCES
         "${AIR_CODE_DIR}/tests/graph_metadef/ut/ascendc_ir/stub/*.cc")
 
 add_library(ascir_builtin_ops_stub SHARED ${ASCIR_SOURCES})
+
+target_compile_options(ascir_builtin_ops_stub PRIVATE -D_GLIBCXX_USE_CXX11_ABI=0 )
+
 target_include_directories(ascir_builtin_ops_stub PUBLIC
         ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/ascir
         ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/v35/ascir
@@ -80,29 +60,28 @@ target_link_options(ascir_builtin_ops_stub PRIVATE
         -Wl,--exclude-libs,All
         )
 
-target_link_libraries(ascir_builtin_ops_stub PUBLIC aihac_ir_register ascend_protobuf)
+target_link_libraries(ascir_builtin_ops_stub PRIVATE intf_pub metadef_headers unified_dlog ascend_protobuf)
 
-set(ops_header_dir ${CMAKE_CURRENT_BINARY_DIR})
+set(ops_header_dir ${CMAKE_BINARY_DIR}/graph_metadef/graph/ascendc_ir/generator/)
 
-message("ops_header_dir is " ${ops_header_dir}/ascir_ops.h)
+message(STATUS "ops_header_dir is "${ENABLE_ASAN} ${ops_header_dir}/ascir_ops.h)
 ascir_generate(ascir_builtin_ops_stub
         ${ops_header_dir}
         ${CMAKE_BINARY_DIR}/tests/depends/aihacb_autofusion/libascir_builtin_ops_stub.so
-        ${ops_header_dir}/ascir_ops.h)
+        ${ops_header_dir}/ascir_ops.h
+        )
 
 add_library(aihacb_autofusion_stub SHARED
         ${ASC_SRC_FILES}
         ${ops_header_dir}/ascir_ops.h
         )
 
-add_dependencies(aihacb_autofusion_stub metadef_graph ascir_builtin_ops_stub)
+add_dependencies(aihacb_autofusion_stub ascir_builtin_ops_stub)
 
 target_compile_definitions(aihacb_autofusion_stub PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         )
-
-target_compile_options(aihacb_autofusion_stub PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 target_include_directories(aihacb_autofusion_stub PRIVATE
         "src/"
@@ -140,7 +119,12 @@ target_link_libraries(aihacb_autofusion_stub PRIVATE
         ascend_protobuf
         c_sec
         ascend_protobuf
-        ${AIR_COMMON_LINK_OPTION}
+        graph
+        unified_dlog
+        graph_base
+        ge_running_env
+        aihac_ir
+        aihac_ir_register
         )
 
 #stub_module(aihacb_autofusion aihacb_autofusion_stub)

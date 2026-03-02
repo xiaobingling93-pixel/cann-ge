@@ -46,6 +46,8 @@ bool test_callback_called = false;
 class JitExecutorUT : public testing::Test {
  protected:
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     CommonSetupUtil::CommonSetup();
     auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
     gert_stub_.GetKernelStub().StubTiling();
@@ -57,8 +59,12 @@ class JitExecutorUT : public testing::Test {
     auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
     rts_stub.Clear();
     RuntimeStub::UnInstall(&rts_stub);
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
   gert::GertRuntimeStub gert_stub_;
+  const char *env;
 };
 
 TEST_F(JitExecutorUT, CreateJitExecutor_Success) {

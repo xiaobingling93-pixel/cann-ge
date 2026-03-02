@@ -27,12 +27,15 @@ namespace ge {
 class KernelManagerUtest : public testing::Test {
  protected:
   void SetUp() {
-    auto mock_runtime = std::make_shared<gert::RuntimeStubForKernelV2>();
-    ge::RuntimeStub::Install(mock_runtime.get());
+    if (mock_runtime == nullptr) {
+      mock_runtime = std::make_shared<gert::RuntimeStubForKernelV2>();
+      ge::RuntimeStub::Install(mock_runtime.get());
+    }
   }
   void TearDown() {
     RuntimeStub::UnInstall(nullptr);
   }
+  std::shared_ptr<gert::RuntimeStubForKernelV2> mock_runtime = nullptr;
 };
 
 TEST_F(KernelManagerUtest, test_aicore_kernel_register) {

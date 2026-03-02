@@ -404,12 +404,7 @@ target_compile_definitions(ge_compiler PRIVATE
 )
 
 target_compile_options(ge_compiler PRIVATE
-    -O2
-    -fno-common
-    -Werror
-    -Wextra
-    -Wfloat-equal
-    -fvisibility=default
+    ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
 )
 
 target_include_directories(ge_compiler  PRIVATE
@@ -465,6 +460,7 @@ target_link_libraries(ge_compiler
         json
         -lrt
         -ldl
+        ${AIR_COMMON_LINK_OPTION}
         crypto_static
     PUBLIC
         ge_common

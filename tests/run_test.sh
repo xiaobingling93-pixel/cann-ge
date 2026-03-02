@@ -542,12 +542,16 @@ run_ut_acl() {
   cp ${BUILD_PATH}/tests/acl_ut/ut/acl/acl_utest ${OUTPUT_PATH}
 
   local report_dir="${OUTPUT_PATH}/report/ut" && mk_dir "${report_dir}"
+  export LD_PRELOAD=${USE_ASAN}
+  export ASAN_OPTIONS=detect_odr_violation=0
   RUN_TEST_CASE="${OUTPUT_PATH}/acl_utest --gtest_output=xml:${report_dir}/acl_utest.xml" && ${RUN_TEST_CASE}
   if [[ "$?" -ne 0 ]]; then
     echo "!!! UT FAILED, PLEASE CHECK YOUR CHANGES !!!"
     echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
     exit 1;
   fi
+  unset LD_PRELOAD
+  unset ASAN_OPTIONS
   echo "Generated coverage statistics, please wait..."
   cd ${BASEPATH}
   rm -rf ${BASEPATH}/cov

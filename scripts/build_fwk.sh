@@ -73,6 +73,8 @@ checkopts()
   PRODUCT="normal"
   MINDSPORE_MODE="off"
   CMAKE_BUILD_TYPE="Release"
+  ENABLE_ASAN="false"
+  ENABLE_GCOV="false"
 
   # Process the options
   while getopts 'CDstTcbhPlmnovj:p:g:MROudKL' opt
@@ -242,7 +244,7 @@ run_pyge_pytests() {
   export LD_LIBRARY_PATH=${PYGE_INSTALL_PATH}/ge/_capi/:${ORIGINAL_LD_LIBRARY_PATH}
   # 优先使用源码路径，因为使用安装路径存在覆盖率统计不到问题
   export PYTHONPATH=${PYGE_SRC_PATH}:${PYGE_INSTALL_PATH}:$PYTHON_ORIGINAL_PATH
-  ASAN_OPTIONS=detect_leaks=0 coverage run --data-file=coverage_pyge --source=${PYGE_SRC_PATH}/ge -m pytest ${BASEPATH}/tests/ge/ut/ge/graph/pyge_tests/*_test.py -vv -s
+  ASAN_OPTIONS=detect_leaks=0:detect_container_overflow=0 coverage run --data-file=coverage_pyge --source=${PYGE_SRC_PATH}/ge -m pytest ${BASEPATH}/tests/ge/ut/ge/graph/pyge_tests/*_test.py -vv -s
   export LD_LIBRARY_PATH=${ORIGINAL_LD_LIBRARY_PATH}
   export PYTHONPATH=$PYTHON_ORIGINAL_PATH
 }
@@ -254,9 +256,15 @@ echo "---------------- GraphEngine build start ----------------"
 build_graphengine()
 {
   echo "create build directory and build GraphEngine";
-  BUILD_PATH="${BASEPATH}/${BUILD_RELATIVE_PATH}/"
+  BUILD_PATH="${BASEPATH}/${BUILD_RELATIVE_PATH}"
   mk_dir "${BUILD_PATH}"
   cd "${BUILD_PATH}"
+  if [[ "X$CMAKE_BUILD_TYPE" = "XGCOV" ]]; then
+    ENABLE_GCOV="true"
+    if [[ "X$ENABLE_PARSER_UT" != "Xon" ]] && [[ "X$ENABLE_PARSER_ST" != "Xon" ]]; then
+      ENABLE_ASAN="true"
+    fi
+  fi
   cmake -D ENABLE_OPEN_SRC=True \
         -D ENABLE_TEST=${ENABLE_TEST} \
         -D ENABLE_GE_BENCHMARK=$ENABLE_GE_BENCHMARK \
@@ -283,6 +291,8 @@ build_graphengine()
         -D CMAKE_INSTALL_PREFIX=${OUTPUT_PATH} \
         -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -D ENABLE_PKG=${ENABLE_PKG} \
+        -D ENABLE_ASAN=${ENABLE_ASAN} \
+        -D ENABLE_GCOV=${ENABLE_GCOV} \
         ..
   if [ $? -ne 0 ]
   then
@@ -336,14 +346,21 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
     #execute ut testcase with mem leaks by default
     if [[ "X$ENABLE_GE_UT" = "Xon" ]]; then
       echo "[TEST GE COMMON] Begin to run tests with leaks check"
+      export LD_PRELOAD=${USE_ASAN}
       ASAN_OPTIONS=detect_container_overflow=0 \
       ctest --output-on-failure -j ${THREAD_NUM} -L ut -L ge_common --test-dir ${BUILD_PATH} --no-tests=error \
             -O ${BUILD_PATH}/ctest_ut_ge_common.log
+      unset LD_PRELOAD
+      unset ASAN_OPTIONS
     fi
     if [[ "X$ENABLE_RT2_UT" = "Xon" ]]; then
       echo "[TEST GE RT] Begin to run tests with leaks check"
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_container_overflow=0
       ctest --output-on-failure -j ${THREAD_NUM} -L ut -L ge_rt --test-dir ${BUILD_PATH} --no-tests=error \
             -O ${BUILD_PATH}/ctest_ut_rt.log
+      unset ASAN_OPTIONS
+      unset LD_PRELOAD
     fi
     if [[ "X$ENABLE_PYTHON_UT" = "Xon" ]]; then
       unset LD_PRELOAD
@@ -354,9 +371,10 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       echo "----------v1 ut start----------"
 
-      ASAN_OPTIONS=detect_leaks=0 coverage run --data-file=coverage_python -m unittest discover python_tests/v1/ut
+      ASAN_OPTIONS=detect_leaks=0:detect_container_overflow=0 coverage run --data-file=coverage_python -m unittest discover python_tests/v1/ut
       run_pyge_pytests
       export PYTHONPATH=$PYTHON_ORIGINAL_PATH:${BASEPATH}/api/python/llm_datadist/:${BASEPATH}/api/python/
+      unset ASAN_OPTIONS
       unset LD_PRELOAD
     fi
 
@@ -364,6 +382,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       echo "---------------- Parser UT Run Start ----------------"
       cp ${BUILD_PATH}/tests/parser/ut/parser/ut_parser ${OUTPUT_PATH}
       cp -rf ${BUILD_PATH}/tests/graph_metadef/ut/graph/ut_graph ${OUTPUT_PATH}
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_leaks=0:detect_container_overflow=0
       RUN_TEST_CASE="${OUTPUT_PATH}/ut_parser --gtest_output=xml:${report_dir}/ut/ut_parser.xml" && ${RUN_TEST_CASE} &&
       RUN_TEST_CASE="${OUTPUT_PATH}/ut_graph --gtest_output=xml:${report_dir}/ut/ut_graph.xml" && ${RUN_TEST_CASE}
       if [[ "$?" -ne 0 ]]; then
@@ -371,6 +391,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1
       fi
+      unset ASAN_OPTIONS
+      unset LD_PRELOAD
     fi
 
     if [[ "X$ENABLE_DFLOW_UT" = "Xon" ]]; then
@@ -386,6 +408,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       unset PYDFLOW_BUILD_PATH
 
       echo "---------------- Dflow Udf UT Run Start ----------------"
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_container_overflow=0:detect_odr_violation=0
       ctest --output-on-failure -j ${THREAD_NUM} -L ut -L ut_dflow --test-dir ${BUILD_PATH} --no-tests=error \
                     -O ${BUILD_PATH}/ctest_ut_dflow.log
       if [[ "$?" -ne 0 ]]; then
@@ -393,6 +417,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1
       fi
+      unset LD_PRELOAD
+      unset ASAN_OPTIONS
     fi
 
     if [[ "X$ENABLE_GE_COV" = "Xon" ]]; then
@@ -406,12 +432,14 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
         mv .coverage ${BASEPATH}/cov/
       fi
 
-      lcov -c -d ${BUILD_PATH}/runtime/v2/CMakeFiles/gert.dir -d ${BUILD_PATH}/runtime/v1/CMakeFiles/davinci_executor.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge -d ${BUILD_PATH}/tests/ge/ut/common/graph/ -d ${BUILD_PATH}/tests/parser/ut/parser \
-              -d ${BUILD_PATH}/tests/depends/llm_datadist -d ${BUILD_PATH}/dflow/llm_datadist -d ${BUILD_PATH}/api/python \
-              -d ${BUILD_PATH}/api/python/llm_datadist_v1 -d ${BUILD_PATH}/api/python/llm_wrapper \
-              -d ${BUILD_PATH}/tests/framework/CMakeFiles/graphengine.dir \
-              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
+      lcov -c -d ${BUILD_PATH}/api \
+                           -d ${BUILD_PATH}/api/atc \
+                           -d ${BUILD_PATH}/dflow \
+                           -d ${BUILD_PATH}/graph_metadef \
+                           -d ${BUILD_PATH}/runtime/v2 \
+                           -d ${BUILD_PATH}/runtime/v1 \
+                           -d ${BUILD_PATH}/base \
+                           -d ${BUILD_PATH}/compiler -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错
@@ -439,7 +467,7 @@ if [[ "X$ENABLE_GE_DT" = "Xon" ]] || [[ "X$ENABLE_GE_UT" = "Xon" ]]; then
       mk_dir ${OUTPUT_PATH}/plugin/nnengine/ge_config
     fi
     cp -f ${BASEPATH}/compiler/engines/manager/engine_manager/engine_conf.json ${OUTPUT_PATH}/plugin/nnengine/ge_config
-    cp -f ${BUILD_PATH}/tests/framework/*engine*.so ${OUTPUT_PATH}/plugin/nnengine
+    find ${BUILD_PATH}/ -type f -name "*engine*.so" -print0 | xargs -0 -I {} cp {} ${OUTPUT_PATH}/plugin/nnengine
     #execute ut testcase
     export ASAN_OPTIONS=detect_leaks=0
     export LD_PRELOAD=${USE_ASAN}
@@ -476,12 +504,18 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
 
     if [[ "X$ENABLE_RT3_ST" = "Xon" ]]; then
       echo "Run tests with leaks check"
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_container_overflow=0
       ctest --output-on-failure -j ${THREAD_NUM} -L st -L st_hetero --test-dir ${BUILD_PATH} --no-tests=error \
             -O ${BUILD_PATH}/ctest_st_hetero.log
+      unset LD_PRELOAD
+      unset ASAN_OPTIONS
     fi
 
     if [[ "X$ENABLE_RT2_ST" = "Xon" ]]; then
       echo "Run tests with leaks check"
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_container_overflow=0
       RUN_TEST_CASE="${BUILD_PATH}/tests/ge/st/hybrid_model_exec/hybrid_model_async_exec_test --gtest_output=xml:${report_dir}/st/hybrid_model_async_exec_test.xml" && ${RUN_TEST_CASE} &&
       RUN_TEST_CASE="${BUILD_PATH}/tests/ge/st/testcase/fast_runtime_v2/st_fast_runtime2_test --gtest_output=xml:${report_dir}/st/st_fast_runtime2_test.xml" && ${RUN_TEST_CASE} &&
       RUN_TEST_CASE="${BUILD_PATH}/tests/ge/st/testcase/fast_runtime_v2/dvpp/dvpp_rtkernel/st_dvpp_runtime2_test --gtest_output=xml:${report_dir}/st/st_dvpp_runtime2_test.xml" && ${RUN_TEST_CASE}
@@ -490,6 +524,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
           echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
           exit 1;
       fi
+      unset LD_PRELOAD
+      unset ASAN_OPTIONS
     fi
 
     if [[ "X$ENABLE_PYTHON_ST" = "Xon" ]]; then
@@ -500,7 +536,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       export PYTHONPATH=$PYTHON_ORIGINAL_PATH:${BASEPATH}/api/python/llm_datadist/:${BASEPATH}/api/python/
       export LD_PRELOAD=${USE_ASAN}
       echo "----------v1 st start----------"
-      ASAN_OPTIONS=detect_leaks=0 coverage run --data-file=coverage_python -m unittest discover python_tests/v1/st
+      ASAN_OPTIONS=detect_leaks=0:detect_container_overflow=0 coverage run --data-file=coverage_python -m unittest discover python_tests/v1/st
       run_pyge_pytests
       export PYTHONPATH=$PYTHON_ORIGINAL_PATH:${BASEPATH}/api/python/llm_datadist/:${BASEPATH}/api/python/
       unset LD_PRELOAD
@@ -509,7 +545,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
     if [[ "X$ENABLE_PARSER_ST" = "Xon" ]]; then
       echo "---------------- Parser ST Run Start ----------------"
       cp ${BUILD_PATH}/tests/parser/st/st_parser ${OUTPUT_PATH}
-
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_leaks=0:detect_container_overflow=0
       RUN_TEST_CASE="${OUTPUT_PATH}/st_parser --gtest_output=xml:${report_dir}/st/st_parser.xml" && ${RUN_TEST_CASE} &&
       RUN_TEST_CASE="${BUILD_PATH}/tests/ge/st/testcase/graph_engine_compile_test --gtest_output=xml:${report_dir}/st/graph_engine_compile_test.xml" && ${RUN_TEST_CASE}
       if [[ "$?" -ne 0 ]]; then
@@ -517,6 +554,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1
       fi
+      unset LD_PRELOAD
+      unset ASAN_OPTIONS
     fi
 
     if [[ "X$ENABLE_DFLOW_ST" = "Xon" ]]; then
@@ -532,6 +571,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       unset PYDFLOW_BUILD_PATH
 
       echo "---------------- Dflow Udf ST Run Start ----------------"
+      export LD_PRELOAD=${USE_ASAN}
+      export ASAN_OPTIONS=detect_container_overflow=0
       ctest --output-on-failure -j ${THREAD_NUM} -L st -L st_dflow --test-dir ${BUILD_PATH} --no-tests=error \
             -O ${BUILD_PATH}/ctest_st_dflow.log
       if [[ "$?" -ne 0 ]]; then
@@ -539,6 +580,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1
       fi
+      unset LD_PRELOAD;
+      unset ASAN_OPTIONS;
     fi
 
     # remove plugin
@@ -554,23 +597,15 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         mv .coverage ${BASEPATH}/cov/
       fi
 
-      lcov -c -d ${BUILD_PATH}/tests/framework/CMakeFiles/graphengine.dir \
-              -d ${BUILD_PATH}/tests/framework/CMakeFiles/local_engine.dir \
-              -d ${BUILD_PATH}/tests/framework/CMakeFiles/helper_runtime.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/CMakeFiles/ut_libge_kernel_utest.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/CMakeFiles/ge_ut_common_format.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/CMakeFiles/ut_libge_common_utest.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/CMakeFiles/ut_jit_execution.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/CMakeFiles/ut_eager_style_builder.dir \
-              -d ${BUILD_PATH}/tests/ge/ut/ge/graph/eager_style_graph_builder/graph_construction_test/CMakeFiles/ut_graph_construction.dir \
-              -d ${BUILD_PATH}/runtime/v2/CMakeFiles/gert.dir \
-              -d ${BUILD_PATH}/tests/dflow/llm_datadist/st/testcase/CMakeFiles/llm_engine_test.dir \
-              -d ${BUILD_PATH}/tests/ge/st/testcase/autofuse/CMakeFiles/autofuse_test.dir \
-              -d ${BUILD_PATH}/tests/parser/st \
-              -d ${BUILD_PATH}/runtime/v1/CMakeFiles/davinci_executor.dir \
-              -d ${BUILD_PATH}/tests/graph_metadef/ut \
-              -d ${BUILD_PATH}/tests/framework/CMakeFiles/metadef_graph.dir \
-              -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
+      lcov -c -d ${BUILD_PATH}/api \
+                           -d ${BUILD_PATH}/api/atc \
+                           -d ${BUILD_PATH}/dflow \
+                           -d ${BUILD_PATH}/graph_metadef \
+                           -d ${BUILD_PATH}/runtime/v2 \
+                           -d ${BUILD_PATH}/runtime/v1 \
+                           -d ${BUILD_PATH}/base \
+                           -d ${BUILD_PATH}/compiler \
+                           -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错

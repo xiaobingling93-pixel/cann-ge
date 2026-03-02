@@ -109,3 +109,8 @@ int32_t MsprofStop(uint32_t dataType, const void *data, uint32_t dataLen) {
   }
   return 0;
 }
+
+ge::ProfilingTestUtil &ge::ProfilingTestUtil::Instance() {
+  static ge::ProfilingTestUtil profiling_test_util;
+  return profiling_test_util;
+}

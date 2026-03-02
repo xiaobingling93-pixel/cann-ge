@@ -31,10 +31,8 @@ class ProfilingTestUtil {
  public:
   using ProfFunc = std::function<int32_t(uint32_t, uint32_t, void *, uint32_t)>;
   using HashFunc = std::function<uint64_t(const char *, size_t)>;
-  static ProfilingTestUtil &Instance() {
-    static ProfilingTestUtil profiling_test_util;
-    return profiling_test_util;
-  }
+  static ProfilingTestUtil &Instance();
+  ProfilingTestUtil() = default;
 
   void SetProfFunc(ProfFunc func) {
     hash_count_ = 0UL;
@@ -82,7 +80,6 @@ class ProfilingTestUtil {
 
   HashFunc hash_func_;
  private:
-  ProfilingTestUtil() = default;
   ProfFunc func_;
   size_t hash_count_{0UL};
   std::map<uint16_t, std::vector<std::pair<uint32_t, uint32_t>>> reg_types_{};

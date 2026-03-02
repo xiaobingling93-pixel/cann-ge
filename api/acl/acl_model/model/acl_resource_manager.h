@@ -75,11 +75,7 @@ class ACL_FUNC_VISIBILITY AclResourceManager {
 public:
     ~AclResourceManager();
 
-    static AclResourceManager &GetInstance()
-    {
-        static AclResourceManager instance;
-        return instance;
-    }
+    static AclResourceManager &GetInstance();
 
     // executor
     bool IsRuntimeV2Enable(bool isModel) const

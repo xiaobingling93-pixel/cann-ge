@@ -26,7 +26,7 @@ file(GLOB_RECURSE FAKER_SRCS CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/depends/f
 add_executable(ut_expression ${UT_FILES} ${FAKER_SRCS})
 
 target_compile_options(ut_expression PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage
+    -g
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -D_GLIBCXX_USE_CXX11_ABI=0
@@ -37,6 +37,7 @@ target_compile_definitions(ut_expression PRIVATE
     $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
     FUNC_VISIBILITY
+    LOG_CPP
 )
 
 # intf_pub包含stdc++11 当前需要按照更高版本来编译ut
@@ -44,11 +45,14 @@ target_link_libraries(ut_expression PRIVATE
     -lgcov
     -Wl,--no-as-needed
     platform
+    unified_dlog
     slog_headers
     metadef_headers
     register
+    metadef
     rt2_registry_static
     opp_registry
+    metadef
     slog
     symengine Boost::boost aihac_symbolizer
     GTest::gtest GTest::gtest_main ascend_protobuf error_manager graph_base graph slog_stub c_sec json mmpa_stub -lrt -ldl

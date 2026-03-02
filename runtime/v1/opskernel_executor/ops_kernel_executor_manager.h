@@ -24,10 +24,7 @@ using OpsKernelExecutorPtr = std::shared_ptr<OpsKernelExecutor>;
 class OpsKernelExecutorManager {
  public:
   ~OpsKernelExecutorManager() = default;
-  static OpsKernelExecutorManager &GetInstance() {
-    static OpsKernelExecutorManager instance;
-    return instance;
-  }
+  static OpsKernelExecutorManager &GetInstance();
 
   Status Initialize(const std::map<std::string, std::string> &options);
   void Finalize();

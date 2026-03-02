@@ -102,4 +102,9 @@ Status GraphContext::GetVariableTensor(const std::string &var_data_name, GeTenso
 
   return GE_GRAPH_VARIABLE_DOES_NOT_EXIST;
 }
+
+VarNodeTensorTable &GraphContext::GetVarNodeTensorTable() {
+  static VarNodeTensorTable _this;
+  return _this;
+}
 }  // namespace ge

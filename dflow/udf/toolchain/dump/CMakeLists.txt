@@ -54,15 +54,10 @@ target_compile_definitions(udf_dump PRIVATE
 
 target_compile_options(udf_dump PRIVATE
     -ftrapv
-    -O2
+    ${AIR_COMMON_COMPILE_OPTION}
     -fvisibility-inlines-hidden
-    -fvisibility=hidden
     -Wno-unused-parameter   # protobuf has many unused-parameter alarms
     -Wno-array-bounds       # protobuf has array-bounds alarms on higher g++
-    -Werror
-    -Wextra
-    -Wfloat-equal
-    -fno-common
 )
 
 target_link_libraries(udf_dump PRIVATE
@@ -72,6 +67,8 @@ target_link_libraries(udf_dump PRIVATE
     $<BUILD_INTERFACE:ascend_hal_headers>
     $<BUILD_INTERFACE:c_sec_headers>
     $<BUILD_INTERFACE:datagw_headers>
+    -ldl
+    ${AIR_COMMON_LINK_OPTION}
     PUBLIC c_sec
     ascend_protobuf_static
     flow_func

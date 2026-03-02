@@ -305,7 +305,7 @@ void PatternFusionBasePassImpl::MatchOneOutputNode(const ge::NodePtr &output_nod
 void PatternFusionBasePassImpl::MatchFuzzyOutputs(const ge::NodePtr &node, const FusionPattern::OpDescPtr &op_desc,
                                                   size_t &out_idx, const std::unique_ptr<bool[]> &usage_flags,
                                                   CandidateAndMapping &cand) const {
-  const FusionPattern::OutputMapDesc &outputs_desc_map = FusionPattern::GetOutputs(op_desc);
+  const FusionPattern::OutputMapDesc outputs_desc_map = FusionPattern::GetOutputs(op_desc);
   auto peer_in_nodes = node->GetOutDataNodes();
   for (const auto &outputs_desc_pair : outputs_desc_map) {
     if (outputs_desc_pair.first != kFuzzyOutIndex) {
@@ -338,7 +338,7 @@ bool PatternFusionBasePassImpl::MatchOutputs(CandidateAndMapping &cand) const {
   const auto &node = cand.candidate_nodes.front();
   const FusionPattern::OpDescPtr &op_desc = cand.candidate_op_descs.front();
   const std::string op_id = op_desc->id;
-  const FusionPattern::OutputMapDesc &outputs_desc_map = FusionPattern::GetOutputs(op_desc);
+  const FusionPattern::OutputMapDesc outputs_desc_map = FusionPattern::GetOutputs(op_desc);
   if (outputs_desc_map.empty()) {
     return true;
   }

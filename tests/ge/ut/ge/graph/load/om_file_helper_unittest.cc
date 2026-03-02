@@ -43,12 +43,15 @@ TEST_F(UtestOmFileHelper, LoadInit)
   OmFileLoadHelper loader;
   ModelData md;
   EXPECT_EQ(loader.Init(md), PARAM_INVALID);
-  ModelFileHeader header;
-  md.model_data = &header;
   md.model_len = sizeof(ModelFileHeader) + sizeof(ModelPartitionTable) + 10;
-  header.length = md.model_len - sizeof(ModelFileHeader);
-  header.magic = MODEL_FILE_MAGIC_NUM;
+  uint8_t *data = new uint8_t[md.model_len];
+  md.model_data = data;
+  ModelFileHeader *header = reinterpret_cast<ModelFileHeader*>(data);
+  header->model_length = md.model_len - sizeof(ModelFileHeader);
+  header->magic = MODEL_FILE_MAGIC_NUM;
+  header->modeltype = MODEL_TYPE_FLOW_MODEL;
   EXPECT_EQ(loader.Init(md), ACL_ERROR_GE_PARAM_INVALID);
+  delete [] data;
 }
 
 TEST_F(UtestOmFileHelper, GetModelPartition)

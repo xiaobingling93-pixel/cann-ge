@@ -48,7 +48,6 @@ class TestClipByValue : public Kernel {
     return SUCCESS;
   }
 };
-REGISTER_COMPUTE_NODE_KERNEL(ClipByValue, TestClipByValue);
 
 const char *kFakeWhere = "FakeWhere";
 class TestWhereKernelAicpu : public Kernel {
@@ -65,7 +64,6 @@ public:
     return SUCCESS;
   }
 };
-REGISTER_COMPUTE_NODE_KERNEL(kFakeWhere, TestWhereKernelAicpu);
 
 namespace {
   graphStatus StubInferFunction(Operator &op) { return GRAPH_SUCCESS; }
@@ -96,6 +94,7 @@ REG_OP(Cast)
   .OUTPUT(y, TensorType::BasicType())
   .REQUIRED_ATTR(dst_type, Int)
   .OP_END_FACTORY_REG(Cast)
+
 
 const auto CastInfer = [](Operator &op) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
@@ -576,8 +575,7 @@ TEST_F(ConstantFoldingTest, test_cast_float32toint32) {
 }
 
 TEST_F(ConstantFoldingTest, test_cast_float32tofloat16_inf) {
-  dlog_setlevel(0, 0, 0);
-  float value = 65505; 
+  float value = 65505;
   GeTensor weight;
   weight.SetData((uint8_t *const)(&value), sizeof(value));
   GeTensorDesc weight_desc;
@@ -586,9 +584,9 @@ TEST_F(ConstantFoldingTest, test_cast_float32tofloat16_inf) {
   weight_desc.SetOriginShape(GeShape());
   weight.SetTensorDesc(weight_desc);
   auto constant =
-      OP_CFG(CONSTANT).TensorDesc(FORMAT_ND, DT_FLOAT, {}).Attr<GeTensor>(ATTR_NAME_WEIGHTS, weight);
+      OP_CFG(CONSTANT).TensorDesc(FORMAT_ND, DT_FLOAT16, {}).Attr<GeTensor>(ATTR_NAME_WEIGHTS, weight);
   auto cast =
-      OP_CFG(CAST).TensorDesc(FORMAT_ND, DT_FLOAT, {}).Attr("dst_type", DT_FLOAT16);
+      OP_CFG(CAST).TensorDesc(FORMAT_ND, DT_FLOAT16, {}).Attr("dst_type", DT_FLOAT16);
   auto netouput = OP_CFG(NETOUTPUT).TensorDesc(FORMAT_ND, DT_FLOAT16, {-1});
   DEF_GRAPH(g1) {
     CHAIN(NODE("constant", constant)->EDGE(0, 0)->NODE("cast", cast));
@@ -623,7 +621,6 @@ TEST_F(ConstantFoldingTest, test_cast_float32tofloat16_inf) {
     const auto cast_node = graph->FindNode("cast");
     EXPECT_EQ(cast_node, nullptr);
   };
-  dlog_setlevel(3, 3, 0);
 }
 
 TEST_F(ConstantFoldingTest, test_ConstantFolding_Notchanged) {

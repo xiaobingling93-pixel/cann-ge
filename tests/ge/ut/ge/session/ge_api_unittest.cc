@@ -140,6 +140,8 @@ REGISTER_LABEL_MAKER(CASE, FakeLabelMaker);
 class UtestGeApi : public testing::Test {
  protected:
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     OperatorFactoryImpl::RegisterInferShapeFunc("Data", [](Operator &op) {return GRAPH_SUCCESS;});
     OperatorFactoryImpl::RegisterInferShapeFunc("Add", [](Operator &op) {return GRAPH_SUCCESS;});
     OperatorFactoryImpl::RegisterInferShapeFunc("NetOutput", [](Operator &op) {return GRAPH_SUCCESS;});
@@ -154,6 +156,9 @@ class UtestGeApi : public testing::Test {
     OperatorFactoryImpl::operator_infershape_funcs_->erase("Add");
     OperatorFactoryImpl::operator_infershape_funcs_->erase("NetOutput");
     RuntimeStub::Reset();
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
 
   void CreateSharedLibrary(const std::string &path) {
@@ -169,6 +174,7 @@ class UtestGeApi : public testing::Test {
     system(cmd.c_str());
     std::remove((path + ".cpp").c_str());
   }
+  const char *env;
 };
 
 TEST_F(UtestGeApi, run_graph_with_stream) {

@@ -19,6 +19,7 @@ include_directories(${GE_METADEF_DIR})
 include_directories(${GE_METADEF_DIR}/register)
 include_directories(${AIR_CODE_DIR}/tests/framework/ge_runtime_stub/include)
 include_directories(${AIR_CODE_DIR}/inc/framework)
+include_directories(${ASCEND_INSTALL_PATH}/pkg_inc/aicpu)
 
 file(GLOB_RECURSE REGISTER_UT_FILES CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/ut/register/*.cc" )
 file(GLOB_RECURSE UTILS_FILES CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/ut/graph/common/*.cc" )
@@ -28,7 +29,7 @@ add_executable(ut_register
 )
 add_compile_definitions(CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\")
 target_compile_options(ut_register PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage
+    -g
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control
@@ -52,9 +53,11 @@ target_link_libraries(ut_register
     msprof_headers
     exe_graph lowering register graph graph_base mmpa
     opp_registry
+    unified_dlog
     GTest::gtest
     GTest::gtest_main
     ascend_protobuf
+    ascend_dump
     slog_stub
     platform
     json
@@ -62,7 +65,6 @@ target_link_libraries(ut_register
     error_manager
     -lrt
     -ldl
-    -lgcov
     -Wl,--whole-archive
     rt2_registry_static
     -Wl,--no-whole-archive

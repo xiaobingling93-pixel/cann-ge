@@ -656,6 +656,14 @@ INT32 mmIoctl(mmProcess fd, INT32 ioctlCode, mmIoctlBuf *bufPtr) {
   return 0;
 }
 
+INT32 mmDup2(INT32 oldFd, INT32 newFd) {
+  return 0;
+}
+
+INT32 mmDup(INT32 fd) {
+  return 0;
+}
+
 ge::MmpaStub& ge::MmpaStub::GetInstance() {
   static ge::MmpaStub instance;
   return instance;

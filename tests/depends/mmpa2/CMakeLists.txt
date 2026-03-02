@@ -30,7 +30,6 @@ target_link_libraries(mmpa_stub2
         air_headers
         slog_headers
         metadef_headers
-        intf_pub
         slog_stub
         c_sec
         -ldl

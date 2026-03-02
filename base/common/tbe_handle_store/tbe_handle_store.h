@@ -120,10 +120,7 @@ class HandleHolder {
 
 class KernelBinRegistry {
  public:
-  static KernelBinRegistry &GetInstance() {
-    static KernelBinRegistry instance;
-    return instance;
-  }
+  static KernelBinRegistry &GetInstance();
 
   const char_t *GetUnique(const std::string &stub_func);
 
@@ -139,10 +136,7 @@ class KernelBinRegistry {
 
 class HandleRegistry {
  public:
-  static HandleRegistry &GetInstance() {
-    static HandleRegistry instance;
-    return instance;
-  }
+  static HandleRegistry &GetInstance();
 
   bool AddHandle(std::unique_ptr<HandleHolder> &&holder);
 

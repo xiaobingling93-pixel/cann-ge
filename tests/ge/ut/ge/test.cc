@@ -15,6 +15,8 @@
 #include "faker/space_registry_faker.h"
 #include "graph/ge_local_context.h"
 #include "register/optimization_option_registry.h"
+#include "ge_running_env/dir_env.h"
+#include "register/ops_kernel_builder_registry.h"
 
 using namespace std;
 using namespace ge;
@@ -24,9 +26,10 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   setenv("GE_PROFILING_TO_STD_OUT", "1", true);
   GetThreadLocalContext().GetOo().Initialize({}, OptionRegistry::GetInstance().GetRegisteredOptTable());
+  DirEnv::GetInstance().InitDir();
   CheckUtils::init();
   int ret = RUN_ALL_TESTS();
-
+  OpsKernelBuilderRegistry::GetInstance().UnregisterAll();
   printf("finish ge ut\n");
 
   return ret;

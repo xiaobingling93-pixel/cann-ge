@@ -14,6 +14,8 @@ include_directories(${AIR_CODE_DIR}/tests/ge/ut/ge)
 
 MESSAGE("copy st run data from ${AIR_CODE_DIR}/tests/ge/st/st_run_data to ${CMAKE_CURRENT_BINARY_DIR}/")
 file(COPY ${AIR_CODE_DIR}/tests/ge/st/st_run_data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+file(COPY ${AIR_CODE_DIR}/compiler/engines/manager/engine_manager/engine_conf.json DESTINATION
+        ${CMAKE_BINARY_DIR}/compiler/plugin/nnengine/ge_config)
 
 set(PROTO_LIST
         "${METADEF_PROTO_DIR}/om.proto"
@@ -104,7 +106,7 @@ add_executable(graph_engine_test
     "${AIR_CODE_DIR}/tests/graph_metadef/depends/faker/plugin_manager_stub.cc"
 )
 
-add_dependencies(graph_engine_test mdat)
+add_dependencies(graph_engine_test mdat fmk_parser)
 
 target_compile_definitions(graph_engine_test PRIVATE
     $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
@@ -113,9 +115,8 @@ target_compile_definitions(graph_engine_test PRIVATE
 )
 
 target_compile_options(graph_engine_test PRIVATE
-    -fsanitize=address -fsanitize=leak -fsanitize-recover=address
+    -g -O0
     -fno-access-control
-    -O0 -g
     -Wno-write-strings
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
@@ -136,14 +137,25 @@ target_include_directories(graph_engine_test PRIVATE
 target_link_libraries(graph_engine_test
     intf_pub
     ascendcl_stub
-    -fsanitize=address -fsanitize=leak -fsanitize-recover=address
+    -Wl,-z,muldefs
+    ge_compiler
+    ge_runner
+    dflow_runner
+    ge_runner_v2
+    gert
+    cpu_compiler
+    data_flow_base
+    aihacb_autofusion_stub
+    ge_local_opskernel_builder
+    symengine
     -Wl,--whole-archive
     rt2_registry_static
+    atc_static
     ge_running_env
-    graphengine
     ge_runtime_stub
     -Wl,--no-whole-archive gert_op_impl flow_graph
     es_ge_test ge_graph_dsl st_stubs GTest::gtest GTest::gmock GTest::gmock_main
+    -ldl
 )
 
 ################################################################################
@@ -192,7 +204,6 @@ target_compile_definitions(graph_engine_compile_test PRIVATE
         )
 
 target_compile_options(graph_engine_compile_test PRIVATE
-        -fsanitize=address -fsanitize=leak -fsanitize-recover=address
         -fno-access-control
         -O0 -g
         -Wno-write-strings
@@ -213,13 +224,22 @@ target_include_directories(graph_engine_compile_test PRIVATE
 
 target_link_libraries(graph_engine_compile_test
         intf_pub
-        -fsanitize=address -fsanitize=leak -fsanitize-recover=address
+        -Wl,-z,muldefs
+        ge_compiler
+        ge_runner
+        dflow_runner
+        ge_runner_v2
+        gert
+        cpu_compiler
+        ge_local_opskernel_builder
+        symengine
+        slice
         -Wl,--whole-archive
-        graphengine
         ascendcl_stub
         flow_graph
         -Wl,--no-whole-archive es_ge_test ge_runtime_stub 
         gert_op_impl ge_running_env ge_graph_dsl st_stubs ge_runtime_stub GTest::gtest GTest::gmock GTest::gmock_main
+        -ldl
         )
 
 add_subdirectory(fast_runtime_v2)

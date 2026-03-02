@@ -1720,7 +1720,7 @@ attr {
 //.DataType("T", TensorType{DT_INT32, DT_INT64});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp2_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp2";
   const std::string target_func = "InferDataType";
 
@@ -1776,7 +1776,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp2_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp2_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp2";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -1818,7 +1818,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp2_Infer
 //.DataType("T2", TensorType{DT_FLOAT16, DT_FLOAT});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp3_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp3";
   const std::string target_func = "InferDataType";
 
@@ -1883,7 +1883,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp3_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp3_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp3";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -1927,7 +1927,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp3_Infer
 //.DataType("T3", TensorType{DT_DOUBLE, DT_BOOL});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp4_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp4";
   const std::string target_func = "InferDataType";
 
@@ -1998,7 +1998,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp4_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp4_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp4";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2054,7 +2054,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp4New_InferDataType) {
   RuntimeMock mock_runtime;
   RuntimeStub::Install(&mock_runtime);
 
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp4New";
   const std::string target_func = "InferDataType";
 
@@ -2165,7 +2165,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp4New_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp4New_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp4New";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2207,7 +2207,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp4New_In
 //.DataType("T2", TensorType{DT_FLOAT16, DT_FLOAT});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp5_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp5";
   const std::string target_func = "InferDataType";
 
@@ -2271,7 +2271,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp5_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp5_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp5";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2313,7 +2313,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp5_Infer
 //.DataType("T3", OrderedTensorTypeList{DT_BOOL, DT_INT8});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp6_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp6";
   const std::string target_func = "InferDataType";
 
@@ -2378,7 +2378,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp6_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp6_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp6";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2420,7 +2420,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp6_Infer
 //.DataType("T3", OrderedTensorTypeList{DT_BOOL, DT_INT4, DT_INT8});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp7_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp7";
   const std::string target_func = "InferDataType";
 
@@ -2489,7 +2489,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp7_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp7_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp7";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2527,7 +2527,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp7_Infer
 //.DataType("T2", OrderedTensorTypeList{DT_BF16, DT_BF16, DT_FLOAT});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp8_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp8";
   const std::string target_func = "InferDataType";
 
@@ -2584,7 +2584,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp8_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp8_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp8";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2634,7 +2634,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp8New_InferDataType) {
   };
   RuntimeMock mock_runtime;
   RuntimeStub::Install(&mock_runtime);
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp8New";
   const std::string target_func = "InferDataType";
 
@@ -2705,7 +2705,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp8New_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp8New_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp8New";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2751,7 +2751,7 @@ TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp8New_In
 //.DataType("T5", OrderedTensorTypeList{DT_BOOL, DT_COMPLEX128, DT_DUAL});
 TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp9_InferDataType) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp9";
   const std::string target_func = "InferDataType";
 
@@ -2831,7 +2831,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp9_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp9_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp9";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -2889,7 +2889,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp9New_InferDataType) {
   };
   RuntimeMock mock_runtime;
   RuntimeStub::Install(&mock_runtime);
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp9New";
   const std::string target_func = "InferDataType";
 
@@ -2973,7 +2973,7 @@ TEST_F(UtestAscendCIR, CheckInferDtypeImplementation_StubOp9New_InferDataType) {
 
 TEST_F(UtestAscendCIR, CheckInferDataTypeWithNoCheckImplementation_StubOp9New_InferDataTypeWithNoCheck) {
   GTEST_SKIP() << "线上二进制冲突，待下一次更新run包后打开.";
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class = "StubOp9New";
   const std::string target_func = "InferDataTypeWithNoCheck";
 
@@ -3665,7 +3665,7 @@ TEST_F(UtestAscendCIR, AscOutputAttrDataType_invalid) {
 }
 
 TEST_F(UtestAscendCIR, CalcAscNodeTmpSizeFunc) {
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class;
   const std::string target_func = "CalcAscNodeTmpSize";
 
@@ -3739,7 +3739,7 @@ inline std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAscNodeTmpSize(const ge:
 TEST_F(UtestAscendCIR, CommonInferDtypeFuncGen) {
   // 分离v35会导致ascir变化，先skip
   GTEST_SKIP();
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class;
   const std::string target_func = "CommonInferDtype";
 
@@ -3889,7 +3889,7 @@ inline ge::Status CommonInferDtype(const std::string &type, const std::vector<Da
 TEST_F(UtestAscendCIR, CommonInferDtypeWithNoCheckFuncGen) {
   // 分离v35会导致ascir变化，先skip
   GTEST_SKIP();
-  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/tests/depends/aihacb_autofusion/ascir_ops.h";
+  const std::string file_path = std::string(CMAKE_BINARY_DIR) + "/graph_metadef/graph/ascendc_ir/generator/ascir_ops.h";
   const std::string target_class;
   const std::string target_func = "CommonInferDtypeWithNoCheck";
 
