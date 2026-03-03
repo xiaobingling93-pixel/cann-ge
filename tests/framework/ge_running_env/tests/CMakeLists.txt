@@ -22,15 +22,10 @@ target_compile_definitions(ge_running_env_test PRIVATE
 
 target_compile_options(ge_running_env_test PRIVATE
     -g
-    -DFUNC_VISIBILITY
 )
 
-target_link_libraries(ge_running_env_test PUBLIC intf_pub GTest::gtest ge_running_env ge_common_base
-        ge_compiler
-        ge_runner
-        flow_graph ascendcl_stub
-        -Wl,--no-as-needed
-)
+target_link_libraries(ge_running_env_test PUBLIC intf_pub GTest::gtest ge_running_env graphengine flow_graph ascendcl_stub
+-Wl,--no-as-needed)
 
 add_test(NAME ge_running_env_test COMMAND ge_running_env_test --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/ge_running_env_test.xml)
 set_tests_properties(ge_running_env_test PROPERTIES LABELS "st;st_hetero;ge_running_env_test")

@@ -32,14 +32,13 @@ add_executable(ut_fast_runtime2_test
          ${RUNTIME2_TEST_SRCS})
 
 target_compile_options(ut_fast_runtime2_test PRIVATE
+        ${AIR_COMMON_COMPILE_OPTION}
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -fno-sanitize-address-use-after-scope
-        -fno-access-control
         )
 
 target_compile_definitions(ut_fast_runtime2_test PRIVATE
-        google=ascend_private
         $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         )
@@ -90,8 +89,6 @@ target_link_libraries(ut_fast_runtime2_test PRIVATE
         ge_runtime_stub
         ascendcl_stub
         )
-
-add_dependencies(ut_fast_runtime2_test gert_op_impl gert_op_impl2 autofuse_stub slice_autofuse_stub)
 
 add_test(NAME ut_fast_runtime2_test COMMAND ut_fast_runtime2_test --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/ut/ut_fast_runtime2_test.xml)
 set_tests_properties(ut_fast_runtime2_test PROPERTIES LABELS "ut;ge_rt;ut_fast_runtime2_test")

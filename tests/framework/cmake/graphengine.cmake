@@ -48,6 +48,105 @@ set(PROTO_LIST
 
 protobuf_generate(ge PROTO_SRCS PROTO_HDRS ${PROTO_LIST} "--proto_path=${METADEF_PROTO_DIR}" TARGET)
 
+# ---- File glob by group ----
+file(GLOB_RECURSE METADEF_SRCS CONFIGURE_DEPENDS
+    "${GE_METADEF_DIR}/graph/*.cc"
+    "${GE_METADEF_DIR}/graph/*.cpp"
+    "${GE_METADEF_DIR}/exe_graph/*.cc"
+    "${GE_METADEF_DIR}/register/*.cc"
+    "${GE_METADEF_DIR}/register/op_tiling/*.cc"
+    "${GE_METADEF_DIR}/register/*.cpp"
+    "${GE_METADEF_DIR}/ops/*.cc"
+    "${GE_METADEF_DIR}/third_party/transformer/src/*.cc"
+    "${GE_METADEF_DIR}/ops/op_imp.cpp"
+    "${GE_METADEF_DIR}/base/*.cc"
+)
+
+file(GLOB_RECURSE ASCIR_EXCLUDE_SOURCE CONFIGURE_DEPENDS
+        "${GE_METADEF_DIR}/graph/ascendc_ir/utils/mem_utils.cc"
+        )
+
+list(REMOVE_ITEM METADEF_SRCS ${ASCIR_EXCLUDE_SOURCE})
+
+file(GLOB_RECURSE METADEF_REGISTER_SRCS CONFIGURE_DEPENDS
+    "${GE_METADEF_DIR}/register/*.cc"
+    "${GE_METADEF_DIR}/register/op_tiling/*.cc"
+    "${GE_METADEF_DIR}/register/*.cpp"
+)
+
+file(GLOB_RECURSE PARSER_SRCS CONFIGURE_DEPENDS
+    "${PARSER_DIR}/parser/common/*.cc"
+    "${PARSER_DIR}/parser/tensorflow/*.cc"
+    "${PARSER_DIR}/parser/onnx/*.cc"
+)
+
+file(GLOB_RECURSE LOCAL_ENGINE_SRC CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/compiler/engines/local_engine/*.cc"
+)
+
+list(REMOVE_ITEM LOCAL_ENGINE_SRC
+    "${AIR_CODE_DIR}/base/host_cpu_engine/host_cpu_engine.cc"
+    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/ge_local_ops_kernel_builder.cc"
+)
+
+file(GLOB_RECURSE NN_ENGINE_SRC CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/compiler/engines/manager/engine/*.cc"
+)
+
+file(GLOB_RECURSE OFFLINE_SRC CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/api/atc/*.cc"
+)
+
+file(GLOB_RECURSE EAGER_STYLE_GRAPH_BUILDER_BASE_SRCS CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/compiler/graph/eager_style_graph_builder/es_generator/*.cc"
+    "${AIR_CODE_DIR}/compiler/graph/eager_style_graph_builder/es_base_struct/*.cc"
+)
+
+file(GLOB_RECURSE GE_SRCS CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/base/common/*.cc"
+    "${AIR_CODE_DIR}/base/slice/*.cc"
+    "${AIR_CODE_DIR}/base/formats/*.cc"
+    "${AIR_CODE_DIR}/base/graph/*.cc"
+    "${AIR_CODE_DIR}/base/exec_runtime/*.cc"
+    "${AIR_CODE_DIR}/base/host_cpu_engine/*.cc"
+    "${AIR_CODE_DIR}/compiler/analyzer/*.cc"
+    "${AIR_CODE_DIR}/compiler/engines/manager/engine_manager/*.cc"
+    "${AIR_CODE_DIR}/compiler/engines/local_engine/*.cc"
+    "${AIR_CODE_DIR}/compiler/opt_info/*.cc"
+    "${AIR_CODE_DIR}/compiler/api/generator/*.cc"
+    "${AIR_CODE_DIR}/compiler/graph/*.cc"
+    "${AIR_CODE_DIR}/compiler/host_kernels/*.cc"
+    "${AIR_CODE_DIR}/compiler/inc/*.cc"
+    "${AIR_CODE_DIR}/compiler/api/gelib/*.cc"
+    "${AIR_CODE_DIR}/compiler/api/aclgrph/*.cc"
+    "${AIR_CODE_DIR}/api/atc/*.cc"
+    "${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/*.cc"
+    "${AIR_CODE_DIR}/compiler/engines/custom_engine/*.cc"
+    "${AIR_CODE_DIR}/compiler/plugin/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/model/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/pne/npu/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/pne/cpu/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/pne/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/pne/udf/*.cc"
+    "${AIR_CODE_DIR}/dflow/compiler/session/*.cc"
+    "${AIR_CODE_DIR}/dflow/executor/*.cc"
+    "${AIR_CODE_DIR}/runtime/v1/*.cc"
+    "${AIR_CODE_DIR}/api/session/*.cc"
+)
+
+file(GLOB_RECURSE GE_SUB_ENGINE_SRCS CONFIGURE_DEPENDS
+    "${AIR_CODE_DIR}/base/host_cpu_engine/host_cpu_engine.cc"
+)
+
+list(REMOVE_ITEM GE_SRCS
+    ${NN_ENGINE_SRC}
+    ${EAGER_STYLE_GRAPH_BUILDER_BASE_SRCS}
+    ${AIR_CODE_DIR}/api/atc/main.cc
+)
+
+list(APPEND GE_SRCS ${GE_SUB_ENGINE_SRCS})
+
 # First of all, released version of metadef (i.e. libgraph_base.so) does NOT include this.
 # Not removing it here (from libmetadef_graph.so) will crash the test when linked together
 # with libge_compiler.so (which statically link these proto), due to "File already exists
@@ -57,7 +156,8 @@ protobuf_generate(ge PROTO_SRCS PROTO_HDRS ${PROTO_LIST} "--proto_path=${METADEF
 set(COMPILER_LINKED_PROTO_SRCS
     "${CMAKE_BINARY_DIR}/proto/ge/proto/optimizer_priority.pb.cc"
 )
-
+list(REMOVE_ITEM PROTO_SRCS ${COMPILER_LINKED_PROTO_SRCS})
+list(APPEND GE_SRCS ${COMPILER_LINKED_PROTO_SRCS})
 add_library(graphengine_inc INTERFACE)
 target_include_directories(graphengine_inc INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -121,6 +221,114 @@ list(APPEND STUB_LIBS
     json
 )
 
+# ---- Target : metadef graph ----
+add_library(metadef_graph SHARED
+        ${METADEF_SRCS}
+        ${PROTO_SRCS}
+        )
+add_dependencies(metadef_graph ge)
+
+target_compile_definitions(metadef_graph PRIVATE
+        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
+        FMK_SUPPORT_DUMP
+        FUNC_VISIBILITY
+        )
+
+target_compile_definitions(metadef_graph PUBLIC
+        google=ascend_private
+        )
+
+target_compile_options(metadef_graph PRIVATE ${AIR_COMMON_COMPILE_OPTION})
+
+target_include_directories(metadef_graph PRIVATE
+    ${AIR_CODE_DIR}/inc
+    ${AIR_CODE_DIR}/inc/external
+    ${AIR_CODE_DIR}/inc/graph_metadef/external
+    ${AIR_CODE_DIR}/inc/framework
+    ${METADEF_DIR}/inc/external/exe_graph
+    )
+
+target_link_libraries(metadef_graph PUBLIC
+        intf_pub
+        metadef_headers
+        -Wl,-z,muldefs
+        runtime_headers
+        cce_headers
+        ${AIR_COMMON_LINK_OPTION}
+        ${STUB_LIBS}
+        ge_metadef_inc
+        symengine
+        Boost::boost
+        ascendalog
+        slog_stub
+        error_manager
+        -Wl,--no-as-needed unified_dlog -Wl,--as-needed
+        )
+
+add_library(local_engine SHARED
+    ${LOCAL_ENGINE_SRC}
+)
+add_dependencies(local_engine ge)
+
+target_include_directories(local_engine PUBLIC
+    "${AIR_CODE_DIR}/compiler/engines/local_engine"
+)
+
+target_compile_definitions(local_engine PRIVATE
+    google=ascend_private
+)
+
+target_compile_options(local_engine PRIVATE
+    ${AIR_COV_COMPILE_OPTION}
+    -Werror=format
+)
+
+target_link_libraries(local_engine PUBLIC
+    intf_pub
+    metadef_headers
+    runtime_headers
+    cce_headers
+    ${STUB_LIBS}
+    graphengine_inc
+    ${AIR_COMMON_LINK_OPTION}
+)
+
+set_target_properties(local_engine PROPERTIES
+    OUTPUT_NAME ge_local_engine
+)
+
+# ---- Target : engine plugin----
+#
+add_library(nnengine SHARED
+    ${NN_ENGINE_SRC}
+)
+
+target_include_directories(nnengine PUBLIC
+    "${AIR_CODE_DIR}/compiler/engines/manager/engine"
+)
+
+target_compile_definitions(nnengine PRIVATE
+    google=ascend_private
+)
+
+target_compile_options(nnengine PRIVATE
+    ${AIR_COV_COMPILE_OPTION}
+    -Werror=format
+)
+
+target_link_libraries(nnengine PUBLIC
+    intf_pub
+    metadef_headers
+    ${STUB_LIBS}
+    graphengine_inc
+    ${AIR_COMMON_LINK_OPTION}
+)
+
+target_link_options(nnengine PRIVATE
+        -rdynamic
+        -Wl,-Bsymbolic
+        )
+
 #   Targe: engine_conf
 add_custom_target(
     engine_conf_json ALL
@@ -145,3 +353,51 @@ add_custom_command(
     COMMAND mkdir -p ${CMAKE_BINARY_DIR}/tests/framework/ge_running_env/tests/plugin/opskernel/
     COMMAND cp ${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/optimizer_priority.pbtxt ${CMAKE_BINARY_DIR}/tests/framework/ge_running_env/tests/plugin/opskernel/
 )
+
+
+# ---- Target : Graph engine ----
+add_library(graphengine STATIC
+    ${PARSER_SRCS}
+    ${GE_SRCS}
+)
+add_dependencies(graphengine ge)
+
+target_compile_definitions(graphengine PRIVATE
+    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
+    google=ascend_private
+    FMK_SUPPORT_DUMP
+    FWK_SUPPORT_TRAINING_TRACE
+)
+
+target_compile_options(graphengine PRIVATE
+    -g --coverage -fprofile-arcs -ftest-coverage
+    -Werror=format
+)
+
+target_link_libraries(graphengine PUBLIC
+    intf_pub
+    metadef_headers
+    adump_headers
+    datagw_headers
+    graphengine_inc
+    json
+    gert
+    ${STUB_LIBS}
+    metadef_graph
+    crypto_static
+    data_flow_base
+    aihacb_autofusion_stub -lstdc++fs
+)
+
+add_dependencies(graphengine local_engine nnengine engine_conf_json optimizer_priority_pbtxt)
+
+stub_module(graph metadef_graph)
+stub_module(graph_base metadef_graph)
+stub_module(register metadef_graph)
+stub_module(exe_graph metadef_graph)
+stub_module(lowering metadef_graph)
+stub_module(flow_graph metadef_graph)
+stub_module(aihac_ir metadef_graph)
+stub_module(aihac_symbolizer metadef_graph)
+stub_module(aihac_ir_register metadef_graph)
+stub_module(metadef_graph_protos_obj metadef_graph)

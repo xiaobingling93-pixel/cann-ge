@@ -7,30 +7,13 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
-# ----dump Proto generate ----
-set(PROTO_LIST
-        "${METADEF_PROTO_DIR}/op_mapping.proto"
-        "${METADEF_PROTO_DIR}/dump_task.proto"
-        )
 
-protobuf_generate(dump_proto PROTO_SRCS PROTO_HDRS ${PROTO_LIST} "--proto_path=${METADEF_PROTO_DIR}" TARGET)
-
-add_library(profiler_stub SHARED src/profiler_stub.cc src/dump_stub.cc ${PROTO_SRCS})
-
-add_dependencies(profiler_stub
-        dump_proto
-        )
-
-target_compile_definitions(profiler_stub PRIVATE
-        google=ascend_private
-        )
-
+add_library(profiler_stub SHARED src/profiler_stub.cc src/dump_stub.cc)
 target_link_libraries(profiler_stub
     PRIVATE
         intf_pub
         runtime_headers
         c_sec
-        ascend_protobuf
     PUBLIC
         msprof_headers
         adump_headers
@@ -39,7 +22,7 @@ target_include_directories(profiler_stub SYSTEM PRIVATE
         ${AIR_CODE_DIR}/inc/framework
         ${METADEF_DIR}/inc/external
         )
-#set_target_properties(profiler_stub PROPERTIES LIBRARY_OUTPUT_NAME profapi)
+set_target_properties(profiler_stub PROPERTIES LIBRARY_OUTPUT_NAME profapi)
 
 stub_module(profapi_share profiler_stub)
 stub_module(msprofiler_fwk_share profiler_stub)

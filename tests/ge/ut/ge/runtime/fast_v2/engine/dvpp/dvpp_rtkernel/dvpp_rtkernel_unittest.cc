@@ -159,11 +159,9 @@ TEST_F(DvppRtKernelUt, generate_sqe_and_launch_task_005)
 
     MOCKER_CPP(&gert::KernelContext::GetInputPointer<gert::ContinuousVector>).stubs().will(returnValue(ptrVec));
     MOCKER_CPP(&gert::KernelContext::GetOutputPointer<uint32_t*>).stubs().will(returnValue(&mockSqePtr));
-    MOCKER_CPP(&gert::TensorData::GetAddr).stubs().will(returnValue((void*)tmpPtr));
+    MOCKER_CPP(&gert::GertTensorData::GetAddr).stubs().will(returnValue((void*)tmpPtr));
     MOCKER_CPP(&gert::DvppContext::GetNodeType).stubs().will(returnValue(str));
     MOCKER_CPP(gert::kernel::BuildDvppCmdlistV2).stubs().will(returnValue(0));
-    MOCKER_CPP(&gert::DvppContext::GetComputeNodeInputNum).stubs().will(returnValue(0U));
-    MOCKER_CPP(&gert::DvppContext::GetComputeNodeOutputNum).stubs().will(returnValue(0U));
     MOCKER_CPP(gert::kernel::StarsBatchTaskLaunch).stubs().will(returnValue(0));
     MOCKER_CPP(memset_s).stubs().will(returnValue(0));
     ge::Status ret = gert::kernel::GenerateSqeAndLaunchTask(&context);

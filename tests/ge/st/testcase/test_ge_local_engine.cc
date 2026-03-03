@@ -151,7 +151,6 @@ TEST_F(GeLocalEngineSystemTest, TestFlattenV2_CheckStaticGraph_FlattenV2RemoveSu
             "success");
   // new session & add graph
   map<AscendString, AscendString> options;
-  EXPECT_EQ(GEInitialize(options), SUCCESS);
   Session session(options);
   uint32_t graph_id = 1;
   auto ret = session.AddGraph(graph_id, graph, options);

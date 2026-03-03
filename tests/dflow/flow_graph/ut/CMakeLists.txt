@@ -8,7 +8,7 @@
 # ======================================================================================================================
 
 if (ENABLE_GE_COV)
-    set(COVERAGE_COMPILER_FLAGS ${AIR_COMMON_COMPILE_OPTION})
+    set(COVERAGE_COMPILER_FLAGS "-g --coverage -fprofile-arcs -fPIC -O0 -ftest-coverage")
     set(CMAKE_CXX_FLAGS "${COVERAGE_COMPILER_FLAGS}")
 endif()
 

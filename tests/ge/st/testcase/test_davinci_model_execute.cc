@@ -5469,7 +5469,7 @@ TEST_F(DavinciModelTest, TilingSink_From_Model_Success) {
   EXPECT_NE(ge_model, nullptr);
   EXPECT_NE(root_graph, nullptr);
 
-  const auto dumps = DumpManager::GetInstance().GetDumpPropertiesMap();
+  const auto &dumps = DumpManager::GetInstance().GetDumpPropertiesMap();
   for (const auto &item : dumps) {
     DumpManager::GetInstance().RemoveDumpProperties(item.first);
   }

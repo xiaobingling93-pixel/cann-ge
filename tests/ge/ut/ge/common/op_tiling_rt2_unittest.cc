@@ -126,23 +126,6 @@ UINT32 MemsetTilingParse(gert::KernelContext *kernel_context) {
   return ge::GRAPH_SUCCESS;
 }
 
-graphStatus TilingParseForAdd(gert::KernelContext *) {
-  return GRAPH_SUCCESS;
-}
-
-graphStatus TilingForAdd(gert::TilingContext *context) {
-  return GRAPH_SUCCESS;
-}
-
-struct AddCompileInfo {
-  int64_t a;
-  int64_t b;
-};
-
-void *CreateCompileInfo() {
-  return new AddCompileInfo();
-}
-
 IMPL_OP(ConcatV2).TilingParse<DummyCompileInfo>(DummyTilingParse).Tiling(DummyTiling);
 
 IMPL_OP(Batch).TilingParse<DummyCompileInfo>(DummyTilingParse).Tiling(DummyTiling);
@@ -867,13 +850,7 @@ TEST_F(RegisterOpTilingRT2UT, SoftSyncOpRtParseAndTiling) {
   fe::PlatFormInfos platform_infos;
   OpRunInfoV2 run_info;
   run_info.SetLocalMemorySize(10U);  // test: local memory size will be updated in SoftSyncOpRtParseAndTiling
-  gert::SpaceRegistryFaker::CreateDefaultSpaceRegistry(true);
-  auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry();
-  auto op_impl_func = space_registry->CreateOrGetOpImpl("Add");
-  op_impl_func->tiling = TilingForAdd;
-  op_impl_func->tiling_parse = TilingParseForAdd;
-  op_impl_func->compile_info_creator = CreateCompileInfo;
-
+  auto space_registry = SpaceRegistryFaker().Build();
   // TODOO：用例适配
   auto ret = SoftSyncOpRtParseAndTiling(op, platform_infos, run_info, space_registry);
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);

@@ -993,8 +993,6 @@ TEST(UTEST_ACL_Resource_Manager, TestStream) {
     gert::Allocators *ptr = instance.GetAllocators(stream1).get();
     EXPECT_EQ(ptr, nullptr);
 
-    EXPECT_CALL(MockFunctionTest::aclStubInstance(), aclrtAllocatorGetByStream(_,_,_,_,_,_,_))
-            .WillRepeatedly(Return(ACL_ERROR_FAILURE));
     // second call GetExternalAllocators, CreateDefaultAllocator succ
     EXPECT_CALL(MockFunctionTest::aclStubInstance(), Create(_))
             .WillRepeatedly(Invoke(CreateAllocators_succ));

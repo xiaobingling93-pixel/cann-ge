@@ -29,5 +29,6 @@ target_link_libraries(intf_llt_pub INTERFACE
         GTest::gtest
         -lpthread
         mockcpp_static
+        $<$<BOOL:${ENABLE_GCOV}>:-lgcov>
 )
 

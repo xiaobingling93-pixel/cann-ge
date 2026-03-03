@@ -113,9 +113,4 @@ Status OpsKernelExecutorManager::CheckExecutors(const std::map<std::string, OpsK
   }
   return SUCCESS;
 }
-
-OpsKernelExecutorManager &OpsKernelExecutorManager::GetInstance() {
-  static OpsKernelExecutorManager instance;
-  return instance;
-}
 }  // namespace ge

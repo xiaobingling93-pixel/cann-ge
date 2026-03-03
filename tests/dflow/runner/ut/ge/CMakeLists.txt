@@ -81,6 +81,76 @@ include_directories(${METADEF_DIR}/pkg_inc)
 include_directories(${METADEF_DIR})
 include_directories(${ASCGEN_DIR}/inc)
 
+set(HELPER_RUNTIME_SRC_FILES
+        "${AIR_CODE_DIR}/dflow/deployer/common/config/config_parser.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/config/numa_config_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/config/configurations.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/config/device_debug_config.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/config/json_parser.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/data_flow/event/proxy_event_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/data_flow/queue/heterogeneous_exchange_service.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/message_handle/message_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/message_handle/message_server.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/data_flow/route/rank_table_builder.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/mem_grp/memory_group_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/subprocess/subprocess_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/daemon/daemon_client_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/daemon/model_deployer_daemon.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/utils/heterogeneous_profiler.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/common/utils/memory_statistic_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/daemon/daemon_service.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/daemon/deployer_daemon_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/heterogeneous_execution_runtime.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deploy_context.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deploy_state.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deployer_authentication.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deployer.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deployer_proxy.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deployer_service_impl.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/deployer_var_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/heterogeneous_model_deployer.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/deployer/master_model_deployer.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/abnormal_status_handler/abnormal_status_handler.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/abnormal_status_handler/device_abnormal_status_handler.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/execfwk/executor_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/execfwk/builtin_executor_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/execfwk/udf_executor_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/execfwk/udf_proxy_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/execfwk/pne_executor_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/flowgw_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/flowgw_client_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/flow_route_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/flow_route_planner.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/heterogeneous_exchange_deployer.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/network_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/flowrm/tsd_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/model_send/flow_model_sender.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/model_recv/flow_model_receiver.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/deployer_port_distributor.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/device_info.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/heterogeneous_deploy_planner.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/node_info.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/resource_allocator.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/resource/resource_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/rpc/deployer_client.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/deploy/rpc/deployer_server.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/cpu_id_resource_manager.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/cpu_sched_event_dispatcher.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/cpu_sched_model.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/cpu_sched_model_builder.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/cpu_tasks.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/dynamic_model_executor.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/sched_task_info.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/npu_sched_model_loader.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/npu_sched_model_configurator.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/npu_sched_model.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/proxy_dynamic_model_executor.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/engine_daemon.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/engine_thread.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/event_handler.cc"
+        "${AIR_CODE_DIR}/dflow/deployer/executor/executor_context.cc"
+        )
+
 # test files
 set(COMMON_TEST_FILES
     "graph/passes/graph_builder_utils.cc"
@@ -177,8 +247,7 @@ SET(HELPER_RUNTIME_TEST_FILES
     ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/caas_dataflow_auth_stub.cc
     ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/process_utils_stub.cc
     ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/tsd_client_stub.cc
-    ${AIR_CODE_DIR}/tests/dflow/udf/stub/slog_stub.cpp
-)
+    )
 
 SET(DFLOW_EXECUTOR_TEST_FILES
         "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/executor/flow_model_manager_unittest.cc"
@@ -193,7 +262,7 @@ SET(DFLOW_SESSION_TEST_FILES
 
 
 #build runtime
-add_library(helper_ut_runtime SHARED ${PROTO_HDRS} ${DEPLOYER_PROTO_HDRS} ${DEPLOYER_PROTO_SRCS})
+add_library(helper_ut_runtime SHARED ${HELPER_RUNTIME_SRC_FILES} ${PROTO_HDRS} ${DEPLOYER_PROTO_HDRS} ${DEPLOYER_PROTO_SRCS})
 
 target_compile_definitions(helper_ut_runtime PRIVATE
     google=ascend_private
@@ -258,18 +327,20 @@ target_include_directories(helper_ut_runtime PRIVATE
     "${AIR_CODE_DIR}/dflow/inc/data_flow"
 )
 
+# ut binary
+file(GLOB_RECURSE JIT_EXECUTION_SRC_FILES CONFIGURE_DEPENDS "${AIR_CODE_DIR}/api/session/jit_execution/*.cc")
+
 # helper ut
 add_executable(ut_libge_helper_utest
     ${COMMON_TEST_FILES}
     ${HELPER_RUNTIME_TEST_FILES}
+    ${JIT_EXECUTION_SRC_FILES}
     ${UDF_TEST_FILES}
     ${PNE_MODEL_TEST_FILES}
     ${HETEROGENEOUS_MODEL_TEST_FILES}
     ${DFLOW_EXECUTOR_TEST_FILES}
     ${DFLOW_SESSION_TEST_FILES}
     ${DATA_FLOW_GRAPH_TEST_FILES}
-    "${AIR_CODE_DIR}/dflow/deployer/executor/engine_thread.cc"
-    "${AIR_CODE_DIR}/dflow/deployer/executor/event_handler.cc"
 )
 
 target_include_directories(ut_libge_helper_utest PRIVATE
@@ -295,13 +366,12 @@ target_include_directories(ut_libge_helper_utest PRIVATE
         "${AIR_CODE_DIR}/dflow/inc/data_flow"
         )
 
-target_compile_options(ut_libge_helper_utest PRIVATE -g
+target_compile_options(ut_libge_helper_utest PRIVATE -g ${AIR_COMMON_COMPILE_OPTION}
     -Werror=format
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -Wno-address
     -Wno-write-strings
-    -fno-access-control
 )
 
 target_compile_definitions(ut_libge_helper_utest PRIVATE
@@ -321,27 +391,16 @@ target_link_libraries(ut_libge_helper_utest
     datagw_headers
     ascend_hal_headers
     runtime_headers
-    flow_func
-    dflow_runner
-    ge_compiler
-    flow_graph
-    udf_compiler
-    model_deployer
-    deployer_daemon_static
-    npu_executor_static
-    npu_sched_model_loader
-    data_flow_base
-    ge_runner_v2
-    ge_runner
-    cpu_compiler
-    gert
     -Wl,--whole-archive
+    ge_common_base
     es_ge_test
+    ge_single_op ge_davinci_model ge_build_common ge_prepare_common
+    ge_pass_common ge_ut_common ge_ut_common_format
     helper_ut_runtime ge_runtime_stub
     ge_running_env
     rt2_registry_static
     -Wl,--no-whole-archive
-    GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lpthread
+    GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lpthread -lgcov
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
     data_flow_base
 )

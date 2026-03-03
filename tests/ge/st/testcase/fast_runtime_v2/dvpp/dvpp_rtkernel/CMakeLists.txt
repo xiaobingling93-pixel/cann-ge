@@ -22,6 +22,7 @@ target_compile_options(st_dvpp_runtime2_test PRIVATE
         ${AIR_COMMON_COMPILE_OPTION}
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
+        --coverage -fprofile-arcs -ftest-coverage
         )
 
 target_compile_definitions(st_dvpp_runtime2_test PRIVATE
@@ -37,8 +38,7 @@ target_include_directories(st_dvpp_runtime2_test PRIVATE
 
 target_link_libraries(st_dvpp_runtime2_test PRIVATE
         intf_pub
-        ascend_dump
-        gert
+        ${AIR_COMMON_LINK_OPTION}
         -Wl,--whole-archive
         -Wl,--no-whole-archive
         GTest::gtest
@@ -46,7 +46,6 @@ target_link_libraries(st_dvpp_runtime2_test PRIVATE
         GTest::gtest_main
         c_sec
         mockcpp_static
-        ${AIR_COMMON_LINK_OPTION}
         )
 
 include(CTest)

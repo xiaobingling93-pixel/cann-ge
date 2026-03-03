@@ -59,10 +59,6 @@ class MockMemRuntime : public ge::RuntimeStub {
     }
     return RT_ERROR_NONE;
   }
-
-  rtError_t rtMemcpy(void *dst, uint64_t dest_max, const void *src, uint64_t count, rtMemcpyKind_t kind) override {
-    return RT_ERROR_NONE;
-  }
 };
 
 class GeExecutorTest : public testing::Test {
@@ -1858,9 +1854,7 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
  * 预期结果：
  * 1. 两次加载，session id不同，因此外置权重不能共享同一份device内存，各自有h2d拷贝
  */
- // todo test
- /*
-  TEST_F(GeExecutorTest, FileConstant_OneThreadLoadTwoOm) {
+TEST_F(GeExecutorTest, FileConstant_OneThreadLoadTwoOm) {
   shared_ptr<OpsKernelInfoStore> fake_ops_kernel_info_store = std::make_shared<FakeOpsKernelInfoStore>();
   // hccl op goes to AIcoreEngine in this testcase
   OpsKernelExecutorManager::GetInstance().executors_["AIcoreEngine"] = fake_ops_kernel_info_store;
@@ -1907,14 +1901,8 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
     model_data.om_name = "g1_om";
     uint32_t model_id = 0U;
     ge::ModelLoadArg load_arg;
-    load_arg.mem_size = mem_offset;
 
-    {
-      auto mock_runtime = std::make_shared<MockMemRuntime>();
-      ge::RuntimeStub::SetInstance(mock_runtime);
-      EXPECT_EQ(ge_executor.LoadModelFromDataWithArgs(model_id, model_data, load_arg), SUCCESS);
-      ge::RuntimeStub::Reset();
-    }
+    EXPECT_EQ(ge_executor.LoadModelFromDataWithArgs(model_id, model_data, load_arg), SUCCESS);
 
     GeExecutor ge_executor2;
     ModelData model_data2;
@@ -1939,7 +1927,6 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
   system("rm -rf sample_offline_model1.om");
   system("rm -rf sample_offline_model2.om");
 }
-*/
 
 static void BuildSampleCondGraph(ComputeGraphPtr &graph, uint32_t &mem_offset) {
   DEF_GRAPH(g0) {

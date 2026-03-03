@@ -26,27 +26,14 @@
 #include "ge_graph_dsl/graph_dsl.h"
 #include "common/env_path.h"
 #include "depends/mmpa/src/mmpa_stub.h"
-#include "faker/space_registry_faker.h"
-
 DECLARE_bool(help);
 DECLARE_int32(virtual_type);
 DECLARE_string(model);
 
 namespace ge {
 class AtcCommonSTest : public AtcTest {
-  void SetUp() override {
+  void SetUp() {
     GeRunningEnvFaker::SetEnvForOfflineSoPack();
-    auto base_path = EnvPath().GetAirBasePath();
-    std::string command = "find " + base_path + "/build_st -name " + "libfmk_parser.so";
-    char retmsg[1024];
-    (void)gert::SuperSystem(command.c_str(), retmsg, sizeof(retmsg));
-    std::string fmk_path = retmsg;
-
-    std::string cmd = "mkdir -p " + base_path + "/tests/ge/opp/built-in/framework/tensorflow/";
-    system(cmd.c_str());
-    cmd = "cp -rf " + fmk_path + " " + base_path + "/tests/ge/opp/built-in/framework/tensorflow/";
-    system(cmd.c_str());
-    dlopen(fmk_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
   }
 };
 
@@ -68,10 +55,6 @@ public:
       if (string("libamctacl.so") == file_name) {
         return (void *) &g_handleStub;
       }
-
-      if (string(file_name).find("liboptiling.so") != std::string::npos) {
-        return (void *) &g_handleStub;
-      }
       return MmpaStubApiGe::DlOpen(file_name, mode);
     }
 
@@ -83,6 +66,10 @@ public:
         return (void *) &amctGraphCalibration;
       }
       return dlsym(handle, func_name);
+    }
+
+    int32_t DlClose(void *handle) override {
+      return 0;
     }
 };
 
@@ -150,7 +137,6 @@ TEST_F(AtcCommonSTest, pb_model_status_check_error) {
                   const_cast<char *>(op_name_map.c_str()),
                   };
   DUMP_GRAPH_WHEN("PreRunBegin")
-  MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
   auto ret = main_impl(sizeof(argv)/sizeof(argv[0]), argv);
   EXPECT_EQ(ret, -1);
   ReInitGe(); // the main_impl will call GEFinalize, so re-init after call it

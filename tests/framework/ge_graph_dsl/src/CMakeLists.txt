@@ -12,9 +12,8 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cc" "*.CC" "*.cpp" "*.CPP")
 
 add_library(ge_graph_dsl STATIC ${SOURCES})
 
-target_include_directories(ge_graph_dsl
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AIR_CODE_DIR}/inc
-        )
+target_include_directories(ge_graph_dsl	
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AIR_CODE_DIR}/inc
+)
 
-target_link_libraries(ge_graph_dsl PUBLIC intf_pub opp_registry metadef ge_graph_dsl_inc
-        easy_graph aihac_symbolizer json ascend_protobuf graph graph_base)
+target_link_libraries(ge_graph_dsl PUBLIC intf_pub opp_registry metadef ge_graph_dsl_inc easy_graph metadef_graph)

@@ -16,6 +16,16 @@ target_include_directories(hccl_headers INTERFACE
         ${ASCEND_INSTALL_PATH}/pkg_inc/hccl
 )
 
+add_library(datagw_headers INTERFACE)
+target_include_directories(datagw_headers INTERFACE
+        ${ASCEND_INSTALL_PATH}/pkg_inc
+        ${ASCEND_INSTALL_PATH}/pkg_inc/aicpu
+        ${ASCEND_INSTALL_PATH}/pkg_inc/aicpu/queue_schedule
+        ${ASCEND_INSTALL_PATH}/pkg_inc/aicpu/aicpu_schedule
+        ${ASCEND_INSTALL_PATH}/pkg_inc/aicpu/tsd
+        ${ASCEND_INSTALL_PATH}/pkg_inc/aicpu/common
+)
+
 add_library(slog_headers INTERFACE)
 target_include_directories(slog_headers INTERFACE
         ${ASCEND_INSTALL_PATH}/pkg_inc

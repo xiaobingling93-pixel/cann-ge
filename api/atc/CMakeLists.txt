@@ -15,7 +15,12 @@ set(SRC_LIST
         )
 
 set(COMPILE_OPTIONS
-		${AIR_COMMON_COMPILE_OPTION}
+        -Werror
+        -Wextra
+        -Wfloat-equal
+        -O2
+        -fno-common
+        -fvisibility=hidden
         )
 
 set(COMPILE_DEFINITIONS
@@ -122,10 +127,9 @@ target_link_libraries(atc_static PRIVATE
         json
         runtime
         slog
-        mmpa
+	mmpa
         -lrt
         -ldl
-		${AIR_COMMON_LINK_OPTION}
         )
 
 ############ atc_atc.bin ############

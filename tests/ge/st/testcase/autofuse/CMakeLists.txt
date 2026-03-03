@@ -1,16 +1,17 @@
 
 file(GLOB_RECURSE AUTO_FUSE_TEST_SRCS CONFIGURE_DEPENDS "*.cc")
+file(GLOB_RECURSE SYMBOLIC_SRCS CONFIGURE_DEPENDS  "${AIR_CODE_DIR}/compiler/graph/optimize/symbolic/*.cc")
 add_executable(autofuse_test
         ${AUTO_FUSE_TEST_SRCS}
         "${AIR_CODE_DIR}/tests/ge/st/testcase/autofuse/test_symbolic_shape_inference.cc"
         "${AIR_CODE_DIR}/tests/ge/st/testcase/autofuse/test_symbolic_shape_compute.cc"
+        ${SYMBOLIC_SRCS}
 )
 
 target_compile_options(autofuse_test PRIVATE
-        -g
+        ${AIR_COMMON_COMPILE_OPTION}
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
-        -fno-access-control
 )
 
 target_compile_definitions(autofuse_test PRIVATE
@@ -42,7 +43,6 @@ target_include_directories(autofuse_test PRIVATE
         ${CMAKE_BINARY_DIR}/proto/data_flow_protos
         ${METADEF_DIR}/base/registry
         ${METADEF_DIR}/register
-        ${CMAKE_BINARY_DIR}/graph_metadef/graph/ascendc_ir/generator
 )
 
 target_link_libraries(autofuse_test PRIVATE
@@ -52,10 +52,7 @@ target_link_libraries(autofuse_test PRIVATE
         ge_graph_dsl
         ge_runtime_stub
         ge_running_env
-        ge_compiler
-        aihacb_autofusion_stub
-        ge_runner
-        gert
+        graphengine
         flow_graph
         metadef_headers
         ascendcl_stub
@@ -64,12 +61,13 @@ target_link_libraries(autofuse_test PRIVATE
         GTest::gmock
         GTest::gmock_main
         es_ge_test
+        metadef_graph
         intf_pub
         -Wl,--whole-archive
         rt2_registry_static
         -Wl,--no-whole-archive
         json
-        ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl
+        ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 

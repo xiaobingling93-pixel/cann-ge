@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
+include(${GE_METADEF_DIR}/cmake/build_type.cmake)
 
 ######### for base #############
 set(GRAPH_BASE_SOURCE_LIST
@@ -147,7 +147,6 @@ add_library(graph_base SHARED
 )
 
 target_compile_options(graph_base PRIVATE
-    $<$<BOOL:${ENABLE_ASAN}>:-Werror=maybe-uninitialized>
     $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${ENABLE_OPEN_SRC},True>>:-fexceptions>
     $<$<OR:$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>,$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>: -fno-common -Wextra -Wfloat-equal>
     $<$<AND:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,$<STREQUAL:${CMAKE_CONFIGURATION_TYPES},Debug>>:/MTd>
@@ -179,7 +178,7 @@ target_link_libraries(graph_base
         static_mmpa
         -Wl,--no-as-needed
         c_sec
-        unified_dlog
+        slog
         json
         metadef
         -Wl,--as-needed
@@ -249,7 +248,7 @@ target_link_libraries(graph
         static_mmpa
         -Wl,--no-as-needed
         c_sec
-        unified_dlog
+        slog
         json
         platform
         metadef
@@ -307,7 +306,7 @@ else()
             static_mmpa
             -Wl,--no-as-needed
             c_sec
-            unified_dlog
+            slog
             json
             platform
             metadef

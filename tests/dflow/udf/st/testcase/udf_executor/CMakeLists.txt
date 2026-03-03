@@ -45,9 +45,9 @@ protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files})
 
 add_executable(st_flow_func_executor
         ${PROTO_SRCS}
+        ${LOCAL_SRC_FILES}
         ${LOCAL_STUB_FILES}
         ${LOCAL_TEST_CASE_FILES}
-        ${UDF_SRC_PATH}/toolchain/dump/udf_dump_task_device.cpp
 )
 
 target_include_directories(st_flow_func_executor PRIVATE
@@ -63,14 +63,9 @@ target_include_directories(st_flow_func_executor PRIVATE
         ../../..
 )
 
-target_link_libraries(st_flow_func_executor PRIVATE
+target_link_libraries(st_flow_func_executor PRIVATE ${AIR_COMMON_LINK_OPTION}
         c_sec
         ascend_protobuf
-        flow_func
-        udf_static
-        udf_dump
-        reader_writer
-        udf_profiling
         -rdynamic
         $<BUILD_INTERFACE:intf_llt_pub>
         $<BUILD_INTERFACE:slog_headers>
@@ -80,7 +75,7 @@ target_link_libraries(st_flow_func_executor PRIVATE
         GTest::gtest GTest::gmock GTest::gmock_main
 )
 
-target_compile_options(st_flow_func_executor PRIVATE
+target_compile_options(st_flow_func_executor PRIVATE ${AIR_COMMON_COMPILE_OPTION}
         -rdynamic
         -fpermissive
         -Werror=format

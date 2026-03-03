@@ -29,22 +29,21 @@ Status BufferFusionPassBase::GetFusionNodes(const BufferFusionMapping &mapping,
   return SUCCESS;
 }
 
-Status BufferFusionPassBase::GetMixl2FusionNodes([[maybe_unused]] const BufferFusionMapping &mapping,
-                                                 [[maybe_unused]] std::vector<ge::NodePtr> &fusion_nodes) {
+Status BufferFusionPassBase::GetMixl2FusionNodes(const BufferFusionMapping &mapping,
+                                                 std::vector<ge::NodePtr> &fusion_nodes) {
   return NOT_CHANGED;
 }
 
-Status BufferFusionPassBase::PostFusion([[maybe_unused]] const ge::NodePtr &fused_node) {
+Status BufferFusionPassBase::PostFusion(const ge::NodePtr &fused_node) {
   return SUCCESS;
 }
 
-Status BufferFusionPassBase::CalcFusionOpSliceInfo([[maybe_unused]] vector<ge::NodePtr> &fusion_nodes,
-                                                   [[maybe_unused]] OpCalcInfo &op_slice_info) {
+Status BufferFusionPassBase::CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info) {
   return SUCCESS;
 }
 
-Status BufferFusionPassBase::CheckNodeCanFusion([[maybe_unused]] const BufferFusionNodeDescMap &fusion_nodes,
-                                                [[maybe_unused]] const ge::NodePtr &next_node) {
+Status BufferFusionPassBase::CheckNodeCanFusion(const BufferFusionNodeDescMap &fusion_nodes,
+                                                const ge::NodePtr &next_node) {
   return SUCCESS;
 }
 

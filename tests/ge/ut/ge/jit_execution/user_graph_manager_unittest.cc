@@ -54,8 +54,6 @@ class UserGraphsManagerlUT : public testing::Test {
     std::map<std::string, std::string> options = {{ge::SOC_VERSION, "Ascend310"}};
     GetThreadLocalContext().SetGlobalOption(options);
     ge::PlatformContext::GetInstance().SetPlatform("fake");
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
   }
   void TearDown() override {
     unsetenv("AUTOFUSE_FLAGS");
@@ -63,12 +61,8 @@ class UserGraphsManagerlUT : public testing::Test {
     gert_stub_.Clear();
     RuntimeStub::Reset();
     ge::PlatformContext::GetInstance().Reset();
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
-    }
   }
   gert::GertRuntimeStub gert_stub_;
-  const char *env;
 };
 
 TEST_F(UserGraphsManagerlUT, AddGraph_RemoveGraph_Success) {

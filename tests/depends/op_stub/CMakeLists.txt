@@ -31,6 +31,8 @@ target_link_libraries(gert_op_impl
             intf_pub
             metadef_headers
             slog_headers
+            ${AIR_COMMON_LINK_OPTION}
+         #   metadef_graph
             c_sec_headers
             c_sec
             json
@@ -42,7 +44,7 @@ target_link_libraries(gert_op_impl
             autofuse_stub
             slice_autofuse_stub
         )
-target_compile_options(gert_op_impl PRIVATE -g)
+target_compile_options(gert_op_impl PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 file(GLOB_RECURSE OPIMPL_SRCS2 CONFIGURE_DEPENDS "op_impl/*.cc")
 list(APPEND OPIMPL_SRCS "op_impl2/add_op_impl2.cc")
@@ -68,6 +70,7 @@ target_link_libraries(gert_op_impl2
         intf_pub
         metadef_headers
         slog_headers
+        ${AIR_COMMON_LINK_OPTION}
         c_sec_headers
         c_sec
         json
@@ -78,7 +81,7 @@ target_link_libraries(gert_op_impl2
         -Wl,--no-whole-archive
         ascendcl_stub
         )
-target_compile_options(gert_op_impl2 PRIVATE -g -O0)
+target_compile_options(gert_op_impl2 PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 file(GLOB_RECURSE AUTOFUSE_SRC CONFIGURE_DEPENDS "autofuse_impl/*.cc")
 add_library(autofuse_stub SHARED ${AUTOFUSE_SRC})
@@ -97,11 +100,13 @@ target_link_libraries(autofuse_stub
         PRIVATE
         intf_pub
         metadef_headers
+        ${AIR_COMMON_LINK_OPTION}
+        #   metadef_graph
         c_sec_headers
         c_sec
         json
 )
-target_compile_options(autofuse_stub PRIVATE -g)
+target_compile_options(autofuse_stub PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 file(GLOB_RECURSE SLICE_AUTOFUSE_SRC CONFIGURE_DEPENDS "slice_autofuse_impl/*.cc")
 add_library(slice_autofuse_stub SHARED ${SLICE_AUTOFUSE_SRC})
@@ -118,11 +123,13 @@ target_link_libraries(slice_autofuse_stub
         PRIVATE
         intf_pub
         metadef_headers
+        ${AIR_COMMON_LINK_OPTION}
+        #   metadef_graph
         c_sec_headers
         c_sec
         json
 )
-target_compile_options(slice_autofuse_stub PRIVATE -g)
+target_compile_options(slice_autofuse_stub PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 file(GLOB_RECURSE STATIC_OPIMPL_SRCS CONFIGURE_DEPENDS "less_important_op_impl.cc" "data_flow_op_impl.cc" "autofuse_impl/*.cc")
 add_library(gert_op_impl_static STATIC ${STATIC_OPIMPL_SRCS})
@@ -147,6 +154,7 @@ target_link_libraries(gert_op_impl_static
         intf_pub
         metadef_headers
         slog_headers
+        ${AIR_COMMON_LINK_OPTION}
         c_sec_headers
         c_sec
         json
@@ -155,7 +163,7 @@ target_link_libraries(gert_op_impl_static
         rt2_registry_static
         -Wl,--no-whole-archive
         )
-target_compile_options(gert_op_impl_static PRIVATE -g)
+target_compile_options(gert_op_impl_static PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 
 add_subdirectory(so_stub/lib64/device/lib64)
 

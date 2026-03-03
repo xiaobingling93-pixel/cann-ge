@@ -425,16 +425,8 @@ class SymbolicShapeInferFuncUT : public testing::Test {
   }
   static void TearDownTestSuite() {
   }
-  void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
-  }
-  void TearDown() override {
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
-    }
-  }
-  const char *env;
+  void SetUp() override {}
+  void TearDown() override {}
 };
 #define RUN_BROADCAST_TEST(input_shape0, input_shape1, expect_output_shape)                                       \
   {                                                                                                               \

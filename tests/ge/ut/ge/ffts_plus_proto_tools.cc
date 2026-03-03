@@ -1034,9 +1034,5 @@ void InitDsaCtx(domi::FftsPlusDsaCtxDef *ctx_def, const bool is_set_value) {
   dsa_task_args_def->set_random_count_value_or_addr("0");
   dsa_task_args_def->set_input1_value_or_addr("1");
   dsa_task_args_def->set_input2_value_or_addr("1");
-  dsa_task_args_def->set_seed_value_or_addr("12345678");
-  dsa_task_args_def->set_random_count_value_or_addr("12345678");
-  dsa_task_args_def->set_input1_value_or_addr("12345678");
-  dsa_task_args_def->set_input2_value_or_addr("12345678");
 }
 }

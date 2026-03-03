@@ -374,6 +374,7 @@ Status FftsPlusProtoTransfer::SetTilingDataAddr(size_t &tiling_data_len) {
 Status FftsPlusProtoTransfer::InitManualAicAivCtx(const domi::FftsPlusCtxDef &task_def, rtFftsPlusAicAivCtx_t &ctx) {
   const domi::FftsPlusAicAivCtxDef &ctx_def = task_def.aic_aiv_ctx();
   size_t tiling_data_len = 0U;
+  GELOGD("op name is %s, kernel name is %s", op_desc_->GetName().c_str(), ctx_def.kernel_name(0).c_str());
   for (int32_t i = 0; i < ctx_def.task_addr_size(); ++i) {
     GELOGD("index %d, task addr is 0x%" PRIx64 ", size:%u", i, ctx_def.task_addr(i), ctx_def.task_addr_size());
     if (i == (ctx_def.task_addr_size() - 1)) {
@@ -392,7 +393,6 @@ Status FftsPlusProtoTransfer::InitManualAicAivCtx(const domi::FftsPlusCtxDef &ta
            kManualAicAivCtxPcNum, ctx_def.kernel_name_size());
     return FAILED;
   }
-  GELOGD("op name is %s, kernel name is %s", op_desc_->GetName().c_str(), ctx_def.kernel_name(0).c_str());
   uint32_t i_cache_prefetch_cnt = 0U;
   void *task_start_pc = nullptr;
   if (addr_pref_handle_ != nullptr) {

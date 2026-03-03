@@ -35,7 +35,6 @@
 #include "runtime/mem.h"
 #include "ge_graph_dsl/graph_dsl.h"
 #include "graph/optimize/symbolic/expect_node_info_check_test.h"
-#include "faker/space_registry_faker.h"
 
 using namespace ge;
 using Json = nlohmann::json;
@@ -106,16 +105,16 @@ ComputeGraphPtr ShapeRuleOpGraph(const std::string &rule, const bool &with_binar
   return graph;
 }
 
-std::string ValueEqual(const gert::Tensor *shape_tensor, std::vector<int64_t> dims) {
+std::string ValueEqual(const gert::Tensor *shape_tensor, std::initializer_list<int64_t> dims) {
   const size_t shape_size = shape_tensor->GetShapeSize();
   if (shape_size != dims.size()) {
     return "shape size not equal, expect " + std::to_string(dims.size()) + ", got " + std::to_string(shape_size);
   }
   auto *value = shape_tensor->GetData<int32_t>();
   for (size_t i = 0; i < dims.size(); ++i) {
-    if (value[i] != dims[i]) {
-      return "value[" + std::to_string(i) + "] not equal, expect " + std::to_string(dims[i]) + ", got " +
-          std::to_string(value[i]);
+    if (value[i] != *(dims.begin() + i)) {
+      return "value[" + std::to_string(i) + "] not equal, expect " + std::to_string(*(dims.begin() + i)) + ", got " +
+             std::to_string(value[i]);
     }
   }
 
@@ -145,7 +144,7 @@ class RuleMaker {
     outputs.emplace_back(FakeTensors({static_cast<int64_t>(expected.size())}, 1, output_holders.back()->data(), kOnHost,
                                      FORMAT_ND, DT_INT32));
     output_ptrs.push_back(&outputs.back().at(0));
-    expected_outputs.push_back(expected);
+    expected_outputs.emplace_back(expected);
     return *this;
   }
 
@@ -172,24 +171,14 @@ class RuleMaker {
   std::vector<Tensor *> input_ptrs;
   std::vector<Tensor *> output_ptrs;
 
-  std::vector<std::vector<int64_t>> expected_outputs;
+  std::vector<std::initializer_list<int64_t>> expected_outputs;
 };
 }  // namespace
 
 class ShapeRuleOpUT : public testing::Test {
  public:
-  void SetUp() override {
-    // 启用asan g++会失败
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
-    gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2();
-  }
-  void TearDown() override {
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
-    }
-  }
-  const char *env;
+  void SetUp() override {}
+  void TearDown() override {}
 };
 
 TEST_F(ShapeRuleOpUT, ComplexRuleVertical) {

@@ -12,6 +12,7 @@
 #define GRAPH_ASCENDC_IR_H
 
 #include <string>
+#include "graph/compute_graph.h"
 #include "graph/symbolizer/symbolic.h"
 #include "graph/node.h"
 #include "graph/anchor.h"

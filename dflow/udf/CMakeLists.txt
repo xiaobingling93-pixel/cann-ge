@@ -43,9 +43,19 @@ set(proto_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/proto/ff_dynamic_sched.proto
 )
 
-protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files} TARGET)
+protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files})
 
 set(udf_src_file
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_drv_manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_executor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_thread_pool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_model_impl.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/memory_statistic_manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/execute/npu_sched_processor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/attr_value_impl.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/flow_func_model.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/global_config.cpp
     ${PROTO_SRCS}
 )
 
@@ -56,56 +66,6 @@ SET(udf_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}/../../inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dflow/inc
 )
-
-############ libudf_static.a ############
-add_library(udf_static STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/main.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_drv_manager.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_executor.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_func_thread_pool.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/flow_model_impl.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/memory_statistic_manager.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/execute/npu_sched_processor.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/model/attr_value_impl.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/model/flow_func_model.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/config/global_config.cpp
-        )
-
-add_dependencies(udf_static
-        udf_exe
-        )
-
-target_compile_options(udf_static PRIVATE
-        ${AIR_COMMON_COMPILE_OPTION}
-        -Wno-unused-parameter   # protobuf has many unused-parameter alarms
-        -Wno-array-bounds       # protobuf has array-bounds alarms on higher g++
-        )
-
-target_compile_definitions(udf_static PRIVATE
-        google=ascend_private
-        $<$<STREQUAL:${PRODUCT_SIDE},device>:RUN_ON_DEVICE>
-        )
-
-target_include_directories(udf_static PUBLIC
-        ${udf_inc_path}
-        )
-
-target_link_libraries(udf_static PRIVATE
-        -ldl
-        ${AIR_COMMON_LINK_OPTION}
-        $<BUILD_INTERFACE:intf_pub>
-        $<BUILD_INTERFACE:slog_headers>
-        $<BUILD_INTERFACE:mmpa_headers>
-        $<BUILD_INTERFACE:air_headers>
-        $<BUILD_INTERFACE:ascend_hal_headers>
-        PUBLIC c_sec ascend_protobuf_static
-        $<IF:$<STREQUAL:${PRODUCT_SIDE},device>,alog,unified_dlog>
-        reader_writer
-        mmpa
-        ascend_hal_stub
-        $<$<STREQUAL:${PRODUCT_SIDE},device>:stackcore>
-        $<$<STREQUAL:${PRODUCT_SIDE},device>:seccomp_stub>
-        )
 
 add_executable(udf_executor
     ${udf_src_file}
@@ -146,9 +106,6 @@ target_link_libraries(udf_executor PRIVATE
     ascend_hal_stub
     $<$<STREQUAL:${PRODUCT_SIDE},device>:stackcore>
     udf_dump
-    -Wl,--whole-archive
-    udf_static
-    -Wl,--no-whole-archive
     -ldl
     $<$<STREQUAL:${PRODUCT_SIDE},device>:seccomp_stub>
 )

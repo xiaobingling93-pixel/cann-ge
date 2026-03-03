@@ -35,7 +35,11 @@ add_dependencies(ge_local_engine
 )
 
 target_compile_options(ge_local_engine PRIVATE
-    ${AIR_COMMON_COMPILE_OPTION}
+    -Werror
+    -fno-common
+    -Wextra
+    -Wfloat-equal
+    -fvisibility=hidden
 )
 
 target_compile_definitions(ge_local_engine PRIVATE
@@ -134,7 +138,11 @@ add_dependencies(ge_local_opskernel_builder
 )
 
 target_compile_options(ge_local_opskernel_builder PRIVATE
-    ${AIR_COMMON_COMPILE_OPTION}
+    -Werror
+    -fno-common
+    -Wextra
+    -Wfloat-equal
+    -fvisibility=hidden
 )
 
 target_compile_definitions(ge_local_opskernel_builder PRIVATE
@@ -171,7 +179,6 @@ target_link_libraries(ge_local_opskernel_builder PRIVATE
     graph_base
     ge_common_base
     -Wl,--as-needed
-    ${AIR_COMMON_LINK_OPTION}
 )
 
 ############ atclib/libge_local_opskernel_builder.so ############

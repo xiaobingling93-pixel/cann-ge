@@ -171,9 +171,6 @@ std::string DataSliceAdapter::GetTensorStr(const OpDesc::Vistor<ge::GeTensorDesc
     auto iter_ori = FORMAT_MAP_STR.find(ori_format);
     auto iter = FORMAT_MAP_STR.find(format);
     const std::string *reshape_type = AttrUtils::GetStr(tensor, ATTR_NAME_RESHAPE_INFER_TYPE);
-    if (reshape_type == nullptr) {
-      continue;
-    }
     if (iter_ori == FORMAT_MAP_STR.cend() || iter == FORMAT_MAP_STR.cend()) {
       ss << "ori_fomat:" << ori_format << ",ori_shape:" << ori_shape.ToString();
       ss << ",fomat:" << format << ",shape:" << shape.ToString();

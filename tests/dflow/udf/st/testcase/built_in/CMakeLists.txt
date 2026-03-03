@@ -52,15 +52,9 @@ target_include_directories(st_built_in_flow_func PRIVATE
         ../../../stub
 )
 
-target_link_libraries(st_built_in_flow_func PRIVATE
+target_link_libraries(st_built_in_flow_func PRIVATE ${AIR_COMMON_LINK_OPTION}
         c_sec
         ascend_protobuf
-        udf_dump
-        udf_static
-        mmpa
-        -rdynamic
-        built_in_flowfunc
-        intf_llt_pub
         -rdynamic
         $<BUILD_INTERFACE:intf_llt_pub>
         $<BUILD_INTERFACE:slog_headers>
@@ -70,7 +64,7 @@ target_link_libraries(st_built_in_flow_func PRIVATE
         GTest::gtest GTest::gmock GTest::gmock_main
 )
 
-target_compile_options(st_built_in_flow_func PRIVATE -g -O0
+target_compile_options(st_built_in_flow_func PRIVATE ${AIR_COMMON_COMPILE_OPTION}
         -rdynamic
         -fpermissive
         -Werror=format

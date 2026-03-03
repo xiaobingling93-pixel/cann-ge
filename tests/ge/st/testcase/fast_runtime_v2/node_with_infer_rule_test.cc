@@ -177,16 +177,8 @@ class RuleMaker {
 
 class ShapeRuleOpST : public testing::Test {
  public:
-  void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
-  }
-  void TearDown() override {
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
-    }
-  }
-  const char *env;
+  void SetUp() override {}
+  void TearDown() override {}
 };
 
 TEST_F(ShapeRuleOpST, ComplexRuleVertical) {

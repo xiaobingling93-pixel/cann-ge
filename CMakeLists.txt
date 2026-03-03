@@ -153,7 +153,7 @@ endif ()
 cmake_print_variables(ENABLE_OPEN_SRC ENABLE_TEST ENABLE_GE_BENCHMARK ENABLE_GE_ST ENABLE_GE_UT MINDSPORE_MODE PLATFORM
         BUILD_METADEF ENABLE_GE_DT ENABLE_RT2_UT ENABLE_PYTHON_UT ENABLE_PARSER_UT ENABLE_DFLOW_UT)
 cmake_print_variables(BUILD_OPEN_PROJECT ENABLE_LLT_COV ENABLE_FE_LLT ENABLE_FFTS_LLT ENABLE_AICPU_LLT ENABLE_DVPP_LLT
-        ENABLE_HCCE_LLT ENABLE_RTS_LLT ENABLE_UT ENABLE_ST, HI_PYTHON ENABLE_ASAN ENABLE_GCOV)
+        ENABLE_HCCE_LLT ENABLE_RTS_LLT ENABLE_UT ENABLE_ST, HI_PYTHON)
 
 # 针对 Clang 编译器，关闭特定警告（避免 -Werror 触发编译错误）
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -180,10 +180,6 @@ set(INSTALL_CONFIG_DIR cmake)
 
 include(CMakePackageConfigHelpers)
 include(cmake/build_type.cmake)
-
-if (ENABLE_DFLOW_UT OR ENABLE_DFLOW_ST)
-    set(AIR_COMMON_COMPILE_OPTION ${AIR_COMMON_COMPILE_OPTION} -DUDF_TEST)
-endif()
 
 set(AIR_CODE_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(DFLOW_CODE_DIR ${CMAKE_CURRENT_LIST_DIR}/dflow)
@@ -281,9 +277,6 @@ if(DEFINED BUILD_COMPONENT)
 endif()
 
 if (GE_DT)
-    if ((CMAKE_BUILD_TYPE MATCHES GCOV) OR ENABLE_GE_DT)
-        add_subdirectory(${GE_METADEF_DIR})
-    endif()
     add_subdirectory(tests)
 endif ()
 if (GE_C_DT)
@@ -396,6 +389,7 @@ if ((CMAKE_BUILD_TYPE MATCHES GCOV) OR ENABLE_GE_DT)
 
         if (ENABLE_RT2_UT)
             add_dependencies(select_targets ut_register ut_exe_graph ut_ascendc_ir ut_expression
+                    ut_libge_distinct_load_utest
                     ut_libge_kernel_utest
                     ut_libgraph
                     ut_llm_engine_utest
@@ -405,7 +399,6 @@ if ((CMAKE_BUILD_TYPE MATCHES GCOV) OR ENABLE_GE_DT)
 
         if (ENABLE_PYTHON_UT)
             add_dependencies(select_targets ut_libgraph
-                    llm_engine
                     llm_wrapper
                     install_ge_py_for_tests)
         endif ()
@@ -416,7 +409,8 @@ if ((CMAKE_BUILD_TYPE MATCHES GCOV) OR ENABLE_GE_DT)
 
         if (ENABLE_DFLOW_UT)
             add_dependencies(select_targets ut_libgraph
-            ge_ut_common
+            ge_single_op ge_davinci_model ge_build_common ge_prepare_common
+            ge_pass_common ge_ut_common ge_ut_common_format
             ut_built_in_flow_func ut_flow_func_executor
             ut_libge_helper_utest
             ut_flow_graph)

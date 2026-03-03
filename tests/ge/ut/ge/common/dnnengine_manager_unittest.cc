@@ -198,7 +198,7 @@ TEST_F(UtestDnnengineManager, ParserJsonFile) {
     auto &instance = DNNEngineManager::GetInstance();
     //std::string json_file_path = "plugin/nnengine/ge_config/engine_conf.json";
     std::string path = GetModelPath();
-    path.append("../../../../compiler/plugin/nnengine/ge_config/");
+    path.append("plugin/nnengine/ge_config/");
     std::string path_copy = path;
     path_copy.append("engine_conf_backup.json");
     string cmd = "mkdir -p " + path;

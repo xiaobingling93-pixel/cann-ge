@@ -1,4 +1,4 @@
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
+include(${GE_METADEF_DIR}/cmake/build_type.cmake)
 add_library(aihac_ir_register SHARED
         ascir_register.cc
         ascir_registry.cc
@@ -28,7 +28,6 @@ add_library(ascir_generate SHARED
         )
 target_clone_compile_and_link_options(aihac_ir_register ascir_generate)
 
-
 target_include_directories(ascir_generate PRIVATE
         ${METADEF_DIR}/inc/external
         ${METADEF_DIR}/inc/graph
@@ -54,7 +53,6 @@ target_compile_definitions(ascir_ops_header_generator PRIVATE
 )
 target_link_libraries(ascir_ops_header_generator PRIVATE ascir_generate
         intf_pub
-        unified_dlog
         -Wl,--no-as-needed
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl

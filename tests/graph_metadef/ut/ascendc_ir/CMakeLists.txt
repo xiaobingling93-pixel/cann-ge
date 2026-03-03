@@ -25,7 +25,6 @@ include_directories(${ASCEND_INSTALL_PATH}/include/experiment/runtime)
 include_directories(${ASCEND_INSTALL_PATH}/include/experiment/msprof)
 include_directories(${AIR_CODE_DIR}/tests)
 include_directories(${CMAKE_BINARY_DIR}/tests/depends/aihacb_autofusion)
-include_directories(${CMAKE_BINARY_DIR}/graph_metadef/graph/ascendc_ir/generator)
 
 add_compile_definitions(CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\")
 file(GLOB_RECURSE UT_FILES CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/ut/ascendc_ir/testcase/*.cc")
@@ -34,7 +33,7 @@ file(GLOB_RECURSE UTILS_FILES CONFIGURE_DEPENDS "${GE_METADEF_DIR}/graph/ascendc
 add_executable(ut_ascendc_ir ${UT_FILES} ${UTILS_FILES} ${FAKE_FILES})
 
 target_compile_options(ut_ascendc_ir PRIVATE
-    -g
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
     -Wno-error=unused-variable
     -Wall -Wfloat-equal -Werror
@@ -52,17 +51,15 @@ add_dependencies(ut_ascendc_ir aihacb_autofusion_stub)
 
 # intf_pub包含stdc++11 当前需要按照更高版本来编译ut
 target_link_libraries(ut_ascendc_ir PRIVATE
-    intf_pub metadef_headers
+    -lgcov
     -Wl,--no-as-needed
     platform
-    metadef
-    unified_dlog
     runtime_stub
     slog
     slog_headers
     metadef_headers
     ascir_builtin_ops_stub
-    ascir_generate #正常不应该依赖这个，当前因为ut要校验generate能力
+    #ascir_generate #正常不应该依赖这个，当前因为ut要校验generate能力
     aihac_ir aihac_symbolizer aihac_ir_register graph graph_base error_manager mmpa
     GTest::gtest GTest::gtest_main ascend_protobuf slog_stub slog c_sec json mmpa_stub -lrt -ldl
 )

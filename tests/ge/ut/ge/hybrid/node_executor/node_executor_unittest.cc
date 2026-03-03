@@ -59,18 +59,11 @@ class SuccessNodeExecutor : public NodeExecutor {
   bool initialized = false;
 };
 
+REGISTER_NODE_EXECUTOR_BUILDER(NodeExecutorManager::ExecutorType::AICORE, FailureNodeExecutor);
+REGISTER_NODE_EXECUTOR_BUILDER(NodeExecutorManager::ExecutorType::AICPU_TF, SuccessNodeExecutor);
+
 TEST_F(NodeExecutorTest, TestGetOrCreateExecutor) {
   auto &manager = NodeExecutorManager::GetInstance();
-  manager.executors_.erase(NodeExecutorManager::ExecutorType::AICORE);
-  manager.executors_.erase(NodeExecutorManager::ExecutorType::AICPU_TF);
-  manager.builders_[NodeExecutorManager::ExecutorType::AICORE] =
-      []()->std::unique_ptr<::ge::hybrid::NodeExecutor> {
-          return MakeUnique<FailureNodeExecutor>();
-      };
-  manager.builders_[NodeExecutorManager::ExecutorType::AICPU_TF] =
-      []()->std::unique_ptr<::ge::hybrid::NodeExecutor> {
-          return MakeUnique<SuccessNodeExecutor>();
-      };
   const NodeExecutor *executor = nullptr;
   Status ret = SUCCESS;
   // no builder
@@ -94,10 +87,6 @@ TEST_F(NodeExecutorTest, TestInitAndFinalize) {
   manager.FinalizeExecutors();
   manager.EnsureInitialized();
   manager.EnsureInitialized();
-  manager.builders_[NodeExecutorManager::ExecutorType::AICPU_TF] =
-      []()->std::unique_ptr<::ge::hybrid::NodeExecutor> {
-          return MakeUnique<SuccessNodeExecutor>();
-      };
   const NodeExecutor *executor = nullptr;
   auto ret = manager.GetOrCreateExecutor(NodeExecutorManager::ExecutorType::AICPU_TF, executor);
   ASSERT_EQ(ret, SUCCESS);

@@ -23,7 +23,10 @@
 namespace ge {
 class CpuSchedEventDispatcher {
  public:
-  static CpuSchedEventDispatcher &GetInstance();
+  static CpuSchedEventDispatcher &GetInstance() {
+    static CpuSchedEventDispatcher instance;
+    return instance;
+  }
 
   ~CpuSchedEventDispatcher();
 
