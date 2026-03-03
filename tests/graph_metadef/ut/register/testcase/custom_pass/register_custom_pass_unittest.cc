@@ -172,7 +172,7 @@ TEST_F(UtestRegisterPass, LoadCustomPassLibsTest_MissingDependencies) {
     }
   )";
   dummy_lib.close();
-  std::string dummy_cmd = "unset LD_PRELOAD;g++ -shared -fPIC -o " + custom_path + "/libdummy.so " + custom_path + "/libdummy.cpp";
+  std::string dummy_cmd = "g++ -shared -fPIC -o " + custom_path + "/libdummy.so " + custom_path + "/libdummy.cpp";
   system(dummy_cmd.c_str());
   std::remove((custom_path + "/libdummy.cpp").c_str());
 
@@ -187,7 +187,7 @@ TEST_F(UtestRegisterPass, LoadCustomPassLibsTest_MissingDependencies) {
     }
   )";
   main_lib.close();
-  std::string main_cmd = "unset LD_PRELOAD;g++ -shared -fPIC -o " + custom_path + "/libcustom_pass.so " + custom_path + "/libcustom_pass.cpp -L" + custom_path + " -ldummy";
+  std::string main_cmd = "g++ -shared -fPIC -o " + custom_path + "/libcustom_pass.so " + custom_path + "/libcustom_pass.cpp -L" + custom_path + " -ldummy";
   system(main_cmd.c_str());
   std::remove((custom_path + "/libcustom_pass.cpp").c_str());
 

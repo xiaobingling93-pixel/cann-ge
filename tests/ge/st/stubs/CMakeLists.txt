@@ -18,7 +18,6 @@ target_include_directories(st_stubs PRIVATE
         ${AIR_CODE_DIR}/inc/graph_metadef
         ${METADEF_DIR}/inc
         ${METADEF_DIR}/pkg_inc
-        ${CMAKE_BINARY_DIR}/proto/metadef_protos
 )
 
 target_include_directories(st_stubs PUBLIC
@@ -29,10 +28,9 @@ target_compile_definitions(st_stubs PRIVATE
 )
 
 target_compile_options(st_stubs PRIVATE
-    -g
+    ${AIR_COMMON_COMPILE_OPTION}
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
-    -fno-access-control
 )
 
 target_link_libraries(st_stubs PUBLIC intf_pub ge_graph_dsl ge_running_env GTest::gtest GTest::gmock GTest::gmock_main datagw_headers)

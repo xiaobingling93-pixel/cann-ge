@@ -2138,9 +2138,4 @@ Status ModelHelper::UpdateSessionGraphId(const ComputeGraphPtr &graph,
   }
   return SUCCESS;
 }
-
-ModelSaveHelperFactory &ModelSaveHelperFactory::Instance() {
-  static ModelSaveHelperFactory instance;
-  return instance;
-}
 }  // namespace ge

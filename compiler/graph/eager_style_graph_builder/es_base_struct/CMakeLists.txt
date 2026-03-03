@@ -36,8 +36,6 @@ target_link_libraries(eager_style_graph_builder_base
         graph_base
         aihac_symbolizer
         c_sec
-        -ldl
-        ${AIR_COMMON_LINK_OPTION}
         PUBLIC
         eager_style_graph_builder_base_headers
         eager_style_graph_builder_base_inner_headers

@@ -12,7 +12,6 @@ target_link_libraries(graph_wrapper PRIVATE
         graph_base
         -lrt
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
         air_headers
         ge_runner
         $<$<CONFIG:Release>:-s>

@@ -231,6 +231,7 @@ public:
   virtual aclError aclmdlDestroyConfigHandle(aclmdlConfigHandle *handle);
   virtual void aclDestroyTensorDesc(const aclTensorDesc *desc);
   virtual aclError aclDestroyDataBuffer(const aclDataBuffer *dataBuffer);
+  virtual const char* acldumpGetPath(acldumpType dumpType);
 
 private:
   static std::mutex mutex_;

@@ -582,9 +582,4 @@ std::string UdfModelBuilder::GenNormalizeModelName(const std::string &model_name
   }
   return result;
 }
-
-UdfModelBuilder &UdfModelBuilder::GetInstance() {
-  static UdfModelBuilder instance;
-  return instance;
-}
 }  // namespace ge

@@ -12,10 +12,10 @@
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 include_directories(${AIR_CODE_DIR}/inc)
 include_directories(${AIR_CODE_DIR}/inc/external)
-include_directories(${AIR_CODE_DIR}/tests/framework)
+include_directories(${AIR_CODE_DIR}/tests/framework/macro_utils)
 
 include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_BINARY_DIR}/proto/metadef_protos)
+include_directories(${CMAKE_BINARY_DIR}/proto/ge)
 
 set(UT_FILES
     "testcase/ge_graph/ge_anchor_utils_unittest.cc"
@@ -36,7 +36,9 @@ set(UT_FILES
 add_executable(ut_libgraph ${UT_FILES} ${AIR_CODE_DIR}/base/common/types.cc)
 
 target_compile_options(ut_libgraph PRIVATE
+    -g --coverage -fprofile-arcs -ftest-coverage
     -Wno-deprecated-declarations
+    -Wall -Wfloat-equal -Werror
     -fno-access-control
 )
 
@@ -45,23 +47,12 @@ target_compile_definitions(ut_libgraph PRIVATE
     FUNC_VISIBILITY
 )
 
-target_link_options(ut_libgraph PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
 target_link_libraries(ut_libgraph
-    -Wl,-z,muldefs
     intf_pub
     metadef_headers
     GTest::gtest
     GTest::gtest_main
     ge_graph_dsl
-    -static-libgcc
-    graph
-    graph_base
-    platform
-    unified_dlog
 )
 
 add_test(NAME ut_libgraph COMMAND ut_libgraph --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/ut/ut_libgraph.xml)

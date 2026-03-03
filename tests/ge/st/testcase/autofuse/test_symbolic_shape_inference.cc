@@ -7196,10 +7196,10 @@ TEST_F(SymbolicShapeInferenceST, NestIfGraphTest) {
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(root_graph), SUCCESS);
 
-  ASSERT_NE(root_graph->FindNode("if1"), nullptr);
+  ASSERT_EQ(root_graph->FindNode("if1"), nullptr);
 
   auto sqrt_node = root_graph->FindNode("then_subgraph_sqrt1");
-  ASSERT_EQ(sqrt_node, nullptr);
+  ASSERT_NE(sqrt_node, nullptr);
   DisableSliceScheduleEnv();
 }
 
@@ -7227,10 +7227,10 @@ TEST_F(SymbolicShapeInferenceST, NestCaseGraphTest) {
   SymbolicShapeInference ssi;
   ASSERT_EQ(ssi.Infer(root_graph), SUCCESS);
 
-  ASSERT_NE(root_graph->FindNode("case1"), nullptr);
+  ASSERT_EQ(root_graph->FindNode("case1"), nullptr);
 
   auto sqrt_node = root_graph->FindNode("batch2_subgraph_sqrt1");
-  ASSERT_EQ(sqrt_node, nullptr);
+  ASSERT_NE(sqrt_node, nullptr);
   DisableSliceScheduleEnv();
 }
 

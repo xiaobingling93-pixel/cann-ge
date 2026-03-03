@@ -56,7 +56,9 @@ class GE_FUNC_VISIBILITY ModelParserFactory {
 
 class GE_FUNC_VISIBILITY ModelParserRegisterar {
  public:
-  ModelParserRegisterar(const domi::FrameworkType type, MODEL_PARSER_CREATOR_FUN const fun) noexcept;
+  ModelParserRegisterar(const domi::FrameworkType type, MODEL_PARSER_CREATOR_FUN const fun) noexcept {
+    ModelParserFactory::Instance()->RegisterCreator(type, fun);
+  }
   ~ModelParserRegisterar() {}
 };
 

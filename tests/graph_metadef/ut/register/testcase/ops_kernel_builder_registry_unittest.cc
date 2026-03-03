@@ -28,7 +28,6 @@ TEST_F(UtestOpsKernelBuilderRegistry, GetAllKernelBuildersTest) {
     ops_map = ops_registry.GetAll();
     EXPECT_EQ(ops_map.size(), 1);
     EXPECT_EQ(ops_map["ops1"], opsptr);
-    ops_registry.UnregisterAll();
 }
 
 TEST_F(UtestOpsKernelBuilderRegistry, RegisterTest) {
@@ -40,7 +39,6 @@ TEST_F(UtestOpsKernelBuilderRegistry, RegisterTest) {
     kernel_builders_ = ops_registry.GetAll();
     EXPECT_EQ(kernel_builders_.size(), 1);
     EXPECT_EQ(kernel_builders_["register1"], instance);
-    ops_registry.UnregisterAll();
 }
 
 TEST_F(UtestOpsKernelBuilderRegistry, UnregisterTest) {
@@ -63,7 +61,6 @@ TEST_F(UtestOpsKernelBuilderRegistry, UnregisterTest) {
     ops_map = ops_registry.GetAll();
     EXPECT_EQ(ops_map.size(), 1);
     EXPECT_EQ(ops_map.count("register1"), 0);
-    ops_registry.UnregisterAll();
 }
 
 TEST_F(UtestOpsKernelBuilderRegistry, UnregisterAllTest) {

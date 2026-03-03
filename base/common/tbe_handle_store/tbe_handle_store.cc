@@ -213,14 +213,4 @@ bool HandleRegistry::AddHandle(std::unique_ptr<HandleHolder> &&holder) {
   const auto ret = registered_handles_.emplace(std::move(holder));
   return ret.second;
 }
-
-KernelBinRegistry &KernelBinRegistry::GetInstance() {
-  static KernelBinRegistry instance;
-  return instance;
-}
-
-HandleRegistry &HandleRegistry::GetInstance() {
-  static HandleRegistry instance;
-  return instance;
-}
 } // namespace ge

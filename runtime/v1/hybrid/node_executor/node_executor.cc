@@ -193,10 +193,5 @@ Status NoOpTask::ExecuteAsync(TaskContext &context, const std::function<void()> 
   GELOGD("[%s] Skipping execution for op with empty outputs", context.GetNodeName());
   return context.TryExecuteCallback(done_callback);
 }
-
-NodeExecutorManager &NodeExecutorManager::GetInstance() {
-  static NodeExecutorManager instance;
-  return instance;
-}
 }  // namespace hybrid
 }  // namespace ge

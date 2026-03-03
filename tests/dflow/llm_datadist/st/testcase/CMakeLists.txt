@@ -61,8 +61,6 @@ target_link_libraries(llm_engine_test
         ascendcl_stub
         intf_pub
         llm_engine_base
-        llm_engine
-        ascend_dump
         ${AIR_COMMON_LINK_OPTION}
         GTest::gtest GTest::gtest_main GTest::gmock
         -Wl,--no-as-needed

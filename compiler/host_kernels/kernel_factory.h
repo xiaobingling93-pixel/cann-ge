@@ -37,7 +37,10 @@ class GE_OBJECT_VISIBILITY KernelFactory {
   ///
   /// Get singleton instance
   ///
-  static KernelFactory &Instance();
+  static KernelFactory &Instance() {
+    static KernelFactory instance;
+    return instance;
+  }
 
   ///
   /// create Kernel
@@ -61,7 +64,9 @@ class GE_OBJECT_VISIBILITY KernelFactory {
     /// @param [in] type operation type
     /// @param [in| fun kernel function of the operation
     ///
-    Registerar(const std::string &type, const KERNEL_CREATOR_FUN &fun) noexcept;
+    Registerar(const std::string &type, const KERNEL_CREATOR_FUN &fun) noexcept {
+      KernelFactory::Instance().RegisterCreator(type, fun);
+    }
     ~Registerar() {}
   };
 

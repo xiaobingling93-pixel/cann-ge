@@ -14,27 +14,23 @@ if (CMAKE_BUILD_TYPE MATCHES GCOV)
             -O0
             -g
             --coverage -fprofile-arcs -ftest-coverage
-            -DFUNC_VISIBILITY
+            -fsanitize=address -fsanitize=leak -fsanitize-recover=address
             )
     set(AIR_COV_COMPILE_OPTION
             --coverage -fprofile-arcs -ftest-coverage
             )
-    if (ENABLE_ASAN MATCHES true)
-        set(AIR_COMMON_COMPILE_OPTION ${AIR_COMMON_COMPILE_OPTION} -fsanitize=address -fsanitize=leak -fsanitize-recover=address)
-    endif()
     set(AIR_COMMON_DYNAMIC_COMPILE_OPTION ${AIR_COMMON_COMPILE_OPTION})
     if (TARGET_SYSTEM_NAME STREQUAL "Android")
         set(AIR_COMMON_LINK_OPTION
+                -fsanitize=address -fsanitize=leak -fsanitize-recover=address
                 -ldl -lgcov
                 )
     else ()
         set(AIR_COMMON_LINK_OPTION
+                -fsanitize=address -fsanitize=leak -fsanitize-recover=address
                 -lrt -ldl -lgcov
                 )
     endif ()
-    if (ENABLE_ASAN MATCHES true)
-        set(AIR_COMMON_LINK_OPTION ${AIR_COMMON_LINK_OPTION} -fsanitize=address -fsanitize=leak -fsanitize-recover=address)
-    endif()
 elseif(CMAKE_BUILD_TYPE MATCHES DT)
     message("Dump graph test mode")
     set(AIR_COMMON_COMPILE_OPTION -O0 -g)

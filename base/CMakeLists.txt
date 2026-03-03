@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(../cmake/function.cmake)
+include(../graph_metadef/cmake/common_funcs.cmake)
 add_subdirectory(slice)
 if (BUILD_METADEF AND (${METADEF_DIR} STREQUAL ${GE_METADEF_DIR}))
     add_subdirectory(metadef)
@@ -232,7 +232,6 @@ target_link_libraries(ge_common
         json
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         $<BUILD_INTERFACE:air_headers>
         $<BUILD_INTERFACE:metadef_headers>
@@ -306,7 +305,6 @@ target_link_libraries(ge_common_base
         json
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
         metadef_headers
@@ -428,7 +426,6 @@ target_link_libraries(ge_common
         json
         -lrt
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
 )
@@ -499,7 +496,6 @@ target_link_libraries(ge_common_base
         json
         -lrt
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
         metadef_headers

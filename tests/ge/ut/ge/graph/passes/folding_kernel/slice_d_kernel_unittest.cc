@@ -181,7 +181,7 @@ TEST_F(UtestGraphPassesFoldingKernelSliceDKernel, OutputSliceDataBool) {
   x_dims.push_back(1);
   int32_t start = 1;
   vector<int64_t> dims_vec_0;
-  vector<int32_t> data_vec_0 (8, start);
+  vector<int32_t> data_vec_0 = {start};
   GeTensorDesc tensor_desc_0(GeShape(dims_vec_0), FORMAT_NCHW, DT_INT32);
   ConstGeTensorPtr x_tensor = 
       std::make_shared<GeTensor>(tensor_desc_0, (uint8_t *)data_vec_0.data(), data_vec_0.size() * sizeof(int32_t));

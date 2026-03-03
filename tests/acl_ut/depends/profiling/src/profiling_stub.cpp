@@ -10,7 +10,6 @@
 
 #include "aprof_pub.h"
 #include "acl_stub.h"
-#include "runtime/subscriber/global_profiler.h"
 
 namespace {
     constexpr uint64_t ACL_PROF_ACL_API = 0x0001U;
@@ -82,9 +81,4 @@ uint64_t MsprofSysCycleTime()
 int32_t MsprofReportEvent(uint32_t agingFlag, const MsprofEvent *event)
 {
     return 0;
-}
-
-gert::GlobalProfilingWrapper *gert::GlobalProfilingWrapper::GetInstance() {
-  static gert::GlobalProfilingWrapper global_prof_wrapper;
-  return &global_prof_wrapper;
 }

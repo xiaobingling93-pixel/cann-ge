@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
+include(${GE_METADEF_DIR}/cmake/build_type.cmake)
 
 set(LOWERING_SRCS
     lowering/data_dependent_interpreter.cc

@@ -1036,8 +1036,8 @@ TEST_F(UtestSingleOpModel, BuildDsaTask_has_state) {
     dsa_task->set_seed_value_or_ptr(1);
     dsa_task->set_random_count_value_or_ptr(1);
     domi::DSATaskArgsDef *dsa_task_args = dsa_task->mutable_args();
-    dsa_task_args->set_seed_value_or_addr("51111111");
-    dsa_task_args->set_random_count_value_or_addr("611111111");
+    dsa_task_args->set_seed_value_or_addr("5");
+    dsa_task_args->set_random_count_value_or_addr("6");
     dsa_task_args->set_input1_value_or_addr("1");
     dsa_task_args->set_input2_value_or_addr("2");
   }

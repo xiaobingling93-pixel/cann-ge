@@ -29,10 +29,15 @@ target_include_directories(built_in_flowfunc PRIVATE
 
 target_compile_options(built_in_flowfunc PRIVATE
     -ftrapv
-    ${AIR_COMMON_COMPILE_OPTION}
+    -O2
     -fvisibility-inlines-hidden
+    -fvisibility=hidden
+    -Werror
+    -Wextra
     -fstack-protector-all
     -fPIC
+    -Wfloat-equal
+    -fno-common
 )
 
 target_link_libraries(built_in_flowfunc PRIVATE
@@ -41,8 +46,6 @@ target_link_libraries(built_in_flowfunc PRIVATE
     $<BUILD_INTERFACE:mmpa_headers>
     $<BUILD_INTERFACE:ascend_hal_headers>
     $<BUILD_INTERFACE:hccl_headers>
-    -ldl
-    ${AIR_COMMON_LINK_OPTION}
     PUBLIC c_sec
     flow_func
     ascend_hal_stub

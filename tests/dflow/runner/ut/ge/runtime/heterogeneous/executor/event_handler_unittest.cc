@@ -142,7 +142,7 @@ class ModelHandleMock : public ExecutorContext::ModelHandle {
   explicit ModelHandleMock() : ModelHandle() {}
 
   // MOCK_METHOD2(DoLoadModel, Status(const shared_ptr<GeRootModel> &root_model, const LoadParam &params));
-  MOCK_METHOD1(DoUnloadModel, Status(const uint32_t));
+  MOCK_CONST_METHOD1(DoUnloadModel, Status(const uint32_t));
   MOCK_METHOD1(ParseModel, Status(const std::string &));
   MOCK_METHOD1(LoadModel, Status(const LoadParam &));
 };

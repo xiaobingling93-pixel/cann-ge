@@ -138,7 +138,7 @@ FusionPattern &FusionPattern::SetOutputs(const std::string &id, const FusionPatt
   FE_PATTERN_ERROR_RETURN_IF(op_desc == nullptr, "Id does not exist. (id:%s)", id.c_str());
   op_desc->outputs.clear();
   for (auto &iter : output_map) {
-    for (const std::string output_id : iter.second) {
+    for (const std::string &output_id : iter.second) {
       const std::shared_ptr<FusionPattern::OpDesc> output_op_desc = GetOpDesc(output_id);
       FE_PATTERN_ERROR_RETURN_IF(output_op_desc == nullptr, "Id does not exist. (id:%s)", output_id.c_str());
       if (op_desc->outputs.find(iter.first) == op_desc->outputs.end()) {
@@ -204,7 +204,7 @@ bool FusionPattern::Build() {
   }
 
   // check whether output node already exists
-  for (const std::shared_ptr<OpDesc> &op : ops_) {
+  for (const std::shared_ptr<OpDesc> op : ops_) {
     if (op->is_output) {
       if (output_ != nullptr) {
         SetError();

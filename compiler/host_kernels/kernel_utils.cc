@@ -19,7 +19,6 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/type_utils.h"
 #include "graph/utils/node_utils.h"
-#include "kernel_factory.h"
 
 namespace {
 const uint32_t kDimensionShapeIndex = 0U;
@@ -218,14 +217,5 @@ bool KernelUtils::IsUnknownShape(const ge::GeShape &shape) {
     }
   }
   return false;
-}
-
-KernelFactory &KernelFactory::Instance() {
-  static KernelFactory instance;
-  return instance;
-}
-
-KernelFactory::Registerar::Registerar(const std::string &type, const KERNEL_CREATOR_FUN &fun) noexcept {
-  KernelFactory::Instance().RegisterCreator(type, fun);
 }
 }  // namespace ge

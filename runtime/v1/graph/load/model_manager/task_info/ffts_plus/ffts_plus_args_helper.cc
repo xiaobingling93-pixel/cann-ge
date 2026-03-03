@@ -38,8 +38,7 @@ void FftsPlusArgsHelper::AppendIoAddrs(const uint64_t logic_addr) {
     }
   }
   GELOGD("AppendIoAddrs ctx_op:[%s] ctx_id:[%d] idx:[%zu], logic_addr:[%" PRIx64 "] iow_mem_type:[%" PRIx64 "]",
-      (ctx_info_.ctx_op != nullptr) ? ctx_info_.ctx_op->GetNamePtr() : "", ctx_info_.ctx_id, io_addrs_.size(),
-      logic_addr_to_push, mem_type);
+         ctx_info_.ctx_op->GetNamePtr(), ctx_info_.ctx_id, io_addrs_.size(), logic_addr_to_push, mem_type);
   io_addrs_.push_back(logic_addr_to_push);
   io_mem_types_.push_back(mem_type);
   ctx_args_size_[ctx_info_.ctx_id] += sizeof(uint64_t);

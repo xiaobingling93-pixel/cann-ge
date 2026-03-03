@@ -14,6 +14,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 add_compile_definitions(TOP_DIR=\"${CMAKE_SOURCE_DIR}\")
 file(GLOB_RECURSE DFLOW_UT_FILES CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/tests/dflow/flow_graph/ut/dflow/flow_graph/**.cc"
+        ${DFLOW_CODE_DIR}/flow_graph/**.cc
 )
 message("DFLOW_UT_FILES=${DFLOW_UT_FILES}")
 add_executable(ut_flow_graph ${DFLOW_UT_FILES})
@@ -30,7 +31,7 @@ target_include_directories(ut_flow_graph PRIVATE
 )
 
 target_compile_options(ut_flow_graph PRIVATE
-        -g -O0
+        -g --coverage -fprofile-arcs -ftest-coverage
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -D_GLIBCXX_USE_CXX11_ABI=0
@@ -58,11 +59,7 @@ target_link_libraries(ut_flow_graph PRIVATE
         json
         graph
         graph_base
-        metadef
-        error_manager
-        flow_graph
-        metadef
-        error_manager
+        flow_graph_protos_obj
         -Wl,--no-as-needed
         unified_dlog
         GTest::gtest GTest::gtest_main -lrt -ldl

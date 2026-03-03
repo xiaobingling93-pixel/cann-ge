@@ -101,12 +101,10 @@ void CreateOpmasterSo2EnvInfoFunc(std::string opp_path, bool env_initialized = f
   system(command.c_str());
 }
 
-// toto test
-/*
 void CreateDlSymFaildEnvInfoFunc(std::string opp_path, bool env_initialized = false) {
   auto base_path = EnvPath().GetAirBasePath();
   GELOGD("base_path :%s", base_path.c_str());
-  std::string command = "find " + base_path + " -name " + "libprofiler_stub.so";
+  std::string command = "find " + base_path + " -name " + "libprofapi.so";
   char retmsg[1024];
   (void)SuperSystem(command.c_str(), retmsg, sizeof(retmsg));
   std::string op_impl_path = retmsg;
@@ -117,23 +115,22 @@ void CreateDlSymFaildEnvInfoFunc(std::string opp_path, bool env_initialized = fa
   system(("mkdir -p " + path_vendors).c_str());
   system(("echo 'load_priority=customize' > " + path_config).c_str());
 
-  std::string inner_x86_op_master_path = opp_path + kx86OpMasterPath;
+  std::string inner_x86_op_master_path = opp_path + kInner + kx86OpMasterPath;
   GELOGD("inner_x86_op_master_path:%s", inner_x86_op_master_path.c_str());
   system(("mkdir -p " + inner_x86_op_master_path).c_str());
   std::string opmaster_rt2_path = inner_x86_op_master_path + kOpMaster;
-  command = "cp -rf " + op_impl_path + " " + opmaster_rt2_path;
+  command = "cp " + op_impl_path + " " + opmaster_rt2_path;
   GELOGD("command: %s", command.c_str());
   system(command.c_str());
 
-  std::string inner_x86_ops_proto_path = opp_path + kx86OpsProtoPath;
+  std::string inner_x86_ops_proto_path = opp_path + kInner + kx86OpsProtoPath;
   GELOGD("inner_x86_ops_proto_path:%s", inner_x86_ops_proto_path.c_str());
   system(("mkdir -p " + inner_x86_ops_proto_path).c_str());
   std::string opsproto_rt2_path = inner_x86_ops_proto_path + kOpsProto;
-  command = "cp -rf " + op_impl_path + " " + opsproto_rt2_path;
+  command = "cp " + op_impl_path + " " + opsproto_rt2_path;
   GELOGD("command: %s", command.c_str());
   system(command.c_str());
 }
-*/
 
 int32_t GetOmSoFilesNumFromDisk() {
   char path_env[MMPA_MAX_PATH] = {0};
@@ -624,8 +621,6 @@ TEST_F(SoInOmST, OmSoLoad_0004) {
  * 预期结果：
  * 1. 模型加载失败，打印获取registed op num functions failed
  */
-// todo test
-/*
 TEST_F(SoInOmST, OmSoLoad_0005) {
   GertRuntimeStub stub;
   stub.GetSlogStub().SetLevel(DLOG_WARN);
@@ -661,7 +656,6 @@ TEST_F(SoInOmST, OmSoLoad_0005) {
   EXPECT_EQ(HaveExpectLog(logs, expect_log), true);
   system(("rm -f " + scene_info_path).c_str());
 }
-*/
 
 /**
  * 用例描述：default 和om的不同版本so加载后om执行

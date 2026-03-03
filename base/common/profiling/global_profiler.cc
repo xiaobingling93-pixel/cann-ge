@@ -774,9 +774,4 @@ bool ProfilerRegistry::IsProfLaunchType(const std::string &kernel_type, const bo
 bool ProfilerRegistry::IsProfDavinciModelExecuteType(const std::string &kernel_type) const {
   return kernel_type == std::string("DavinciModelExecute");
 }
-
-GlobalProfilingWrapper *GlobalProfilingWrapper::GetInstance() {
-  static GlobalProfilingWrapper global_prof_wrapper;
-  return &global_prof_wrapper;
-}
 }  // namespace gert

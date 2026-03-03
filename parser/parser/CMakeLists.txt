@@ -54,7 +54,11 @@ add_library(fmk_parser SHARED
 )
 
 target_compile_options(fmk_parser PRIVATE
-    ${AIR_COMMON_COMPILE_OPTION}
+    -Werror
+    -fno-common
+    -fvisibility=hidden
+    -Wextra
+    -Wfloat-equal
 )
 
 target_compile_definitions(fmk_parser PRIVATE

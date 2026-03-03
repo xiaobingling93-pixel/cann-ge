@@ -80,7 +80,10 @@ class GraphContext {
   GraphId current_graph_id_ = 0;
 
   // Get the unique VarNode-Tensor table
-  static VarNodeTensorTable &GetVarNodeTensorTable();
+  static VarNodeTensorTable &GetVarNodeTensorTable() {
+    static VarNodeTensorTable _this;
+    return _this;
+  }
 };
 }  // namespace ge
 

@@ -36,7 +36,7 @@ target_link_libraries(llm_mmpa_stub PRIVATE
 )
 
 target_compile_options(llm_mmpa_stub PRIVATE
-        -g -O0
+        ${AIR_COMMON_COMPILE_OPTION}
 )
 
 set(LLM_ENGINE_BASE_SRCS
@@ -49,6 +49,20 @@ set(LLM_ENGINE_BASE_SRCS
         "${AIR_CODE_DIR}/tests/depends/llm_datadist/src/cache_engine_stubs.cc"
         "${AIR_CODE_DIR}/tests/depends/llm_datadist/src/llm_test_helper.cc"
         "${AIR_CODE_DIR}/tests/depends/llm_datadist/src/llm_engine_test_helper.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/cache_engine.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/cache_manager.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/swap_impl.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_ge_api.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_utils.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_common.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/link_manager.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/flow_graph_manager.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_flow_service.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/llm_datadist.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/llm_error_codes.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_file_saver.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/common/llm_thread_pool.cc"
+        "${AIR_CODE_DIR}/dflow/llm_datadist/v1/api/llm_datadist_impl.cc"
 )
 
 add_library(llm_engine_base SHARED
@@ -77,16 +91,15 @@ target_link_libraries(llm_engine_base PRIVATE
         metadef_headers
         intf_pub
         llm_mmpa_stub
-        mmpa
         slog_stub
         runtime_stub
-        llm_engine
         ascendcl_stub
         -Wl,--no-as-needed
         unified_dlog
         -Wl,-as-needed
+        ${AIR_COMMON_LINK_OPTION}
 )
 
 target_compile_options(llm_engine_base PRIVATE
-        -g -O0
+        ${AIR_COMMON_COMPILE_OPTION}
 )

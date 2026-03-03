@@ -19,7 +19,7 @@ add_library(stub_geir_ops SHARED
         ${AIR_CODE_DIR}/tests/ge/ut/ge/graph/eager_style_graph_builder/es_generator/stub_geir_ops.cc
         )
 
-target_compile_options(stub_geir_ops PRIVATE)
+target_compile_options(stub_geir_ops PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 target_link_libraries(stub_geir_ops
         PRIVATE
         intf_pub
@@ -27,7 +27,6 @@ target_link_libraries(stub_geir_ops
         graph_base
         error_manager
         c_sec
-        unified_dlog
         )
 
 # 3. 使用 add_es_library_and_whl 函数生成 ES API 包
@@ -51,7 +50,7 @@ add_executable(ut_graph_construction
 # 链接 es_ut_test 会自动触发 build_es_ut_test（通过 INTERFACE 库的 add_dependencies）
 # 此处无需显式添加依赖
 
-target_compile_options(ut_graph_construction PRIVATE)
+target_compile_options(ut_graph_construction PRIVATE ${AIR_COMMON_COMPILE_OPTION})
 target_link_libraries(ut_graph_construction
         PRIVATE
         GTest::gtest GTest::gtest_main
@@ -59,11 +58,6 @@ target_link_libraries(ut_graph_construction
         graph_base
         graph
         intf_pub
-        ascend_protobuf
-        c_sec
-        aihac_symbolizer
-        unified_dlog
-        metadef
         )
 set_target_properties(ut_graph_construction PROPERTIES CXX_STANDARD 17)
 

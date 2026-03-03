@@ -35,7 +35,12 @@ target_compile_definitions(ge_runner_v2 PRIVATE
 )
 
 target_compile_options(ge_runner_v2 PRIVATE
-    ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
+    -O2
+    -fno-common
+    -Werror
+    -Wextra
+    -Wfloat-equal
+    -fvisibility=default
 )
 
 target_include_directories(ge_runner_v2 SYSTEM PRIVATE
@@ -70,7 +75,6 @@ target_link_libraries(ge_runner_v2
         -Wl,--as-needed
         graph
         graph_base
-        metadef
         ge_common
         ge_common_base
         register
@@ -91,7 +95,6 @@ target_link_libraries(ge_runner_v2
         -Wl,--no-as-needed
         -lrt
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
 )
@@ -177,11 +180,10 @@ target_link_libraries(ge_runner
         ascend_protobuf
         json
         jit_exe
-        ge_runner_v2
+	ge_runner_v2
         -Wl,--no-as-needed
         -lrt
         -ldl
-        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
 )

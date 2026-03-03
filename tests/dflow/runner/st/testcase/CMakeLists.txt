@@ -15,6 +15,32 @@ include_directories(${AIR_CODE_DIR}/tests/ge/ut/ge)
 MESSAGE("copy st run data from ${AIR_CODE_DIR}/tests/dflow/runner/st/st_run_data to ${CMAKE_CURRENT_BINARY_DIR}/")
 file(COPY ${AIR_CODE_DIR}/tests/dflow/runner/st/st_run_data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
+set(PROTO_LIST
+        "${METADEF_PROTO_DIR}/om.proto"
+        "${METADEF_PROTO_DIR}/ge_ir.proto"
+        "${METADEF_PROTO_DIR}/task.proto"
+        "${METADEF_PROTO_DIR}/ge_api.proto"
+        "${METADEF_PROTO_DIR}/insert_op.proto"
+        "${METADEF_PROTO_DIR}/dump_task.proto"
+        "${METADEF_PROTO_DIR}/fwk_adapter.proto"
+        "${METADEF_PROTO_DIR}/op_mapping.proto"
+        "${METADEF_PROTO_DIR}/optimizer_priority.proto"
+        "${METADEF_PROTO_DIR}/ge_api.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/attr_value.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/tensor.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/resource_handle.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/tensor_shape.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/types.proto"
+        "${METADEF_PROTO_DIR}/tensorflow/node_def.proto"
+        "${METADEF_PROTO_DIR}/onnx/ge_onnx.proto"
+        "${METADEF_PROTO_DIR}/var_manager.proto"
+        "${METADEF_PROTO_DIR}/attr_group_base.proto"
+        "${METADEF_PROTO_DIR}/ge_ir_mobile.proto"
+        "${METADEF_PROTO_DIR}/task_mobile.proto"
+        )
+
+protobuf_generate(ge PROTO_SRCS PROTO_HDRS ${PROTO_LIST})
+
 ################################################################################
 # build helper_runtime_test
 add_executable(helper_runtime_test
@@ -29,12 +55,6 @@ add_executable(helper_runtime_test
     data_flow_runtime/test_data_flow_runtime.cc
     data_flow_runtime/test_npu_sched_model.cc
     data_flow_session/test_data_flow_api.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/dgw_client_st_stub.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/tsd_client_stub.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/caas_dataflow_auth_stub.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/re_mem_group_st_stub.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/process_utils_stub.cc
-    ${AIR_CODE_DIR}/tests/depends/helper_runtime/src/deployer_client_stub.cc
 )
 
 target_compile_definitions(helper_runtime_test PRIVATE
@@ -51,13 +71,11 @@ target_include_directories(helper_runtime_test PRIVATE
     ${AIR_CODE_DIR}/runtime/deploy/abnormal_status_handler
     ${CMAKE_BINARY_DIR}/proto/ge
     ${CMAKE_BINARY_DIR}/proto/ge/proto
-    ${CMAKE_BINARY_DIR}/proto/deployer_proto/
     ${ASCGEN_DIR}/inc
     ${AIR_CODE_DIR}/inc
     ${CMAKE_BINARY_DIR}/proto/data_flow_protos
     ${AIR_CODE_DIR}/dflow/base
     ${AIR_CODE_DIR}/dflow/base/exec_runtime
-    ${ASCEND_3RD_LIB_PATH}/openssl/include
     ${CMAKE_BINARY_DIR}/proto/data_flow_protos
     ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto
     ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto/proto
@@ -66,46 +84,23 @@ target_include_directories(helper_runtime_test PRIVATE
     ${AIR_CODE_DIR}/dflow/inc/data_flow
 )
 
-target_link_options(helper_runtime_test PRIVATE
-    -Wl,-Bsymbolic
-)
-
 target_compile_options(helper_runtime_test PRIVATE
+    -fsanitize=address -fsanitize=leak -fsanitize-recover=address
+    -O0 -g
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control
-    -Wno-memset-elt-size
 )
 
 target_link_libraries(helper_runtime_test
-    intf_llt_pub
-    -Wl,-z,muldefs
-    model_deployer
-    udf_static
-    dflow_runner
-    ge_compiler
-    flow_graph
-    ge_runner_v2
-    ge_runner
-    npu_sched_model_loader
-    deployer_daemon_static
-    npu_executor_static
-    udf_compiler
-    cpu_compiler
-    ge_executor
-    hybrid_executor
-    davinci_executor
-    mmpa
-    aihacb_autofusion_stub
-    crypto_static
+    intf_pub
+    graphengine helper_runtime
     -Wl,--whole-archive
     rt2_registry_static
-    df_memset_stubs
     -Wl,--no-whole-archive
     ge_graph_dsl df_st_stubs ge_running_env ge_runtime_stub ascendcl_stub
     GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main
     data_flow_base
-    -lrt -ldl -lpthread
 )
 
 include(CTest)

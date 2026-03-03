@@ -293,8 +293,6 @@ void FakeFuzzCompileEngine() {
         .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"));
 }
 
-// todo test
-/*
 void FakeFuzzCompileEngineForUbFusion() {
   auto fuzz_compile_optimzer = MakeShared<FakeFuzzCompileOptimizer>();
   GeneralizedShapeInfo shape_info;
@@ -326,7 +324,6 @@ void FakeFuzzCompileEngineForUbFusion() {
         .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"))
         .Install(FakeOp("_RetVal").InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"));
 }
-*/
 
 Graph BuildFuzzCompileUnknownRankGraph() {
   std::vector<int64_t> shape = {-2};  // NCHW
@@ -363,8 +360,6 @@ Graph BuildFuzzCompileUnknownRankGraph() {
   return ToGeGraph(g1);
 }
 
-// todo test
-/*
 Graph BuildFuzzCompileOriginGraphWithUBfusion() {
    std::vector<int64_t> shape = {2,2,3,2};  // NCHW
    std::vector<int64_t> unknown_shape = {2,2,-1,2};  // NCHW
@@ -451,7 +446,6 @@ Graph BuildFuzzCompileOriginGraphWithUBfusion() {
   AttrUtils::SetGraph(conv2d_fused_node->GetOpDesc(), "_original_fusion_graph", fused_compute_graph);
   return graph;
 }
-*/
 
 void InitGeLib() {
   map<string, string> options;
@@ -3320,9 +3314,6 @@ TEST_F(DynamicGraphTest, TestFuzzCompileUnknownRankLoadWithOutKernel_GertTensor)
  * 5、校验FuzzComile函数被调用了1次，表示发生kernel miss，并触发了执行时编译.
  *
  */
-
-// todo test
-/*
 TEST_F(DynamicGraphTest, TestFuzzCompileUBfusionExecuteSwitchToOriginGraphExecution) {
   FakeFuzzCompileEngineForUbFusion();
   MockForGenerateTask("AIcoreEngine", GenerateTaskForTaskWithHandle);
@@ -3360,7 +3351,7 @@ TEST_F(DynamicGraphTest, TestFuzzCompileUBfusionExecuteSwitchToOriginGraphExecut
   auto relu_in_sub_fuzz_compile_counts = fuzz_compile_store->GetNodeFuzzCompileCount("relu");
   EXPECT_EQ(relu_in_sub_fuzz_compile_counts, 1); //fuse node fuzz failed, switch to origin graph execution, so relu will fuzz once
   session.RemoveGraph(graph_id);
-}*/
+}
 
 const static std::vector<int64_t> val_list_int;
 const static std::vector<bool> val_list_bool;

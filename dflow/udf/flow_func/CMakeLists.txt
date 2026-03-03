@@ -53,8 +53,13 @@ target_include_directories(flow_func PRIVATE
 
 target_compile_options(flow_func PRIVATE
     -ftrapv
-    ${AIR_COMMON_COMPILE_OPTION}
+    -O2
     -fvisibility-inlines-hidden
+    -fvisibility=hidden
+    -Werror
+    -Wextra
+    -Wfloat-equal
+    -fno-common
 )
 
 target_link_libraries(flow_func PRIVATE
@@ -62,9 +67,6 @@ target_link_libraries(flow_func PRIVATE
     $<BUILD_INTERFACE:slog_headers>
     $<BUILD_INTERFACE:mmpa_headers>
     $<BUILD_INTERFACE:ascend_hal_headers>
-    mmpa
-    -ldl
-    ${AIR_COMMON_LINK_OPTION}
     PUBLIC c_sec
     reader_writer
     ascend_hal_stub

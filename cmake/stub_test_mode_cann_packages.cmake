@@ -13,7 +13,6 @@
 if (GE_DT)
     message(STATUS "GE DT mode")
     include(cmake/create_headers.cmake)
-    find_package_if_target_not_exists(datagw MODULE REQUIRED)
     find_package(cce MODULE REQUIRED)
     find_package(ascend_hal MODULE REQUIRED)
 

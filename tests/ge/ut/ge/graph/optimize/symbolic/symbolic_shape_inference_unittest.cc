@@ -55,8 +55,6 @@ class SymbolicShapeInferenceUT : public testing::Test {
 
   }
   void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
     global_options_ = ge::GetThreadLocalContext().GetAllGlobalOptions();
     graph_options_ = ge::GetThreadLocalContext().GetAllGraphOptions();
     session_options_ = ge::GetThreadLocalContext().GetAllSessionOptions();
@@ -76,12 +74,8 @@ class SymbolicShapeInferenceUT : public testing::Test {
                                                OptionRegistry::GetInstance().GetRegisteredOptTable());
     EsDestroyGraphBuilder(graph_);
     graph_ = nullptr;
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
-    }
   }
   EsCGraphBuilder *graph_{nullptr};
-  const char *env;
  private:
   std::map<std::string, std::string> global_options_;
   std::map<std::string, std::string> graph_options_;
@@ -630,7 +624,7 @@ TEST_F(SymbolicShapeInferenceUT, test_abnormal_reshape) {
   auto ascend_install_path = EnvPath().GetAscendInstallPath();
   setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
   setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
-  EnableSliceScheduleEnv();
+  setenv("AUTOFUSE_FLAGS", "--enable_autofuse=true", 1);
 
   auto reshape = OP_CFG(RESHAPE).InCnt(1).OutCnt(1).OutNames({"y"}).Build("reshape1");
   GeTensorDesc in_desc(GeShape({1, 2, 3, 4}), FORMAT_ND, DT_FLOAT);
@@ -1897,6 +1891,26 @@ REG_OP(Repeat)
 .OP_END_FACTORY_REG(Repeat)
 
 IMPL_OP(Repeat).InputsDataDependency({1}); // repeat归属自定义二类算子，符号化推导需要获取
+graphStatus TestRepeatInferSymbolShapeFunc(gert::InferSymbolShapeContext *context) {
+  auto input0 = context->GetInputSymbolShape(0);
+  GE_ASSERT_NOTNULL(input0);
+  auto input1 = context->GetInputSymbolTensor(1);
+  GE_ASSERT_NOTNULL(input1);
+  auto symbol_value = input1->GetSymbolicValue();
+  if (symbol_value == nullptr) {
+    return UNSUPPORTED;
+  }
+  auto output = context->GetOutputSymbolShape(0);
+  *output = *input0;
+  Expression expr(Symbol(0));
+  for (const auto &sym : *symbol_value) {
+    expr = expr + sym;
+  }
+  GE_ASSERT_TRUE(!output->GetDims().empty());
+  output->MutableDim(0) = expr;
+  return ge::SUCCESS;
+}
+IMPL_OP_INFER_SYMBOL_SHAPE_INNER(Repeat).InferSymbolShape(TestRepeatInferSymbolShapeFunc);
 }
 TEST_F(SymbolicShapeInferenceUT, test_symbolize_value_and_repeat_infer) {
   dlog_setlevel(0, 0, 0);
