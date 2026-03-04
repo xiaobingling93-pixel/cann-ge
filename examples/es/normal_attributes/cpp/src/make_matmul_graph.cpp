@@ -19,7 +19,7 @@ using namespace ge;
 using namespace ge::es;
 namespace {
 es::EsTensorHolder MakeMatMulGraph(es::EsTensorHolder input, EsGraphBuilder &graph_builder) {
-  auto weight = graph_builder.CreateConst(std::vector<int32_t>(6, 1), std::vector<int64_t>{2, 3});
+  auto weight = graph_builder.CreateConst(std::vector<float>(6, 1.0f), std::vector<int64_t>{2, 3});
   /*
   MatMul原型注释：
   REG_OP(MatMul)
@@ -79,7 +79,7 @@ std::unique_ptr<ge::Graph> MakeMatMulGraphByEs() {
   // 1、创建图构建器
   auto graph_builder = std::make_unique<EsGraphBuilder>("MakeMatMulGraph");
   // 2、创建输入节点
-  auto input = graph_builder->CreateInput(0, "input", ge::DT_INT32, ge::FORMAT_ND, {2, 3});
+  auto input = graph_builder->CreateInput(0, "input", ge::DT_FLOAT, ge::FORMAT_ND, {2, 3});
   auto result = MakeMatMulGraph(input, *graph_builder);
   // 3、设置输出
   (void) graph_builder->SetOutput(result, 0);
@@ -92,10 +92,10 @@ int MakeMatMulGraphByEsAndRun() {
   std::vector<ge::Tensor> inputs;
 
   // 准备输入数据
-  std::vector<int32_t> input_data = {1, 2, 3, 4, 5, 6};
+  std::vector<float> input_data = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
 
   // 创建输入tensor
-  auto input_tensor = ge::Utils::StubTensor<int32_t>(input_data, {2, 3});
+  auto input_tensor = ge::Utils::StubTensor<float>(input_data, {2, 3});
   inputs.push_back(*input_tensor);
   return RunGraph(*graph, inputs, "MatMul");
 }

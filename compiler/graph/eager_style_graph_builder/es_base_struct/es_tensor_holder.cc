@@ -25,12 +25,13 @@
     (void)x2;                                                                                 \
     GE_ASSERT(false,                                                                          \
               "Weak symbol implementation called. This usually means:\n"                      \
-              "1. The generated esb static library is not linked at all\n"                    \
-              "2. The generated esb static library is not linked with --whole-archive\n"      \
+              "1. The generated es codegen library is not linked at all\n"                    \
+              "2. The generated es codegen library is not linked with --whole-archive or --no-as-needed\n"      \
               "3. The compile package and opp package versions are not compatible\n"          \
               "Please ensure:\n"                                                              \
-              "- Link with the generated esb static library\n"                                \
-              "- Use: -Wl,--whole-archive libesb_generated_static.a -Wl,--no-whole-archive\n" \
+              "- Link with the generated es library\n"                                \
+              "- Use: -Wl,--whole-archive libes_generated.a (name of the library, may be different from the codegen library) -Wl,--no-whole-archive\n" \
+              "- Use: -Wl,--no-as-needed libes_generated.so (name of the library, may be different from the codegen library) -Wl,--as-needed\n" \
               "- Install matching versions of compile package and opp package");              \
   }
 

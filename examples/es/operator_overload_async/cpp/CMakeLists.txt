@@ -18,6 +18,7 @@ set(CMAKE_PREFIX_PATH  ${ASCEND_LIB_DIR} ${CMAKE_PREFIX_PATH})
 
 find_library(GE_COMPILE NAMES ge_compiler REQUIRED)
 find_library(GE_RUNNER NAMES ge_runner REQUIRED)
+find_library(ACL_RT NAMES acl_rt REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH "${ASCEND_INSTALL_PATH}/include/ge/cmake")
 find_package(GenerateEsPackage REQUIRED)
@@ -36,4 +37,4 @@ add_executable(sample main.cpp)
 # Force keep ES generated shared library in DT_NEEDED to avoid weak-symbol fallback.
 # Without this, toolchain defaults like --as-needed may drop libes_all.so.
 target_link_options(sample PRIVATE -Wl,--no-as-needed)
-target_link_libraries(sample PRIVATE es_showcase es_all ${GE_RUNNER} ${GE_COMPILE})
+target_link_libraries(sample PRIVATE es_showcase es_all ${GE_RUNNER} ${GE_COMPILE} ${ACL_RT})

@@ -18,78 +18,93 @@ from ge.graph.types import DataType, Format
 from ge.graph import Graph, DumpFormat
 from ge.ge_global import GeApi
 from ge.session import Session
-from ge.es.all import MatMul
+from ge.es.all import Add
 
 
-def build_matmul_graph():
+def build_overload_graph():
     # 1、创建图构建器
     builder = GraphBuilder("MakeMatMulGraph")
     # 2、创建图输入节点
-    input_tensor_holder = builder.create_input(
+    input_tensor_holder1 = builder.create_input(
         index=0,
-        name="input",
+        name="input1",
         data_type=DataType.DT_FLOAT,
         shape=[2, 3]
     )
-    weight = builder.create_const_float([1.0] * 6, shape=[2, 3])
-    # transpose_x1 和 transpose_x2 为 MatMul 的属性
-    matmul_tensor_holder = MatMul(weight, input_tensor_holder, None, transpose_x1=True, transpose_x2=False)
+    input_tensor_holder2 = builder.create_input(
+        index=1,
+        name="input2",
+        data_type=DataType.DT_INT64,
+        shape=[2, 3]
+    )
+    input_tensor_holder3 = builder.create_input(
+        index=2,
+        name="input3",
+        data_type=DataType.DT_INT64,
+        shape=[2, 3]
+    )
+    # 操作符重载
+    add_tensor_holder2 = input_tensor_holder1 + input_tensor_holder2 + input_tensor_holder3
     # 3、设置图输出节点
-    builder.set_graph_output(matmul_tensor_holder, 0)
+    builder.set_graph_output(add_tensor_holder2, 0)
     # 4、构建图
     return builder.build_and_reset()
 
 
-def dump_matmul_graph(graph):
-    graph.dump_to_file(format=DumpFormat.kOnnx, suffix="make_matmul_graph")
+def dump_overload_graph(graph):
+    graph.dump_to_file(format=DumpFormat.kOnnx, suffix="make_add_graph")
 
-
-def run_graph(graph, device_id="0") -> int:
-    # 1. 初始化GE环境
+def run_graph(graph) -> int:
     config = {
-        "ge.exec.deviceId": str(device_id),
-        "ge.graphRunMode": "0"
+        "ge.exec.deviceId": "0",
+        "ge.graphRunMode": "0"  # 0: 图模式, 1: 单算子模式
     }
-
     ge_api = GeApi()
     ret = ge_api.ge_initialize(config)
     if ret != 0:
-        print(f"[Error] GE初始化失败，返回码: {ret}")
+        print(f"GE初始化失败，返回码: {ret}")
         return ret
-
-    print(f"[Info] GE环境初始化成功 (Device ID: {device_id})")
+    print("GE环境初始化成功 (Device ID: 0)")
 
     try:
         # 2. 创建Session
         session = Session()
-
         # 3. 添加图到Session
         graph_id = 1
         ret = session.add_graph(graph_id, graph)
         if ret != 0:
-            print(f"[Error] 添加图失败，返回码: {ret}")
+            print(f"添加图失败，返回码: {ret}")
             return ret
-        print(f"[Info] 图已添加到Session (Graph ID: {graph_id})")
+        print(f"图已添加到Session (Graph ID: {graph_id})")
 
         # 4. 准备输入数据
-        input_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
-
-        input_tensor = Tensor(
-            input_data.flatten().tolist(),
+        tensor1 = Tensor(
+            [1.0, 1.0, 2.0, 2.0, 3.0, 3.0],
             None,
             DataType.DT_FLOAT,
             Format.FORMAT_ND,
-            [2, 3]
+            shape=[2, 3]
         )
-
-        inputs = [input_tensor]
-        print(f"[Info] 输入数据已准备，共{len(inputs)}个输入tensor")
-
+        tensor2 = Tensor(
+            [1.0, 1.0, 2.0, 2.0, 3.0, 3.0],
+            None,
+            DataType.DT_INT64,
+            Format.FORMAT_ND,
+            shape=[2, 3]
+        )
+        tensor3 = Tensor(
+            [1.0, 1.0, 2.0, 2.0, 3.0, 3.0],
+            None,
+            DataType.DT_INT64,
+            Format.FORMAT_ND,
+            shape=[2, 3]
+        )
+        input_tensor = [tensor1, tensor2, tensor3]
         # 5. 运行图
-        ret = session.run_graph(graph_id, inputs)
+        ret = session.run_graph(graph_id, input_tensor)
         print("[Info] 图运行成功！")
         for idx, tensor in enumerate(ret, start=1):
-            print(f"Tensor{idx}详情：{tensor}")
+            print(f"Tensor{idx}详情：", {tensor})
         return 0
 
     except Exception as e:
@@ -97,7 +112,6 @@ def run_graph(graph, device_id="0") -> int:
         import traceback
         traceback.print_exc()
         return -1
-
     finally:
         # 6. 清理GE环境
         print("[Info] 清理GE环境...")
@@ -105,12 +119,6 @@ def run_graph(graph, device_id="0") -> int:
         print("[Success] GE环境已清理")
 
 
-if __name__ == "__main__":
-    # 构建图
-    graph = build_matmul_graph()
-
-    # 先dump图（生成pbtxt文件用于可视化）
-    dump_matmul_graph(graph)
-
-    # 运行图（从命令行参数获取device_id，默认为"0"）
-    run_graph(graph)
+graph = build_overload_graph()
+dump_overload_graph(graph)
+run_graph(graph)

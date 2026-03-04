@@ -26,14 +26,8 @@ add_library(opgraph_all INTERFACE)
 set_target_properties(opgraph_all PROPERTIES
         INTERFACE_LIBRARY_OUTPUT_DIRECTORY  "${ASCEND_INSTALL_PATH}/opp/built-in/op_proto"
 )
-add_es_library(
+add_es_library_and_whl(
         ES_LINKABLE_AND_ALL_TARGET es_all
         OPP_PROTO_TARGET  opgraph_all
         OUTPUT_PATH       ${CMAKE_BINARY_DIR}/output
 )
-add_subdirectory(src)
-add_executable(sample main.cpp)
-# Force keep ES generated shared library in DT_NEEDED to avoid weak-symbol fallback.
-# Without this, toolchain defaults like --as-needed may drop libes_all.so.
-target_link_options(sample PRIVATE -Wl,--no-as-needed)
-target_link_libraries(sample PRIVATE es_showcase es_all ${GE_RUNNER} ${GE_COMPILE})

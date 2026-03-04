@@ -123,14 +123,10 @@ dump_and_run_python_graph(){
       return 0
   fi
 
-  python_files=()
-  while IFS= read -r -d '' file; do
-    python_files+=("$file")
-  done < <(find  "${SHOWCASE_DIR}" -name "*.py" -print0)
-
-  if [[ ${#python_files[@]} -eq 0 ]]; then
-    echo "[Warning] 在 ${SHOWCASE_DIR} 未找到 Python 文件"
-    return 0
+  python_files=("${SHOWCASE_DIR}/make_add_graph.py")
+  if [[ ! -f "${python_files[0]}" ]]; then
+    echo "[Error] 未找到 Python 用例 ${python_files[0]}" >&2
+    return 1
   fi
 
   local has_error=0
@@ -165,7 +161,7 @@ case "${TARGET}" in
     pip install --force-reinstall --upgrade --target ./${BUILD_DIR}/whl_package  "./${BUILD_DIR}/output/whl/es_all-1.0.0-py3-none-any.whl"
     export LD_LIBRARY_PATH="$PWD/${BUILD_DIR}/output/lib64:$LD_LIBRARY_PATH"
     if dump_and_run_python_graph; then
-      echo "[Success] sample 执行成功，pbtxt dump 已生成在当前目录。该文件以 ge_onnx_ 开头，可以在 netron 中打开显示"
+      echo "[Success] sample 执行成功, pbtxt dump 已生成在当前目录。该文件以 ge_onnx_ 开头，可以在 netron 中打开显示"
     else
       echo "[Error] sample 执行失败，请检查上述错误信息" >&2
       exit 1
