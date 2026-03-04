@@ -27,6 +27,7 @@
 #include "ge_graph_dsl/graph_dsl.h"
 #include "graph/operator_reg.h"
 #include "external/ge_common/ge_api_types.h"
+#include "stub/gert_runtime_stub.h"
 
 using namespace std;
 using namespace testing;
@@ -638,6 +639,72 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_FromParentData_Deleted) {
   EXPECT_EQ(sub_graph_1->FindNode("sub_tensormove"), nullptr);
 
   // 清理环境
+  ge::GetThreadLocalContext().SetGraphOption({});
+}
+
+/**
+ * 父图:
+ * Data -> PartitionedCall -> NetOutput
+ *
+ * 子图 sub_1:
+ * sub_Data(ParentIndex:0) -> sub_tensormove -> sub_NetOutput
+ *
+ * 场景说明：
+ * - sub_tensormove 从子图 Data 跳出到父图时，source path 中会插入 PartitionedCall 节点。
+ *
+ * 预期行为：
+ * - trace 路径日志中包含 partitioned_call 节点；
+ * - partitioned_call 仅打印节点名，不打印 out anchor；
+ * - sub_tensormove 可被删除（保证路径后续规则可正常处理空 anchor）。
+ */
+TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_PartitionedCallSourcePath_LogWithoutOutAnchor) {
+  dlog_setlevel(0, 0, 0);
+
+  std::map<std::string, std::string> options;
+  options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "0,0";
+  ge::GetThreadLocalContext().SetGraphOption(options);
+
+  const auto sub_data_cfg = OP_CFG(DATA).ParentNodeIndex(0);
+  DEF_GRAPH(sub_1) {
+    CHAIN(NODE("sub_data", sub_data_cfg)->NODE("sub_tensormove", TENSORMOVE)->NODE("sub_netoutput", NETOUTPUT));
+  };
+
+  const auto data_cfg = OP_CFG(DATA).Attr(ATTR_NAME_INDEX, 0);
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("data", data_cfg)
+          ->EDGE(0, 0)->NODE("partitioned_call", PARTITIONEDCALL, sub_1)
+          ->EDGE(0, 0)->NODE("netoutput", NETOUTPUT));
+  };
+
+  auto compute_graph = ToComputeGraph(g1);
+  const auto sub_graph_1 = compute_graph->GetSubgraph("sub_1");
+  ASSERT_NE(sub_graph_1, nullptr);
+
+  auto p_call_node = compute_graph->FindNode("partitioned_call");
+  ASSERT_NE(p_call_node, nullptr);
+  sub_graph_1->SetParentGraph(compute_graph);
+  sub_graph_1->SetParentNode(p_call_node);
+
+  NetoutputParentIndexes indexes{{"netoutput", {0}},
+                                 {"sub_netoutput", {0}}};
+  ASSERT_TRUE(AddParentIndexForNetoutput(compute_graph, indexes));
+
+  gert::GertRuntimeStub runtime_stub;
+  runtime_stub.GetSlogStub().SetLevel(DLOG_INFO);
+  runtime_stub.GetSlogStub().Clear();
+
+  ge::GEPass pass(compute_graph);
+  TensorMoveDeletePass tensor_move_delete_pass;
+  ge::NamesToPass names_to_pass;
+  names_to_pass.emplace_back("TensorMoveDeletePass", &tensor_move_delete_pass);
+  EXPECT_EQ(pass.Run(names_to_pass), SUCCESS);
+
+  EXPECT_EQ(sub_graph_1->FindNode("sub_tensormove"), nullptr);
+  EXPECT_NE(runtime_stub.GetSlogStub().FindLog(
+      DLOG_INFO, "Trace reach real source: data(out:0)-->partitioned_call-->sub_data(out:0)-->(in:0)sub_tensormove"), -1);
+  EXPECT_EQ(runtime_stub.GetSlogStub().FindLogRegex(
+      DLOG_INFO, "Trace reach real source: .*partitioned_call\\(out:"), -1);
+
   ge::GetThreadLocalContext().SetGraphOption({});
 }
 

@@ -64,7 +64,7 @@ bool IsSourceNodeSpecial(const NodePtr &node) {
  * * 查找当前 Data 节点所属的Wrapper Node，将 Wrapper 节点和前驱节点加入路径，并更新追踪锚点与状态标志。
  *
  * @param cur_node        [IN]  当前遇到的子图 DATA 节点
- * @param source_path     [OUT] 路径记录容器，Wrapper节点对应输出锚点会被加入此集合
+ * @param source_path     [OUT] 路径记录容器，Wrapper 节点会被加入此集合，输出锚点置空
  * @param cur_in_anchor   [OUT] 下一轮迭代的输入锚点，将被更新为父节点对应输入锚点
  * @return Status         SUCCESS: 成功跳出子图并定位到父节点
  *                        FAILED:  获取父节点失败
@@ -76,9 +76,10 @@ Status JumpOutFromSubDataToTraceSource(const NodePtr &cur_node, std::vector<std:
   GE_ASSERT_NOTNULL(parent_in_anchor, "Get parent input anchor failed for DATA node: %s", cur_node->GetName().c_str());
 
   const auto parent_node = parent_in_anchor->GetOwnerNode();
+  GE_ASSERT_NOTNULL(parent_node);
 
-  // 将 Wrapper 节点加入路径, 记录 Wrapper 节点和它的第0个输出，主要用于标识路径
-  source_path.emplace_back(parent_node, parent_node->GetOutDataAnchor(0));
+  // 对于从子图 DATA 跳出的 wrapper 节点，仅保留节点标识，不使用 out anchor 参与路径表达。
+  source_path.emplace_back(parent_node, nullptr);
   cur_in_anchor = parent_in_anchor;
 
   GELOGI("Jump out of subgraph from DATA %s to parent node %s input index %d.",
@@ -142,6 +143,8 @@ void LogTraceRealSourcePath(const NodePtr &start_node, int32_t index,
     const auto &anchor = it->second;
     if (node != nullptr && anchor != nullptr) {
       ss << node->GetName() << "(out:" << anchor->GetIdx() << ")-->";
+    } else if (node != nullptr) {
+      ss << node->GetName() << "-->";
     }
   }
   // 最后追加终点（即当前开始回溯的节点）的入边信息
@@ -224,7 +227,7 @@ Status TraceRealSourceNode(const NodePtr &start_node, int32_t index, std::vector
         continue;
       }
     }
-    // 到达终点，打印路径信息，期望格式: Data(out:0)-->RefOp(out:0)-->(in:0)TensorMove
+    // 到达终点，打印路径信息，期望格式: Data(out:0)-->PartitionedCall-->RefOp(out:0)-->(in:0)TensorMove
     LogTraceRealSourcePath(start_node, index, source_path);
     return SUCCESS;
   }
@@ -283,13 +286,19 @@ bool IsSourceNodeWithSinglePath(const NodePtr &tensor_move_node, const std::vect
     const auto &node = pairs.first;
     const auto &out_data_anchor = pairs.second;
     GE_ASSERT_NOTNULL(node);
-    GE_ASSERT_NOTNULL(out_data_anchor);
 
     // 多分支控制流算子
     if (NodeUtils::IsMultiBranchControlFlowOp(node)) {
       GELOGI("Node %s type %s is multi branch control flow op, cannot delete tensor move %s.", node->GetName().c_str(),
              node->GetType().c_str(), tensor_move_node->GetName().c_str());
       return false;
+    }
+
+    // 路径中的某些节点（如 PartitionedCall）仅用于标识跨图路径，不携带可用的 out anchor。
+    if (out_data_anchor == nullptr) {
+      GELOGI("Node %s(type %s) in source path of tensor move %s has no out data anchor, skip anchor checks.",
+             node->GetName().c_str(), node->GetType().c_str(), tensor_move_node->GetName().c_str());
+      continue;
     }
 
     // 多个输出和当前out_data_anchor都引用一个in_data_anchor
