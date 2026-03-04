@@ -219,3 +219,46 @@ Result Utils::MemcpyFileToDeviceBuffer(const std::string &fileName, void *&picDe
     }
     return SUCCESS;
 }
+
+Result Utils::MemcpyFilesToDeviceBuffer(const std::vector<std::string> &fileNames, void **picDevBuffer,
+                                        size_t &inputBuffSize, uint64_t batchSize, bool isDevice)
+{
+    if (fileNames.size() < batchSize) {
+        ERROR_LOG("input file num less than batch size:%zu", batchSize);
+        return FAILED;
+    }
+    aclrtMemcpyKind memcpyKind = ACL_MEMCPY_DEVICE_TO_DEVICE;
+    if (!isDevice) {
+        memcpyKind = ACL_MEMCPY_HOST_TO_DEVICE;
+    }
+
+    aclError aclRet = ACL_ERROR_NONE;
+    for (size_t idx = 0; idx < batchSize; idx++) {
+        void *picData = nullptr;
+        uint32_t picDataSize = 0U;
+        INFO_LOG("start to process file:%s", fileNames[idx].c_str());
+        auto ret = Utils::ReadBinFile(fileNames[idx], picData, picDataSize, isDevice);
+        if (ret != SUCCESS) {
+            ERROR_LOG("read bin file failed, file name is %s", fileNames[idx].c_str());
+            return FAILED;
+        }
+
+        if (*picDevBuffer == nullptr) {
+            // finally: picDataSize * batchSize == inputBuffSize
+            aclRet = aclrtMalloc(picDevBuffer, picDataSize * batchSize, ACL_MEM_MALLOC_HUGE_FIRST);
+            if (aclRet != ACL_SUCCESS) {
+                ERROR_LOG("malloc device memory failed");
+                return FAILED;
+            }
+        }
+
+        aclRet = aclrtMemcpy(static_cast<uint8_t *>(*picDevBuffer) + inputBuffSize, picDataSize, picData, picDataSize, memcpyKind);
+        if (aclRet != ACL_SUCCESS) {
+            ERROR_LOG("memcpy input data to device failed");
+            return FAILED;
+        }
+        inputBuffSize += picDataSize;
+    }
+
+    return SUCCESS;
+}
