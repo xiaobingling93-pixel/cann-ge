@@ -1285,3 +1285,25 @@ GraphUtilsEx::CopyGraphImpl(const Graph &src_graph, Graph &dst_graph,
   return GRAPH_SUCCESS;
 }
 }  // namespace ge
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void GeApiWrapper_RenameAllNodes(void *graph_ptr, const char *prefix) {
+  if (graph_ptr == nullptr || prefix == nullptr) {
+    return;
+  }
+  std::string prefix_str(prefix);
+  ge::Graph *graph = static_cast<ge::Graph *>(graph_ptr);
+  for (auto &sub_node : graph->GetAllNodes()) {
+    auto snode = ge::NodeAdapter::GNode2Node(sub_node);
+    auto orig_name = snode->GetNamePtr() == nullptr ? std::string("") : std::string(snode->GetNamePtr());
+    auto modi_name = prefix_str + '_' + orig_name;
+    snode->GetOpDesc()->SetNamePtr(modi_name.c_str());
+  }
+}
+
+#ifdef __cplusplus
+}
+#endif

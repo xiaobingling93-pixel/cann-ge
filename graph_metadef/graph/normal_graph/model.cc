@@ -26,6 +26,7 @@
 #include "mmpa/mmpa_api.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/ge_ir_utils.h"
+#include "graph/utils/graph_utils_ex.h"
 #include "common/checker.h"
 #include "proto/ge_ir.pb.h"
 
@@ -248,3 +249,24 @@ ConstProtoAttrMap &Model::GetAttrMap() const {
   return attrs_;
 }
 }  // namespace ge
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ge::Status GeApiWrapper_ModelSaveToString(const ge::Graph &graph,
+                                          const std::string &node_name,
+                                          std::string &model_str) {
+  std::string model_name = "onnx_compute_model_" + node_name;
+  ge::Buffer model_buf;
+  ge::Model onnx_model(model_name.c_str(), "");
+  onnx_model.SetGraph(ge::GraphUtilsEx::GetComputeGraph(graph));
+  GE_ASSERT_SUCCESS(onnx_model.Save(model_buf, false),
+    "[GEOP] node:%s Onnx Model Serialized Failed.", node_name.c_str());
+  model_str = std::string(reinterpret_cast<const char *>(model_buf.GetData()), model_buf.GetSize());
+  return ge::SUCCESS;
+}
+
+#ifdef __cplusplus
+}
+#endif

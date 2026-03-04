@@ -3293,3 +3293,14 @@ graphStatus ComputeGraph::TopologicalSorting(TopoSortingMode topo_sorting_mode) 
   return impl_->TopologicalSortingGraph(shared_from_this(), topo_sorting_mode);
 }
 }  // namespace ge
+
+ge::ComputeGraphPtr GeApiWrapper_MakeComputeGraphPtr(const char *graph_name) {
+  return ge::MakeShared<ge::ComputeGraph>(graph_name);
+}
+
+size_t GeApiWrapper_GetAllNodesSize(const ge::ComputeGraphPtr &graph_ptr) {
+  if (graph_ptr == nullptr) {
+    return 0;
+  }
+  return graph_ptr->GetAllNodesSize();
+}

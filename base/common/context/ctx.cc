@@ -16,3 +16,15 @@ ge::OmgContext &GetContext() {
   return context;
 }
 }  // namespace domi
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void GeApiWrapper_SetDomiContextTrainFlag(bool train_flag) {
+  domi::GetContext().train_flag = train_flag;
+}
+
+#ifdef __cplusplus
+}
+#endif

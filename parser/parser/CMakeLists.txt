@@ -36,6 +36,7 @@ set(SRC_LIST
     "tensorflow/graph_to_function_def.cc"
     "tensorflow/parser_graph_optimizer.cc"
     "tensorflow/iterator_fusion_pass.cc"
+    "tensorflow/ge_parser_api_wrapper.cc"
     "common/op_def/arg_op_operator.cc"
     "common/op_def/constant_operator.cc"
     "common/op_def/fill_operator.cc"
