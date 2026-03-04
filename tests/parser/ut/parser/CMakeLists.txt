@@ -72,4 +72,7 @@ target_link_libraries(ut_parser
     error_manager parser_mmpa_stub platform_stub_parser
     GTest::gtest GTest::gtest_main ascend_protobuf_static parser_slog_stub  c_sec json -lrt -ldl
     -Wl,--no-as-needed unified_dlog -Wl,--as-needed
+    # Workaround for undefined references
+    ge_common_base
+    ascendcl_stub
 )

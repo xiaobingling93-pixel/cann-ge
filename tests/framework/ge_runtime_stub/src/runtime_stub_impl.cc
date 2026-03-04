@@ -512,7 +512,7 @@ rtError_t RuntimeStubImpl::rtsLaunchKernelWithHostArgs(rtFuncHandle funcHandle, 
 rtError_t RuntimeStubImpl::rtsLaunchKernelWithDevArgs(rtFuncHandle funcHandle, uint32_t blockDim, rtStream_t stm,
                                                       rtKernelLaunchCfg_t *cfg, const void *args, uint32_t argsSize, void *reserve)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(funcHandle, blockDim, stm, cfg, args, argsSize,
                                 reserve, std::move(last_tag_));
   cpu_launch_args_["cpu_new_args_launch_with_place_holder"].emplace_back(&all_launch_args_.back());
