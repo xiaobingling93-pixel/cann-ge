@@ -196,6 +196,24 @@ bool GatherFusionStrategy::CheckGatherWithView(const NodePtr &node1, const NodeP
   // node2与gather直连路径中不包含View类算子
   NodeFuseInfo node_fuse_info;
   GE_ASSERT_SUCCESS(node_fuse_info.UpdateNodeFuseInfo(node1, node2));
+
+  // 检查是否存在既有水平融合又有垂直融合的复杂场景
+  // 既存在垂直连接（node1->node2），又存在水平共享输入
+  bool has_both_horizontal_and_vertical =
+      !node_fuse_info.GetNode1ToNode2LinkMap().empty() &&
+      !node_fuse_info.GetSameInputMap().empty();
+  if (has_both_horizontal_and_vertical) {
+    // 在这种复杂场景下，检查 node2（elem）是否有非SimplestLoad的输入（包括broadcast等view操作）
+    // 如果有，拒绝融合以防止broadcast被错误地拷贝到Gather
+    if (!BackendUtils::IsNodeAllInputsAreSimplestLoad(node2)) {
+      GELOGI("Gather %s and elem %s have both horizontal and vertical fusion, but elem has view operations "
+             "(such as broadcast) in its input path. Reject fusion to prevent broadcast from being "
+             "incorrectly copied to Gather.",
+             node1->GetNamePtr(), node2->GetNamePtr());
+      return false;
+    }
+  }
+
   for (const auto &subgraph_link : node_fuse_info.GetNode1ToNode2LinkMap()) {
     std::vector<ViewOpAttrInfo> attr_infos;
     if (!BackendUtils::CurNodeInputIsSimplestLoad(node2, subgraph_link.second, attr_infos)) {
