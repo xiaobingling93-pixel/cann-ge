@@ -15,8 +15,11 @@
 #include "executor/cpu_id_resource_manager.h"
 
 namespace ge {
-namespace {
-}  // namespace
+
+CpuIdResourceManager &CpuIdResourceManager::GetInstance() {
+  static CpuIdResourceManager instance;
+  return instance;
+}
 
 Status CpuIdResourceManager::Allocate(uint32_t &id) {
   const std::lock_guard<std::mutex> lock(mutex_);

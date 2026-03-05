@@ -90,7 +90,7 @@ const std::vector<int32_t> &DeployPlan::GetOutputQueueIndices() const {
 }
 
 const std::map<std::string, std::vector<std::string>> &DeployPlan::GetTrimmingEdgesModelInstances() const {
-  return trimmming_edges_model_instance_names_;
+  return trimming_edges_model_instance_names_;
 }
 
 const std::map<std::string, DeployPlan::SubmodelInfo> &DeployPlan::GetSubmodels() const {
@@ -753,7 +753,7 @@ bool DeployPlannerBase::IsContainInvokedModel(const std::string &src_model_insta
 
 void DeployPlannerBase::AddTrimmingEdgesModelInstance(const std::string &src_model_instance_name,
                                                       const std::string &dst_model_instance_name) {
-  deploy_plan_.trimmming_edges_model_instance_names_[src_model_instance_name].emplace_back(dst_model_instance_name);
+  deploy_plan_.trimming_edges_model_instance_names_[src_model_instance_name].emplace_back(dst_model_instance_name);
   GELOGI("Added trimming edges model instance, src model instance name[%s], dst model instance name[%s].",
          src_model_instance_name.c_str(), dst_model_instance_name.c_str());
 }

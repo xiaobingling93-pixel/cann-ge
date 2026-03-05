@@ -760,6 +760,13 @@ Status FlowModelBuilder::DoBuildGraph(ComputeGraphPtr &compute_graph,
     UpdateThreadLocalOptions(pne_id);
   }
 
+  ScopeGuard clear_host_guard([user_set_host_flag, &pne_id] {
+    // clear host placement flag if user not set
+    if (!user_set_host_flag) {
+      ClearThreadLocalOptions(pne_id);
+    }
+  });
+
   // dflow 添加子图固定从2000000000开始
   static std::atomic<uint32_t> inner_graph_id_gen_{2000000000};
   if (is_sub_graph) {
@@ -778,10 +785,6 @@ Status FlowModelBuilder::DoBuildGraph(ComputeGraphPtr &compute_graph,
     GE_CHK_STATUS_RET(flow_model->AddSubModel(pne_model, pne_id),
                       "[Add][Submodel] failed, graph = %s",
                       compute_graph->GetName().c_str());
-  }
-  // clear host placement flag if user not set
-  if (!user_set_host_flag) {
-    ClearThreadLocalOptions(pne_id);
   }
   return SUCCESS;
 }

@@ -19,8 +19,7 @@
 #include "graph/compute_graph.h"
 #include "framework/common/debug/log.h"
 #include "framework/common/ge_inner_error_codes.h"
-#include "framework/common/ge_types.h"
-#include "framework/engine/dnnengine.h"
+#include "common/ge_common/ge_types.h"
 #include "ge/ge_ir_build.h"
 #include "dflow/base/model/model_deploy_resource.h"
 namespace ge {

@@ -11,6 +11,8 @@
 #ifndef AIR_RUNTIME_DEPLOY_EXECUTOR_CPU_TASKS_H_
 #define AIR_RUNTIME_DEPLOY_EXECUTOR_CPU_TASKS_H_
 
+#include <vector>
+#include <string>
 #include "ge/ge_api_error_codes.h"
 
 namespace ge {
@@ -18,7 +20,7 @@ class CpuTasks {
  public:
   static Status ExecuteModelEschedPriorityTask(int32_t process_priority, int32_t event_priority);
 
-  static Status ExecuteModelClearTask(const int32_t clear_type,
+  static Status ExecuteModelClearTask(int32_t clear_type,
                                       const std::vector<uint32_t> &davinci_model_runtime_ids);
   static Status ExecuteCheckSupported(const std::string &kernel_name, bool &is_supported);
   static Status ExceptionNotify(const std::vector<uint32_t> &davinci_model_runtime_ids, uint32_t type,

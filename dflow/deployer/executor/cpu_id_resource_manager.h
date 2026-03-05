@@ -12,19 +12,15 @@
 #define AIR_CXX_CPU_ID_RESOURCE_MANAGER_H
 
 #include <vector>
-#include "executor/cpu_sched_model.h"
+#include <mutex>
 #include "framework/common/ge_types.h"
-#include "graph/ge_context.h"
 
 namespace ge {
 constexpr uint32_t kMaxResourceId = 1024U;
 constexpr uint32_t kMaxStreamId = 3072U;
 class CpuIdResourceManager {
  public:
-  static CpuIdResourceManager &GetInstance() {
-    static CpuIdResourceManager instance;
-    return instance;
-  }
+  static CpuIdResourceManager &GetInstance();
 
   Status Allocate(uint32_t &id);
   Status DeAllocate(std::vector<uint32_t> &ids);

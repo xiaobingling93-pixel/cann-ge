@@ -17,7 +17,6 @@
 #include "dflow/base/model/model_relation.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "dflow/inc/data_flow/model/pne_model.h"
-#include "../model/model_deploy_resource.h"
 
 namespace ge {
 // root_model_id, submodel instance name, state
@@ -244,7 +243,7 @@ class DeployPlan {
   bool is_dynamic_sched_ = false;
   bool enable_exception_catch_ = false;
   ModelDeployInfo model_deploy_infos_;
-  std::map<std::string, std::vector<std::string>> trimmming_edges_model_instance_names_;
+  std::map<std::string, std::vector<std::string>> trimming_edges_model_instance_names_;
 };
 
 class DeployPlannerBase {

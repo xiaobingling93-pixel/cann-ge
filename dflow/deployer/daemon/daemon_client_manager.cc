@@ -38,7 +38,9 @@ Status DaemonClientManager::Initialize() {
     SET_THREAD_NAME(pthread_self(), "ge_dpl_evict");
     while (running_) {
       std::unique_lock<std::mutex> lk(mu_cv_);
-      running_cv_.wait_for(lk, std::chrono::seconds(kHeartbeatIntervalSec));
+      running_cv_.wait_for(lk, std::chrono::seconds(kHeartbeatIntervalSec), [this] {
+        return !running_;
+      });
       EvictExpiredClients();
     }
   });

@@ -59,7 +59,7 @@ Status CpuTasks::ExecuteModelEschedPriorityTask(int32_t process_priority, int32_
   return ExecuteKernel(kKernelNameModelEschedPriority, task_args);
 }
 
-Status CpuTasks::ExecuteModelClearTask(const int32_t clear_type,
+Status CpuTasks::ExecuteModelClearTask(int32_t clear_type,
                                        const std::vector<uint32_t> &davinci_model_runtime_ids) {
   if (davinci_model_runtime_ids.empty()) {
     return SUCCESS;
