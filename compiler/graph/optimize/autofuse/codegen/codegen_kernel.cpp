@@ -4549,7 +4549,11 @@ Status TPipe::ParseTBufReuse(TBuf buf, std::string& reuse_dtype_name, bool& is_b
 
   for (auto tmp_buf_size : buf.tmp_buf_size_list) {
     AddCommaIfNeeded(is_first, tensor_size_max);
-    tensor_size_max << this->tiler.Size(tmp_buf_size);
+    if (this->cv_fusion_type == ascir::CubeTemplateType::kUBFuse) {
+      tensor_size_max << this->tiler.ActualSize(tmp_buf_size);
+    } else {
+      tensor_size_max << this->tiler.Size(tmp_buf_size);
+    }
   }
 
   if (reuse_buf_tensors.size() == 0) {
