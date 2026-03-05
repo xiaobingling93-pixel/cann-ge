@@ -36,6 +36,7 @@ function(do_backend_e2e_st_test)
             ${CODE_ROOT_DIR}/../../../../tests/autofuse/st/common
     )
     target_link_libraries(${E2E_ST1_GENERATOR_EXE_NAME}
+                          easy_asc_graph
                           atrace
                           asc_slog_stub
                           optimize

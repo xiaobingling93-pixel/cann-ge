@@ -23,6 +23,7 @@
 #include "graph_metadef/graph/utils/file_utils.h"
 #include "common_utils.h"
 #include "ascir_ops_utils.h"
+#include "ascir_ops.h"
 
 namespace {
 constexpr int32_t DUMP_ID_WIDTH = 8;
@@ -815,6 +816,52 @@ bool IsConcatAllInputsAligned(const ge::AscNode &node) {
     }
   }
   GELOGI("[%s] All inputs is aligned", node.GetNamePtr());
+  return true;
+}
+
+ge::TriBool AreConcatInputShapesEqual(const ge::AscNodePtr &node) {
+  GE_ASSERT_NOTNULL(node);
+  auto node_inputs = node->inputs;
+  ge::TriBool is_equal = ge::TriBool::kTrue;
+  if (node_inputs.Size() > 1) {
+    auto concat_dim = std::numeric_limits<size_t>::max();
+    GE_WARN_ASSERT(GetConcatDim(*node, concat_dim));
+    GE_WARN_ASSERT(concat_dim < node_inputs[0].attr.repeats.size());
+    const auto &first_concat_dim_size = node_inputs[0].attr.repeats[concat_dim];
+    for (uint32_t i = 1U; i < node_inputs.Size(); ++i) {
+      const auto &concat_dim_size = node_inputs[i].attr.repeats[concat_dim];
+      // unknown时在运行时确定
+      const auto cmp_ret = ge::SymbolicUtils::StaticCheckEq(first_concat_dim_size, concat_dim_size);
+      if (cmp_ret == ge::TriBool::kFalse) {
+        GELOGD("src_cols[0] = %s, src_cols[%u] = %s, shapes are different", first_concat_dim_size.Str().get(), i,
+               concat_dim_size.Str().get());
+        is_equal = ge::TriBool::kFalse;
+        break;
+      } else if (cmp_ret == ge::TriBool::kUnknown) {
+        GELOGD("src_cols[0] = %s, src_cols[%u] = %s, compare result is unknown", first_concat_dim_size.Str().get(), i,
+               concat_dim_size.Str().get());
+        is_equal = ge::TriBool::kUnknown;
+      } else {
+        // equal, do nothing
+      }
+    }
+  }
+  return is_equal;
+}
+
+bool AreAllInputsLoad(const ge::NodePtr &node) {
+  GE_ASSERT_NOTNULL(node);
+  std::set<const ge::Node *> distinct_nodes;
+  for (const auto &in_node : node->GetInDataNodes()) {
+    if (!ge::ops::IsOps<ge::ascir_op::Load>(in_node)) {
+      GELOGD("%s: contain non-Load input", node->GetNamePtr());
+      return false;
+    }
+    if (!distinct_nodes.emplace(in_node.get()).second) {
+      GELOGD("%s: multiple inputs share same input: %s", node->GetNamePtr(), in_node->GetNamePtr());
+      return false;
+    }
+  }
   return true;
 }
 }  // namespace ascir::utils

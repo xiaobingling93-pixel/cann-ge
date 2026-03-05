@@ -151,10 +151,43 @@ graphStatus CollectConcatInputs(const NodePtr &node, int64_t concat_dim_tensor_i
   return GRAPH_SUCCESS;
 }
 
-graphStatus LowerConcat(const NodePtr &node) {
-  constexpr size_t kMaxFreeSymbols = 16;
-  int64_t concat_dim = 0;
-  int64_t concat_dim_tensor_index = -1L;
+bool ConcatCanBeConvertedToBrc(const std::vector<InDataAnchorPtr> &inputs, int64_t concat_dim) {
+  std::set<const OutDataAnchor *> distinct_src_anchors;
+  for (const auto &input : inputs) {
+    distinct_src_anchors.emplace(input->GetPeerOutAnchor().get());
+  }
+  bool can_convert = false;
+  std::vector<Expression> input_dims;
+  if ((inputs.size() > 1UL) && (distinct_src_anchors.size() == 1UL)) {
+    GE_WARN_ASSERT_GRAPH_SUCCESS(loop::GetBufferShape(inputs.front(), input_dims));
+    const auto &concat_dim_expr = input_dims[static_cast<size_t>(concat_dim)];
+    can_convert = (SymbolicUtils::StaticCheckEq(concat_dim_expr, Symbol(1)) == TriBool::kTrue);
+  }
+  GELOGD("distinct_src num = %zu, input_dims = %s, concat_dim = %ld, can_convert = %d", distinct_src_anchors.size(),
+         ToString(input_dims).c_str(), concat_dim, static_cast<int32_t>(can_convert));
+  return can_convert;
+}
+
+graphStatus ConcatToBroadcast(const NodePtr &node) {
+  std::vector<loop::Index> indices;
+  const auto x_anchor = node->GetInDataAnchor(0);
+  GE_ASSERT_NOTNULL(x_anchor);
+  auto x = loop::Load(x_anchor);
+  std::vector<ge::Expression> x_dims;
+  GE_WARN_ASSERT_GRAPH_SUCCESS(loop::GetBufferShape(node->GetInDataAnchor(0), x_dims));
+  std::vector<Expression> output_dims;
+  GE_WARN_ASSERT_GRAPH_SUCCESS(loop::GetBufferShape(node->GetOutDataAnchor(0), output_dims));
+  indices.emplace_back(output_dims);
+  indices.emplace_back(x_dims);
+  loop::Index broadcast;
+  GE_ASSERT_GRAPH_SUCCESS(Broadcast(indices, broadcast));
+  loop::Store(node->GetOutDataAnchor(0), loop::Broadcast(x, x_dims, broadcast));
+  GELOGD("concat node: %s lowered to broadcast", node->GetNamePtr());
+  (void) AttrUtils::SetBool(node->GetOpDesc(), "_disable_lifting", true);
+  return GRAPH_SUCCESS;
+}
+
+graphStatus ParseConcatDim(const NodePtr &node, int64_t &concat_dim, int64_t &concat_dim_tensor_index) {
   if (!AttrUtils::GetInt(node->GetOpDesc(), "concat_dim", concat_dim)) {
     concat_dim_tensor_index = node->GetOpDesc()->GetInputIndexByName("concat_dim");
     GE_WARN_ASSERT(concat_dim_tensor_index >= 0,
@@ -181,6 +214,14 @@ graphStatus LowerConcat(const NodePtr &node) {
       concat_dim = *reinterpret_cast<const int64_t *>(concat_dim_tensor.GetData());
     }
   }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus LowerConcat(const NodePtr &node) {
+  constexpr size_t kMaxFreeSymbols = 16;
+  int64_t concat_dim = 0;
+  int64_t concat_dim_tensor_index = -1L;
+  GE_WARN_ASSERT(ParseConcatDim(node, concat_dim, concat_dim_tensor_index) == GRAPH_SUCCESS);
   std::vector<Expression> output_dims;
   GE_WARN_ASSERT_GRAPH_SUCCESS(loop::GetBufferShape(node->GetOutDataAnchor(0), output_dims));
   concat_dim = concat_dim < 0 ? concat_dim + static_cast<int64_t>(output_dims.size()) : concat_dim;
@@ -194,6 +235,10 @@ graphStatus LowerConcat(const NodePtr &node) {
   std::vector<InDataAnchorPtr> inputs;
   size_t dyn_input_num = 0;
   GE_WARN_ASSERT_GRAPH_SUCCESS(CollectConcatInputs(node, concat_dim_tensor_index, concat_dim, inputs, dyn_input_num));
+  if (ConcatCanBeConvertedToBrc(inputs, concat_dim)) {
+    GE_WARN_ASSERT_GRAPH_SUCCESS(ConcatToBroadcast(node));
+    return GRAPH_SUCCESS;
+  }
   const auto backend_spec = optimize::BackendSpec::GetInstance();
   GE_WARN_ASSERT(backend_spec != nullptr);
   // 每个动态shape的输入会单独分组，太多会导致编译时间过长，函数栈过大等问题，性能大概率也不好

@@ -67,6 +67,24 @@ Status FindNodeSequence(ge::Node *start_node, std::unordered_set<ge::Node *> &re
 
   return ge::SUCCESS;
 }
+
+void SortInputForConcat(const ge::AscNodePtr &concat_node) {
+  const auto &in_data_nodes = concat_node->GetInDataNodes();
+  const auto need_sort = ascir::utils::AreAllInputsLoad(concat_node) &&
+                         (ascir::utils::AreConcatInputShapesEqual(concat_node) != ge::TriBool::kFalse);
+  if (need_sort) {
+    GELOGD("Sort input for concat");
+    std::set<int64_t> node_ids;
+    for (const auto &node : in_data_nodes) {
+      node_ids.emplace(node->GetOpDesc()->GetId());
+    }
+    auto it = node_ids.cbegin();
+    for (const auto &node : in_data_nodes) {
+      node->GetOpDesc()->SetId(*it);
+      ++it;
+    }
+  }
+}
 }  // namespace
 namespace optimize {
 bool ScheduleUtils::IsNextNodeRemovePad(const ascir::NodeView &node) {
@@ -313,7 +331,12 @@ Status ScheduleUtils::TopologicalSorting(ge::AscGraph &graph) {
   GE_ASSERT_NOTNULL(compute_graph);
   GE_ASSERT_GRAPH_SUCCESS(compute_graph->TopologicalSorting(ge::TopoSortingMode::kRDFS),
                           "TopologicalSorting failed, graph:[%s].", compute_graph->GetName().c_str());
-
+  for (const auto &node : graph.GetAllNodes()) {
+    if (IsConcat(node)) {
+      SortInputForConcat(node);
+      break;
+    }
+  }
   bool is_need_fix_topo = false;
   for (const auto &node : graph.GetAllNodes()) {
     if (IsReduce(node) && IsMulConsumerStruct(node)) {

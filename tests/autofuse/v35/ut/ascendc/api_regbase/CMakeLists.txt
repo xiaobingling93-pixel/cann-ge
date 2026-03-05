@@ -3,6 +3,7 @@ add_library(test_regbase_ascendc OBJECT
     ./test_floor_div.cpp
     ./test_cast.cpp
     ./test_compare.cpp
+    ./test_concat.cpp
     ./test_logical_and.cpp
     ./test_logical_not.cpp
     ./test_logical_or.cpp

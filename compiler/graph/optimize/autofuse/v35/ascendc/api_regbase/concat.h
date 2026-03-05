@@ -19,6 +19,12 @@ struct ConcatTiling {
   uint32_t num_srcs_cols[INPUT_NUM];
 };
 
+struct ConcatByGatherTiling {
+  uint32_t num_rows;
+  uint32_t num_dst_cols;
+  uint32_t num_src_cols;
+};
+
 template<size_t INPUT_NUM>
 struct ConcatTilingPadded {
   uint32_t num_rows;
@@ -34,6 +40,15 @@ struct ConcatTilingOneAxis {
   uint32_t src_col_sizes[INPUT_NUM];
   uint32_t dst_col_offsets[INPUT_NUM];
 };
+
+__aicore__ inline uint32_t NumSrcCols(const ConcatByGatherTiling &tiling) {
+  return tiling.num_src_cols;
+}
+
+template <size_t INPUT_NUM>
+__aicore__ inline uint32_t NumSrcCols(const ConcatTiling<INPUT_NUM> &tiling) {
+  return tiling.num_srcs_cols[0];
+}
 
 template<typename T>
 struct ArangeTypeGet {
@@ -138,17 +153,8 @@ __aicore__ inline void GenScatterIndex(uint32_t src_cols,
                                        __ubuf__ U *index_addr) {
   constexpr uint32_t kVfLen = AscendC::VECTOR_REG_WIDTH / sizeof(U);
   __VEC_SCOPE__{
-    AscendC::MicroAPI::RegTensor<U> v0;
-    AscendC::MicroAPI::RegTensor<U> v1;
-    AscendC::MicroAPI::RegTensor<U> v2;
-    AscendC::MicroAPI::RegTensor<U> v3;
-
-    AscendC::MicroAPI::RegTensor<U> vd0;
-    AscendC::MicroAPI::RegTensor<U> vd2;
-    AscendC::MicroAPI::RegTensor<U> vd3;
-    AscendC::MicroAPI::RegTensor<U> vd6;
-    AscendC::MicroAPI::RegTensor<U> vd7;
-    AscendC::MicroAPI::RegTensor<U> vd10;
+    AscendC::MicroAPI::RegTensor<U> v0, v1, v2, v3;
+    AscendC::MicroAPI::RegTensor<U> vd0, vd2, vd3, vd6, vd7, vd10;
 
     auto num = kVfLen;
     AscendC::MicroAPI::MaskReg p0 = AscendC::MicroAPI::UpdateMask<U>(num);
@@ -162,6 +168,42 @@ __aicore__ inline void GenScatterIndex(uint32_t src_cols,
     AscendC::MicroAPI::Mul(vd0, vd2, v3, p0);
     AscendC::MicroAPI::Add(vd3, vd0, vd7, p0);
     AscendC::MicroAPI::Add(vd10, vd3, v2, p0);
+    AscendC::MicroAPI::DataCopy(index_addr, vd10, p0);
+  }
+}
+
+template <typename U>
+__aicore__ inline void GenGatherIndex(uint32_t src_cols, uint32_t dst_cols,
+                                      uint32_t stride, __ubuf__ U *index_addr) {
+  constexpr uint32_t kVfLen = AscendC::VECTOR_REG_WIDTH / sizeof(U);
+  __VEC_SCOPE__ {
+    using SeqType = typename ArangeTypeGet<U>::T;
+    AscendC::MicroAPI::RegTensor<SeqType> reg_seq;
+    AscendC::MicroAPI::RegTensor<U> v0, v1, v2, v3;
+    AscendC::MicroAPI::RegTensor<U> vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7, vd8, vd9, vd10;
+
+    auto num = kVfLen;
+    AscendC::MicroAPI::MaskReg p0 = AscendC::MicroAPI::UpdateMask<U>(num);
+    AscendC::MicroAPI::Arange(reg_seq, 0);
+    v0 = (AscendC::MicroAPI::RegTensor<U> &)(reg_seq);
+    AscendC::MicroAPI::Duplicate(v1, (U)src_cols, p0);
+    AscendC::MicroAPI::Duplicate(v2, (U)stride, p0);
+    AscendC::MicroAPI::Duplicate(v3, (U)dst_cols, p0);
+
+    AscendC::MicroAPI::Div(vd2, v0, v3, p0);  // dst_row_index
+    AscendC::MicroAPI::Muls(vd6, vd2, (U)dst_cols, p0);
+    AscendC::MicroAPI::Sub(vd7, v0, vd6, p0);  // dst_col_index
+
+    AscendC::MicroAPI::Div(vd0, vd7, v1, p0);          // src index
+    AscendC::MicroAPI::Muls(vd1, vd0, (U)stride, p0);  // src offset
+
+    AscendC::MicroAPI::Div(vd3, vd7, v1, p0);  // src index
+    AscendC::MicroAPI::Muls(vd4, vd3, (U)src_cols, p0);
+    AscendC::MicroAPI::Sub(vd5, vd7, vd4, p0);  // col_index
+
+    AscendC::MicroAPI::Muls(vd8, vd2, (U)src_cols, p0);
+    AscendC::MicroAPI::Add(vd9, vd1, vd5, p0);
+    AscendC::MicroAPI::Add(vd10, vd8, vd9, p0);
     AscendC::MicroAPI::DataCopy(index_addr, vd10, p0);
   }
 }
@@ -296,9 +338,10 @@ __aicore__ inline void ScatterInputPadded(__ubuf__ T *dst_addr, __ubuf__ T *src_
   }
 }
 
-template <typename T, typename U, size_t INPUT_NUM>
-__aicore__ inline void ConcatExtendInner(T *dst_addr, T *src_addrs[INPUT_NUM], LocalTensor<uint8_t> &tmp_buf,
-                                         const ConcatTiling<INPUT_NUM> &tiling) {
+template <typename T, size_t INPUT_NUM>
+__aicore__ inline void ConcatExtend(T *dst_addr, T *src_addrs[INPUT_NUM], LocalTensor<uint8_t> &tmp_buf,
+                                    const ConcatTiling<INPUT_NUM> &tiling) {
+  using U = std::conditional_t<sizeof(T) == sizeof(uint32_t), uint32_t, uint16_t>;
   const uint32_t kScatterMaxLen = VECTOR_REG_WIDTH / sizeof(T) / 2;
   auto seq_tensor = tmp_buf[512].ReinterpretCast<U>();
   auto index_tensor = tmp_buf.ReinterpretCast<U>();
@@ -320,9 +363,10 @@ __aicore__ inline void ConcatExtendInner(T *dst_addr, T *src_addrs[INPUT_NUM], L
   }
 }
 
-template <typename T, typename U, size_t INPUT_NUM>
-__aicore__ inline void ConcatExtendInner(T *dst_addr, T *src_addrs[INPUT_NUM], LocalTensor<uint8_t> &tmp_buf,
-                                         const ConcatTilingPadded<INPUT_NUM> &tiling) {
+template <typename T, size_t INPUT_NUM>
+__aicore__ inline void ConcatExtend(T *dst_addr, T *src_addrs[INPUT_NUM], LocalTensor<uint8_t> &tmp_buf,
+                                    const ConcatTilingPadded<INPUT_NUM> &tiling) {
+  using U = std::conditional_t<sizeof(T) == sizeof(uint32_t), uint32_t, uint16_t>;
   const uint32_t kScatterMaxLen = VECTOR_REG_WIDTH / sizeof(T) / 2;
   auto seq_tensor = tmp_buf[512].ReinterpretCast<U>();
   auto index_tensor = tmp_buf.ReinterpretCast<U>();
@@ -349,36 +393,103 @@ __aicore__ inline void ConcatExtendInner(T *dst_addr, T *src_addrs[INPUT_NUM], L
       } else {
         GenScatterIndex(tiling.num_srcs_cols[i], tiling.num_dst_cols, dst_col_offset, seq_addr, index_addr);
         ScatterInputPadded((__ubuf__ T *)(uint64_t)dst_addr, (__ubuf__ T *)(uint64_t)src_addrs[i], index_addr,
-                           tiling.num_rows, tiling.num_dst_cols, tiling.num_srcs_cols[i],
-                           tiling.src_row_strides[i], tiling.src_second_last_dim_strides[i],
-                           tiling.gather_mask_dim_sizes[i]);
+                           tiling.num_rows, tiling.num_dst_cols, tiling.num_srcs_cols[i], tiling.src_row_strides[i],
+                           tiling.src_second_last_dim_strides[i], tiling.gather_mask_dim_sizes[i]);
       }
     }
     dst_col_offset += tiling.num_srcs_cols[i];
   }
 }
 
-template<typename T, size_t INPUT_NUM>
-__aicore__ inline void ConcatExtend(T *dst_addr,
-                                    T *src_addrs[INPUT_NUM],
-                                    AscendC::LocalTensor<uint8_t> &tmp_buf,
-                                    const ConcatTiling<INPUT_NUM> &tiling) {
-  if constexpr (sizeof(T) == sizeof(uint32_t)) {
-    ConcatExtendInner<T, uint32_t, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
-  } else {
-    ConcatExtendInner<T, uint16_t, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
+template <typename T, typename U>
+__aicore__ inline void GatherInputs(__ubuf__ T *dst_addr, __ubuf__ T *src_addr, __ubuf__ U *index_addr, uint32_t rows,
+                                    uint32_t dst_cols, uint32_t src_cols) {
+  constexpr uint32_t kVfLen = AscendC::VECTOR_REG_WIDTH / sizeof(U);
+  auto rows_per_loop = static_cast<uint16_t>(kVfLen / dst_cols);
+  auto loop_times = static_cast<uint16_t>(rows / rows_per_loop);
+  auto stride = rows_per_loop * src_cols;
+  uint16_t tail_rows = rows - loop_times * rows_per_loop;
+
+  __VEC_SCOPE__ {
+    AscendC::MicroAPI::RegTensor<U> vd0;
+    AscendC::MicroAPI::RegTensor<U> vd1;
+    AscendC::MicroAPI::RegTensor<T> vd2;
+    AscendC::MicroAPI::RegTensor<uint16_t> vd3;  // for b8
+    AscendC::MicroAPI::RegTensor<U> vd4;
+    AscendC::MicroAPI::RegTensor<U> vd5;
+    AscendC::MicroAPI::UnalignReg u0;
+
+    uint32_t num = rows_per_loop * dst_cols;
+    uint32_t tail_num = tail_rows * dst_cols;
+    uint32_t pnum = num;
+    uint32_t tail_pnum = tail_num;
+    AscendC::MicroAPI::MaskReg p0 = AscendC::MicroAPI::UpdateMask<U>(num);
+    AscendC::MicroAPI::MaskReg p1 = AscendC::MicroAPI::UpdateMask<U>(tail_num);
+
+    AscendC::MicroAPI::DataCopy(vd0, index_addr);
+    for (uint16_t i = 0; i < loop_times; ++i) {
+      AscendC::MicroAPI::Adds(vd1, vd0, static_cast<U>(i * stride), p0);
+      if constexpr (sizeof(T) == 1) {
+        AscendC::MicroAPI::DataCopyGather(vd3, src_addr, vd1, p0);
+        AscendC::MicroAPI::Pack(vd2, vd3);
+      } else {
+        AscendC::MicroAPI::DataCopyGather(vd2, src_addr, vd1, p0);
+      }
+      AscendC::MicroAPI::DataCopyUnAlign(dst_addr, vd2, u0, pnum);
+      AscendC::MicroAPI::DataCopyUnAlignPost(dst_addr, u0, 0);
+    }
+    AscendC::MicroAPI::Adds(vd1, vd0, static_cast<U>(loop_times * stride), p1);
+    if constexpr (sizeof(T) == 1) {
+      AscendC::MicroAPI::DataCopyGather(vd3, src_addr, vd1, p1);
+      AscendC::MicroAPI::Pack(vd2, vd3);
+    } else {
+      AscendC::MicroAPI::DataCopyGather(vd2, src_addr, vd1, p1);
+    }
+    AscendC::MicroAPI::DataCopyUnAlign(dst_addr, vd2, u0, tail_pnum);
+    AscendC::MicroAPI::DataCopyUnAlignPost(dst_addr, u0, 0);
   }
 }
 
-template<typename T, size_t INPUT_NUM>
-__aicore__ inline void ConcatExtend(T *dst_addr,
-                                    T *src_addrs[INPUT_NUM],
-                                    AscendC::LocalTensor<uint8_t> &tmp_buf,
-                                    const ConcatTilingPadded<INPUT_NUM> &tiling) {
-  if constexpr (sizeof(T) == sizeof(uint32_t)) {
-    ConcatExtendInner<T, uint32_t, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
+template <typename T, size_t INPUT_NUM, typename TilingType>
+__aicore__ inline void ConcatExtendByGather(T *dst_addr, T *src_addrs[INPUT_NUM], LocalTensor<uint8_t> &tmp_buf,
+                                            const TilingType &tiling) {
+  using U = std::conditional_t<sizeof(T) == sizeof(uint32_t), uint32_t, uint16_t>;
+  auto seq_tensor = tmp_buf[512].ReinterpretCast<U>();
+  auto index_tensor = tmp_buf.ReinterpretCast<U>();
+  auto seq_addr = (__ubuf__ U *)seq_tensor.GetPhyAddr();
+  auto index_addr = (__ubuf__ U *)index_tensor.GetPhyAddr();
+
+  GenSequence(seq_addr);
+  const auto stride = static_cast<uint32_t>(src_addrs[1] - src_addrs[0]);
+  const auto num_src_cols = NumSrcCols(tiling);
+  GenGatherIndex(num_src_cols, tiling.num_dst_cols, stride, index_addr);
+  GatherInputs((__ubuf__ T *)(uint64_t)dst_addr, (__ubuf__ T *)(uint64_t)src_addrs[0], index_addr, tiling.num_rows,
+               tiling.num_dst_cols, num_src_cols);
+}
+
+template <typename T, size_t INPUT_NUM, bool CHECK_SHAPE = false>
+__aicore__ inline bool CanUseGather(const ConcatTiling<INPUT_NUM> &tiling) {
+  if (tiling.num_dst_cols * sizeof(T) > 128) {
+    return false;
+  }
+  if constexpr (CHECK_SHAPE) {
+    const auto first_col_size = tiling.num_srcs_cols[0];
+    for (size_t i = 1; i < INPUT_NUM; i++) {
+      if (tiling.num_srcs_cols[i] != first_col_size) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+template <typename T, size_t INPUT_NUM, bool CHECK_SHAPE = false>
+__aicore__ inline void ConcatExtendDyn(T *dst_addr, T *src_addrs[INPUT_NUM], AscendC::LocalTensor<uint8_t> &tmp_buf,
+                                       const ConcatTiling<INPUT_NUM> &tiling) {
+  if (CanUseGather<T, INPUT_NUM, CHECK_SHAPE>(tiling)) {
+    ConcatExtendByGather<T, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
   } else {
-    ConcatExtendInner<T, uint16_t, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
+    ConcatExtend<T, INPUT_NUM>(dst_addr, src_addrs, tmp_buf, tiling);
   }
 }
 

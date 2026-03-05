@@ -412,7 +412,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8) {
             "  .num_srcs_cols = {(ConvertToUint32((3 * t->s2_1))), 48, },\n"
             "};\n"
             "int8_t *concat_src_addrs[] { (int8_t *)local_0.GetPhyAddr(), (int8_t *)local_2.GetPhyAddr(), };\n"
-            "concat::ConcatExtend<int8_t, 2>((int8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "concat::ConcatExtendDyn<int8_t, 2, true>((int8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 
 
 }
@@ -453,7 +453,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8ToB16) {
             "  .num_srcs_cols = {(ConvertToUint32(t->s2_1)), 16, },\n"
             "};\n"
             "uint16_t *concat_src_addrs[] { (uint16_t *)local_0.GetPhyAddr(), (uint16_t *)local_2.GetPhyAddr(), };\n"
-            "concat::ConcatExtend<uint16_t, 2>((uint16_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "concat::ConcatExtendDyn<uint16_t, 2, true>((uint16_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B16) {
@@ -492,7 +492,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B16) {
             "  .num_srcs_cols = {(ConvertToUint32((2 * t->s2_1))), 32, },\n"
             "};\n"
             "half *concat_src_addrs[] { (half *)local_0.GetPhyAddr(), (half *)local_2.GetPhyAddr(), };\n"
-            "concat::ConcatExtend<half, 2>((half *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "concat::ConcatExtendDyn<half, 2, true>((half *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B32) {
@@ -531,7 +531,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B32) {
             "  .num_srcs_cols = {(ConvertToUint32((2 * t->s2_1))), 32, },\n"
             "};\n"
             "int32_t *concat_src_addrs[] { (int32_t *)local_0.GetPhyAddr(), (int32_t *)local_2.GetPhyAddr(), };\n"
-            "concat::ConcatExtend<int32_t, 2>((int32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "concat::ConcatExtendDyn<int32_t, 2, true>((int32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unalign_B64) {
@@ -570,7 +570,7 @@ TEST_F(ConcatRegApiCallUTest, Unalign_B64) {
             "  .num_srcs_cols = {(ConvertToUint32((4 * t->s2_1))), 64, },\n"
             "};\n"
             "uint32_t *concat_src_addrs[] { (uint32_t *)local_0.GetPhyAddr(), (uint32_t *)local_2.GetPhyAddr(), };\n"
-            "concat::ConcatExtend<uint32_t, 2>((uint32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "concat::ConcatExtendDyn<uint32_t, 2, true>((uint32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B32_padded) {

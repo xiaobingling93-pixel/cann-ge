@@ -12,6 +12,7 @@
 #define __AUTOFUSE_CONCAT_API_CALL_H__
 
 #include "codegen_kernel.h"
+#include "symbolizer/symbolic_utils.h"
 
 namespace codegen {
 class ConcatApiCall : public ApiCall {
@@ -37,6 +38,8 @@ class ConcatApiCall : public ApiCall {
     uint32_t last_trans_repeat_times = 0U;  // for diff dim
     bool any_padded = false;
     bool all_static = true;
+    ge::TriBool all_inputs_shape_equal = ge::TriBool::kUnknown;
+    bool can_use_gather = false;
     ge::Expression dst_col_size_expr;
     ge::Expression dst_row_stride;
     std::vector<ge::Expression> src_col_size_exprs;

@@ -10,6 +10,8 @@
 
 #include "concat_reg_api_call.h"
 #include "api_call/utils/api_call_factory.h"
+#include "ascir_ops.h"
+#include "ascir_utils.h"
 
 namespace codegen {
 Status ConcatRegApiCall::ParseAttr(const ascir::NodeView &node) {
@@ -48,8 +50,13 @@ Status ConcatRegApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::A
     auto it = this->tmp_buf_id.find(life_time_axis_id);
     GE_ASSERT_TRUE(it != this->tmp_buf_id.end(), "ConcatRegApiCall cannot find tmp buffer id to use.");
     id = it->second;
-    // by scatter
-    GE_ASSERT_SUCCESS(GenerateDefault(inputs, y, concat_tiling, tpipe, ss, id));
+    GE_ASSERT_SUCCESS(CanUseGather(concat_tiling));
+    if (concat_tiling.can_use_gather && concat_tiling.dst_col_size_expr.IsConstExpr()) {
+      GE_ASSERT_SUCCESS(GenerateForGather(inputs, y, concat_tiling, tpipe, ss, id));
+    } else {
+      // by scatter
+      GE_ASSERT_SUCCESS(GenerateDefault(inputs, y, concat_tiling, tpipe, ss, id));
+    }
   }
   result = ss.str();
   return ge::SUCCESS;
@@ -81,50 +88,17 @@ bool ConcatRegApiCall::CanConcatOneAxis(const std::vector<std::reference_wrapper
 }
 
 ge::Status ConcatRegApiCall::GenerateDefault(const vector<std::reference_wrapper<const Tensor>> &inputs,
-                                             const Tensor &y,
-                                             const ConcatApiCall::ConcatTiling &tiling,
-                                             const TPipe &t_pipe,
-                                             std::stringstream &ss,
-                                             const int64_t tmp_buf_id) {
+                                             const Tensor &y, const ConcatApiCall::ConcatTiling &tiling,
+                                             const TPipe &t_pipe, std::stringstream &ss, const int64_t tmp_buf_id) {
   std::string dtype_name;
-  (void) Tensor::DtypeName(y.dtype, dtype_name);
+  (void)Tensor::DtypeName(y.dtype, dtype_name);
   if (tiling.data_type_size == sizeof(uint64_t)) {
-    auto kB64ToB32 = ge::Symbol(sizeof(uint64_t) / sizeof(uint32_t));
-    ConcatTiling tiling_b32 = tiling;
-    tiling_b32.total_rows_expr = tiling.total_rows_expr;
-    tiling_b32.dst_col_size_expr = tiling.dst_col_size_expr * kB64ToB32;
-    for (auto &src_col_size : tiling_b32.src_col_size_exprs) {
-      src_col_size = src_col_size * kB64ToB32;
-    }
-    for (auto &src_row_stride : tiling_b32.src_row_strides) {
-      src_row_stride = src_row_stride * kB64ToB32;
-    }
-    for (auto &src_non_zero_stride : tiling_b32.src_non_zero_strides) {
-      src_non_zero_stride = src_non_zero_stride * kB64ToB32;
-    }
-    for (auto &last_dim_size_expr : tiling_b32.last_dim_size_exprs) {
-      last_dim_size_expr = last_dim_size_expr * kB64ToB32;
-    }
+    const ConcatTiling tiling_b32 = B64ToB32(tiling);
     DefineConcatTiling(tiling_b32, t_pipe.tiler, ss);
     dtype_name = "uint32_t";
   } else if (NeedB8ToB16(tiling)) {
     GELOGD("can use b16 concat", dtype_name.c_str());
-    ConcatTiling tiling_b16 = tiling;
-    const auto &kB16ToB8 = ge::Symbol(2);
-    tiling_b16.total_rows_expr = tiling.total_rows_expr;
-    tiling_b16.dst_col_size_expr = tiling.dst_col_size_expr / kB16ToB8;
-    for (auto &src_col_size : tiling_b16.src_col_size_exprs) {
-      src_col_size = src_col_size / kB16ToB8;
-    }
-    for (auto &src_row_stride : tiling_b16.src_row_strides) {
-      src_row_stride = src_row_stride / kB16ToB8;
-    }
-    for (auto &src_non_zero_stride : tiling_b16.src_non_zero_strides) {
-      src_non_zero_stride = src_non_zero_stride / kB16ToB8;
-    }
-    for (auto &last_dim_size_expr : tiling_b16.last_dim_size_exprs) {
-      last_dim_size_expr = last_dim_size_expr / kB16ToB8;
-    }
+    const ConcatTiling tiling_b16 = B8ToB16(tiling);
     DefineConcatTiling(tiling_b16, t_pipe.tiler, ss);
     dtype_name = "uint16_t";
   } else {
@@ -132,11 +106,52 @@ ge::Status ConcatRegApiCall::GenerateDefault(const vector<std::reference_wrapper
   }
 
   GenSrcAddrs(inputs, dtype_name, ss);
-  ss << "concat::ConcatExtend<" << dtype_name << ", " << inputs.size() << ">("
+  if (tiling.can_use_gather) {
+    GELOGD("use ConcatExtendDyn");
+    ss << "concat::ConcatExtendDyn<";
+  } else {
+    GELOGD("use ConcatExtend");
+    ss << "concat::ConcatExtend<";
+  }
+  ss << dtype_name << ", " << inputs.size();
+  if (tiling.can_use_gather && tiling.all_inputs_shape_equal == ge::TriBool::kUnknown) {
+    ss << ", " << "true";
+  }
+  ss << ">("
+     << "(" << dtype_name << " *)" << y << ".GetPhyAddr()"
+     << ", " << "concat_src_addrs, " << t_pipe.tmp_buf << "_" << std::to_string(tmp_buf_id) << ", concat_tiling);"
+     << std::endl;
+  return ge::SUCCESS;
+}
+
+ge::Status ConcatRegApiCall::GenerateForGather(const vector<std::reference_wrapper<const Tensor>> &inputs,
+                                               const Tensor &y, const ConcatApiCall::ConcatTiling &tiling,
+                                               const TPipe &t_pipe, std::stringstream &ss, const int64_t tmp_buf_id) {
+  std::string dtype_name;
+  (void) Tensor::DtypeName(y.dtype, dtype_name);
+  if (tiling.data_type_size == sizeof(uint64_t)) {
+    const ConcatTiling tiling_b32 = B64ToB32(tiling);
+    DefineConcatTilingGather(tiling_b32, t_pipe.tiler, ss);
+    dtype_name = "uint32_t";
+  } else if (NeedB8ToB16(tiling)) {
+    GELOGD("can use b16 concat", dtype_name.c_str());
+    const ConcatTiling tiling_b16 = B8ToB16(tiling);
+    DefineConcatTilingGather(tiling_b16, t_pipe.tiler, ss);
+    dtype_name = "uint16_t";
+  } else {
+    DefineConcatTilingGather(tiling, t_pipe.tiler, ss);
+  }
+  if (dtype_name == "int8_t") {
+    // pack不支持int8_t类型，转为uint8_t进行计算
+    dtype_name = "uint8_t";
+  }
+  GenSrcAddrs(inputs, dtype_name, ss);
+  ss << "concat::ConcatExtendByGather<" << dtype_name << ", " << inputs.size() << ">("
      << "(" << dtype_name << " *)" << y << ".GetPhyAddr()"
      << ", " << "concat_src_addrs, "
      << t_pipe.tmp_buf << "_" << std::to_string(tmp_buf_id)
      << ", concat_tiling);" << std::endl;
+  GELOGD("use ConcatExtendByGather");
   return ge::SUCCESS;
 }
 
@@ -151,6 +166,67 @@ bool ConcatRegApiCall::NeedB8ToB16(const ConcatApiCall::ConcatTiling &tiling) {
     }
   }
   return true;
+}
+
+ConcatApiCall::ConcatTiling ConcatRegApiCall::B64ToB32(const ConcatTiling &tiling) {
+  auto kB64ToB32 = ge::Symbol(sizeof(uint64_t) / sizeof(uint32_t));
+  ConcatTiling tiling_b32 = tiling;
+  tiling_b32.total_rows_expr = tiling.total_rows_expr;
+  tiling_b32.dst_col_size_expr = tiling.dst_col_size_expr * kB64ToB32;
+  for (auto &src_col_size : tiling_b32.src_col_size_exprs) {
+    src_col_size = src_col_size * kB64ToB32;
+  }
+  for (auto &src_row_stride : tiling_b32.src_row_strides) {
+    src_row_stride = src_row_stride * kB64ToB32;
+  }
+  for (auto &src_non_zero_stride : tiling_b32.src_non_zero_strides) {
+    src_non_zero_stride = src_non_zero_stride * kB64ToB32;
+  }
+  for (auto &last_dim_size_expr : tiling_b32.last_dim_size_exprs) {
+    last_dim_size_expr = last_dim_size_expr * kB64ToB32;
+  }
+  return tiling_b32;
+}
+
+ConcatApiCall::ConcatTiling ConcatRegApiCall::B8ToB16(const ConcatTiling &tiling) {
+  ConcatTiling tiling_b16 = tiling;
+  const auto &kB16ToB8 = ge::Symbol(2);
+  tiling_b16.total_rows_expr = tiling.total_rows_expr;
+  tiling_b16.dst_col_size_expr = tiling.dst_col_size_expr / kB16ToB8;
+  for (auto &src_col_size : tiling_b16.src_col_size_exprs) {
+    src_col_size = src_col_size / kB16ToB8;
+  }
+  for (auto &src_row_stride : tiling_b16.src_row_strides) {
+    src_row_stride = src_row_stride / kB16ToB8;
+  }
+  for (auto &src_non_zero_stride : tiling_b16.src_non_zero_strides) {
+    src_non_zero_stride = src_non_zero_stride / kB16ToB8;
+  }
+  for (auto &last_dim_size_expr : tiling_b16.last_dim_size_exprs) {
+    last_dim_size_expr = last_dim_size_expr / kB16ToB8;
+  }
+  return tiling_b16;
+}
+
+ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
+  GE_CHK_BOOL_RET_SPECIAL_STATUS(tiling.any_padded, ge::SUCCESS, "input is padded, can not use Gather");
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!ascir::utils::AreAllInputsLoad(node_)), ge::SUCCESS,
+                                 "contain non-Load or multi-ref input, can not use Gather");
+  tiling.all_inputs_shape_equal = ascir::utils::AreConcatInputShapesEqual(node_);
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((tiling.all_inputs_shape_equal == ge::TriBool::kFalse), ge::SUCCESS,
+                                 "input shapes differ, can not use Gather");
+  if (tiling.dst_col_size_expr.IsConstExpr()) {
+    uint32_t dst_col_size = 0;
+    GE_ASSERT_TRUE(tiling.dst_col_size_expr.GetConstValue(dst_col_size));
+    constexpr uint32_t kMaxDstSize = 128U;
+    if (dst_col_size * tiling.data_type_size > kMaxDstSize) {
+      GELOGD("dst col size = %u, over %u, can not use Gather", tiling.dst_col_size * tiling.data_type_size,
+             kMaxDstSize);
+      return ge::SUCCESS;
+    }
+  }
+  tiling.can_use_gather = true;
+  return ge::SUCCESS;
 }
 
 std::string ConcatRegApiCall::GetTilingDataType(const ConcatTiling &tiling) {
@@ -190,6 +266,15 @@ void ConcatRegApiCall::DefineConcatTiling(const ConcatTiling &tiling, const Tile
     }
     ss << "}," << std::endl;
   }
+  ss << "};" << std::endl;
+}
+
+void ConcatRegApiCall::DefineConcatTilingGather(const ConcatTiling &tiling, const Tiler &tiler, std::stringstream &ss) {
+  std::string tiling_data_type = "concat::ConcatByGatherTiling";
+  ss << "const " << tiling_data_type << " concat_tiling {" << std::endl;
+  ss << "  .num_rows = static_cast<uint32_t>(" << tiler.ActualSize(tiling.total_rows_expr) << ")," << std::endl;
+  ss << "  .num_dst_cols = " << tiler.Size(tiling.dst_col_size_expr, true) << "," << std::endl;
+  ss << "  .num_src_cols = " << tiler.Size(tiling.src_col_size_exprs[0], true) << "," << std::endl;
   ss << "};" << std::endl;
 }
 

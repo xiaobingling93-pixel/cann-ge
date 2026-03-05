@@ -13,6 +13,7 @@
 #include <string>
 #include "ascir.h"
 #include "schedule_result.h"
+#include "symbolizer/symbolic_utils.h"
 
 namespace ascir::utils {
 /**
@@ -51,6 +52,10 @@ std::string IdentifierToStr(ascir::Identifier id);
 bool UseSmallTailConcatApi(const ge::AscNode &node, bool *output_need_align = nullptr);
 
 bool IsConcatAllInputsAligned(const ge::AscNode &node);
+
+ge::TriBool AreConcatInputShapesEqual(const ge::AscNodePtr &node);
+
+bool AreAllInputsLoad(const ge::NodePtr &node);
 }  // namespace ascir::utils
 
 #endif

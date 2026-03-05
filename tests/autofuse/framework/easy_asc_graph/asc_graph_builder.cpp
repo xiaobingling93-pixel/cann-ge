@@ -264,6 +264,8 @@ AscGraphBuilder &AscGraphBuilder::Concat(const std::string &name, const std::vec
   impl_->dynamic_input_ops_.emplace_back();
   auto &ops = impl_->dynamic_input_ops_.back();
   std::vector<ge::AscOpOutput> outputs;
+  ops.reserve(inputs.size());
+  outputs.reserve(inputs.size());
 
   for (const auto &input: inputs) {
     auto it = impl_->nodes_.find(input);
