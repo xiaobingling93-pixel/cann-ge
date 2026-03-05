@@ -50,7 +50,11 @@ build_third_party() {
   echo "create build directory and build third_party package"
   mkdir -p "${THIRD_PARTY_LIB_DIR}"
   cd "${BASEPATH}"
-
+  bash scripts/prepare_third_party.sh ${THIRD_PARTY_LIB_DIR}
+  if [ 0 -ne $? ]; then
+    echo "prepare third party failed."
+    exit 1
+  fi
   CMAKE_ARGS="-D CMAKE_THIRD_PARTY_LIB_DIR=${THIRD_PARTY_LIB_DIR} \
               -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
               -D CMAKE_BUILD_COMPONENT=${BUILD_COMPONENT} \

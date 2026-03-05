@@ -1,10 +1,12 @@
 # GE 离线编译指导
 
-## 1. 代码仓下载
+## 1. 在联网环境下进行以下准备工作
+
+### 步骤一：代码仓下载
 
 在联网环境中，进入[本项目主页](https://gitcode.com/cann/ge), 通过`下载ZIP`或`clone`按钮，根据指导，完成源码下载。
 
-## 2. 开源第三方软件依赖
+### 步骤二：下载开源第三方软件依赖
 
 GE在编译时，依赖的第三方开源软件列表如下：
 
@@ -26,27 +28,34 @@ GE在编译时，依赖的第三方开源软件列表如下：
 | mockcpp | 2.7 | [mockcpp-2.7.tar.gz](https://gitcode.com/cann-src-third-party/mockcpp/releases/download/v2.7-h1/mockcpp-2.7.tar.gz) |
 | libseccomp | 2.5.4 | [libseccomp-2.5.4.tar.gz](https://gitcode.com/cann-src-third-party/libseccomp/releases/download/v2.5.4/libseccomp-2.5.4.tar.gz) |
 
-GE仓提供[一键式第三方软件下载打包脚本](../scripts/download_third_party_source.sh)，使用方法如下：
-```bash
-# 在联网环境中，GE仓根目录执行
-cd ge
-bash scripts/download_third_party_source.sh
-```
-执行成功后会在GE仓根目录生成`opensource.tar.gz`
+- 方式一（推荐）：通过GE仓提供[一键式第三方软件下载打包脚本](../scripts/download_third_party_source.sh)，使用方法如下：
+  ```bash
+  # 在联网环境中，GE仓根目录执行
+  cd ge
+  bash scripts/download_third_party_source.sh
+  ```
+  执行成功后会在GE仓根目录生成`opensource.tar.gz`
 
-## 3. 离线编译
+- 方式二：通过第三方开源软件列表链接逐个下载三方开源软件包
 
-连接至离线环境中，上传[代码仓](#1-代码仓下载)及[三方软件依赖](#2-开源第三方软件依赖)源码至您指定的目录下。下载的为压缩包，还需进行解压。
 
-假定解压后项目结构如下：
+## 2. 完成[联网环境准备](#1-在联网环境下进行以下准备工作)后登录测试环境（离线）继续进行编译准备
+
+### 场景一：使用[一键式第三方软件下载打包脚本](../scripts/download_third_party_source.sh)下载的三方软件
+
+连接至测试环境（离线），上传联网环境获取到的[代码仓](#步骤一代码仓下载)及[三方软件依赖](#步骤二下载开源第三方软件依赖)源码至您指定的目录下。下载的为压缩包，还需进行解压。
+
+解压后项目结构如下：
 ```bash
 ├── ge                               # ge仓源码解压后目录
 │  ├── api
 │  ├── base
 │  └── ...
 ├── opensource                       # 三方软件依赖解压后目录
-│  ├── abseil-cpp
-│  ├── benchmark
+│  └── abseil-cpp
+|     └── abseil-cpp-20230802.1.tar.gz
+│  └── benchmark
+|     └── benchmark-1.8.3.tar.gz
 │  └── ...
 ```
 
@@ -67,8 +76,36 @@ bash scripts/download_third_party_source.sh
 │  ├── ...
 │  └── output                        # 三方软件默认目录
 │     └── third_party
-│        ├── abseil-cpp
-│        ├── benchmark
+│         └── abseil-cpp
+|             └── abseil-cpp-20230802.1.tar.gz
+│         └── benchmark
+|             └── benchmark-1.8.3.tar.gz
+│         └── ...
+```
+
+完成后回到[构建验证-编译](build.md#4-编译)章节，继续进行编译
+
+### 场景二：通过第三方开源软件列表链接逐个手动下载第三方软件
+
+1. 连接至测试环境（离线），上传联网环境获取到的[代码仓](#步骤一代码仓下载)及[三方软件依赖](#步骤二下载开源第三方软件依赖)源码至您指定的目录下，其中代码仓为压缩包，需进行解压。
+
+2. 进入代码仓根目录，创建`output/third_party`并将三方软件包放在该目录下。
+  ```bash
+  # 创建output/third_party目录
+  cd ge
+  mkdir output output/third_party
+  ```
+
+调整后的项目结构如下：
+```bash
+├── ge                               # ge仓源码解压后目录
+│  ├── api
+│  ├── base
+│  ├── ...
+│  └── output                        # 三方软件默认目录
+│     └── third_party
+│        ├── abseil-cpp-20230802.1.tar.gz
+│        ├── benchmark-1.8.3.tar.gz
 │        └── ...
 ```
 
