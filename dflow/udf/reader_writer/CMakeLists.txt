@@ -31,19 +31,16 @@ target_include_directories(reader_writer PRIVATE
 
 target_compile_options(reader_writer PRIVATE
     -ftrapv
-    -O2
+    ${AIR_COMMON_COMPILE_OPTION}
     -fvisibility-inlines-hidden
-    -fvisibility=hidden
-    -Werror
-    -Wextra
-    -Wfloat-equal
-    -fno-common
 )
 
 target_link_libraries(reader_writer PRIVATE
     $<BUILD_INTERFACE:intf_pub>
     $<BUILD_INTERFACE:slog_headers>
     $<BUILD_INTERFACE:ascend_hal_headers>
+    -ldl
+    ${AIR_COMMON_LINK_OPTION}
     PUBLIC c_sec
     ascend_hal_stub
     $<IF:$<STREQUAL:${PRODUCT_SIDE},device>,alog,unified_dlog>

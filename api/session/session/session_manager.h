@@ -22,7 +22,7 @@
 #include "session/inner_session.h"
 #include "jit_execution/user_graphs_manager.h"
 #include "session/user_hybrid_graph_manager.h"
-#include "runtime/base.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class SessionManager {
@@ -72,7 +72,7 @@ class SessionManager {
  private:
   Status GetNextSessionId(SessionId &next_session_id) const;
 
-  Status SetRtContext(SessionId session_id, rtContext_t rt_context) const;
+  Status SetRtContext(SessionId session_id, aclrtContext rt_context) const;
 
   std::map<SessionId, SessionPtr> session_manager_map_;
   std::shared_mutex mutex_;

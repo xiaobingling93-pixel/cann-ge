@@ -30,6 +30,7 @@
 #include "common/utils/executor_utils.h"
 #include "runtime/subscriber/global_profiler.h"
 #include "graph/args_format_desc.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -180,7 +181,7 @@ Status SingleOpModel::InitModel() {
 
 Status SingleOpModel::ParseOpModelParams() {
   int32_t device_id = 0;
-  GE_CHK_RT_RET(rtGetDevice(&device_id));
+  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
   GE_ASSERT_SUCCESS(
       ModelUtils::InitRuntimeParams(root_ge_model_, model_params_.runtime_param, static_cast<uint32_t>(device_id)));
   model_params_.runtime_param.session_id = UINT64_MAX;
@@ -876,7 +877,7 @@ Status SingleOpModel::BuildDynamicOp(StreamResource &resource, DynamicSingleOpIm
                       "[Set][OverflowAddr]failed.");
     GE_CHK_STATUS_RET(single_op.hybrid_model_->Init(true), "[Init][HybridModel]Failed.");
     int32_t device_id = 0;
-    GE_CHK_RT_RET(rtGetDevice(&device_id));
+    GE_CHK_RT_RET(aclrtGetDevice(&device_id));
     ThreadPool *thread_pool = nullptr;
     GE_CHK_STATUS_RET_NOLOG(resource.GetThreadPool(&thread_pool));
     single_op.hybrid_model_executor_ = MakeUnique<hybrid::HybridModelRtV1Executor>(single_op.hybrid_model_.get(),

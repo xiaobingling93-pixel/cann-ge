@@ -10,13 +10,13 @@
 #ifndef __ASCENDC_API_EXP2_H__
 #define __ASCENDC_API_EXP2_H__
 
-static constexpr AscendC::PowerConfig pow_config = {PowerAlgo::DOUBLE_FLOAT_TECH};
+static constexpr AscendC::PowerConfig exp2_config = {PowerAlgo::DOUBLE_FLOAT_TECH};
 
 template <typename T>
 inline __aicore__ void Exp2(const AscendC::LocalTensor<T> &dst, const AscendC::LocalTensor<T> &src,
                            AscendC::LocalTensor<uint8_t> &tmp_buf, const uint32_t calCount) {
   if constexpr (AscendC::SupportType<T, float, half, bfloat16_t>()) {
-    Power<T, false, pow_config>(dst, (T)2, src, tmp_buf, calCount);
+    Power<T, false, exp2_config>(dst, (T)2, src, tmp_buf, calCount);
   } else {
     Power(dst, (T)2, src, tmp_buf, calCount);
   }

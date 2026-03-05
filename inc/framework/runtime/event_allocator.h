@@ -12,7 +12,7 @@
 #define AIR_CXX_RUNTIME_EVENT_ALLOCATOR_H_
 
 #include <cstdlib>
-#include "runtime/event.h"
+#include "acl/acl_rt.h"
 #include "common/ge_visibility.h"
 #include "exe_graph/runtime/continuous_vector.h"
 
@@ -20,16 +20,16 @@ namespace gert {
 class VISIBILITY_EXPORT EventAllocator {
  public:
   static constexpr size_t kMaxEventNum = 4096U;
-  explicit EventAllocator(uint32_t flag = RT_EVENT_DDSYNC_NS)
-      : events_holder_(ContinuousVector::Create<rtEvent_t>(kMaxEventNum)), default_flag_(flag) {}
+  explicit EventAllocator(uint32_t flag = ACL_EVENT_SYNC)
+      : events_holder_(ContinuousVector::Create<aclrtEvent>(kMaxEventNum)), default_flag_(flag) {}
   EventAllocator(const EventAllocator &) = delete;
   EventAllocator &operator=(const EventAllocator &) = delete;
   ~EventAllocator();
 
-  TypedContinuousVector<rtEvent_t> *AcquireEvents(size_t event_num) const;
+  TypedContinuousVector<aclrtEvent> *AcquireEvents(size_t event_num) const;
 
  private:
-  TypedContinuousVector<rtEvent_t> *Events() const;
+  TypedContinuousVector<aclrtEvent> *Events() const;
 
  private:
   std::unique_ptr<uint8_t[]> events_holder_;

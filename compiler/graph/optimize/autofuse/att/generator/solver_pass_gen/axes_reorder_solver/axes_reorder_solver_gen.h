@@ -142,6 +142,9 @@ namespace att {
     void SetTilingCaseIdent(TilingCaseIdent tiling_case_ident) {
       tiling_case_ident_ = tiling_case_ident;
     }
+    void SetGroupNum(size_t group_num) {
+      group_num_ = group_num;
+    }
 
   private:
     static bool VarCmp(Expr &a, Expr &b);
@@ -226,6 +229,7 @@ namespace att {
     TilingScheduleConfig tiling_schedule_config_;  // Model 级别的 Tiling 调度配置
     const vector<CacheLineConfig> *cache_line_config_ {nullptr};
     bool enable_group_parallel_{false};
+    size_t group_num_{1UL};
     TilingCaseIdent tiling_case_ident_{ScheduleGroupIdent{}, 0U, ""};
   };
   bool CheckExist(const std::vector<Expr> &args, const Expr &check_arg);

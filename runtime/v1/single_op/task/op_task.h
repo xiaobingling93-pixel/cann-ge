@@ -41,6 +41,7 @@
 #include "mmpa/mmpa_api.h"
 #include "aprof_pub.h"
 #include "framework/runtime/subscriber/global_dumper.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 constexpr uint32_t kHostMemType = 1U;
@@ -376,7 +377,7 @@ class AiCpuBaseTask : public OpTask {
   std::vector<int8_t> input_is_const_; // 1 is const, 0 is not const
   // for blocking aicpu op
   bool is_blocking_aicpu_op_ = false;
-  rtEvent_t rt_event_ = nullptr;
+  aclrtEvent rt_event_ = nullptr;
   std::vector<void *> output_summary_;
   std::vector<aicpu::FWKAdapter::ResultSummary> output_summary_host_;
 

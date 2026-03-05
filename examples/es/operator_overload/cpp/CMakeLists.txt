@@ -33,5 +33,7 @@ add_es_library(
 )
 add_subdirectory(src)
 add_executable(sample main.cpp)
-target_link_libraries(sample PRIVATE es_showcase ${GE_RUNNER} ${GE_COMPILE})
-
+# Force keep ES generated shared library in DT_NEEDED to avoid weak-symbol fallback.
+# Without this, toolchain defaults like --as-needed may drop libes_all.so.
+target_link_options(sample PRIVATE -Wl,--no-as-needed)
+target_link_libraries(sample PRIVATE es_showcase es_all ${GE_RUNNER} ${GE_COMPILE})

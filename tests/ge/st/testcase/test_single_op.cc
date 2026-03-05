@@ -362,10 +362,10 @@ Status GenerateTaskForDsa(const Node &node, RunContext &run_context,
     dsa_task->set_seed_value_or_ptr(1);
     dsa_task->set_random_count_value_or_ptr(1);
     domi::DSATaskArgsDef *dsa_task_args = dsa_task->mutable_args();
-    dsa_task_args->set_seed_value_or_addr("5");
-    dsa_task_args->set_random_count_value_or_addr("6");
-    dsa_task_args->set_input1_value_or_addr("1");
-    dsa_task_args->set_input2_value_or_addr("2");
+    dsa_task_args->set_seed_value_or_addr("51111111");
+    dsa_task_args->set_random_count_value_or_addr("61111111");
+    dsa_task_args->set_input1_value_or_addr("11111111");
+    dsa_task_args->set_input2_value_or_addr("21111111");
   }
   tasks.emplace_back(task_def);
   return SUCCESS;

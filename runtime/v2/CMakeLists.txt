@@ -111,6 +111,7 @@ target_link_libraries(gert PRIVATE
         error_manager
         ascend_protobuf
         c_sec
+        acl_rt
         exe_graph
         lowering
         ascend_dump

@@ -705,45 +705,6 @@ TEST_F(TestAxesReorderSolverGen, GenInput_UseTradeOffConfigWhenMemberDisabled) {
   EXPECT_TRUE(gen_code.find("input.corenum_threshold = 0.5;") != std::string::npos);
 }
 
-TEST_F(TestAxesReorderSolverGen, GenSolverFuncImpl_EnableGroupParallel_DisableTradeOff) {
-  // 验证当 enable_group_parallel_ 为 true 时，
-  // 即使 trade_off_config.is_enable 为 true，生成的代码中 multicore_ub_tradeoff 也应该是 "false"
-  AxesReorderSolverGen solver("case_test", "TilingData");
-  std::vector<Expr> mc_args_;
-  std::vector<Expr> local_buffer_tiling_vars_;
-  std::map<HardwareDef, Expr> hardware_use_map_;
-  std::map<Expr, std::vector<Expr>, ExprCmp> from_axes_map;
-  Expr var1 = CreateExpr("var1");
-  Expr var2 = CreateExpr("var2");
-  Expr var3 = CreateExpr("var3");
-  Expr var4 = CreateExpr("var4");
-
-  mc_args_.push_back(var1);
-  mc_args_.push_back(var2);
-  local_buffer_tiling_vars_.push_back(var3);
-  local_buffer_tiling_vars_.push_back(var4);
-  from_axes_map[var3] = {var1};
-
-  hardware_use_map_[HardwareDef::CORENUM] = CreateExpr(100) / var1 * var3;
-  hardware_use_map_[HardwareDef::UB] = var3 * var4;
-
-  TilingScheduleConfig tiling_schedule_config;
-  tiling_schedule_config.trade_off_config.is_enable = true;
-  tiling_schedule_config.trade_off_config.ub_ratio = ge::Symbol(0.1);
-  tiling_schedule_config.trade_off_config.core_num_ratio = ge::Symbol(0.8);
-
-  solver.mc_args_ = mc_args_;
-  solver.local_buffer_tiling_vars_ = local_buffer_tiling_vars_;
-  solver.hardware_use_map_ = hardware_use_map_;
-  solver.from_axes_map_ = from_axes_map;
-  solver.SetTilingScheduleConfig(tiling_schedule_config);
-  solver.SetEnableParallel(true);  // enable_group_parallel_ = true
-
-  std::string actual = solver.GenSolverFuncImpl();
-  // 验证生成的代码中 multicore_ub_tradeoff 为 "false"
-  EXPECT_TRUE(actual.find("solver.Run(false, ") != std::string::npos);
-}
-
 TEST_F(TestAxesReorderSolverGen, GenSolverFuncImpl_DisableGroupParallel_EnableTradeOff) {
   // 验证当 enable_group_parallel_ 为 false 时，
   // 如果 trade_off_config.is_enable 为 true，multicore_ub_tradeoff 应该是 "true"

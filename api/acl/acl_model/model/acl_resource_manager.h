@@ -24,6 +24,7 @@
 #include "mmpa/mmpa_api.h"
 #include "framework/runtime/mem_allocator.h"
 #include "framework/runtime/model_v2_executor.h"
+#include "framework/runtime/om2_model_executor.h"
 #include "framework/runtime/stream_executor.h"
 #include "ge/ge_allocator.h"
 #include "acl/acl_rt_allocator.h"
@@ -75,11 +76,7 @@ class ACL_FUNC_VISIBILITY AclResourceManager {
 public:
     ~AclResourceManager();
 
-    static AclResourceManager &GetInstance()
-    {
-        static AclResourceManager instance;
-        return instance;
-    }
+    static AclResourceManager &GetInstance();
 
     // executor
     bool IsRuntimeV2Enable(bool isModel) const
@@ -89,8 +86,12 @@ public:
 
     void AddExecutor(uint32_t &modelId, std::unique_ptr<gert::ModelV2Executor> &&executor,
                      const std::shared_ptr<gert::RtSession> &rtSession);
+    void AddOm2Executor(uint32_t &modelId, std::unique_ptr<gert::Om2ModelExecutor> &&executor,
+                        const std::shared_ptr<gert::RtSession> &rtSession);
     std::shared_ptr<gert::ModelV2Executor> GetExecutor(const uint32_t modelId);
+    std::shared_ptr<gert::Om2ModelExecutor> GetOm2Executor(const uint32_t modelId);
     aclError DeleteExecutor(const uint32_t modelId);
+    aclError DeleteOm2Executor(const uint32_t modelId);
 
     std::shared_ptr<gert::RtSession> CreateRtSession();
     std::shared_ptr<gert::RtSession> GetRtSession(const uint32_t rtSessionId);
@@ -128,6 +129,7 @@ private:
     // executor
     // model id 0 is invalid value
     std::unordered_map<uint32_t, std::shared_ptr<gert::ModelV2Executor>> executorMap_{{0U, nullptr}};
+    std::unordered_map<uint32_t, std::shared_ptr<gert::Om2ModelExecutor>> om2ExecutorMap_{{0U, nullptr}};
     std::atomic_uint32_t modelIdGenerator_ {std::numeric_limits<uint32_t>::max() / 2U};
     std::atomic_uint64_t sessionIdGenerator_ {std::numeric_limits<uint64_t>::max() / 2U};
     bool enableRuntimeV2ForModel_ = true;

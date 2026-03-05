@@ -17,6 +17,7 @@
 #include "analyzer/analyzer.h"
 #include "adx_datadump_server.h"
 #include "common/checker.h"
+#include "acl/acl_rt.h"
 #include "common/dump/dump_properties.h"
 #include "common/dump/dump_manager.h"
 #include "framework/common/util.h"
@@ -62,7 +63,6 @@ void CopyGeOutputsMemToUserOutputs(const rtStream_t stream, const std::vector<Ge
 namespace {
 constexpr int32_t kDumpStatus = 0;
 constexpr int32_t kDecimalSystem = 10;
-constexpr int32_t kSocVersionLen = 50;
 
 Status CheckReuseMemoryOption(const std::map<std::string, std::string> &options) {
   auto iter = options.find(OPTION_EXEC_DISABLE_REUSED_MEMORY);
@@ -170,11 +170,10 @@ Status InnerSession::Initialize() {
 
   const std::map<std::string, std::string>::const_iterator it = options_.find(ge::SOC_VERSION);
   if (it == options_.cend()) {
-    char version[kSocVersionLen] = {0};
-    rtError_t rt_ret = rtGetSocVersion(version, kSocVersionLen);
-    GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE,
-        REPORT_INNER_ERR_MSG("E19999", "rtGetSocVersion failed.");
-        GELOGE(rt_ret, "[Get][SocVersion]rtGetSocVersion failed");
+    const char *version = aclrtGetSocName();
+    GE_IF_BOOL_EXEC(version == nullptr,
+        REPORT_INNER_ERR_MSG("E19999", "aclrtGetSocName failed.");
+        GELOGE(FAILED, "[Get][SocVersion]aclrtGetSocName failed");
         return FAILED;)
     GELOGI("Succeeded in getting SOC_VERSION[%s] from runtime in InnerSession::Initialize.", version);
     options_.insert(std::make_pair(ge::SOC_VERSION, version));
@@ -212,7 +211,7 @@ Status InnerSession::Initialize() {
   UpdateGlobalSessionContext();
   GetThreadLocalContext().SetGraphOption({});
   SetSessionDeviceId();
-  GE_CHK_STATUS_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())), "Set device failed.");
+  GE_CHK_STATUS_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())), "Set device failed.");
 
   ModelHelper model_helper;
   GE_CHK_STATUS_RET(model_helper.GetHardwareInfo(options_), "[Get][Hardware]InnerSession Initialize: Get hardware info failed.");
@@ -259,7 +258,7 @@ Status InnerSession::Finalize() {
   // release analyzer saved info(Session Level)
   Analyzer::GetInstance()->DestroySessionJsonObject(session_id_);
 
-  GE_CHK_RT(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
   GE_CHK_STATUS_RET(RemoveDumpProperties(), "[Remove][DumpProperties] failed.");
   VarManagerPool::Instance().RemoveVarManager(session_id_);
   SessionMemAllocator<ExpandableActiveMemoryAllocator>::Instance().RemoveAllocator(session_id_);

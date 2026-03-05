@@ -2485,6 +2485,12 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
    tiling_head_.AddLine("uint32_t GetWorkspaceSize(const AutofuseTilingData &tiling_data);");
    tiling_head_.AddLine("namespace optiling {");
    tiling_func_.AddLine("namespace optiling {");
+   // 支持二次Tiling：在第一个namespace optiling中extern声明全局变量（定义在GenTilingTail中）
+   // PGO场景不需要此全局变量声明
+   if (!config_.enable_autofuse_pgo) {
+     tiling_func_.AddLine("// 支持二次Tiling：全局变量，用于传递调整后的核数比例");
+     tiling_func_.AddLine("extern thread_local double g_secondary_tiling_ratio;");
+   }
    if (!is_uniq_group_) {
       GenTilingHeadMultiGroup();
    }
@@ -2493,6 +2499,19 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
                            "AutofuseTilingData* tiling_data, uint32_t max_block_dim);");
    }
    tiling_head_.AddLine("using namespace std;");
+   // 生成ArrangeBlockOffsets函数声明
+   GenArrangeBlockOffsetsDeclarations(namespace_map);
+   GE_ASSERT_SUCCESS(GenCommonFrameWork(), "Generate common framework failed.");
+   tiling_func_.AddLine("} // namespace optiling");
+   if (config_.gen_tiling_data) {
+     tiling_res[config_.tiling_data_type_name] += tiling_data_.GetOutputStr();
+   }
+   tiling_res[kTilingHeadIdentify] += tiling_head_.GetOutputStr();
+   tiling_res[kTilingSolverIdentify] += tiling_func_.GetOutputStr();
+   return ge::SUCCESS;
+ }
+
+void TilingCodeGenImpl::GenArrangeBlockOffsetsDeclarations(const FusedGraphNamespaceMap &namespace_map) {
    for (const auto &asc_graph_map_iter : namespace_map) {
      const auto &asc_graph_id = asc_graph_map_iter.first;
      const auto &asc_graph_namespace_map = asc_graph_map_iter.second;
@@ -2504,15 +2523,7 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
         }
      }
    }
-   GE_ASSERT_SUCCESS(GenCommonFrameWork(), "Generate common framework failed.");
-   tiling_func_.AddLine("} // namespace optiling");
-   if (config_.gen_tiling_data) {
-     tiling_res[config_.tiling_data_type_name] += tiling_data_.GetOutputStr();
-   }
-   tiling_res[kTilingHeadIdentify] += tiling_head_.GetOutputStr();
-   tiling_res[kTilingSolverIdentify] += tiling_func_.GetOutputStr();
-   return ge::SUCCESS;
- }
+}
  
  ge::Status TilingCodeGenImpl::ObtainInnerParams(std::map<std::string, std::set<std::string>> &hardware_map,
                                                  FusedGraphNamespaceMap &namespace_map) {
@@ -2680,131 +2691,353 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
     }
   }
 
-  ge::Status TilingCodeGenImpl::GenUpdatePerf(const size_t asc_graph_id, const size_t impl_graph_id,
-                                              const std::vector<std::string> &groups_perf,
-                                              const std::vector<std::string> &groups_block_num,
-                                              const std::vector<std::string> &assign_max_block_num) {
-    if (!IsScheduleResultEnableParallel(asc_graph_id, impl_graph_id)) {
-      tiling_func_.AddLine(GenSumAllGroupsPerf(groups_perf));
-    } else {
-      if (groups_perf.size() == 1UL) {
-        tiling_func_.AddLine("  cur_perf = " + groups_perf[0] + ";");
-      } else {
-        std::string update_code("    cur_perf = 0.0;\n");
-        (void)update_code.append("    bool has_update = false;\n")
-            .append("    auto cur_tmp_perf = ")
-            .append(groups_perf[0])
-            .append(";\n")
-            .append("    auto cur_block = ")
-            .append(groups_block_num[0])
-            .append(";\n");
-        for (size_t id = 1UL; id < groups_perf.size(); ++id) {
-          (void)update_code.append("    has_update = UpdateCurPerfAndBlockByGroup({")
-              .append(groups_block_num[id])
-              .append(", ")
-              .append(groups_perf[id])
-              .append("}, ori_block_dim, cur_block, cur_perf, cur_tmp_perf);\n");
-        }
-        (void)update_code.append("    OP_LOGD(OP_NAME, \"Begin to add group perf %lf\", cur_tmp_perf);\n")
-            .append("    cur_perf += cur_tmp_perf;\n");
-        tiling_func_.AddLine(update_code);
+std::string TilingCodeGenImpl::GenPerfUpdateCode(const std::vector<std::string> &groups_perf,
+                                                 const std::vector<std::string> &groups_block_num,
+                                                 const std::string &indent) {
+  if (groups_perf.size() == 1UL) {
+    return indent + "cur_perf = " + groups_perf[0] + ";\n";
+  }
+  std::string update_code(indent + "cur_perf = 0.0;\n");
+  (void)update_code.append(indent + "bool has_update = false;\n")
+                   .append(indent + "auto cur_tmp_perf = ")
+                   .append(groups_perf[0])
+                   .append(";\n")
+                   .append(indent + "auto cur_block = ")
+                   .append(groups_block_num[0])
+                   .append(";\n");
+  for (size_t id = 1UL; id < groups_perf.size(); ++id) {
+    (void)update_code.append(indent + "has_update = UpdateCurPerfAndBlockByGroup({")
+                     .append(groups_block_num[id])
+                     .append(", ")
+                     .append(groups_perf[id])
+                     .append("}, ori_block_dim, cur_block, cur_perf, cur_tmp_perf);\n");
+  }
+  (void)update_code.append(indent + "OP_LOGD(OP_NAME, \"Begin to add group perf %lf\", cur_tmp_perf);\n")
+                   .append(indent + "cur_perf += cur_tmp_perf;\n");
+  return update_code;
+}
+
+void TilingCodeGenImpl::GenBestPerfUpdateCode(const size_t asc_graph_id, const size_t impl_graph_id,
+                                              const std::vector<std::string> &assign_max_block_num,
+                                              const std::string &indent) {
+  std::string tiling_key_prefix = "graph" + std::to_string(asc_graph_id) + "_";
+  tiling_func_.AddLine(indent + "OP_LOGI(OP_NAME, \"The value of graph" + std::to_string(asc_graph_id) + "_result" +
+                       std::to_string(impl_graph_id) + " is %lf\", cur_perf);");
+  tiling_func_.AddLine(indent + "if (IsEqual(best_perf, -1) || cur_perf < best_perf) {");
+  tiling_func_.AddLine(indent + "  best_perf = cur_perf;");
+  for (const auto &code : assign_max_block_num) {
+    tiling_func_.AddLine(code);
+  }
+  tiling_func_.AddLine(indent + "  tiling_data.set_block_dim(cur_block_dim);");
+  tiling_func_.AddLine(indent + "  tiling_data.set_" + tiling_key_prefix + "tiling_key(" + std::to_string(impl_graph_id) +
+                       ");");
+  tiling_func_.AddLine(
+      indent + "  OP_LOGI(OP_NAME, \"Update best perf to %lf, tiling key = %u, block dim = %u\", best_perf, "
+      "tiling_data.get_" +
+      tiling_key_prefix + "tiling_key(), cur_block_dim);");
+  GenUpdateWorkspace(asc_graph_id, impl_graph_id);
+  tiling_func_.AddLine(indent + "  return true;");
+  tiling_func_.AddLine(indent + "}");
+  tiling_func_.AddLine(indent + "return true;");
+}
+
+ge::Status TilingCodeGenImpl::GenUpdatePerf(const size_t asc_graph_id, const size_t impl_graph_id,
+                                            const std::vector<std::string> &groups_perf,
+                                            const std::vector<std::string> &groups_block_num,
+                                            const std::vector<std::string> &assign_max_block_num) {
+  if (!IsScheduleResultEnableParallel(asc_graph_id, impl_graph_id)) {
+    tiling_func_.AddLine(GenSumAllGroupsPerf(groups_perf));
+  } else {
+    tiling_func_.AddLine(GenPerfUpdateCode(groups_perf, groups_block_num, "  "));
+  }
+  GenBestPerfUpdateCode(asc_graph_id, impl_graph_id, assign_max_block_num, "    ");
+  tiling_func_.AddLine("  }");  // 闭合 GetScheduleResult 函数
+  return ge::SUCCESS;
+}
+
+ge::Status TilingCodeGenImpl::GenDoGroupTilingFunction(
+    const size_t asc_graph_id,
+    const size_t impl_graph_id,
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
+  // 检查是否需要生成二次Tiling支持（多Group且enable_group_parallel）
+  if (!IsScheduleResultEnableParallel(asc_graph_id, impl_graph_id) || graph_info.size() <= 1) {
+    return ge::SUCCESS;  // 单Group或未使能Group并行，不需要生成DoGroupTiling
+  }
+
+  // 生成函数声明
+  std::string func_decl = std::string(kInlineStr) + "bool DoGroupTiling" + std::to_string(impl_graph_id) + "(";
+  func_decl += config_.tiling_data_type_name + " &tiling_data, ";
+  func_decl += "const uint32_t ori_block_dim, ";
+  func_decl += "const std::vector<int32_t> &case_ids_or_keys, ";
+  func_decl += "std::unordered_map<int64_t, uint64_t> &workspace_map, ";
+  func_decl += "std::vector<uint32_t> &output_tiling_keys, ";
+  func_decl += "double secondary_ratio = 0.0) {";
+  tiling_func_.AddLine(func_decl);
+  tiling_func_.AddLine("  // 设置每个Group的block_dim和ub_size");
+
+  // 声明每个Group的tiling_data引用并设置block_dim和ub_size
+  for (const auto &group_info : graph_info) {
+    std::string group_var = group_info.second.second + "_tiling_data";
+    tiling_func_.AddLine("  auto &" + group_var + " = tiling_data." + group_var + ";");
+    tiling_func_.AddLine("  " + group_var + ".set_block_dim(ori_block_dim);");
+    tiling_func_.AddLine("  " + group_var + ".set_ub_size(tiling_data.get_ub_size());");
+  }
+
+  // 二次Tiling比例设置
+  tiling_func_.AddLine("  // 如果是二次Tiling，设置调整后的比例");
+  tiling_func_.AddLine("  if (secondary_ratio > 0.0) {");
+  tiling_func_.AddLine("    g_secondary_tiling_ratio = secondary_ratio;");
+  tiling_func_.AddLine("  }");
+
+  // 生成调用所有Group的GetTiling部分
+  GenDoGroupTilingGetTilingCalls(graph_info);
+
+  // 失败处理
+  GenDoGroupTilingFailureHandler(graph_info);
+
+  return ge::SUCCESS;
+}
+
+void TilingCodeGenImpl::GenDoGroupTilingGetTilingCalls(
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
+    tiling_func_.AddLine("  // 调用所有Group的GetTiling");
+    std::string get_tiling_condition = "  if (";
+    size_t group_index = 0;
+    for (const auto &group_info : graph_info) {
+      std::string group_var = group_info.second.second + "_tiling_data";
+      std::string group_class = group_info.second.first;
+      get_tiling_condition += "(" + group_class + "::GetTiling(" + group_var + ", workspace_map, case_ids_or_keys[" +
+                              std::to_string(group_index) + "]))";
+      if (group_index < graph_info.size() - 1) {
+        get_tiling_condition += " && ";
       }
+      group_index++;
     }
-    tiling_func_.AddLine("    OP_LOGI(OP_NAME, \"The value of graph" + std::to_string(asc_graph_id) + "_result" +
-                         std::to_string(impl_graph_id) + " is %lf\", cur_perf);");
-    tiling_func_.AddLine("    if (IsEqual(best_perf, -1) || cur_perf < best_perf) {");
-    tiling_func_.AddLine("      best_perf = cur_perf;");
-    for (const auto &code : assign_max_block_num) {
-      tiling_func_.AddLine(code);
+    get_tiling_condition += ") {";
+    tiling_func_.AddLine(get_tiling_condition);
+
+    // 保存tiling_keys（仅首次Tiling）
+    tiling_func_.AddLine("    // 仅首次Tiling时保存tiling_keys");
+    tiling_func_.AddLine("    if (secondary_ratio <= 0.0) {");
+    group_index = 0;
+    for (const auto &group_info : graph_info) {
+      std::string group_var = group_info.second.second + "_tiling_data";
+      tiling_func_.AddLine("      output_tiling_keys[" + std::to_string(group_index) + "] = " + group_var +
+                           ".get_tiling_key();");
+      group_index++;
     }
-    tiling_func_.AddLine("      tiling_data.set_block_dim(cur_block_dim);");
-    std::string tiling_key_prefix = "graph" + std::to_string(asc_graph_id) + "_";
-    tiling_func_.AddLine("      tiling_data.set_" + tiling_key_prefix + "tiling_key(" + std::to_string(impl_graph_id) +
-                         ");");
-    tiling_func_.AddLine(
-        "      OP_LOGI(OP_NAME, \"Update best perf to %lf, tiling key = %u, block dim = %u\", best_perf, "
-        "tiling_data.get_" +
-        tiling_key_prefix + "tiling_key(), cur_block_dim);");
-    GenUpdateWorkspace(asc_graph_id, impl_graph_id);
-    tiling_func_.AddLine("      return true;");
     tiling_func_.AddLine("    }");
+
+    // 重置全局变量
+    tiling_func_.AddLine("    // 重置全局变量");
+    tiling_func_.AddLine("    g_secondary_tiling_ratio = 0.0;");
     tiling_func_.AddLine("    return true;");
     tiling_func_.AddLine("  }");
-    return ge::SUCCESS;
+}
+
+void TilingCodeGenImpl::GenDoGroupTilingFailureHandler(
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
+    // 失败处理
+    tiling_func_.AddLine("  // 失败时清零");
+    tiling_func_.AddLine("  g_secondary_tiling_ratio = 0.0;");
+    for (const auto &group_info : graph_info) {
+      std::string group_var = group_info.second.second + "_tiling_data";
+      tiling_func_.AddLine("  " + group_var + ".set_block_dim(0);");
+    }
+    tiling_func_.AddLine("  return false;");
+    tiling_func_.AddLine("}");
+}
+
+void TilingCodeGenImpl::GenGroupParallelFirstTiling(const size_t impl_graph_id) {
+  tiling_func_.AddLine("  // ========== 首次Tiling ==========");
+  tiling_func_.AddLine("  std::vector<int32_t> tiling_case_ids(group_num, tiling_case_id);");
+  tiling_func_.AddLine("  std::vector<uint32_t> first_tiling_keys(group_num);");
+  tiling_func_.AddLine("  if (!DoGroupTiling" + std::to_string(impl_graph_id) +
+                       "(tiling_data, ori_block_dim, tiling_case_ids, workspace_map, first_tiling_keys)) {");
+  tiling_func_.AddLine("    return false;");
+  tiling_func_.AddLine("  }");
+}
+
+void TilingCodeGenImpl::GenGroupParallelSecondTiling(
+    const size_t impl_graph_id,
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
+  tiling_func_.AddLine("    // ========== 二次Tiling ==========");
+  tiling_func_.AddLine("    double original_ratio = 1.0 / group_num;");
+  tiling_func_.AddLine("    double adjusted_ratio = original_ratio * ori_block_dim / first_total_block_dim;");
+  tiling_func_.AddLine("    adjusted_ratio = std::min(1.0, adjusted_ratio);");
+  tiling_func_.AddLine("    std::vector<int32_t> first_keys_as_int(group_num);");
+  size_t group_index = 0;
+  for ([[maybe_unused]] const auto &group_info : graph_info) {
+    tiling_func_.AddLine(
+        "    first_keys_as_int[" + std::to_string(group_index) + "] = static_cast<int32_t>(first_tiling_keys[" +
+        std::to_string(group_index) + "]);");
+    group_index++;
+  }
+  tiling_func_.AddLine("    std::vector<uint32_t> dummy_keys(group_num);");
+  tiling_func_.AddLine("    OP_LOGD(OP_NAME, \"Begin to second tiling for result" + std::to_string(impl_graph_id) +
+                       " core_usage_ratio=%lf, adjusted_ratio=%lf.\", original_ratio, adjusted_ratio);");
+  tiling_func_.AddLine("    if (!DoGroupTiling" + std::to_string(impl_graph_id) +
+                       "(tiling_data, ori_block_dim, first_keys_as_int, workspace_map, dummy_keys, adjusted_ratio)) {");
+  for (const auto &group_info : graph_info) {
+    tiling_func_.AddLine("      " + group_info.second.second + "_tiling_data.set_block_dim(0);");
+  }
+  tiling_func_.AddLine("      return false;");
+  tiling_func_.AddLine("    }");
+  tiling_func_.AddLine("  }");
+}
+
+ge::Status TilingCodeGenImpl::GenScheduleGroupDoTiling(std::string &check_cond, const std::string &hardware_param,
+                                                       const std::string &schedule_result_prefix) {
+  std::string tiling_hyphens = "&&";
+  if (check_cond.empty()) {
+    tiling_hyphens = "";
+  }
+  std::string first_param = hardware_param + "_tiling_data, ";
+  std::string cache_param;
+  const auto &key = schedule_result_prefix;
+  for (const auto &pair : cache_reuse_info_) {
+    if (pair.first == key || pair.second == key) {
+      // 看是否为复用方/被复用方
+      cache_param = ", &" + pair.second + "_Cache";
+      break;
+    }
+  }
+  std::string workspace_param;
+  if (!is_uniq_group_) {
+    workspace_param = "workspace_map, ";
+  }
+  std::string tiling = "(" + schedule_result_prefix + "::GetTiling(" + first_param + workspace_param +
+                       "tiling_case_id" + cache_param + "))";
+  check_cond += (tiling_hyphens + tiling);
+  return ge::SUCCESS;
+}
+
+// 辅助函数：生成Group并行首次Tiling后的声明和计算
+void TilingCodeGenImpl::GenGroupParallelFirstTilingDecls(
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
+  // 声明每个Group的tiling_data引用
+  for (const auto &group_info : graph_info) {
+    tiling_func_.AddLine("  auto &" + group_info.second.second + "_tiling_data = tiling_data." +
+                         group_info.second.second + "_tiling_data;");
   }
 
-  ge::Status TilingCodeGenImpl::GenScheduleGroupDoTiling(std::string &check_cond, const std::string &hardware_param,
-                                                         const std::string &schedule_result_prefix) {
-    std::string tiling_hyphens = "&&";
-    if (check_cond.empty()) {
-      tiling_hyphens = "";
-    }
-    std::string first_param = hardware_param + "_tiling_data, ";
-    std::string cache_param;
-    const auto &key = schedule_result_prefix;
-    for (const auto &pair : cache_reuse_info_) {
-      if (pair.first == key || pair.second == key) {
-        // 看是否为复用方/被复用方
-        cache_param = ", &" + pair.second + "_Cache";
-        break;
+  // 计算首次Tiling的总block_dim
+  tiling_func_.AddLine("  uint32_t first_total_block_dim = ");
+  for (auto it = graph_info.begin(); it != graph_info.end(); ++it) {
+    tiling_func_.AddLine("    " + it->second.second + "_tiling_data.get_block_dim()" +
+                         (std::next(it) != graph_info.end() ? " + " : ";"));
+  }
+
+  // 判断是否需要二次Tiling
+  tiling_func_.AddLine("  // 判断是否需要二次Tiling");
+  tiling_func_.AddLine("  const double kSecondaryTilingThreshold = 0.8;");
+  tiling_func_.AddLine("  double core_usage_ratio = static_cast<double>(first_total_block_dim) / ori_block_dim;");
+  tiling_func_.AddLine("  if (core_usage_ratio < kSecondaryTilingThreshold) {");
+}
+
+// 辅助函数：生成单Group场景的tiling处理
+ge::Status TilingCodeGenImpl::GenSingleGroupScheduleResult(
+    const size_t asc_graph_id, const size_t impl_graph_id,
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info,
+    const std::map<std::string, std::set<std::string>> &hardware_map) {
+  const auto var_relation = var_relations_[asc_graph_id][impl_graph_id];
+  std::string check_cond;
+  std::vector<std::string> assign_max_block_num;
+  std::vector<std::string> groups_perf;
+  std::vector<std::string> groups_block_num;
+  for (const auto &group_info : graph_info) {
+    auto [input_vars_set_code, need_update_second_group_input_vars] =
+        ProcessVarRelations(graph_info, var_relation, group_info.first);
+    std::string cur_block;
+    tiling_func_.AddLine("  auto &" + group_info.second.second + "_tiling_data = tiling_data." +
+                         group_info.second.second + "_tiling_data;");
+    const auto &hardware_iter = hardware_map.find(group_info.second.second);
+    if (hardware_iter != hardware_map.cend()) {
+      GenSetHardwareCodes(group_info.second.second, hardware_iter->second);
+      if (need_update_second_group_input_vars) {
+        std::string tiling_hyphens = check_cond.empty() ? "" : "&&";
+        check_cond += (tiling_hyphens + "(" + input_vars_set_code + "true)");
       }
+      GE_ASSERT_SUCCESS(GenScheduleGroupDoTiling(check_cond, group_info.second.second, group_info.second.first),
+                        "Gen schedule group do tiling failed, graph id[%zu], impl id[%zu]", asc_graph_id,
+                        impl_graph_id);
+      groups_perf.emplace_back(GenGetScheduleGroupPerf(group_info.second.first, group_info.second.second));
+      assign_max_block_num.emplace_back(GenCurMaxBlockDim(group_info.second.second, groups_block_num, cur_block));
+      groups_block_num.emplace_back(GenGetCurBlockDim(group_info.second.second));
     }
-    std::string workspace_param;
-    if (!is_uniq_group_) {
-      workspace_param = "workspace_map, ";
-    }
-    std::string tiling = "(" + schedule_result_prefix + "::GetTiling(" + first_param + workspace_param +
-                         "tiling_case_id" + cache_param + "))";
-    check_cond += (tiling_hyphens + tiling);
-    return ge::SUCCESS;
   }
+  GE_ASSERT_TRUE(!groups_perf.empty(), "groups_perf size of asc_graph_id %zu impl_graph_id %zu is 0",
+                 asc_graph_id, impl_graph_id);
+  GE_ASSERT_EQ(groups_block_num.size(), groups_perf.size());
+  tiling_func_.AddLine("  if (" + (check_cond.empty() ? "true" : check_cond) + ") {");
+  GE_ASSERT_SUCCESS(GenUpdatePerf(asc_graph_id, impl_graph_id, groups_perf, groups_block_num, assign_max_block_num),
+                    "Gen update perf failed, asc_graph_id %zu impl_graph_id %zu", asc_graph_id, impl_graph_id);
+  GenGetScheduleResultTail(graph_info);
+  return ge::SUCCESS;
+}
 
-  ge::Status TilingCodeGenImpl::GenGetScheduleResult(
+ge::Status TilingCodeGenImpl::GenGetScheduleResult(
+    const size_t asc_graph_id, const size_t impl_graph_id,
+    const std::map<size_t, std::pair<std::string, std::string>> &graph_info,
+    const std::map<std::string, std::set<std::string>> &hardware_map) {
+  // 判断是否为Group并行场景（多Group且enable_group_parallel）
+  const bool is_group_parallel = IsScheduleResultEnableParallel(asc_graph_id, impl_graph_id) && graph_info.size() > 1;
+
+  std::string func_define(kInlineStr);
+  func_define.append("bool GetScheduleResult")
+      .append(std::to_string(impl_graph_id))
+      .append("(const uint32_t ori_block_dim, const int32_t tiling_case_id,")
+      .append(config_.tiling_data_type_name)
+      .append(" &tiling_data, double &cur_perf, double &best_perf, uint32_t &cur_block_dim) {");
+  tiling_func_.AddLine(func_define);
+  tiling_func_.AddLine("  std::unordered_map<int64_t, uint64_t> workspace_map{};");
+  GenCacheInit();
+
+  if (is_group_parallel) {
+    // ========== Group并行场景：使用DoGroupTiling + 二次Tiling ==========
+    const size_t group_num = graph_info.size();
+    tiling_func_.AddLine("  constexpr size_t group_num = " + std::to_string(group_num) + ";");
+
+    // ========== 首次Tiling ==========
+    GenGroupParallelFirstTiling(impl_graph_id);
+    GenGroupParallelFirstTilingDecls(graph_info);
+
+    // ========== 二次Tiling ==========
+    GenGroupParallelSecondTiling(impl_graph_id, graph_info);
+
+    // ========== perf计算和更新 ==========
+    tiling_func_.AddLine("  // ========== perf计算和更新 ==========");
+    GenGetScheduleResultPerfAndTail(asc_graph_id, impl_graph_id, graph_info);
+  } else {
+    // ========== 单Group场景：原有逻辑 ==========
+    GE_ASSERT_SUCCESS(GenSingleGroupScheduleResult(asc_graph_id, impl_graph_id, graph_info, hardware_map),
+                      "Gen single group schedule result failed, asc_graph_id %zu impl_graph_id %zu",
+                      asc_graph_id, impl_graph_id);
+  }
+  return ge::SUCCESS;
+}
+
+  // 辅助函数：生成perf计算和更新部分
+  ge::Status TilingCodeGenImpl::GenGetScheduleResultPerfAndTail(
       const size_t asc_graph_id, const size_t impl_graph_id,
-      const std::map<size_t, std::pair<std::string, std::string>> &graph_info,
-      const std::map<std::string, std::set<std::string>> &hardware_map) {
-    const auto var_relation = var_relations_[asc_graph_id][impl_graph_id];
-    std::string check_cond;
-    std::string func_define(kInlineStr);
-    func_define.append("bool GetScheduleResult")
-        .append(std::to_string(impl_graph_id))
-        .append("(const uint32_t ori_block_dim, const int32_t tiling_case_id,")
-        .append(config_.tiling_data_type_name)
-        .append(" &tiling_data, double &cur_perf, double &best_perf, uint32_t &cur_block_dim) {");
-    tiling_func_.AddLine(func_define);
-    tiling_func_.AddLine("  std::unordered_map<int64_t, uint64_t> workspace_map{};");
-    GenCacheInit();
-    std::vector<std::string> assign_max_block_num;
+      const std::map<size_t, std::pair<std::string, std::string>> &graph_info) {
     std::vector<std::string> groups_perf;
     std::vector<std::string> groups_block_num;
+    std::vector<std::string> assign_max_block_num;
+    std::string cur_block;
+
     for (const auto &group_info : graph_info) {
-      auto [input_vars_set_code, need_update_second_group_input_vars] =
-          ProcessVarRelations(graph_info, var_relation, group_info.first);
-      std::string cur_block;
-      tiling_func_.AddLine("  auto &" + group_info.second.second + "_tiling_data = tiling_data." +
-                           group_info.second.second + "_tiling_data;");
-      const auto &hardware_iter = hardware_map.find(group_info.second.second);
-      if (hardware_iter != hardware_map.cend()) {
-        GenSetHardwareCodes(group_info.second.second, hardware_iter->second);
-        if (need_update_second_group_input_vars) {
-          std::string tiling_hyphens = check_cond.empty() ? "" : "&&";
-          check_cond += (tiling_hyphens + "(" + input_vars_set_code + "true)");
-        }
-        GE_ASSERT_SUCCESS(GenScheduleGroupDoTiling(check_cond, group_info.second.second, group_info.second.first),
-                          "Gen schedule group do tiling failed, graph id[%zu], impl id[%zu]", asc_graph_id,
-                          impl_graph_id);
-        groups_perf.emplace_back(GenGetScheduleGroupPerf(group_info.second.first, group_info.second.second));
-        assign_max_block_num.emplace_back(GenCurMaxBlockDim(group_info.second.second, groups_block_num, cur_block));
-        groups_block_num.emplace_back(GenGetCurBlockDim(group_info.second.second));
-      }
+      groups_perf.emplace_back(GenGetScheduleGroupPerf(group_info.second.first, group_info.second.second));
+      assign_max_block_num.emplace_back(GenCurMaxBlockDim(group_info.second.second, groups_block_num, cur_block));
+      groups_block_num.emplace_back(GenGetCurBlockDim(group_info.second.second));
     }
-    GE_ASSERT_TRUE(groups_perf.size() > 0UL, "groups_perf size of asc_graph_id %zu impl_graph_id %zu is 0",
-                   asc_graph_id, impl_graph_id);
-    GE_ASSERT_EQ(groups_block_num.size(), groups_perf.size());
-    tiling_func_.AddLine("  if (" + (check_cond.empty() ? "true" : check_cond) + ") {");
-    GE_ASSERT_SUCCESS(GenUpdatePerf(asc_graph_id, impl_graph_id, groups_perf, groups_block_num, assign_max_block_num),
-                      "Gen update perf failed, asc_graph_id %zu impl_graph_id %zu", asc_graph_id, impl_graph_id);
-    GenGetScheduleResultTail(graph_info);
+
+    // 使用公共函数生成perf更新代码
+    tiling_func_.AddLine(GenPerfUpdateCode(groups_perf, groups_block_num, "  "));
+    // 使用公共函数生成best perf更新代码
+    GenBestPerfUpdateCode(asc_graph_id, impl_graph_id, assign_max_block_num, "  ");
+    tiling_func_.AddLine("}");  // 闭合 GetScheduleResult 函数
+
     return ge::SUCCESS;
   }
 
@@ -3302,6 +3535,7 @@ ge::Status TilingCodeGenImpl::GenPGOGetScheduleResult(const size_t asc_graph_id,
      auto &asc_graph_map = asc_graph_map_iter.second;
      size_t asc_graph_id = asc_graph_map_iter.first;
      tiling_func_.AddLine("namespace AscGraph" + std::to_string(asc_graph_id) + " {");
+
      if (NeedGenScoreFunc(score_funcs_)) {
        GenGetScoreFuncs(asc_graph_id, asc_graph_map);
      }
@@ -3311,6 +3545,12 @@ ge::Status TilingCodeGenImpl::GenPGOGetScheduleResult(const size_t asc_graph_id,
      const bool enable_groups_parallel = GenUpdateCurPerfAndBlockByGroupIfNeeded(asc_graph_id, asc_graph_map);
      if (enable_groups_parallel) {
        tiling_func_.AddLine(GenUpdateCurPerfAndBlockByGroup());
+     }
+     // 生成DoGroupTiling公共函数（在GenGetScheduleResult之前）
+     for (const auto &graph_info : asc_graph_map) {
+       GE_ASSERT_SUCCESS(GenDoGroupTilingFunction(asc_graph_id, graph_info.first, graph_info.second),
+                         "GenDoGroupTilingFunction failed, asc_graph_id=%zu, impl_graph_id=%zu",
+                         asc_graph_id, graph_info.first);
      }
      for (const auto &graph_info : asc_graph_map) {
        GenGetScheduleResult(asc_graph_id, graph_info.first, graph_info.second, hardware_map);
@@ -3645,6 +3885,11 @@ ge::Status TilingCodeGenImpl::ValidateGroupModeForceTilingCase(
    tiling_data_.Reset();
    tiling_func_.AddLine("#include \"" + kDefaultTilingHeadFileName + "\"");
    tiling_func_.AddLine("namespace optiling {");
+
+   // 支持二次Tiling：定义全局变量（多Group场景）
+   tiling_func_.AddLine("// 支持二次Tiling：全局变量，用于传递调整后的核数比例");
+   tiling_func_.AddLine("thread_local double g_secondary_tiling_ratio = 0.0;");
+
    GE_ASSERT_SUCCESS(GenScheduleGroupTilingTail(), "Generate tiling data tail inner failed.");
 
   // 生成TilingCacheContext静态成员变量定义（必须在cpp文件中，否则会链接错误）
@@ -3734,6 +3979,9 @@ ge::Status TilingCodeGenImpl::ValidateGroupModeForceTilingCase(
    const auto &cur_ident = tiling_model_info_[0].schedule_group_ident;
    tiling_func_.AddLine("#include \"" + kDefaultTilingHeadFileName + "\"");
    tiling_func_.AddLine("namespace optiling{");
+   // 支持二次Tiling：extern声明全局变量（定义在第一个namespace optiling中）
+   tiling_func_.AddLine("// 支持二次Tiling：全局变量，用于传递调整后的核数比例");
+   tiling_func_.AddLine("extern thread_local double g_secondary_tiling_ratio;");
    if (!is_uniq_group_) {
      tiling_head_.AddLine("namespace " + cur_ident.GetGroupPrefix() + " {");
      tiling_func_.AddLine("namespace " + cur_ident.GetGroupPrefix() + " {");

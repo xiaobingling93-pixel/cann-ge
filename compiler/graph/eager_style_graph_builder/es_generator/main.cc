@@ -18,7 +18,7 @@ namespace ge {
 namespace es {
 
 // 定义命令行参数
-DEFINE_string(mode, ge::es::kEsCodeGenDefaultMode, "Generate mode, extract_history|codegen");
+DEFINE_string(es_mode, ge::es::kEsCodeGenDefaultMode, "Generate mode, extract_history|codegen");
 DEFINE_string(output_dir, ge::es::kEsCodeGenDefaultOutputDir, "Output directory for generated code files");
 DEFINE_string(module_name, ge::es::kEsCodeGenDefaultModelName, "Module name for aggregate header file naming");
 DEFINE_string(h_guard_prefix, ge::es::kEsCodeGenDefaultPrefixGuard, "Header guard prefix for generated headers");
@@ -52,10 +52,10 @@ void GenEsImpl(const GenEsbOptions &options);
  * - 代码生成模式：
  *   ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_LIST] [--history_registry=PKG_DIR] [--release_version=VER]
  * - 历史原型库生成模式：
- *  ./gen_esb --mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+ *  ./gen_esb --es_mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
  *
  * 参数说明：
- * --mode：可选参数，指定生成模式，extract_history|codegen
+ * --es_mode：可选参数，指定生成模式，extract_history|codegen
  *   - 如果不指定，默认codegen
  * --output_dir：可选参数，指定生成的目标目录
  *   - 如果不指定，默认输出到当前目录
@@ -125,13 +125,13 @@ void GenEsImpl(const GenEsbOptions &options);
  * ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
  *
  * # 生成历史原型结构化数据到当前目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
- * ./gen_esb --mode=extract_history --release_version=8.0.RC1
+ * ./gen_esb --es_mode=extract_history --release_version=8.0.RC1
  *
  * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，默认发布日期为当前日期
- * ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+ * ./gen_esb --es_mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
  *
  * # 生成历史原型结构化数据到指定目录，发布版本为"8.0.RC1"，自定义发布日期"2024-09-30"，分支名为"master"
- * ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master
+ * ./gen_esb --es_mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_date=2024-09-30 --branch_name=master
  *
  * # 检查环境变量
  * echo $ASCEND_OPP_PATH
@@ -173,7 +173,7 @@ Usage:
   Code Generator:
     ./gen_esb [--output_dir=DIR] [--module_name=NAME] [--h_guard_prefix=PREFIX] [--exclude_ops=OP_TYPE] [--history_registry=PKG_DIR] [--release_version=VER]
   History Registry Generator:
-    ./gen_esb --mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
+    ./gen_esb --es_mode=extract_history --release_version=VER [--output_dir=DIR] [--release_date=YYYY-MM-DD] [--branch_name=BRANCH]
 
 Examples:
   Code Generator:
@@ -187,9 +187,9 @@ Examples:
     ./gen_esb --output_dir=./output --module_name=math --history_registry=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math --release_version=8.0.RC2
 
   History Registry Generator:
-    ./gen_esb --mode=extract_history --release_version=8.0.RC1
-    ./gen_esb --mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
-    ./gen_esb --mode=extract_history --release_version=8.0.RC1 --release_date=2024-09-30 --branch_name=master
+    ./gen_esb --es_mode=extract_history --release_version=8.0.RC1
+    ./gen_esb --es_mode=extract_history --release_version=8.0.RC1 --output_dir=/${CANN_INSTALL_PATH}/cann/opp/history_registry/math
+    ./gen_esb --es_mode=extract_history --release_version=8.0.RC1 --release_date=2024-09-30 --branch_name=master
 
 Environment variables required:
   ASCEND_OPP_PATH        # Must be set, pointing to CANN ops path
@@ -207,7 +207,7 @@ Environment variables required:
     return false;
   }
 
-  options.mode = FLAGS_mode;
+  options.mode = FLAGS_es_mode;
   if (options.mode != kEsCodeGenDefaultMode && options.mode != kEsExtractHistoryMode) {
     std::cerr << "Error: Invalid mode! Please use codegen or extract_history" << std::endl;
     return false;

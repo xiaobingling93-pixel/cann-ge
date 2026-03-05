@@ -9,7 +9,6 @@
  */
 
 #include "graph/load/model_manager/task_info/rts/event_record_task_info.h"
-
 #include "graph/load/model_manager/davinci_model.h"
 
 namespace ge {
@@ -51,10 +50,10 @@ Status EventRecordTaskInfo::Distribute() {
   GELOGI("EventRecordTaskInfo op %s Distribute Start.", op_desc_->GetNamePtr());
   SetTaskTag(op_desc_->GetName().c_str());
 
-  const rtError_t rt_ret = rtEventRecord(event_, stream_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventRecord failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtEventRecord] failed, ret:%d", rt_ret);
+  const auto rt_ret = aclrtRecordEvent(event_, stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtRecordEvent failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtRecordEvent] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 

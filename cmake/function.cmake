@@ -47,6 +47,7 @@ function(protobuf_generate comp c_var h_var)
     set(${c_var})
     set(${h_var})
     set(_add_target FALSE)
+    set(_protoc_grogram ${PROTOC_PROGRAM})
 
     set(extra_option "")
     foreach (arg ${ARGN})
@@ -56,13 +57,21 @@ function(protobuf_generate comp c_var h_var)
         if ("${arg}" STREQUAL "TARGET")
             set(_add_target TRUE)
         endif ()
+        if ("${arg}" STREQUAL "TENSORFLOW_PROTOC")
+            set(_protoc_grogram ${PROTOC_TENSORFLOW_PROGRAM})
+        endif ()
     endforeach ()
 
     foreach (file ${ARGN})
         if ("${file}" MATCHES "--proto_path")
             continue()
         endif ()
+
         if ("${file}" STREQUAL "TARGET")
+            continue()
+        endif ()
+
+        if ("${file}" STREQUAL "TENSORFLOW_PROTOC")
             continue()
         endif ()
 
@@ -84,9 +93,9 @@ function(protobuf_generate comp c_var h_var)
                 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                 COMMAND ${CMAKE_COMMAND} -E make_directory "${proto_output_path}"
                 COMMAND ${CMAKE_COMMAND} -E echo "generate proto cpp_out ${comp} by ${abs_file}"
-                COMMAND ${PROTOC_PROGRAM} -I${file_dir} ${extra_option} --cpp_out=${proto_output_path} ${abs_file}
+                COMMAND ${_protoc_grogram} -I${file_dir} ${extra_option} --cpp_out=${proto_output_path} ${abs_file}
                 DEPENDS ${abs_file}
-                COMMENT "Running C++ protocol buffer compiler on ${file}" VERBATIM )
+                COMMENT "Running C++ protocol buffer compiler on ${file}" VERBATIM)
     endforeach ()
 
     if (_add_target)
@@ -202,6 +211,21 @@ macro(find_package_if_target_not_exists pkg)
     endif ()
 endmacro()
 
+function(target_clone_compile_and_link_options original_library target_library)
+    get_target_property(linkOpts ${original_library} LINK_OPTIONS)
+    get_target_property(compileOptions ${original_library} COMPILE_OPTIONS)
+
+    if (linkOpts)
+        target_link_options(${target_library} PRIVATE
+                ${linkOpts}
+                )
+    endif()
+    if (compileOptions)
+        target_compile_options(${target_library} PRIVATE
+                ${compileOptions}
+                )
+    endif()
+endfunction()
 macro(replace_cur_major_minor_ver)
     string(REPLACE CUR_MAJOR_MINOR_VER "${CANN_VERSION_${CANN_VERSION_CURRENT_PACKAGE}_VERSION_MAJOR_MINOR}" depend "${depend}")
 endmacro()
@@ -281,4 +305,66 @@ function(add_version_info_targets)
         )
         add_custom_target(version_${pkg_name}_info ALL DEPENDS ${CMAKE_BINARY_DIR}/version.${pkg_name}.info)
     endforeach()
+endfunction()
+
+function(to_absolute_path input_sources source_dir out_arg)
+    set(output_sources)
+    FOREACH(source_file ${${input_sources}})
+        if(IS_ABSOLUTE ${source_file})
+            list(APPEND output_sources ${source_file})
+        else()
+            if(${source_file} MATCHES ".cc$")
+                list(APPEND output_sources ${${source_dir}}/${source_file})
+            else()
+                list(APPEND output_sources ${source_file})
+            endif()
+        endif()
+    ENDFOREACH()
+    set(${out_arg} ${output_sources} PARENT_SCOPE)
+endfunction()
+
+
+function(target_clone_compile_and_link_options original_library target_library)
+    get_target_property(linkOpts ${original_library} LINK_OPTIONS)
+    get_target_property(compileOptions ${original_library} COMPILE_OPTIONS)
+
+
+    if (linkOpts)
+        target_link_options(${target_library} PRIVATE
+                ${linkOpts}
+                )
+    endif()
+    if (compileOptions)
+        target_compile_options(${target_library} PRIVATE
+                ${compileOptions}
+                )
+    endif()
+endfunction()
+
+function(target_clone original_library target_library libray_type)
+    get_target_property(sourceFiles ${original_library} SOURCES)
+    get_target_property(sourceDir ${original_library} SOURCE_DIR)
+    to_absolute_path(sourceFiles sourceDir absolute_sources_files)
+    add_library(${target_library} ${libray_type}
+            ${absolute_sources_files}
+            )
+
+
+    get_target_property(linkLibs ${original_library} LINK_LIBRARIES)
+    get_target_property(includeDirs ${original_library} INCLUDE_DIRECTORIES)
+    target_include_directories(${target_library} PRIVATE
+            ${includeDirs}
+            )
+
+
+    target_link_libraries(${target_library} PRIVATE
+            ${linkLibs}
+            )
+    get_target_property(compileDefinitions ${original_library} COMPILE_DEFINITIONS)
+    if (compileDefinitions)
+        target_compile_definitions(${target_library} PRIVATE
+                ${compileDefinitions}
+                )
+    endif()
+    target_clone_compile_and_link_options(${original_library} ${target_library})
 endfunction()

@@ -25,6 +25,7 @@
 #include "aprof_pub.h"
 #include "runtime/rts/rts_stream.h"
 #include "runtime/rts/rts_kernel.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class DavinciModel;
@@ -514,7 +515,8 @@ class TaskProfGuarder {
   ~TaskProfGuarder() noexcept {
     auto &prof_api = task_info_->MutableProfApi();
     prof_api.end_time = MsprofSysCycleTime();
-    (void)rtsStreamGetId(reinterpret_cast<rtStream_t>(task_info_->GetTaskStream()), reinterpret_cast<int32_t*>(&prof_api.stream_id));
+    (void)aclrtStreamGetId(ge::ValueToPtr(task_info_->GetTaskStream()),
+        reinterpret_cast<int32_t *>(&prof_api.stream_id));
   }
 
  private:

@@ -17,6 +17,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/op_type_utils.h"
 #include "common/compile_profiling/ge_call_wrapper.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 std::unique_ptr<StageState> StageState::Create(const ge::GeRootModelPtr &model, RtSession *session) {
@@ -278,7 +279,7 @@ ge::Status StageState::RunTask() {
   FreeInterimOutputs();
   GE_ASSERT_SUCCESS(executor_->Execute(execute_arg_, executor_inputs_.data(), executor_inputs_.size(),
                                        executor_outputs_.data(), executor_outputs_.size()));
-  GE_ASSERT_RT_OK(rtStreamSynchronize(execute_arg_.stream), "Stage %s sync stream failed", id_.c_str());
+  GE_ASSERT_RT_OK(aclrtSynchronizeStream(execute_arg_.stream), "Stage %s sync stream failed", id_.c_str());
   return ge::SUCCESS;
 }
 

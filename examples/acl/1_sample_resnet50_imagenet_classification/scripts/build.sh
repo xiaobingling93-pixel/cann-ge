@@ -49,26 +49,52 @@ function build()
 
 function target_kernel()
 {
-  declare -i CHOICE_TIMES=0
-  while [[ ${TargetKernel}"X" = "X" ]]
-  do
-    # three times choice 
-    [[ ${CHOICE_TIMES} -ge 3 ]] && break || ((CHOICE_TIMES++))
-    read -p "please input TargetKernel? [arm/x86]:" TargetKernel
-    if [ ${TargetKernel}"z" = "armz" ] || [ ${TargetKernel}"z" = "Armz" ] || [ ${TargetKernel}"z" = "x86z" ] || [ ${TargetKernel}"z" = "X86z" ]; then
-      echo "[INFO] input is normal, start preparation."
+    local arch=""
+
+    if command -v lscpu >/dev/null 2>&1; then
+        arch_info=$(lscpu 2>/dev/null | grep -i "Architecture" | head -n1)
+        if [[ -n "$arch_info" ]]; then
+            arch=$(echo "$arch_info" | awk -F: '{print $2}' | tr -d ' \t\n\r' | tr '[:upper:]' '[:lower:]')
+
+            if [[ "$arch" == "aarch64" || "$arch" == "armv8" || "$arch" == "armv7l" || "$arch" == "arm" ]]; then
+                TargetKernel="arm"
+                echo "[INFO] Detected ARM architecture via lscpu: '$arch_info'"
+                return 0
+            elif [[ "$arch" == "x86_64" || "$arch" == "i686" || "$arch" == "i386" ]]; then
+                TargetKernel="x86"
+                echo "[INFO] Detected x86 architecture via lscpu: '$arch_info'"
+                return 0
+            else
+                echo "[WARN] Unknown architecture from lscpu: '$arch', will fall back to manual input."
+            fi
+        fi
     else
-      echo "[WARNING] The ${CHOICE_TIMES}th parameter input error!"
-      TargetKernel=""
+        echo "[WARN] 'lscpu' command not found, falling back to manual input."
     fi
-  done
-  if [ ${TargetKernel}"z" = "z" ];then
-    echo "[ERROR] TargetKernel entered incorrectly three times, please input arm/x86!"
-    return 1
-  else
+
+    declare -i CHOICE_TIMES=0
+    TargetKernel=""
+    while [[ "${TargetKernel}" == "" ]]; do
+        ((CHOICE_TIMES++))
+        if [[ ${CHOICE_TIMES} -gt 3 ]]; then
+            echo "[ERROR] TargetKernel entered incorrectly three times. Please input 'arm' or 'x86'."
+            return 1
+        fi
+
+        read -p "Please input TargetKernel? [arm/x86]: " input_kernel
+        input_kernel=$(echo "$input_kernel" | tr '[:upper:]' '[:lower:]')
+
+        if [[ "$input_kernel" == "arm" || "$input_kernel" == "x86" ]]; then
+            TargetKernel="$input_kernel"
+            echo "[INFO] Input is valid, start preparation."
+        else
+            echo "[WARNING] The ${CHOICE_TIMES}th parameter input error! Please enter 'arm' or 'x86'."
+        fi
+    done
+
     return 0
-  fi
 }
+
 function main()
 {
   echo "[INFO] Sample preparation"

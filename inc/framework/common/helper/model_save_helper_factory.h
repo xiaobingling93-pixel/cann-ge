@@ -25,10 +25,7 @@ class ModelSaveHelperFactory {
  public:
   using ModelSaveHelperCreatorFun = std::function<ModelSaveHelperPtr(void)>;
 
-  static ModelSaveHelperFactory &Instance() {
-    static ModelSaveHelperFactory instance;
-    return instance;
-  }
+  static ModelSaveHelperFactory &Instance();
 
   ModelSaveHelperPtr Create(const OfflineModelFormat type) {
     const auto iter = creator_map_.find(type);

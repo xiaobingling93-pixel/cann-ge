@@ -76,8 +76,7 @@ TEST_F(UtestUtilTransfer, CheckOutputPathValid) {
   EXPECT_EQ(CheckOutputPathValid("", ""), false);
   EXPECT_EQ(CheckOutputPathValid("", "model"), false);
 
-  char max_file_path[14097] = {0};
-  memset(max_file_path, 1, 14097);
+  std::string max_file_path(14097, 1);
   EXPECT_EQ(CheckOutputPathValid(max_file_path, "model"), false);
 
   EXPECT_EQ(CheckOutputPathValid("$#%", ""), false);

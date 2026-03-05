@@ -24,13 +24,15 @@ add_executable(st_fast_runtime2_test
         ${RUNTIME2_TEST_SRCS}
         "${AIR_CODE_DIR}/tests/graph_metadef/depends/faker/plugin_manager_stub.cc")
 
-target_link_libraries(st_fast_runtime2_test PRIVATE intf_pub ${AIR_COMMON_LINK_OPTION})
-target_compile_options(st_fast_runtime2_test PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_link_libraries(st_fast_runtime2_test PRIVATE intf_pub)
+target_compile_options(st_fast_runtime2_test PRIVATE -g
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -Wno-subobject-linkage
+        -fno-access-control
         )
 target_compile_definitions(st_fast_runtime2_test PRIVATE
+        google=ascend_private
         $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         )
@@ -64,6 +66,7 @@ target_link_libraries(st_fast_runtime2_test PRIVATE
         GTest::gtest
         GTest::gtest_main
         adump_headers
+        -Wl,-z,muldefs
         gert
         ge_graph_dsl
         ge_executor_shared

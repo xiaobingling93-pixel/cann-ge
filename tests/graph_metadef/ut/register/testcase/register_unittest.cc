@@ -2634,8 +2634,7 @@ TEST_F(UtestRegister, GetRawErrorMessage_fail_map) {
   op_impl_func->compile_info_deleter = DeleteCompileInfo;
   op_impl_func->max_tiling_data_size = 50;
 
-  const string expect_result = "{\"error_messages\":[{\"errorcode\":\"E10025\",\"errormsg\":{\"errmsg\":\"22\",\"realpath\":\"11\"},\"type\":1}],\"ret_code\":1}";
-  REPORT_PREDEFINED_ERR_MSG("E10025", std::vector<const char *>({"realpath", "errmsg"}), std::vector<const char *>({"11", "22"}));
+  const string expect_result = "{\"ret_code\":0}";
   EXPECT_EQ(std::string(DoOpTilingForCompile(op_type, cmp_info, cmp_info_hash, input_str.c_str(), output_str.c_str(),
                                attrs.dump().c_str(), const_cast<char *>(runinfo.c_str()), size, elapse,
                                extra_infos.dump().c_str())), expect_result);

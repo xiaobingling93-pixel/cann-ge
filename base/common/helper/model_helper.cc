@@ -40,6 +40,8 @@
 #include "ge_context.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "register/core_num_utils.h"
+#include "acl/acl_rt.h"
+#include "acl/acl_base_rt.h"
 
 namespace {
 constexpr uint32_t kOriginalOmPartitionNum = 1U;
@@ -1555,7 +1557,7 @@ Status ModelHelper::GetBaseNameFromFileName(const std::string &file_name, std::s
 
 Status ModelHelper::GetHardwareInfo(std::map<std::string, std::string> &options) const {
   int32_t device_id = -1;
-  (void)rtGetDevice(&device_id);
+  (void)aclrtGetDevice(&device_id);
 
   const auto iter = options.find(SOC_VERSION);
   GE_ASSERT_TRUE(iter != options.end());
@@ -1588,19 +1590,19 @@ Status ModelHelper::GetHardwareInfo(std::map<std::string, std::string> &options)
 
 Status ModelHelper::InitRuntimePlatform() {
   int32_t device_id = -1;
-  GE_CHK_RT_RET(rtGetDevice(&device_id));
+  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
   // init platform info
-  char_t soc_version[kSocVersionLen] = {};
-  GE_ASSERT_RT_OK(rtGetSocVersion(soc_version, static_cast<uint32_t>(sizeof(soc_version))));
+  const char *soc_version = aclrtGetSocName();
+  GE_ASSERT_NOTNULL(soc_version);
   GE_ASSERT_TRUE(fe::PlatformInfoManager::GeInstance().InitRuntimePlatformInfos(std::string(soc_version)) == 0U,
       "[Init][PlatformInfo]init runtime platform info failed, SocVersion = %s", soc_version);
 
-  uint32_t aicore_num = 0U;
-  GE_ASSERT_RT_OK(rtGetAiCoreCount(&aicore_num));
+  int64_t aicore_num = 0U;
+  GE_ASSERT_RT_OK(aclrtGetDeviceInfo(device_id, ACL_DEV_ATTR_AICORE_CORE_NUM, &aicore_num));
   int64_t vec_core_num = 0U;
   // some chips has no vector core
-  GE_ASSERT_RT_OK(rtGetDeviceInfo(static_cast<uint32_t>(device_id),
-                                  kModuleTypeVectorCore, kInfoTypeCoreNum, &vec_core_num));
+  GE_ASSERT_RT_OK(aclrtGetDeviceInfo(static_cast<uint32_t>(device_id),
+ 	                                   ACL_DEV_ATTR_VECTOR_CORE_NUM, &vec_core_num));
 
   fe::PlatFormInfos platform_infos;
   GE_ASSERT_TRUE(
@@ -1639,10 +1641,10 @@ Status ModelHelper::HandleDeviceInfo(fe::PlatFormInfos &platform_infos) const {
 Status ModelHelper::HandleDeviceInfo(fe::PlatFormInfos &platform_infos, fe::PlatformInfo &origin_platform_info) const {
   GELOGD("Begin to handle device info.");
   int32_t device_id = -1;
-  GE_CHK_RT_RET(rtGetDevice(&device_id));
+  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
 
-  char_t soc_version[kSocVersionLen] = {0};
-  GE_CHK_RT_RET(rtGetSocVersion(soc_version, kSocVersionLen));
+  const char *soc_version = aclrtGetSocName();
+  GE_ASSERT_NOTNULL(soc_version);
 
   GE_ASSERT_SUCCESS(CoreNumUtils::GetGeDefaultPlatformInfo(soc_version, origin_platform_info));
 
@@ -1652,7 +1654,7 @@ Status ModelHelper::HandleDeviceInfo(fe::PlatFormInfos &platform_infos, fe::Plat
 
   GE_CHK_STATUS_RET(SetPlatformInfos(soc_version, platform_info, platform_infos), "Set platform infos failed.");
 
-  GELOGD("Succeed to handle device info, device id: %d, soc_version: %s, virtual_type: %d.", device_id, static_cast<char_t*>(soc_version),
+  GELOGD("Succeed to handle device info, device id: %d, soc_version: %s, virtual_type: %d.", device_id, soc_version,
          virtual_type);
   return SUCCESS;
 }
@@ -1724,7 +1726,8 @@ Status ModelHelper::UpdatePlatfromInfoWithRuntime(const int32_t device_id, const
     return SUCCESS;
   }
   int64_t aic_core_cnt = 0;
-  if (rtGetDeviceInfo(static_cast<uint32_t>(device_id), kModuleTypeAicore, kInfoTypeCoreNum, &aic_core_cnt) != RT_ERROR_NONE) {
+  if (aclrtGetDeviceInfo(static_cast<uint32_t>(device_id),
+      ACL_DEV_ATTR_AICORE_CORE_NUM, &aic_core_cnt) != RT_ERROR_NONE) {
     GELOGE(FAILED, "Failed to get AICore count from device.");
     return FAILED;
   }
@@ -1735,7 +1738,7 @@ Status ModelHelper::UpdatePlatfromInfoWithRuntime(const int32_t device_id, const
 
   int64_t vector_core_cnt = kModuleTypeVectorCore;
   // some chips have no vector core
-  (void)rtGetDeviceInfo(static_cast<uint32_t>(device_id), kModuleTypeVectorCore, kInfoTypeCoreNum, &vector_core_cnt);
+  (void)aclrtGetDeviceInfo(static_cast<uint32_t>(device_id), ACL_DEV_ATTR_VECTOR_CORE_NUM, &vector_core_cnt);
 
   // 用从rts获取到的核数刷新platform info
   UpdateCoreCountWithRuntime(AICORE_NUM, ai_core_cnt_ini, aic_core_cnt,
@@ -1745,7 +1748,7 @@ Status ModelHelper::UpdatePlatfromInfoWithRuntime(const int32_t device_id, const
 
    size_t free_mem = 0U;
    size_t total_mem_size = 0U;
-   if (rtMemGetInfoEx(RT_MEMORYINFO_HBM, &free_mem, &total_mem_size) == RT_ERROR_NONE) {
+   if (aclrtGetMemInfo(ACL_HBM_MEM, &free_mem, &total_mem_size) == RT_ERROR_NONE) {
      GELOGI("Change memory_size from platform %lu to rts %zu bytes.",
             platform_info.soc_info.memory_size, total_mem_size);
      platform_info.soc_info.memory_size = total_mem_size;
@@ -2137,5 +2140,10 @@ Status ModelHelper::UpdateSessionGraphId(const ComputeGraphPtr &graph,
                            subgraph->GetName().c_str());
   }
   return SUCCESS;
+}
+
+ModelSaveHelperFactory &ModelSaveHelperFactory::Instance() {
+  static ModelSaveHelperFactory instance;
+  return instance;
 }
 }  // namespace ge

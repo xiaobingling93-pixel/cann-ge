@@ -14,6 +14,7 @@
 
 #include "kernel/memory/allocator/scalable_allocator.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "depends/ascendcl//src/ascendcl_stub.h"
 #include "kernel/memory/caching_mem_allocator.h"
 #include "graph/ge_local_context.h"
 
@@ -30,12 +31,22 @@ class MockRuntime : public ge::RuntimeStub {
     return RT_ERROR_NONE;
   }
 };
+class MockAclRuntime : public ge::AclRuntimeStub {
+public:
+  aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) override {
+    *free_size = 64UL * 1024UL * 1024UL;
+    *total = 56UL * 1024UL * 1024UL * 1024UL;
+    return ACL_SUCCESS;
+  }
+};
 }
 
  struct ScaleAllocatorConfigTest : public memory::MemSynchronizer, public testing::Test {
   void SetUp() {
     auto mock_runtime = std::make_shared<MockRuntime>();
+    auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
     ge::RuntimeStub::SetInstance(mock_runtime);
+    ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
     config.reset(new ScalableConfig());
     memory::RtsCachingMemAllocator::GetAllocator(0, RT_MEMORY_HBM)->Recycle();
     memory::RtsCachingMemAllocator::device_id_to_allocators_.clear();
@@ -46,6 +57,7 @@ class MockRuntime : public ge::RuntimeStub {
     //allocator.reset(new ScalableAllocator{span_allocator_, device_allocator, *config});
     caching_allocator.reset(new memory::CachingMemAllocator{0, kOnDeviceHbm, *config});
     ge::RuntimeStub::Reset();
+    ge::AclRuntimeStub::Reset();
   }
 
   void TearDown() {
@@ -107,8 +119,8 @@ TEST_F(ScaleAllocatorConfigTest, should_not_cache_the_uncacheable_size) {
 }
 
 TEST_F(ScaleAllocatorConfigTest, test_set_memory_pool_threshold) {
-  auto mock_runtime = std::make_shared<MockRuntime>();
-  ge::RuntimeStub::SetInstance(mock_runtime);
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   ScalableConfig default_cfg;
   constexpr const char *kOptionDisableMemoryPoolThreshold = "ge.experiment.memory_pool_threshold";
   const auto back_options = ge::GetThreadLocalContext().GetAllGlobalOptions();
@@ -129,6 +141,7 @@ TEST_F(ScaleAllocatorConfigTest, test_set_memory_pool_threshold) {
   EXPECT_EQ(cfg3.page_mem_size_total_threshold, default_cfg.page_mem_size_total_threshold);
 
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
   ge::GetThreadLocalContext().SetGlobalOption(back_options);
 }
 

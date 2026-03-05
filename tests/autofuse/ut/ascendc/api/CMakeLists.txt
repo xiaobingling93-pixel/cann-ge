@@ -13,6 +13,7 @@ add_library(test_ascendc OBJECT
     ./test_logical.cpp
     ./test_logicalnot.cpp
     ./test_compare.cpp
+    ./test_compare_v2.cpp
     ./test_duplicate.cpp
     ./test_isnan.cpp
     ./test_isfinite.cpp

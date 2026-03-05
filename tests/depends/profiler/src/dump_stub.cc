@@ -15,6 +15,7 @@
 #include "adump_pub.h"
 #include "adump_api.h"
 #include "runtime/base.h"
+#include "acl/acl_dump.h"
 
 namespace ge {
 DumpStub &DumpStub::GetInstance() {
@@ -159,3 +160,15 @@ int32_t AdumpRegisterCallback(uint32_t module_id, AdumpCallback enable_callback,
     return ge::DumpStub::GetInstance().GetFuncRet("AdumpRegisterCallback", 0);
 }
 }  // namespace Adx
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+const char* acldumpGetPath(acldumpType dumpType) {
+  (void) dumpType;
+  return "";
+}
+#ifdef __cplusplus
+}
+#endif

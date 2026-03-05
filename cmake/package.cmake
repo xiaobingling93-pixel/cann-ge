@@ -257,7 +257,7 @@ if("${BUILD_COMPONENT}" STREQUAL "ge-compiler")
 elseif("${BUILD_COMPONENT}" STREQUAL "ge-executor")
     message(STATUS "************Install ge-executor packages***************")
     if(NOT MDC_COMPILE_RUNTIME)
-        install(TARGETS ge_common ge_executor_shared ge_common_base davinci_executor hybrid_executor gert register
+        install(TARGETS ge_common ge_executor_shared ge_common_base davinci_executor hybrid_executor gert om2_executor register
                 graph lowering register_static graph_base model_deployer npu_sched_model_loader data_flow_base hcom_executor
                 acl_mdl acl_mdl_impl acl_op_executor acl_op_executor_impl acl_cblas
                 LIBRARY DESTINATION ${BUILD_COMPONENT}/lib64

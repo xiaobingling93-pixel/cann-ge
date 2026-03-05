@@ -67,6 +67,8 @@ IMPL_OP_INFER_SYMBOL_SHAPE_INNER(FooTestGuard).InferSymbolShape(InferShape4FooTe
 class GuardCodeGenST : public testing::Test {
  public:
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistry();
     auto ascend_install_path = EnvPath().GetAscendInstallPath();
     (void)mmGetEnv("ASCEND_OPP_PATH", old_opp_path_env_, MMPA_MAX_PATH);
@@ -82,12 +84,16 @@ class GuardCodeGenST : public testing::Test {
     unsetenv("LD_LIBRARY_PATH");
     mmSetEnv("ASCEND_OPP_PATH", old_opp_path_env_, 1);
     mmSetEnv("LD_LIBRARY_PATH", old_ld_path_env_, 1);
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
  protected:
   EsCGraphBuilder *graph_{nullptr};
  private:
   char old_opp_path_env_[MMPA_MAX_PATH] = {'\0'};
   char old_ld_path_env_[MMPA_MAX_PATH] = {'\0'};
+  const char *env;
 };
 int memfd_create(const char *name, unsigned int flags) {
   return syscall(__NR_memfd_create, name, flags);

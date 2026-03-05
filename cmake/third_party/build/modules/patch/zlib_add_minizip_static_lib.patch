@@ -1,0 +1,48 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b412dc7..d931045 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -211,3 +211,42 @@ if(HAVE_OFF64_T)
+     target_link_libraries(minigzip64 zlib)
+     set_target_properties(minigzip64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
+ endif()
++
++# Add minizip library
++set(MINIZIP_SRCS
++    contrib/minizip/ioapi.c
++    contrib/minizip/unzip.c
++    contrib/minizip/zip.c
++)
++
++set(MINIZIP_PUBLIC_HDRS
++    contrib/minizip/ioapi.h
++    contrib/minizip/unzip.h
++    contrib/minizip/zip.h
++)
++
++# Create the minizip static library
++add_library(minizip_static STATIC ${MINIZIP_SRCS})
++set_target_properties(minizip_static PROPERTIES OUTPUT_NAME minizip)
++
++# Add include directories for minizip_static
++target_include_directories(minizip_static PUBLIC
++    ${CMAKE_CURRENT_SOURCE_DIR}/contrib/minizip
++    ${CMAKE_CURRENT_SOURCE_DIR} # Include zlib headers
++)
++
++# Link zlib to minizip
++target_link_libraries(minizip_static PRIVATE zlibstatic)
++
++# Install minizip_static library
++if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL )
++    install(TARGETS minizip_static
++        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
++        LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
++    )
++endif()
++
++# Install minizip headers
++if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL )
++    install(FILES ${MINIZIP_PUBLIC_HDRS} DESTINATION "${INSTALL_INC_DIR}/minizip")
++endif()
+\ No newline at end of file

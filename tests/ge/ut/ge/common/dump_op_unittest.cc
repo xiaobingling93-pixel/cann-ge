@@ -164,6 +164,7 @@ TEST_F(UTEST_dump_op, launch_dump_op_input) {
   int64_t *addr_in = (int64_t *)malloc(1024);
   int64_t *addr_out = (int64_t *)malloc(1024);
   input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in));
+  input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in));
   output_addrs.push_back(reinterpret_cast<uintptr_t>(addr_out));
   dump_op.SetDumpInfo(dump_properties, op_desc, input_addrs, output_addrs, nullptr);
   auto ret = dump_op.LaunchDumpOp(false);
@@ -212,6 +213,8 @@ TEST_F(UTEST_dump_op, launch_dump_op_with_invalid_input) {
   int64_t *addr_in0 = nullptr;
   int64_t *addr_in1 = (int64_t *)malloc(1024);
   int64_t *addr_out = (int64_t *)malloc(1024);
+  input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in0));
+  input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in1));
   input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in0));
   input_addrs.push_back(reinterpret_cast<uintptr_t>(addr_in1));
   output_addrs.push_back(reinterpret_cast<uintptr_t>(addr_out));

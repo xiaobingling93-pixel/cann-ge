@@ -25,21 +25,15 @@ def build_matmul_graph():
     # 1、创建图构建器
     builder = GraphBuilder("MakeMatMulGraph")
     # 2、创建图输入节点
-    input_tensor_holder1 = builder.create_input(
+    input_tensor_holder = builder.create_input(
         index=0,
-        name="input1",
-        data_type=DataType.DT_INT32,
+        name="input",
+        data_type=DataType.DT_FLOAT,
         shape=[2, 3]
     )
-    input_tensor_holder2 = builder.create_input(
-        index=1,
-        name="input2",
-        data_type=DataType.DT_INT32,
-        shape=[2, 3]
-    )
+    weight = builder.create_const_float([1.0] * 6, shape=[2, 3])
     # transpose_x1 和 transpose_x2 为 MatMul 的属性
-    matmul_tensor_holder = MatMul(input_tensor_holder1, input_tensor_holder2, None, transpose_x1=True,
-                                            transpose_x2=False)
+    matmul_tensor_holder = MatMul(weight, input_tensor_holder, None, transpose_x1=True, transpose_x2=False)
     # 3、设置图输出节点
     builder.set_graph_output(matmul_tensor_holder, 0)
     # 4、构建图
@@ -78,25 +72,17 @@ def run_graph(graph, device_id="0") -> int:
         print(f"[Info] 图已添加到Session (Graph ID: {graph_id})")
 
         # 4. 准备输入数据
-        input_data1 = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32)
-        input_data2 = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32)
+        input_data = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
 
-        input_tensor1 = Tensor(
-            input_data1.flatten().tolist(),
+        input_tensor = Tensor(
+            input_data.flatten().tolist(),
             None,
-            DataType.DT_INT32,
-            Format.FORMAT_ND,
-            [2, 3]
-        )
-        input_tensor2 = Tensor(
-            input_data2.flatten().tolist(),
-            None,
-            DataType.DT_INT32,
+            DataType.DT_FLOAT,
             Format.FORMAT_ND,
             [2, 3]
         )
 
-        inputs = [input_tensor1, input_tensor2]
+        inputs = [input_tensor]
         print(f"[Info] 输入数据已准备，共{len(inputs)}个输入tensor")
 
         # 5. 运行图

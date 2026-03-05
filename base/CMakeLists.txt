@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(../graph_metadef/cmake/common_funcs.cmake)
+include(../cmake/function.cmake)
 add_subdirectory(slice)
 if (BUILD_METADEF AND (${METADEF_DIR} STREQUAL ${GE_METADEF_DIR}))
     add_subdirectory(metadef)
@@ -61,6 +61,10 @@ set(SRC_LIST
     "${AIR_CODE_DIR}/compiler/graph/fusion/pass/pass_registry.cc"
 )
 
+file(GLOB_RECURSE OM2_SRCS CONFIGURE_DEPENDS
+        "common/om2/*.cc"
+)
+
 set(SRC_BASE_LIST
     "common/context/ctx.cc"
     "common/context/local_context.cc"
@@ -97,6 +101,10 @@ set(SRC_BASE_LIST
     "exec_runtime/execution_runtime_utils.cc"
     "common/helper/model_parser_base.cc"
     "common/helper/model_saver.cc"
+    "common/helper/om2/zip_archive.cc"
+    "common/helper/om2/zip_mem_ioapi.cc"
+    "common/helper/om2/om2_utils.cc"
+    "common/helper/om2_package_helper.cc"
     "common/op/ge_op_utils.cc"
     "common/tbe_handle_store/tbe_kernel_store.cc"
     "common/kernel_handles_manager/aicore_kernel_handles_manager.cc"
@@ -166,6 +174,7 @@ set(SRC_BASE_LIST
     "common/helper/mobile/model_file_saver.cc"
     "common/helper/mobile/model.cc"
     "common/error_registry/error_registry.cc"
+    "${OM2_SRCS}"
 )
 
 if (NOT ENABLE_D AND NOT ENABLE_ACL)
@@ -232,6 +241,7 @@ target_link_libraries(ge_common
         json
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
+        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         $<BUILD_INTERFACE:air_headers>
         $<BUILD_INTERFACE:metadef_headers>
@@ -287,6 +297,7 @@ target_link_libraries(ge_common_base
         msprof_headers
         adump_headers
         runtime_headers
+        cce_headers
         $<$<TARGET_EXISTS:datagw_headers>:datagw_headers>
         $<$<TARGET_EXISTS:aicpu_headers>:aicpu_headers>
         static_mmpa
@@ -295,6 +306,7 @@ target_link_libraries(ge_common_base
         graph_base
         ascend_protobuf
         c_sec
+        acl_rt
         error_manager
         unified_dlog
         platform
@@ -303,8 +315,10 @@ target_link_libraries(ge_common_base
         lowering
         -Wl,--as-needed
         json
+        minizip_static
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
+        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
         metadef_headers
@@ -418,6 +432,7 @@ target_link_libraries(ge_common
         graph
         ge_common_base
         c_sec
+        acl_rt
         error_manager
         unified_dlog
         platform
@@ -426,6 +441,7 @@ target_link_libraries(ge_common
         json
         -lrt
         -ldl
+        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
 )
@@ -496,6 +512,7 @@ target_link_libraries(ge_common_base
         json
         -lrt
         -ldl
+        ${AIR_COMMON_LINK_OPTION}
     PUBLIC
         air_headers
         metadef_headers

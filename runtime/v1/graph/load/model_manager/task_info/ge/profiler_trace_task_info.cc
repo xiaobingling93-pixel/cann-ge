@@ -9,7 +9,7 @@
  */
 
 #include "graph/load/model_manager/task_info/ge/profiler_trace_task_info.h"
-
+#include "acl/acl_rt.h"
 #include "graph/load/model_manager/davinci_model.h"
 
 namespace {
@@ -57,7 +57,7 @@ Status ProfilerTraceTaskInfo::Distribute() {
   }
 
   const rtError_t rt_ret =
-      rtProfilerTraceEx(1UL, static_cast<uint64_t>(model_id_), static_cast<uint16_t>(log_id_), stream_);
+    rtProfilerTraceEx(1UL, static_cast<uint64_t>(model_id_), static_cast<uint16_t>(log_id_), stream_);
   if (rt_ret != RT_ERROR_NONE) {
     GELOGE(ge::RT_FAILED, "[Call][rtProfilerTraceEx]Failed, ret %d", rt_ret);
     REPORT_INNER_ERR_MSG("E19999", "Call rtProfilerTraceEx failed, ret %d", rt_ret);

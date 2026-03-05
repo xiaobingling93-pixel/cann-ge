@@ -16,6 +16,7 @@
 #include "graph/any_value.h"
 #include "register/op_impl_kernel_registry.h"
 #include <string>
+#include "framework/common/debug/ge_log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,19 +32,20 @@ INT32 mmOpen(const CHAR *path_name, INT32 flags) {
   INT32 fd = HANDLE_INVALID_VALUE;
 
   if (NULL == path_name) {
-    syslog(LOG_ERR, "The path name pointer is null.\r\n");
+    GELOGE(LOG_ERR, "The path name pointer is null.\r\n");
     return EN_INVALID_PARAM;
   }
   if ((flags != O_RDONLY) && (0 == (flags & (O_WRONLY | O_RDWR | O_CREAT)))) {
-    syslog(LOG_ERR, "The file open mode is error.\r\n");
+    GELOGE(LOG_ERR, "The file open mode is error.\r\n");
     return EN_INVALID_PARAM;
   }
 
   fd = ge::MmpaStub::GetInstance().GetImpl()->Open2(path_name, flags, S_IRWXU | S_IRWXG);
   if (fd < MMPA_ZERO) {
-    syslog(LOG_ERR, "Open file failed, errno is %s.\r\n", strerror(errno));
+    GELOGE(LOG_ERR, "Open file failed, errno is %s.\r\n", strerror(errno));
     return EN_ERROR;
   }
+  GELOGI("mmOpen %s", path_name);
   return fd;
 }
 
@@ -653,6 +655,14 @@ mmSockHandle mmSocket(INT32 sockFamily, INT32 type, INT32 protocol) {
 }
 
 INT32 mmIoctl(mmProcess fd, INT32 ioctlCode, mmIoctlBuf *bufPtr) {
+  return 0;
+}
+
+INT32 mmDup2(INT32 oldFd, INT32 newFd) {
+  return 0;
+}
+
+INT32 mmDup(INT32 fd) {
   return 0;
 }
 

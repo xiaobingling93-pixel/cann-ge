@@ -161,10 +161,114 @@ inline __aicore__ void CompareNormal(const AscendC::LocalTensor<uint8_t> &dst,  
 }
 
 template <CMPMODE mode>
+inline __aicore__ void ApplyCompareModeNormal(LocalTensor<int32_t> &inter_buf, uint32_t mask, uint8_t repeat_times,
+                                              const UnaryRepeatParams &unary_repeat_params) {
+  // 根据比较模式进行不同的后处理
+  switch (mode) {
+    case CMPMODE::GE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::GT:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, mask, repeat_times, unary_repeat_params);
+      AscendC::PipeBarrier<PIPE_V>();
+      AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
+      break;
+      
+    case CMPMODE::LE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)(-1), mask, repeat_times, unary_repeat_params);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::LT:
+    case CMPMODE::NE:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), mask, repeat_times, unary_repeat_params);
+      AscendC::PipeBarrier<PIPE_V>();
+      if (mode == CMPMODE::NE) {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
+      } else {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)0, mask, repeat_times, unary_repeat_params);
+      }
+      AscendC::PipeBarrier<PIPE_V>();
+      BinaryRepeatParams binary_repeat_params = {1, 1, 1, 8, 8, 8};
+      AscendC::Mul(inter_buf, inter_buf, inter_buf, mask, repeat_times, binary_repeat_params);
+      break;
+  }
+  AscendC::PipeBarrier<PIPE_V>();
+}
+
+template <CMPMODE mode>
+inline __aicore__ void ApplyCompareModeCount(LocalTensor<int32_t> &inter_buf, uint32_t count) {
+  // 根据比较模式进行不同的后处理
+  switch (mode) {
+    case CMPMODE::GE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)1, count);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::GT:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, count);
+      AscendC::PipeBarrier<PIPE_V>();
+      AscendC::Mins(inter_buf, inter_buf, (int32_t)1, count);
+      break;
+      
+    case CMPMODE::LE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)(-1), count);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::LT:
+    case CMPMODE::NE:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), count);
+      AscendC::PipeBarrier<PIPE_V>();
+      if (mode == CMPMODE::NE) {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)1, count);
+      } else {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)0, count);
+      }
+      AscendC::PipeBarrier<PIPE_V>();
+      AscendC::Mul(inter_buf, inter_buf, inter_buf, count);
+      break;
+  }
+  AscendC::PipeBarrier<PIPE_V>();
+}
+
+inline __aicore__ void PerformTypeConversionNormal(const AscendC::LocalTensor<uint8_t> &dst,
+                                                   AscendC::LocalTensor<int16_t> &int16_buf,
+                                                   AscendC::LocalTensor<half> &half_buf,
+                                                   AscendC::LocalTensor<int32_t> &inter_buf, uint32_t mask,
+                                                   uint8_t repeat_times, uint8_t dst_repeat_stride,
+                                                   uint32_t dst_offset = 0) {
+  UnaryRepeatParams unary_repeat_params = {1, 1, 4, 8};
+  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  
+  unary_repeat_params = {1, 1, 4, 4};
+  AscendC::PipeBarrier<PIPE_V>();
+  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  
+  unary_repeat_params = {1, 1, dst_repeat_stride, 4};
+  AscendC::PipeBarrier<PIPE_V>();
+  if (dst_offset == 0) {
+    AscendC::Cast(dst, half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  } else {
+    AscendC::Cast(dst[dst_offset], half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  }
+}
+
+inline __aicore__ void PerformTypeConversionCount(const AscendC::LocalTensor<uint8_t> &dst,
+                                                  AscendC::LocalTensor<int16_t> &int16_buf,
+                                                  AscendC::LocalTensor<half> &half_buf,
+                                                  AscendC::LocalTensor<int32_t> &inter_buf, uint32_t num_elements,
+                                                  uint32_t dst_offset = 0) {
+  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, num_elements);
+  AscendC::PipeBarrier<PIPE_V>();
+  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, num_elements);
+  AscendC::PipeBarrier<PIPE_V>();
+  if (dst_offset == 0) {
+    AscendC::Cast(dst, half_buf, RoundMode::CAST_NONE, num_elements);
+  } else {
+    AscendC::Cast(dst[dst_offset], half_buf, RoundMode::CAST_NONE, num_elements);
+  }
+}
+
+template <CMPMODE mode>
 inline __aicore__ void ProcessSmallAxisCase(const AscendC::LocalTensor<uint8_t> &dst,
                                             const AscendC::LocalTensor<int32_t> &src0,
                                             const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                            const uint32_t mask, const uint8_t src_repeat_stride,
+                                            const uint64_t mask, const uint8_t src_repeat_stride,
                                             const uint8_t dst_repeat_stride, AscendC::LocalTensor<int32_t> &inter_buf,
                                             AscendC::LocalTensor<int16_t> &int16_buf,
                                             AscendC::LocalTensor<half> &half_buf) {
@@ -173,25 +277,14 @@ inline __aicore__ void ProcessSmallAxisCase(const AscendC::LocalTensor<uint8_t> 
   if (src1.GetSize() * sizeof(int32_t) == 32) {
     repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
   }
+  
   AscendC::Sub(inter_buf, src0, src1, mask, repeat_times, repeat_params);
   AscendC::PipeBarrier<PIPE_V>();
+  
   UnaryRepeatParams unary_repeat_params = {1, 1, 8, 8};
-  if (mode == CMPMODE::GE) {
-    AscendC::Adds(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-    AscendC::PipeBarrier<PIPE_V>();
-  }
-  AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, 4, 8};
-  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, 4, 4};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(dst, half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  ApplyCompareModeNormal<mode>(inter_buf, mask, repeat_times, unary_repeat_params);
+  
+  PerformTypeConversionNormal(dst, int16_buf, half_buf, inter_buf, mask, repeat_times, dst_repeat_stride);
 }
 
 template <CMPMODE mode>
@@ -203,30 +296,19 @@ inline __aicore__ void ProcessBlock(const AscendC::LocalTensor<uint8_t> &dst, co
                                     uint32_t offset_src0, uint32_t offset_src1, uint32_t offset_dst) {
   BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
   AscendC::PipeBarrier<PIPE_V>();
+  
   if (src1.GetSize() * sizeof(int32_t) == 32) {
     repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
     AscendC::Sub(inter_buf, src0[offset_src0], src1[0], mask, repeat_times, repeat_params);
   } else {
     AscendC::Sub(inter_buf, src0[offset_src0], src1[offset_src1], mask, repeat_times, repeat_params);
   }
+  
   UnaryRepeatParams unary_repeat_params = {1, 1, 8, 8};
   AscendC::PipeBarrier<PIPE_V>();
-  if (mode == CMPMODE::GE) {
-    AscendC::Adds(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-    AscendC::PipeBarrier<PIPE_V>();
-  }
-  AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, 4, 8};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, 4, 4};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(dst[offset_dst], half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
+  ApplyCompareModeNormal<mode>(inter_buf, mask, repeat_times, unary_repeat_params);
+  
+  PerformTypeConversionNormal(dst, int16_buf, half_buf, inter_buf, mask, repeat_times, dst_repeat_stride, offset_dst);
 }
 
 template <CMPMODE mode>
@@ -241,19 +323,22 @@ inline __aicore__ void ProcessMediumAxisCase(const AscendC::LocalTensor<uint8_t>
   constexpr uint32_t elem_in_one_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(int32_t);
   const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
   const uint8_t dst_repeat_stride = output_last_dim_stride / ONE_BLK_SIZE;
+  
   uint32_t element_extent = last_axis / elem_in_one_repeat;
   uint32_t element_reminder = last_axis - element_extent * elem_in_one_repeat;
+  
   for (uint32_t outer_for = 0; outer_for < element_extent; outer_for++) {
     constexpr uint32_t mask = elem_in_one_repeat;
-    ProcessBlock<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, inter_buf, int16_buf,
-                       half_buf, outer_for * elem_in_one_repeat, outer_for * elem_in_one_repeat,
-                       outer_for * elem_in_one_repeat);
+    ProcessBlock<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, 
+                       inter_buf, int16_buf, half_buf, outer_for * elem_in_one_repeat, 
+                       outer_for * elem_in_one_repeat, outer_for * elem_in_one_repeat);
   }
+  
   if (element_reminder != 0) {
     uint32_t mask = element_reminder;
-    ProcessBlock<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, inter_buf, int16_buf,
-                       half_buf, element_extent * elem_in_one_repeat, element_extent * elem_in_one_repeat,
-                       element_extent * elem_in_one_repeat);
+    ProcessBlock<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, 
+                       inter_buf, int16_buf, half_buf, element_extent * elem_in_one_repeat, 
+                       element_extent * elem_in_one_repeat, element_extent * elem_in_one_repeat);
   }
 }
 
@@ -270,56 +355,58 @@ inline __aicore__ void ProcessLargeAxisCase(const AscendC::LocalTensor<uint8_t> 
   uint32_t element_extent = last_axis / elem_in_one_repeat;
   uint32_t element_reminder = last_axis - element_extent * elem_in_one_repeat;
   const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
+  
   for (auto outer_for = 0; outer_for < repeat_times; outer_for++) {
     AscendC::PipeBarrier<PIPE_V>();
+    
     if (src1.GetSize() * sizeof(int32_t) == 32) {
       BinaryRepeatParams repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], src1[0], elem_in_one_repeat, element_extent,
-                   repeat_params);
+      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], src1[0], elem_in_one_repeat, element_extent, repeat_params);
+      
       if (element_reminder != 0) {
         AscendC::Sub(inter_buf[element_extent * elem_in_one_repeat],
-                     src0[outer_for * input_last_dim_stride + element_extent * elem_in_one_repeat], src1[0],
-                     element_reminder, 1, repeat_params);
+                     src0[outer_for * input_last_dim_stride + element_extent * elem_in_one_repeat], 
+                     src1[0], element_reminder, 1, repeat_params);
       }
     } else {
-      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], src1[outer_for * input_last_dim_stride],
-                   last_axis);
+      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], 
+                   src1[outer_for * input_last_dim_stride], last_axis);
     }
-    if (mode == CMPMODE::GE) {
-      AscendC::PipeBarrier<PIPE_V>();
-      AscendC::Adds(inter_buf, inter_buf, (int32_t)1, last_axis);
-    }
+    
     AscendC::PipeBarrier<PIPE_V>();
+    ApplyCompareModeCount<mode>(inter_buf, last_axis);
+    
+    // 额外操作：Maxs和Mins
     AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, last_axis);
     AscendC::PipeBarrier<PIPE_V>();
     AscendC::Mins(inter_buf, inter_buf, (int32_t)1, last_axis);
     AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[outer_for * output_last_dim_stride], half_buf, RoundMode::CAST_NONE, last_axis);
+    
+    PerformTypeConversionCount(dst, int16_buf, half_buf, inter_buf, last_axis, outer_for * output_last_dim_stride);
   }
 }
 
 template <CMPMODE mode>
-inline __aicore__ void CompareExtendInt32GtGe(const AscendC::LocalTensor<uint8_t> &dst,
-                                              const AscendC::LocalTensor<int32_t> &src0,
-                                              const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                              const uint32_t last_axis, const uint32_t input_last_dim_stride,
-                                              const uint32_t output_last_dim_stride,
-                                              AscendC::LocalTensor<uint8_t> &tmp_buf) {
+inline __aicore__ void CompareExtendInt32(const AscendC::LocalTensor<uint8_t> &dst,
+                                          const AscendC::LocalTensor<int32_t> &src0,
+                                          const AscendC::LocalTensor<int32_t> &src1, 
+                                          const uint8_t repeat_times,
+                                          const uint32_t last_axis, 
+                                          const uint32_t input_last_dim_stride,
+                                          const uint32_t output_last_dim_stride,
+                                          AscendC::LocalTensor<uint8_t> &tmp_buf) {
   const uint8_t dst_repeat_stride = output_last_dim_stride / ONE_BLK_SIZE;
   const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
   constexpr uint32_t elem_in_one_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(int32_t);
+  
   LocalTensor<int32_t> inter_buf = tmp_buf.ReinterpretCast<int32_t>();
   LocalTensor<int16_t> int16_buf = inter_buf.ReinterpretCast<int16_t>();
   LocalTensor<half> half_buf = inter_buf.ReinterpretCast<half>();
 
   if (last_axis < elem_in_one_repeat) {
     const uint64_t mask = last_axis;
-    ProcessSmallAxisCase<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, inter_buf,
-                               int16_buf, half_buf);
+    ProcessSmallAxisCase<mode>(dst, src0, src1, repeat_times, mask, src_repeat_stride, 
+                               dst_repeat_stride, inter_buf, int16_buf, half_buf);
   } else {
     uint32_t element_extent = last_axis / elem_in_one_repeat;
     if (element_extent <= repeat_times) {
@@ -854,198 +941,6 @@ inline __aicore__ void CompareExtendInt64GtGeLe(const AscendC::LocalTensor<uint8
     }
   }
 }
-
-inline __aicore__ void ProcessSmallAxisCaseNe(const AscendC::LocalTensor<uint8_t> &dst,
-                                              const AscendC::LocalTensor<int32_t> &src0,
-                                              const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                              const uint32_t mask, const uint8_t src_repeat_stride,
-                                              const uint8_t dst_repeat_stride, AscendC::LocalTensor<int32_t> &inter_buf,
-                                              AscendC::LocalTensor<int16_t> &int16_buf,
-                                              AscendC::LocalTensor<half> &half_buf) {
-  BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-  AscendC::PipeBarrier<PIPE_V>();
-  if (src1.GetSize() * sizeof(int32_t) == 32) {
-    repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-  }
-  AscendC::Sub(inter_buf, src0, src1, mask, repeat_times, repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  UnaryRepeatParams unary_repeat_params = {1, 1, 8, 8};
-  AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  repeat_params = {1, 1, 1, 8, 8, 8};
-  AscendC::Mul(inter_buf, inter_buf, inter_buf, mask, repeat_times, repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, 4, 8};
-  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  unary_repeat_params = {1, 1, 4, 4};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-  AscendC::Cast(dst, half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-}
-
-inline __aicore__ void ProcessBlockNe(const AscendC::LocalTensor<uint8_t> &dst,
-                                      const AscendC::LocalTensor<int32_t> &src0,
-                                      const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                      const uint32_t mask, const uint8_t src_repeat_stride,
-                                      const uint8_t dst_repeat_stride, AscendC::LocalTensor<int32_t> &inter_buf,
-                                      AscendC::LocalTensor<int16_t> &int16_buf, AscendC::LocalTensor<half> &half_buf,
-                                      uint32_t offset_src0, uint32_t offset_src1, uint32_t offset_dst) {
-  AscendC::PipeBarrier<PIPE_V>();
-  BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-  if (src1.GetSize() * sizeof(int32_t) == 32) {
-    repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-    AscendC::Sub(inter_buf, src0[offset_src0], src1[0], mask, repeat_times, repeat_params);
-  } else {
-    AscendC::Sub(inter_buf, src0[offset_src0], src1[offset_src1], mask, repeat_times, repeat_params);
-  }
-  UnaryRepeatParams unary_repeat_params = {1, 1, 8, 8};
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  AscendC::Mins(inter_buf, inter_buf, (int32_t)1, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  repeat_params = {1, 1, 1, 8, 8, 8};
-  AscendC::Mul(inter_buf, inter_buf, inter_buf, mask, repeat_times, repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, 4, 8};
-  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, 4, 4};
-  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-  AscendC::PipeBarrier<PIPE_V>();
-  unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-  AscendC::Cast(dst[offset_dst], half_buf, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
-}
-
-inline __aicore__ void ProcessMediumAxisCaseNe(const AscendC::LocalTensor<uint8_t> &dst,
-                                               const AscendC::LocalTensor<int32_t> &src0,
-                                               const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                               const uint32_t last_axis, const uint32_t input_last_dim_stride,
-                                               const uint32_t output_last_dim_stride,
-                                               AscendC::LocalTensor<int32_t> &inter_buf,
-                                               AscendC::LocalTensor<int16_t> &int16_buf,
-                                               AscendC::LocalTensor<half> &half_buf) {
-  const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
-  constexpr uint32_t elem_in_one_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(int32_t);
-  uint32_t element_extent = last_axis / elem_in_one_repeat;
-  uint32_t element_reminder = last_axis - element_extent * elem_in_one_repeat;
-  const uint8_t dst_repeat_stride = output_last_dim_stride / ONE_BLK_SIZE;
-  for (uint32_t outer_for = 0; outer_for < element_extent; outer_for++) {
-    constexpr uint32_t mask = elem_in_one_repeat;
-    ProcessBlockNe(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, inter_buf, int16_buf,
-                   half_buf, outer_for * elem_in_one_repeat, outer_for * elem_in_one_repeat,
-                   outer_for * elem_in_one_repeat);
-  }
-  if (element_reminder != 0) {
-    uint32_t mask = element_reminder;
-    ProcessBlockNe(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride, inter_buf, int16_buf,
-                   half_buf, element_extent * elem_in_one_repeat, element_extent * elem_in_one_repeat,
-                   element_extent * elem_in_one_repeat);
-  }
-}
-
-inline __aicore__ void ProcessLargeAxisCaseNe(const AscendC::LocalTensor<uint8_t> &dst,
-                                              const AscendC::LocalTensor<int32_t> &src0,
-                                              const AscendC::LocalTensor<int32_t> &src1, const uint8_t repeat_times,
-                                              const uint32_t last_axis, const uint32_t input_last_dim_stride,
-                                              const uint32_t output_last_dim_stride,
-                                              AscendC::LocalTensor<int32_t> &inter_buf,
-                                              AscendC::LocalTensor<int16_t> &int16_buf,
-                                              AscendC::LocalTensor<half> &half_buf) {
-  constexpr uint32_t elem_in_one_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(int32_t);
-  const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
-  uint32_t element_extent = last_axis / elem_in_one_repeat;
-  uint32_t element_reminder = last_axis - element_extent * elem_in_one_repeat;
-  for (auto outer_for = 0; outer_for < repeat_times; outer_for++) {
-    if (src1.GetSize() * sizeof(int32_t) == 32) {
-      AscendC::PipeBarrier<PIPE_V>();
-      BinaryRepeatParams repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], src1[0], elem_in_one_repeat, element_extent,
-                   repeat_params);
-      if (element_reminder != 0) {
-        AscendC::Sub(inter_buf[element_extent * elem_in_one_repeat],
-                     src0[outer_for * input_last_dim_stride + element_extent * elem_in_one_repeat], src1[0],
-                     element_reminder, 1, repeat_params);
-      }
-    } else {
-      AscendC::PipeBarrier<PIPE_V>();
-      AscendC::Sub(inter_buf, src0[outer_for * input_last_dim_stride], src1[outer_for * input_last_dim_stride],
-                   last_axis);
-    }
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mul(inter_buf, inter_buf, inter_buf, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, last_axis);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[outer_for * output_last_dim_stride], half_buf, RoundMode::CAST_NONE, last_axis);
-  }
-}
-
-inline __aicore__ void CompareExtendInt32Ne(const AscendC::LocalTensor<uint8_t> &dst,
-                                            const AscendC::LocalTensor<int32_t> &src0,
-                                            const AscendC::LocalTensor<int32_t> &src1,
-                                            const uint8_t repeat_times, const uint32_t last_axis,
-                                            const uint32_t input_last_dim_stride, const uint32_t output_last_dim_stride,
-                                            AscendC::LocalTensor<uint8_t> &tmp_buf) {
-    const uint8_t dst_repeat_stride = output_last_dim_stride / ONE_BLK_SIZE;
-    const uint8_t src_repeat_stride = input_last_dim_stride * sizeof(int32_t) / ONE_BLK_SIZE;
-    constexpr uint32_t elem_in_one_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(int32_t);
-    LocalTensor<int32_t> inter_buf = tmp_buf.ReinterpretCast<int32_t>();
-    LocalTensor<int16_t> int16_buf = inter_buf.ReinterpretCast<int16_t>();
-    LocalTensor<half> half_buf = inter_buf.ReinterpretCast<half>();
-
-    if (last_axis < elem_in_one_repeat) {
-        const uint64_t mask = last_axis;
-        ProcessSmallAxisCaseNe(dst, src0, src1, repeat_times, mask, src_repeat_stride, dst_repeat_stride,
-                              inter_buf, int16_buf, half_buf);
-    } else {
-        uint32_t element_extent = last_axis / elem_in_one_repeat;
-        if (element_extent <= repeat_times) {
-            ProcessMediumAxisCaseNe(dst, src0, src1, repeat_times, last_axis, input_last_dim_stride, output_last_dim_stride,
-                                  inter_buf, int16_buf, half_buf);
-        } else {
-            ProcessLargeAxisCaseNe(dst, src0, src1, repeat_times, last_axis, input_last_dim_stride, output_last_dim_stride,
-                                  inter_buf, int16_buf, half_buf);
-        }
-    }
-}
-
-template <CMPMODE mode>
-inline __aicore__ void CompareExtendInt32(const AscendC::LocalTensor<uint8_t> &dst,   // output
-                                          const AscendC::LocalTensor<int32_t> &src0,  // input 0 is a tensor
-                                          const AscendC::LocalTensor<int32_t> &src1,  // input 1 is a tensor
-                                          const uint8_t repeat_times, const uint32_t last_axis,
-                                          const uint32_t input_last_dim_stride, const uint32_t output_last_dim_stride,
-                                          AscendC::LocalTensor<uint8_t> &tmp_buf) {
-  if (mode == CMPMODE::GT || mode == CMPMODE::GE) {
-    CompareExtendInt32GtGe<mode>(dst, src0, src1, repeat_times, last_axis, input_last_dim_stride, output_last_dim_stride,
-                                 tmp_buf);
-  } else if (mode == CMPMODE::LE) {
-    const AscendC::LocalTensor<int32_t> &gtSrc0 = src1;
-    const AscendC::LocalTensor<int32_t> &gtSrc1 = src0;
-    CompareExtendInt32GtGe<CMPMODE::GT>(dst, gtSrc0, gtSrc1, repeat_times, last_axis, input_last_dim_stride,
-                                        output_last_dim_stride, tmp_buf);
-  } else if (mode == CMPMODE::LT) {
-    const AscendC::LocalTensor<int32_t> &geSrc0 = src1;
-    const AscendC::LocalTensor<int32_t> &geSrc1 = src0;
-    CompareExtendInt32GtGe<CMPMODE::GE>(dst, geSrc0, geSrc1, repeat_times, last_axis, input_last_dim_stride,
-                                        output_last_dim_stride, tmp_buf);
-  } if (mode == CMPMODE::NE) {
-    CompareExtendInt32Ne(dst, src0, src1, repeat_times, last_axis, input_last_dim_stride, output_last_dim_stride,
-                         tmp_buf);
-  }
-}
-
 template <typename T, CMPMODE mode>
 inline __aicore__ void CompareExtendRepeat(const AscendC::LocalTensor<uint8_t> &dst,  // output
                                            const AscendC::LocalTensor<T> &src0,       // input 0 is a tensor

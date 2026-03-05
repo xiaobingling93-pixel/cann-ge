@@ -27,6 +27,7 @@
 #include "common/prof_api_reg.h"
 #include "framework/common/ge_types.h"
 #include "framework/runtime/model_v2_executor.h"
+#include "framework/runtime/om2_model_executor.h"
 #include "framework/runtime/gert_api.h"
 #include "framework/runtime/subscriber/global_profiler.h"
 #include "utils/math_utils.h"
@@ -108,6 +109,15 @@ aclError aclmdlDestroyDescImpl(aclmdlDesc *modelDesc)
 }
 
 namespace acl {
+static gert::Shape ConstructRtShapeFromShape(const ge::Shape &geShape) {
+    gert::Shape rtShape;
+    rtShape.SetDimNum(geShape.GetDimNum());
+    for (size_t i = 0U; i < geShape.GetDimNum(); ++i) {
+        rtShape.SetDim(i, geShape.GetDim(i));
+    }
+    return rtShape;
+}
+
 static aclError ParseBatchInfo(aclmdlDesc * const modelDesc, const int32_t dynamicType,
     const std::vector<std::vector<int64_t>> &batchInfo)
 {
@@ -176,18 +186,30 @@ static aclError GetDynamicTensorInfoHelp(aclmdlDesc * const modelDesc, const int
 static aclError GetDynamicTensorInfo(aclmdlDesc * const modelDesc)
 {
     ACL_LOG_DEBUG("call ge interface executor.GetDynamicBatchInfo");
-    std::vector<std::vector<int64_t>> batchInfo;
-    ge::GeExecutor executor;
     const uint32_t modelId = modelDesc->modelId;
+    const auto om2Executor = acl::AclResourceManager::GetInstance().GetOm2Executor(modelId);
+    std::vector<std::vector<int64_t>> batchInfo;
     int32_t dynamicType = static_cast<int32_t>(ge::FIXED);
-    ge::Status ret = executor.GetDynamicBatchInfo(modelId, batchInfo, dynamicType);
-    if (ret != ge::SUCCESS) {
-        ACL_LOG_WARN("can not get dynamic model info, ge result[%u], model id[%u]", ret, modelId);
-    }
     std::vector<std::string> userDesignateShapeOrder;
-    ret = executor.GetUserDesignateShapeOrder(modelId, userDesignateShapeOrder);
-    if (ret != ge::SUCCESS) {
+    if (om2Executor != nullptr) {
+      ge::Status ret = om2Executor->GetDynamicBatchInfo(batchInfo, dynamicType);
+      if (ret != ge::SUCCESS) {
+        ACL_LOG_WARN("can not get dynamic model info, ge result[%u], model id[%u]", ret, modelId);
+      }
+      ret = om2Executor->GetUserDesignateShapeOrder(userDesignateShapeOrder);
+      if (ret != ge::SUCCESS) {
         ACL_LOG_WARN("can not get user designate shape order, ge result[%u], model id[%u]", ret, modelId);
+      }
+    } else {
+      ge::GeExecutor executor;
+      ge::Status ret = executor.GetDynamicBatchInfo(modelId, batchInfo, dynamicType);
+      if (ret != ge::SUCCESS) {
+        ACL_LOG_WARN("can not get dynamic model info, ge result[%u], model id[%u]", ret, modelId);
+      }
+      ret = executor.GetUserDesignateShapeOrder(modelId, userDesignateShapeOrder);
+      if (ret != ge::SUCCESS) {
+        ACL_LOG_WARN("can not get user designate shape order, ge result[%u], model id[%u]", ret, modelId);
+      }
     }
     modelDesc->dataNameOrder = userDesignateShapeOrder;
     return GetDynamicTensorInfoHelp(modelDesc, dynamicType, batchInfo);
@@ -252,10 +274,16 @@ static aclError GetModelOutputShapeInfoHelp(aclmdlDesc * const modelDesc,
 static aclError GetModelOutputShapeInfo(aclmdlDesc *const modelDesc)
 {
     ACL_LOG_DEBUG("call ge interface executor.GetModelAttr");
-    ge::GeExecutor executor;
-    std::vector<std::string> geDynamicOutputShape;
     const uint32_t modelId = modelDesc->modelId;
-    const ge::Status ret = executor.GetModelAttr(modelId, geDynamicOutputShape);
+    std::vector<std::string> geDynamicOutputShape;
+    ge::Status ret = ge::SUCCESS;
+    const auto om2Executor = acl::AclResourceManager::GetInstance().GetOm2Executor(modelId);
+    if (om2Executor != nullptr) {
+        ret = om2Executor->GetModelAttrs(geDynamicOutputShape);
+    } else {
+        ge::GeExecutor executor;
+        ret = executor.GetModelAttr(modelId, geDynamicOutputShape);
+    }
     if (ret != ge::SUCCESS) {
         ACL_LOG_CALL_ERROR("[Get][ModelAttr]get model attribute failed, ge result[%u], model id[%u]", ret, modelId);
         return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
@@ -388,6 +416,49 @@ static aclError RuntimeV2ModelLoadFromFileWithMem(const char_t *const modelPath,
                                              rtSessionExternal));
     ACL_LOG_INFO("successfully execute RuntimeV2ModelLoadFromFileWithMem, modelSize[%lu], modelId[%u], weightSize[%zu]",
                  modelData.model_len, *modelId, weightSize);
+    return ACL_SUCCESS;
+}
+
+static aclError Om2ModelLoadFromFileWithMem(const char_t *const modelPath, uint32_t *const modelId,
+                                            const std::shared_ptr<gert::RtSession> &rtSessionExternal = nullptr) {
+    auto rtSession = (rtSessionExternal != nullptr) ? rtSessionExternal :
+                                                    acl::AclResourceManager::GetInstance().CreateRtSession();
+    ACL_REQUIRES_NOT_NULL(rtSession);
+    ge::ModelData modelData;
+    auto ret = gert::LoadOm2DataFromFile(modelPath, modelData);
+    std::shared_ptr<void> dataGuarder;
+    dataGuarder.reset(modelData.model_data, [](const void *const p) {
+        if (p != nullptr) {
+            delete[] static_cast<const uint8_t *>(p);
+        }
+    });
+    if (ret != ge::SUCCESS) {
+      ACL_LOG_CALL_ERROR("[Model][FromData]call gert::LoadOm2DataFromFile failed, ge result[%u]", ret);
+      return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+    }
+
+    std::unique_ptr<gert::Om2ModelExecutor> executor = gert::LoadOm2ExecutorFromData(modelData, ret);
+    if (ret != ge::SUCCESS) {
+      ACL_LOG_CALL_ERROR("[Model][FromData]call gert::LoadOm2ExecutorFromData failed, ge result[%u]", ret);
+      return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+    }
+    ACL_REQUIRES_NOT_NULL(executor);
+    acl::AclResourceManager::GetInstance().AddOm2Executor(*modelId , std::move(executor), rtSession);
+    return ACL_SUCCESS;
+}
+
+static aclError Om2ModelLoadFromMemWithMem(const void *const model, const size_t modelSize, uint32_t *const modelId) {
+    ge::ModelData modelData = {};
+    modelData.model_data = const_cast<void *>(model);
+    modelData.model_len = static_cast<uint64_t>(modelSize);
+    ge::Status errorStatus = ge::SUCCESS;
+    std::unique_ptr<gert::Om2ModelExecutor> executor = gert::LoadOm2ExecutorFromData(modelData, errorStatus);
+    if (errorStatus != ge::SUCCESS) {
+        ACL_LOG_CALL_ERROR("[Model][FromData]call gert::LoadOm2ExecutorFromData failed, ge result[%u]", errorStatus);
+        return ACL_GET_ERRCODE_GE(static_cast<int32_t>(errorStatus));
+    }
+    ACL_REQUIRES_NOT_NULL(executor);
+    acl::AclResourceManager::GetInstance().AddOm2Executor(*modelId, std::move(executor), nullptr);
     return ACL_SUCCESS;
 }
 
@@ -817,6 +888,137 @@ static aclError RuntimeV2ModelExecute(const uint32_t modelId, const aclmdlDatase
     }
 
     ACL_LOG_INFO("successfully execute ModelExecute, modelId[%u]", modelId);
+    return ACL_SUCCESS;
+}
+
+static aclError Om2ModelExecute(const uint32_t modelId, const aclmdlDataset *const input, aclmdlDataset *const output,
+                                const bool isAsync, const aclrtStream stream) {
+    ACL_LOG_INFO("start to execute ModelExecute, modelId[%u]", modelId);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(input);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(output);
+
+    auto const executor = acl::AclResourceManager::GetInstance().GetOm2Executor(modelId);
+    if (executor == nullptr) {
+        ACL_LOG_ERROR("input modelId[%u] is invalid, please make sure model has been loaded", modelId);
+        return static_cast<aclError>(ACL_ERROR_GE_EXEC_MODEL_ID_INVALID);
+    }
+
+    // Get model description info
+    std::vector<ge::TensorDesc> inputDesc;
+    std::vector<ge::TensorDesc> outputDesc;
+    ge::Status getDescRet = executor->GetModelDescInfo(inputDesc, outputDesc);
+    if (getDescRet != ge::SUCCESS) {
+        ACL_LOG_ERROR("[Get][ModelDesc]Get model desc info failed, ge result[%u], modelId[%u]", getDescRet, modelId);
+        return ACL_GET_ERRCODE_GE(static_cast<int32_t>(getDescRet));
+    }
+
+    const size_t inputNum = inputDesc.size();
+    const size_t outputNum = outputDesc.size();
+    ACL_LOG_INFO("Om2ModelExecute get model input num %zu, output num %zu, input blobs num %zu, output blobs num %zu",
+                 inputNum, outputNum, input->blobs.size(), output->blobs.size());
+    if (input->blobs.size() != inputNum) {
+        ACL_LOG_ERROR("Input blobs size mismatch. actual_size[%zu], expected_size[%zu]", input->blobs.size(), inputNum);
+        return ACL_ERROR_INVALID_PARAM;
+    }
+
+    if (output->blobs.size() != outputNum) {
+        ACL_LOG_ERROR("Output blobs size mismatch. actual_size[%zu], expected_size[%zu]", output->blobs.size(),
+                      outputNum);
+        return ACL_ERROR_INVALID_PARAM;
+    }
+
+    // Prepare input tensors
+    std::vector<gert::Tensor> inputTensor(inputNum);
+    std::vector<gert::Tensor *> inputVec(inputNum);
+    for (size_t i = 0UL; i < inputNum; ++i) {
+        const auto dataBuffer = input->blobs[i].dataBuf;
+        if (dataBuffer == nullptr) {
+            ACL_LOG_ERROR("[Check][dataBuffer]input dataset blobs is null, modelId[%d], index[%zu]", modelId, i);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        inputTensor[i].MutableTensorData().SetPlacement(gert::kOnDeviceHbm);
+        (void)inputTensor[i].MutableTensorData().SetAddr(dataBuffer->data, nullptr);
+        inputTensor[i].MutableTensorData().SetSize(dataBuffer->length);
+        inputTensor[i].MutableOriginShape() = ConstructRtShapeFromShape(inputDesc[i].GetOriginShape());
+        inputTensor[i].MutableStorageShape() = ConstructRtShapeFromShape(inputDesc[i].GetShape());
+        inputTensor[i].SetStorageFormat(inputDesc[i].GetFormat());
+        inputTensor[i].SetOriginFormat(inputDesc[i].GetOriginFormat());
+        inputTensor[i].SetDataType(inputDesc[i].GetDataType());
+        inputVec[i] = &(inputTensor[i]);
+    }
+
+    // Prepare output tensors
+    std::vector<gert::Tensor> outputTensor(outputNum);
+    std::vector<gert::Tensor *> outputVec(outputNum);
+    for (size_t i = 0UL; i < outputNum; ++i) {
+        const auto dataBuffer = output->blobs[i].dataBuf;
+        if (dataBuffer == nullptr) {
+            ACL_LOG_ERROR("[Check][Databuffer]output dataset blobs is null, modelId[%d], index[%zu]", modelId, i);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        outputTensor[i].MutableTensorData().SetPlacement(gert::kOnDeviceHbm);
+        (void)outputTensor[i].MutableTensorData().SetAddr(dataBuffer->data, nullptr);
+        outputTensor[i].MutableTensorData().SetSize(dataBuffer->length);
+        outputTensor[i].MutableOriginShape() = ConstructRtShapeFromShape(outputDesc[i].GetOriginShape());
+        outputTensor[i].MutableStorageShape() = ConstructRtShapeFromShape(outputDesc[i].GetShape());
+        outputTensor[i].SetStorageFormat(outputDesc[i].GetFormat());
+        outputTensor[i].SetOriginFormat(outputDesc[i].GetOriginFormat());
+        outputTensor[i].SetDataType(outputDesc[i].GetDataType());
+        outputVec[i] = &(outputTensor[i]);
+    }
+
+    // Call executor run with tensor pointers
+    ge::Status ret = ge::GRAPH_SUCCESS;
+    if (isAsync) {
+        ret = executor->RunAsync(stream, inputVec, outputVec);
+    } else {
+        ret = executor->Run(inputVec, outputVec);
+    }
+    if (ret != ge::SUCCESS) {
+        ACL_LOG_CALL_ERROR("[Exec][Model]Execute model failed, ge result[%u], modelId[%u]", ret, modelId);
+        return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+    }
+    for (size_t i = 0UL; i < output->blobs.size(); ++i) {
+        if (output->blobs[i].tensorDesc != nullptr) {
+            aclDestroyTensorDescImpl(output->blobs[i].tensorDesc);
+        }
+        output->blobs[i].tensorDesc = aclCreateTensorDescImpl(ACL_DT_UNDEFINED, 0, nullptr, ACL_FORMAT_UNDEFINED);
+    }
+
+    for (size_t i = 0UL; i < outputTensor.size(); ++i) {
+        if (output->blobs[i].tensorDesc != nullptr) {
+            output->blobs[i].tensorDesc->dims.clear();
+            const ge::Format format = outputTensor[i].GetFormat().GetStorageFormat();
+            const ge::DataType dataType = outputTensor[i].GetDataType();
+            for (size_t idx = 0U; idx < outputTensor[i].MutableStorageShape().GetDimNum(); ++idx) {
+                output->blobs[i].tensorDesc->dims.push_back(outputTensor[i].MutableStorageShape().GetDim(idx));
+            }
+            if (format != ge::FORMAT_RESERVED) {
+                output->blobs[i].tensorDesc->format = static_cast<aclFormat>(format);
+            }
+            if (dataType != ge::DT_UNDEFINED) {
+                output->blobs[i].tensorDesc->dataType = static_cast<aclDataType>(dataType);
+            }
+        }
+
+        auto &dataBuffer = output->blobs[i].dataBuf;
+        if ((dataBuffer->data == nullptr) && (!isAsync)) {
+            ACL_REQUIRES_NOT_NULL(outputTensor[i].MutableTensorData().GetAddr());
+            const auto outputSize = outputTensor[i].MutableTensorData().GetSize();
+            ACL_REQUIRES_CALL_RTS_OK(
+                aclrtMalloc(reinterpret_cast<void **>(&dataBuffer->data), outputSize, ACL_MEM_TYPE_HIGH_BAND_WIDTH),
+                aclrtMalloc);
+            ACL_REQUIRES_CALL_RTS_OK(
+                aclrtMemcpy(dataBuffer->data, outputSize, outputTensor[i].MutableTensorData().GetAddr(), outputSize,
+                            ACL_MEMCPY_DEVICE_TO_DEVICE),
+                aclrtMemcpy);
+            dataBuffer->length = outputSize;
+            ACL_LOG_DEBUG("ModelExecute, assign acl-malloced output addr to user-defined buffer, addr:[%p], len:[%lu]",
+                          dataBuffer->data, dataBuffer->length);
+        }
+    }
+
+    ACL_LOG_INFO("successfully execute Om2ModelExecute, modelId[%u]", modelId);
     return ACL_SUCCESS;
 }
 
@@ -1492,26 +1694,42 @@ aclError aclmdlGetDescImpl(aclmdlDesc *modelDesc, uint32_t modelId)
 
     std::vector<ge::TensorDesc> inputDesc;
     std::vector<ge::TensorDesc> outputDesc;
-    ge::GeExecutor executor;
-    ge::Status ret = executor.GetModelDescInfo(modelId, inputDesc, outputDesc);
-    if (ret != ge::SUCCESS) {
-        ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get model description failed, ge result[%u], model id[%u]",
-            ret, modelId);
-        return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
-    }
-
     std::vector<ge::TensorDesc> inputDescV2;
     std::vector<ge::TensorDesc> outputDescV2;
-    ret = executor.GetModelDescInfo(modelId, inputDescV2, outputDescV2, true);
-    if (ret != ge::SUCCESS) {
-        ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get model description v2 failed, ge result[%u], model id[%u]",
-            ret, modelId);
-        return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+    auto om2Executor = acl::AclResourceManager::GetInstance().GetOm2Executor(modelId);
+    if (om2Executor != nullptr) {
+        ge::Status ret = om2Executor->GetModelDescInfo(inputDesc, outputDesc);
+        if (ret != ge::SUCCESS) {
+            ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get om2 model description failed, ge result[%u], model id[%u]", ret,
+                               modelId);
+            return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+        }
+        ret = om2Executor->GetModelDescInfo(inputDescV2, outputDescV2, true);
+        if (ret != ge::SUCCESS) {
+            ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get om2 model description v2 failed, ge result[%u], model id[%u]",
+                               ret, modelId);
+            return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+        }
+    } else {
+        ge::GeExecutor executor;
+        ge::Status ret = executor.GetModelDescInfo(modelId, inputDesc, outputDesc);
+        if (ret != ge::SUCCESS) {
+            ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get model description failed, ge result[%u], model id[%u]", ret,
+                               modelId);
+            return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+        }
+
+        ret = executor.GetModelDescInfo(modelId, inputDescV2, outputDescV2, true);
+        if (ret != ge::SUCCESS) {
+            ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]get model description v2 failed, ge result[%u], model id[%u]", ret,
+                               modelId);
+            return ACL_GET_ERRCODE_GE(static_cast<int32_t>(ret));
+        }
     }
 
     if ((inputDescV2.size() < inputDesc.size()) || (outputDescV2.size() < outputDesc.size())) {
         ACL_LOG_CALL_ERROR("[Get][ModelDescInfo]description v2 size less than description v1 size, model id[%u]",
-            modelId);
+                           modelId);
         return ACL_ERROR_FAILURE;
     }
 
@@ -1830,7 +2048,14 @@ static aclError UnloadRt2Model(const uint32_t modelId, const bool isSessionShare
 
 static aclError UnloadModelInner(const uint32_t modelId, const bool isSessionShared = false)
 {
-    if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
+    const auto om2_executor = acl::AclResourceManager::GetInstance().GetOm2Executor(modelId);
+    if (om2_executor != nullptr) {
+        const auto ret = acl::AclResourceManager::GetInstance().DeleteOm2Executor(modelId);
+        if (ret != ACL_SUCCESS) {
+          ACL_LOG_ERROR("failed to unload model, modelId is %u, errorCode is %u", modelId, ret);
+          return ret;
+        }
+    } else if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
         (acl::AclResourceManager::GetInstance().GetExecutor(modelId) != nullptr)) {
         const auto ret = UnloadRt2Model(modelId, isSessionShared);
         if (ret != ACL_SUCCESS) {
@@ -2003,9 +2228,19 @@ aclError aclmdlBundleLoadFromMemImpl(const void *model,  size_t modelSize, uint3
 aclError aclmdlLoadFromFileImpl(const char *modelPath, uint32_t *modelId)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclmdlLoadFromFile);
-    ACL_LOG_INFO("start to execute aclmdlLoadFromFile");
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(modelPath);
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(modelId);
+    bool isSupportOm2 = false;
+    ACL_REQUIRES_OK(gert::IsOm2Model(modelPath, isSupportOm2));
+    if (isSupportOm2) {
+        const aclError ret = acl::Om2ModelLoadFromFileWithMem(modelPath, modelId);
+        if (ret != ACL_SUCCESS) {
+            ACL_LOG_ERROR("Load OM2 model from file failed, path [%s], errorCode [%u]", modelPath, ret);
+        }
+        ACL_LOG_INFO("Successfully execute aclmdlLoadFromFile, modelId[%u], modelPath[%s]", *modelId, modelPath);
+        return ret;
+    }
+
     aclError ret = ACL_SUCCESS;
     bool isSupportRT2 = false;
     ACL_REQUIRES_OK(acl::IsSupportRuntimeV2WithModelPath(modelPath, isSupportRT2));
@@ -2054,6 +2289,17 @@ aclError aclmdlLoadFromMemImpl(const void *model, size_t modelSize, uint32_t *mo
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(model);
     ACL_REQUIRES_POSITIVE_WITH_INPUT_REPORT(modelSize);
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(modelId);
+    bool isSupportOm2 = false;
+    ACL_REQUIRES_OK(gert::IsOm2Model(model, modelSize, isSupportOm2));
+    if (isSupportOm2) {
+        auto ret = acl::Om2ModelLoadFromMemWithMem(model, modelSize, modelId);
+        if (ret != ACL_SUCCESS) {
+            ACL_LOG_ERROR("Load OM2 model from memory failed, errorCode is %u", ret);
+        }
+        ACL_LOG_INFO("Successfully execute aclmdlLoadFromMem, modelId[%u]", *modelId);
+        return ret;
+    }
+
     bool isSupportRT2 = false;
     ACL_REQUIRES_OK(acl::IsSupportRuntimeV2WithModelData(model, modelSize, isSupportRT2));
     aclError ret = ACL_SUCCESS;
@@ -2383,7 +2629,9 @@ aclError aclmdlExecuteImpl(uint32_t modelId, const aclmdlDataset *input, aclmdlD
     ACL_PROFILING_REG(acl::AclProfType::AclmdlExecute);
     ACL_LOG_INFO("start to execute aclmdlExecute, modelId[%u]", modelId);
     aclError ret = ACL_SUCCESS;
-    if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
+    if (acl::AclResourceManager::GetInstance().GetOm2Executor(modelId) != nullptr) {
+        ret = acl::Om2ModelExecute(modelId, input, output, false, nullptr);
+    } else if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
         (acl::AclResourceManager::GetInstance().GetExecutor(modelId) != nullptr)) {
         ret = acl::RuntimeV2ModelExecute(modelId, input, output, false, nullptr);
     } else {
@@ -2441,7 +2689,9 @@ aclError aclmdlExecuteAsyncImpl(uint32_t modelId, const aclmdlDataset *input,
     ACL_LOG_INFO("start to execute aclmdlExecuteAsync, modelId[%u]", modelId);
 
     aclError ret = ACL_SUCCESS;
-    if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
+    if (acl::AclResourceManager::GetInstance().GetOm2Executor(modelId) != nullptr) {
+        ret = acl::Om2ModelExecute(modelId, input, output, true, stream);
+    } else if ((acl::AclResourceManager::GetInstance().IsRuntimeV2Enable(true)) &&
         (acl::AclResourceManager::GetInstance().GetExecutor(modelId) != nullptr)) {
         ret = acl::RuntimeV2ModelExecute(modelId, input, output, true, stream);
     } else {

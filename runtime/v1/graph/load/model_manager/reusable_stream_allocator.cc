@@ -14,6 +14,7 @@
 #include "runtime/stream.h"
 #include "common/math/math_util.h"
 #include "graph_metadef/common/ge_common/util.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -37,7 +38,7 @@ RtStreamStatusPtr ReusableStreamAllocator::CreateNewStream(rtStream_t &stream, c
                                                            const uint32_t task_num) const {
   GE_ASSERT_RT_OK(rtStreamCreateWithFlags(&stream, priority, stream_flag));
   int32_t rt_stream_id = kInvalidStream;
-  GE_ASSERT_RT_OK(rtGetStreamId(stream, &rt_stream_id));
+  GE_ASSERT_RT_OK(aclrtStreamGetId(stream, &rt_stream_id));
   GELOGI("Create new stream: %p, rt stream id: %d, rt model id: %u, priority: %d, stream flag: %u, task num: %u.",
          stream, rt_stream_id, rt_model_id, priority, stream_flag, task_num);
   const auto stream_status = RtStreamStatus::Create(stream, rt_stream_id, rt_model_id, task_num);

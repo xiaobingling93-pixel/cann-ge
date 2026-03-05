@@ -21,16 +21,16 @@ target_include_directories(hybrid_model_async_exec_test
 target_compile_definitions(hybrid_model_async_exec_test PRIVATE
         $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         )
-target_compile_options(hybrid_model_async_exec_test PUBLIC ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(hybrid_model_async_exec_test PUBLIC -g
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
+        -fno-access-control
         )
 target_link_libraries(hybrid_model_async_exec_test PUBLIC 
         intf_pub
         flow_graph
-        ${AIR_COMMON_LINK_OPTION}
+        -Wl,-z,muldefs
         -Wl,--whole-archive
-        graphengine
         gert
         gert_op_impl_static
         ascendcl_stub

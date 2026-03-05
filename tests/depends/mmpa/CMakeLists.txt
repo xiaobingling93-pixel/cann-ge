@@ -27,6 +27,7 @@ target_link_libraries(mmpa_stub
         msprof_headers
         slog_headers
         c_sec
+        unified_dlog
         -ldl
     PUBLIC
         mmpa_headers

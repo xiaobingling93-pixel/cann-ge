@@ -46,10 +46,12 @@ using json = nlohmann::json;
 using amctStatus = int32_t;
 static bool is_dynamic_input = false;
 const char *const kAmctSo = "libamctacl.so";
-const char *const kModeSupport = "The value must be selected from the following: 0(model to framework model), "
-                                 "1(framework model to json), 3(only pre-check), "
-                                 "5(pbtxt to json), 6(display model info),"
-                                 "30(model to execute-om for nano, an .om file for nano chips).";
+const char *const kModeSupport =
+    "The value must be selected from the following: 0(model to framework model), "
+    "1(framework model to json), 3(only pre-check), "
+    "5(pbtxt to json), 6(display model info), "
+    "7(convert a model to the OM2 format), "
+    "30(model to execute-om for nano, an .om file for nano chips).";
 const char *const kModelToJsonSupport =
     "The framework must be selected from {0(Caffe), 3(TensorFlow), 5(Onnx)} when model is set to 1(JSON).";
 const char *const kCaffeFormatSupport = "The value must be NCHW or ND in Caffe model.";
@@ -62,7 +64,13 @@ const long kMinAvailableMem = 2097152;  // 2 * 1024 * 1024
 
 const std::string kFilePreffix(".om");
 const std::string kPreloadFilePreffix(".exeom");
+const std::string kOm2FilePreffix(".om2");
 const std::string dbgSuffix(".dbg");
+
+const std::map<ge::RunMode, std::string> kFilePrefixMap = {
+    {ge::GEN_EXE_OM_FOR_NANO, kPreloadFilePreffix},
+    {ge::GEN_OM2_MODEL, kOm2FilePreffix},
+};
 
 const int64_t kEnableFlag = 1;
 const int32_t kBaseOfIntergerValue = 10;
@@ -394,6 +402,31 @@ DEFINE_string(is_weight_clip, "1",
 
 DEFINE_string(oo_level, "O3", "Optional; The optimization level of the graph optimizer");
 
+const std::unordered_set<std::string> kOm2UnsuppotedFlag = {
+    "input_hint_shape",
+    "dynamic_batch_size",
+    "dynamic_image_size",
+    "dynamic_dims",
+    "om",
+    "singleop",
+    "check_report",
+    "json",
+    "host_env_os",
+    "host_env_cpu",
+    "virtual_type",
+    "insert_op_conf",
+    "external_weight",
+    "op_name_map",
+    "enable_small_channel",
+    "quant_dumpable",
+    "ac_parallel_enable",
+    "tiling_schedule_optimize",
+    "dump_mode",
+    "display_model_info",
+    "atomic_clean_policy",
+    "status_check",
+};
+
 namespace ge {
 class GFlagUtils {
  public:
@@ -628,9 +661,13 @@ class GFlagUtils {
   }
 
   static bool CheckOutputPathWithSuffix(const std::string &path, const std::string &atc_param) {
-    const std::string file_path = (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO))
-                                  ? (path + kPreloadFilePreffix)
-                                  : (path + kFilePreffix);
+    std::string file_path(path);
+    const auto it = kFilePrefixMap.find(static_cast<RunMode>(FLAGS_mode));
+    if (it == kFilePrefixMap.end()) {
+      file_path += kFilePreffix;
+    } else {
+      file_path += it->second;
+    }
     return CheckOutputPathValid(file_path, atc_param);
   }
 
@@ -688,10 +725,25 @@ class GFlagUtils {
     return true;
   }
 
+  static Status CheckOm2UserOptionsValid(std::unordered_map<std::string, std::string> &user_options) {
+    for (const auto &opt : user_options) {
+      GELOGI("start to check option[%s], value[%s]", opt.first.c_str(), opt.second.c_str());
+      if (kOm2UnsuppotedFlag.find(opt.first) != kOm2UnsuppotedFlag.end()) {
+        REPORT_PREDEFINED_ERR_MSG(
+            "E10001", std::vector<const char *>({"parameter", "value", "reason"}),
+            std::vector<const char *>({opt.first.c_str(), opt.second.c_str(),
+                                       "this option is not supported in om2 mode."}));
+        GELOGE(ge::PARAM_INVALID, "[Check][Option]option [%s] is not supported in om2 mode.", opt.first.c_str());
+        return ge::PARAM_INVALID;
+      }
+    }
+    return ge::SUCCESS;
+  }
+  
   static Status CheckFlags() {
     const bool is_mode_om = ((FLAGS_mode == static_cast<int32_t>(RunMode::GEN_OM_MODEL)) ||
-                             (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO))
-                            );
+                             (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO)) ||
+                             (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_OM2_MODEL)));
 
     const bool is_dbg = (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO));
 
@@ -842,6 +894,9 @@ class GFlagUtils {
     GE_ASSERT_SUCCESS(CheckQuantDumpableParamValid(FLAGS_quant_dumpable), "[Check][QuantDumpable] failed!");
     GE_CHK_BOOL_EXEC(CheckAttrCompressionParamValid(FLAGS_enable_attr_compression) == SUCCESS,
                      return FAILED, "[Check][AttrCompression]failed!");
+    if (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_OM2_MODEL)) {
+      GE_ASSERT_SUCCESS(CheckOm2UserOptionsValid(ge::flgs::GetUserOptions()), "[Check][OM2][UserOptions] failed!");
+    }
     return SUCCESS;
   }
 
@@ -1357,7 +1412,8 @@ namespace {
 static Status GenerateOfflineModel(GeGenerator &ge_generator, Graph graph,
                                    std::string output, std::vector<GeTensor> inputs) {
   std::map<int32_t, OfflineModelFormat> flags_mode_map = {
-    {GEN_EXE_OM_FOR_NANO, OfflineModelFormat::OM_FORMAT_NANO}
+    {GEN_EXE_OM_FOR_NANO, OfflineModelFormat::OM_FORMAT_NANO},
+    {GEN_OM2_MODEL, OfflineModelFormat::OM_FORMAT_OM2},
   };
 
   if (flags_mode_map.find(FLAGS_mode) != flags_mode_map.end()) {
@@ -1782,8 +1838,13 @@ Status GenerateOmModel() {
 
   // When the ATC module is transferred to a model, the suffix ".om" is automatically added to the model name
   // For Nano the suffix is ".exeom"
-  FLAGS_output +=
-      (FLAGS_mode == static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO)) ? kPreloadFilePreffix : kFilePreffix;
+  const auto it = kFilePrefixMap.find(static_cast<RunMode>(FLAGS_mode));
+  if (it == kFilePrefixMap.end()) {
+    FLAGS_output += kFilePreffix;
+  } else {
+    FLAGS_output += it->second;
+  }
+
   ret = GenerateModel(options, FLAGS_output);
   if (ret != SUCCESS) {
     return FAILED;
@@ -1949,6 +2010,7 @@ Status CheckRet(Status ret) {
     {RunMode::GEN_EXE_OM, "ATC generate execute-om "},
     {RunMode::MODEL_TO_EXE_OM, "ATC convert model to execute-om "},
     {RunMode::GEN_EXE_OM_FOR_NANO, "ATC generate execute-om for nano "},
+    {RunMode::GEN_OM2_MODEL, "ATC generate OM2 model "},
   };
   string info = "";
   if (flags_mode_info_map.find(FLAGS_mode) != flags_mode_info_map.end()) {
@@ -2029,7 +2091,8 @@ int32_t main_impl(int32_t argc, char* argv[]) {
     if (FLAGS_mode == (static_cast<int32_t>(RunMode::GEN_OM_MODEL)) ||
         FLAGS_mode == (static_cast<int32_t>(RunMode::GEN_EXE_OM)) ||
         FLAGS_mode == (static_cast<int32_t>(RunMode::ONLY_PRE_CHECK)) ||
-        FLAGS_mode == (static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO))) {
+        FLAGS_mode == (static_cast<int32_t>(RunMode::GEN_EXE_OM_FOR_NANO)) ||
+        FLAGS_mode == (static_cast<int32_t>(RunMode::GEN_OM2_MODEL))) {
       GE_IF_BOOL_EXEC(GenerateOmModel() != SUCCESS, ret = FAILED;
           break);
     } else if (FLAGS_mode == static_cast<int32_t>(RunMode::MODEL_TO_JSON)) {  // Mode 1, transfer model to JSON

@@ -127,3 +127,14 @@ graphStatus GraphUtilsEx::CopyGraph(const Graph &src_graph, Graph &dst_graph) {
 }
 } // namespace ge
 
+ge::Graph GeApiWrapper_CreateGraphFromComputeGraph(const ge::ComputeGraphPtr &compute_graph) {
+  return ge::GraphUtilsEx::CreateGraphFromComputeGraph(compute_graph);
+}
+
+size_t GeApiWrapper_GetComputeGraphInputSize(const ge::Graph &graph) {
+  return ge::GraphUtilsEx::GetComputeGraph(graph)->GetInputSize();
+}
+
+size_t GeApiWrapper_GetComputeGraphOutputSize(const ge::Graph &graph) {
+  return ge::GraphUtilsEx::GetComputeGraph(graph)->GetOutputSize();
+}

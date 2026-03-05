@@ -48,6 +48,8 @@ inline constexpr char kEnableHf32[] = "enable_hf32";
 inline constexpr char kOutputOpType[] = "Output";
 inline constexpr char kDataOpType[] = "Data";
 inline constexpr char kAscGraphAttr[] = "ascgraph";
+inline constexpr char kNegativeSlopeAttr[] = "negative_slope";
+inline constexpr char kAlphaAttr[] = "alpha";
 struct DTypeEntry {
   const char *py_name{nullptr};
   int64_t dtype_value{-1};
@@ -1045,10 +1047,13 @@ DEFINE_IR_ATTR_ACCESSORS(BatchMatMul, AscBatchMatMulIrAttrDef, kOffsetX, int64_t
                          PyLong_AsLong, SetOffset_x, GetOffset_x)
 DEFINE_IR_ATTR_ACCESSORS(BatchMatMul, AscBatchMatMulIrAttrDef, kEnableHf32, int64_t, PyLong_Check, PyLong_FromLong,
                          PyLong_AsLong, SetEnable_hf32, GetEnable_hf32)
-
 DEFINE_IR_ATTR_ACCESSORS(
     Scalar, AscScalarIrAttrDef, kValueAttr, std::string, PyUnicode_Check,
     [](const std::string &str) { return PyUnicode_FromString(str.c_str()); }, PyUnicode_AsUTF8, SetValue, GetValue)
+DEFINE_IR_ATTR_ACCESSORS(LeakyRelu, AscLeakyReluIrAttrDef, kNegativeSlopeAttr, float, PyFloat_Check, PyFloat_FromDouble, PyFloat_AsDouble,
+                         SetNegative_slope, GetNegative_slope)
+DEFINE_IR_ATTR_ACCESSORS(Axpy, AscAxpyIrAttrDef, kAlphaAttr, float, PyFloat_Check, PyFloat_FromDouble, PyFloat_AsDouble,
+                         SetAlpha, GetAlpha)
 
 template <>
 PyObject *OpsOperatorIrAttr<ge::ascir_op::Load, kOffsetAttr>::_getter(PyObject *self, void *closure) {
@@ -1130,6 +1135,8 @@ const std::map<std::string, typename IrAttr<OpType>::handler> IrAttr<OpType>::at
      AutoRegAttrHandle<ge::ascir_op::MatMul, kHasRelu, kOffsetX, kTransposeX1, kTransposeX2, kEnableHf32>::RegHandle},
     {"BatchMatMul",
      AutoRegAttrHandle<ge::ascir_op::BatchMatMul, kHasRelu, kOffsetX, kAdjX1, kAdjX2, kEnableHf32>::RegHandle},
+    {"LeakyRelu", AutoRegAttrHandle<ge::ascir_op::LeakyRelu, kNegativeSlopeAttr>::RegHandle},
+    {"Axpy", AutoRegAttrHandle<ge::ascir_op::Axpy, kAlphaAttr>::RegHandle},
 };
 PyTypeObject &OpsOperatorTypeObject::GetPyType() {
   return pytype;

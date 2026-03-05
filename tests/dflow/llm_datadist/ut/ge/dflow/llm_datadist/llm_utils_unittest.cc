@@ -22,6 +22,7 @@
 #include "common/llm_ge_api.h"
 #include "common/cache_manager.h"
 #include "common/llm_checker.h"
+#include "depends/mmpa/src/mmpa_stub.h"
 
 using namespace std;
 using namespace ::testing;
@@ -79,6 +80,12 @@ public:
 };
 
 TEST_F(LLMUtilsTest, TestFileSaver) {
+  class MockMmpa : public MmpaStubApiGe {
+   public:
+    int32_t RealPath(const CHAR *path, CHAR *realPath, INT32 realPathLen) override {
+      return EN_ERROR;
+    }
+  };
   int32_t fd = -1;
   const std::string err_file_path(MMPA_MAX_PATH + 1, 'x');
   const std::string buf(MMPA_MAX_PATH + 1, 'c');
@@ -87,6 +94,7 @@ TEST_F(LLMUtilsTest, TestFileSaver) {
   ret = TestLLMFileSaver::CheckPathValid(err_file_path);
   EXPECT_NE(ret, ge::SUCCESS);
 
+  MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
   ret = llm::CreateDirectory(err_file_path);
   EXPECT_NE(ret, 0);
 
@@ -95,6 +103,7 @@ TEST_F(LLMUtilsTest, TestFileSaver) {
 
   ret = TestLLMFileSaver::WriteData(buf.c_str(), MMPA_MAX_PATH + 1, fd);
   EXPECT_NE(ret, ge::SUCCESS);
+  MmpaStub::GetInstance().Reset();
 }
 
 TEST_F(LLMUtilsTest, TestLlmUitls) {

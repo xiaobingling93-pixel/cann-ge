@@ -20,6 +20,7 @@
 #include "framework/runtime/exe_graph_executor.h"
 #include "framework/runtime/model_v2_executor.h"
 #include "kernel/common_kernel_impl/memory_copy.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 CannMemoryProfiler::CannMemoryProfiler(const std::shared_ptr<const SubscriberExtendInfo> &extend_info)
@@ -85,7 +86,7 @@ void CannMemoryProfiler::Init() {
   task_memory_info_.dataLen = static_cast<uint32_t>(sizeof(MsprofMemoryInfo));
   auto memory_info_data = reinterpret_cast<MsprofMemoryInfo *>(task_memory_info_.data);
   int32_t device_id = 0;
-  (void)rtGetDevice(&device_id);
+  (void)aclrtGetDevice(&device_id);
   memory_info_data->deviceId = static_cast<uint32_t>(device_id);
   memory_info_data->deviceType = 0U;
 

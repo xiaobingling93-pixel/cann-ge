@@ -774,7 +774,7 @@ ge::graphStatus GetUserAllocatorOrFixedBaseAllocator(KernelContext *context) {
 
   // 使用固定地址，内存大小可扩展的allocator
   int32_t device_id = 0;
-  rtGetDevice(&device_id);
+  aclrtGetDevice(&device_id);
   ge::Allocator *allocator = ge::SessionMemAllocator<ge::FixedBaseExpandableAllocator>::Instance().GetMemAllocator(
       *session_id_ptr, device_id, memory_type).get();
   GE_ASSERT_NOTNULL(allocator);

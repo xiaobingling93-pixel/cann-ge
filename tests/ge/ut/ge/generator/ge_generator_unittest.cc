@@ -156,6 +156,7 @@ class UtestGeGenerator : public testing::Test {
     if (instance_ptr != nullptr) {
       instance_ptr->Finalize();
     }
+    OpsKernelBuilderRegistry::GetInstance().UnregisterAll();
   }
 };
 

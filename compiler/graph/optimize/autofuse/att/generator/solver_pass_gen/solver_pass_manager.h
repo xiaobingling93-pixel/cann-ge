@@ -75,6 +75,9 @@ namespace att
     void SetEnableEqualOrder(bool enable_equal_order) {
       enable_equal_order_ = enable_equal_order;
     }
+    void SetGroupNum(size_t group_num) {
+      group_num_ = group_num;
+    }
 
   private:
     // solver pass
@@ -140,6 +143,7 @@ namespace att
     double ub_threshold_{0.5};
     Expr reserved_ub_size_{CreateExpr(0)};
     double corenum_threshold_{0.4};
+    size_t group_num_{1UL};
   };
 } // namespace att
 #endif

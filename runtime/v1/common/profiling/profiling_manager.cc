@@ -18,9 +18,7 @@
 #include "framework/common/debug/log.h"
 #include "framework/common/profiling_definitions.h"
 #include "graph/utils/type_utils.h"
-#include "runtime/dev.h"
-#include "runtime/rts/rts_stream.h"
-#include "runtime/rts/rts_kernel.h"
+#include "acl/acl_rt.h"
 #include "mmpa/mmpa_api.h"
 #include "graph/load/model_manager/model_manager.h"
 #include "common/global_variables/diagnose_switch.h"
@@ -368,8 +366,8 @@ Status ProfilingManager::ProfStopProfiling(const uint64_t module,
 
 bool ProfilingManager::ProfilingModelExecuteOn() const {
   int32_t logic_device_id = 0;
-  const rtError_t rt_ret = rtGetDevice(&logic_device_id);
-  if (rt_ret != RT_ERROR_NONE) {
+  const aclError rt_ret = aclrtGetDevice(&logic_device_id);
+  if (rt_ret != ACL_SUCCESS) {
     GELOGE(RT_FAILED, "[Get][LogicDeviceId]Failed, ret %d", rt_ret);
     REPORT_INNER_ERR_MSG("E19999", "Get logic device id failed, ret %d", rt_ret);
   }

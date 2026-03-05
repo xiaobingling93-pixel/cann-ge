@@ -40,7 +40,7 @@ const static std::map<std::string, std::set<std::string>> kStrValueRange = {
     {"disable_reuse_memory", {"0", "1"}},
     {"framework", {"0", "1", "3", "5"}},
     {"op_debug_level", {"0", "1", "2", "3", "4"}},
-    {"mode", {"0", "1", "3", "5", "6", "30"}},
+    {"mode", {"0", "1", "3", "5", "6", "7","30"}},
     {"core_type", {"AiCore", "VectorCore"}},
     {"log", {"debug", "info", "warning", "error", "null"}},
     {"op_compiler_cache_mode", {"enable", "disable", "force"}},

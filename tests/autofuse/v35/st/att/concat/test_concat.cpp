@@ -9,6 +9,10 @@
  */
 
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <utility>
+#include <cstring>
 #include "gtest/gtest.h"
 #include "base/att_const_values.h"
 #include "gen_model_info.h"
@@ -16,16 +20,15 @@
 #include "tiling_code_generator.h"
 #include "graph_construct_utils.h"
 #include "result_checker_utils.h"
-#include "api_tiling_gen/gen_api_tiling.h"
 #include "gen_tiling_impl.h"
 #include "graph/utils/graph_utils.h"
 #include "autofuse_config/auto_fuse_config.h"
 #include "test_common_utils.h"
+#include "gen_model_info/runtime_stub.h"
+#include "common/platform_context.h"
 using namespace ge::ascir_op;
 namespace ascir {
-constexpr int64_t ID_NONE = -1;
 using namespace ge;
-using HintGraph=AscGraph;
 }
 namespace {
 std::string kRunTilingFuncMain = R"(
@@ -56,38 +59,161 @@ int main() {
 }
 )";
 }
+
+std::string kRunTilingFuncMainTwoGroup = R"RAW(
+#include <iostream>
+#include "Concat_tiling_data.h"
+using namespace optiling;
+
+int main() {
+  graph_two_group_testTilingData tilingData;
+  tilingData.set_block_dim(64);
+  tilingData.set_ub_size(245760);
+
+  // Group0: z0_0 = 2, z1 = 32
+  tilingData.graph0_result0_g0_tiling_data.set_Z0_0(2);
+  tilingData.graph0_result0_g0_tiling_data.set_Z1(256);
+
+  // Group1: z0_1 = 128, z1 = 32
+  tilingData.graph0_result0_g1_tiling_data.set_Z0_1(128);
+  tilingData.graph0_result0_g1_tiling_data.set_Z1(256);
+
+  std::cout << "=== Two Group Test with Different Axis Names ===" << std::endl;
+  std::cout << "Group0: z0_0 = 2, z1 = 32" << std::endl;
+  std::cout << "Group1: z0_1 = 128, z1 = 32" << std::endl;
+
+  if (GetTiling(tilingData)) {
+    std::cout << "Test passed!" << std::endl;
+  } else {
+    std::cout << "Tiling func execute failed." << std::endl;
+    return -1;
+  }
+  return 0;
+}
+)RAW";
+
 using namespace att;
 
-class STestGenConcat : public ::testing::Test {
+namespace {
+// 辅助函数：从单行文本中提取block_dim值
+bool ExtractBlockDimFromLine(const std::string& line, uint32_t& block_dim) {
+  const char* search_str = "The value of block_dim is ";
+  size_t pos = line.find(search_str);
+  if (pos == std::string::npos) {
+    return false;
+  }
+  size_t value_start = pos + strlen(search_str);
+  size_t value_end = line.find(" in", value_start);
+  if (value_end == std::string::npos) {
+    return false;
+  }
+  std::string value_str = line.substr(value_start, value_end - value_start);
+  try {
+    block_dim = std::stoul(value_str);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+// 辅助函数：从日志中解析block_dim值
+// 返回格式：{{first_g0, first_g1}, {second_g0, second_g1}}
+std::pair<std::vector<uint32_t>, std::vector<uint32_t>> ParseBlockDimFromLog(const std::string& filename) {
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+    std::cerr << "无法打开文件: " << filename << std::endl;
+    return {};
+  }
+
+  std::vector<uint32_t> first_tiling_blocks;
+  std::vector<uint32_t> second_tiling_blocks;
+  std::string line;
+
+  while (std::getline(file, line)) {
+    uint32_t block_dim = 0;
+    if (ExtractBlockDimFromLine(line, block_dim)) {
+      if (first_tiling_blocks.size() < 2) {
+        first_tiling_blocks.push_back(block_dim);
+      } else {
+        second_tiling_blocks.push_back(block_dim);
+      }
+    }
+  }
+
+  file.close();
+  return {first_tiling_blocks, second_tiling_blocks};
+}
+
+// 辅助函数：验证二次tiling核数大于首次tiling且大于总核数的80%
+bool VerifySecondaryTilingCoreUsage(const std::string& filename, uint32_t total_cores = 64) {
+  auto [first_blocks, second_blocks] = ParseBlockDimFromLog(filename);
+
+  if (first_blocks.size() < 2 || second_blocks.size() < 2) {
+    std::cerr << "无法从日志中解析出足够的block_dim值，first.size()="
+              << first_blocks.size() << ", second.size()=" << second_blocks.size() << std::endl;
+    return false;
+  }
+
+  uint32_t first_total = first_blocks[0] + first_blocks[1];
+  uint32_t second_total = second_blocks[0] + second_blocks[1];
+  uint32_t threshold = static_cast<uint32_t>(total_cores * 0.8);
+
+  std::cout << "首次tiling核数: Group0=" << first_blocks[0] << ", Group1=" << first_blocks[1]
+            << ", 总和=" << first_total << std::endl;
+  std::cout << "二次tiling核数: Group0=" << second_blocks[0] << ", Group1=" << second_blocks[1]
+            << ", 总和=" << second_total << std::endl;
+  std::cout << "总核数阈值(80%): " << threshold << std::endl;
+
+  bool condition1 = second_total > first_total;
+  bool condition2 = second_total > threshold;
+
+  if (!condition1) {
+    std::cerr << "验证失败: 二次tiling核数(" << second_total
+              << ") 不大于首次tiling核数(" << first_total << ")" << std::endl;
+  }
+  if (!condition2) {
+    std::cerr << "验证失败: 二次tiling核数(" << second_total
+              << ") 不大于总核数的80%(" << threshold << ")" << std::endl;
+  }
+
+  return condition1 && condition2;
+}
+}
+
+class STestGenConcatV2 : public ::testing::Test {
  public:
+  static ge::RuntimeStubV2 stub_v_2;
   static void TearDownTestCase()
   {
+    ge::PlatformContext::GetInstance().Reset();
     std::cout << "Test end." << std::endl;
   }
   static void SetUpTestCase()
   {
+    ge::PlatformContext::GetInstance().Reset();
     std::cout << "Test begin." << std::endl;
   }
   void SetUp() override {
     // Code here will be called immediately after the constructor (right
     // before each test).
 //     dlog_setlevel(GE, 0, 1);
-    att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+    ge::RuntimeStub::Install(&stub_v_2);
+    AutoFuseConfig::MutableAttStrategyConfig().Reset();
     setenv("ASCEND_GLOBAL_LOG_LEVEL", "4", 1);
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_tiling_case = "";
-    att::AutoFuseConfig::MutableAttStrategyConfig().force_schedule_result = -1L;
+    AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
+    AutoFuseConfig::MutableAttStrategyConfig().force_tiling_case = "";
+    AutoFuseConfig::MutableAttStrategyConfig().force_schedule_result = -1L;
   }
 
   void TearDown() override {
     // 清理测试生成的临时文件
-    system("rm -rf ./stub ./tiling ./register");
-    system("rm -f ./op_log.h ./autofuse_tiling_func_common.h ./tiling_func_main");
-    system("rm -f ./*_tiling_data.h ./*_tiling_func.cpp ./tiling_func_main_*.cpp");
+    autofuse::test::CleanupTestArtifacts();
+    ge::RuntimeStub::UnInstall(&stub_v_2);
     unsetenv("ASCEND_GLOBAL_LOG_LEVEL");
     unsetenv("AUTOFUSE_DFX_FLAGS");
   }
 };
+ge::RuntimeStubV2 STestGenConcatV2::stub_v_2;
 
 namespace ge {
 namespace ascir {
@@ -129,7 +255,7 @@ Status BuildConcatGroupAscendGraphS0WithVectorFunc(ge::AscGraph &graph) {
     }
   }
   constexpr char_t vector_func_node_name[] = "vector_func";
-  AscGraph subgraph(vector_func_node_name);
+  ge::AscGraph subgraph(vector_func_node_name);
   GE_ASSERT_SUCCESS(BuildVectorFunctionSubgraph(subgraph));
   graph.AddSubGraph(subgraph);
   auto node = graph.FindNode(vector_func_node_name);
@@ -161,7 +287,7 @@ Status BuildConcatGroupAscendGraphS0WithVectorFuncV1(ge::AscGraph &graph) {
     }
   }
   constexpr char_t vector_func_node_name[] = "vector_func";
-  AscGraph subgraph(vector_func_node_name);
+  ge::AscGraph subgraph(vector_func_node_name);
   GE_ASSERT_SUCCESS(BuildVectorFunctionSubgraph(subgraph));
   graph.AddSubGraph(subgraph);
   auto node = graph.FindNode(vector_func_node_name);
@@ -170,6 +296,82 @@ Status BuildConcatGroupAscendGraphS0WithVectorFuncV1(ge::AscGraph &graph) {
   node->attr.sched.loop_axis = z0TB->id;
   ge::AttrUtils::SetStr(node->GetOpDescBarePtr(), "sub_graph_name", vector_func_node_name);
   return ge::SUCCESS;
+}
+
+// 辅助函数：设置GM属性
+Status SetGmHardwareAttr(ge::AscGraph &graph) {
+  auto load_asc_node = graph.FindNode("load1");
+  GE_ASSERT_NOTNULL(load_asc_node);
+  load_asc_node->inputs[0].attr.mem.hardware = ge::MemHardware::kMemHardwareGM;
+
+  auto store_asc_node = graph.FindNode("store1");
+  GE_ASSERT_NOTNULL(store_asc_node);
+  store_asc_node->outputs[0].attr.mem.hardware = ge::MemHardware::kMemHardwareGM;
+
+  return ge::SUCCESS;
+}
+
+// 两个Group测试用例的图构建通用函数
+// z0_symbol_name: 大写的Symbol名称（如"Z0_0", "Z0_1"）
+// z0_axis_name: 小写的axis名称（如"z0_0", "z0_1"）
+Status BuildTwoGroupTestAscGraphCommon(ge::AscGraph &graph, const std::string &z0_symbol_name,
+                                       const std::string &z0_axis_name) {
+  auto Z0 = ge::Symbol(z0_symbol_name.c_str());
+  auto Z1 = ge::Symbol("Z1");
+  auto z0_axis = graph.CreateAxis(z0_axis_name, Z0);
+  auto z1 = graph.CreateAxis("z1", Z1);
+
+  // 先z0和z1合轴成z0z1
+  std::vector<int64_t> merge_ids = {z0_axis.id, z1.id};
+  auto z0z1 = graph.MergeAxis(merge_ids);
+
+  // 对z0z1做Tile切分
+  auto [z0z1T, z0z1t] = graph.TileSplit(z0z1->id);
+
+  // 对z0z1T做Block切分
+  auto [z0z1TB, z0z1Tb] = graph.BlockSplit(z0z1T->id);
+
+  std::vector<ge::Axis> axes = {z0_axis, z1};
+  auto data1 = graph.CreateContiguousData("input1", DT_FLOAT, axes);
+
+  LOOP(*z0z1TB) {
+    LOOP(*z0z1Tb) {
+      auto load1 = Load("load1", data1).TQue(Position::kPositionVecIn, 1, 1);
+      auto abs1 = Abs("abs1", load1).TQue(Position::kPositionVecOut, 1, 1);
+      auto store1 = Store("store1", abs1);
+
+      std::vector<ge::Axis> output_axes = {*z0z1TB, *z0z1Tb, *z0z1t};
+      GE_ASSERT_SUCCESS(GraphConstructUtils::UpdateOutputTensorAxes(output_axes,
+                                                                    {load1, abs1, store1}, 1));
+
+      *load1.axis = {z0z1Tb->id, z0z1t->id};
+      *load1.repeats = {z0z1Tb->size, z0z1t->size};
+      *load1.strides = {z0z1t->size, CreateExpr(1)};
+      *load1.vectorized_axis = {z0z1t->id};
+
+      *abs1.axis = {z0z1Tb->id, z0z1t->id};
+      *abs1.repeats = {z0z1Tb->size, z0z1t->size};
+      *abs1.strides = {z0z1t->size, CreateExpr(1)};
+      *abs1.vectorized_axis = {z0z1t->id};
+
+      *store1.axis = {z0z1Tb->id, z0z1t->id};
+      *store1.repeats = {z0z1Tb->size, z0z1t->size};
+      *store1.strides = {z0z1t->size, CreateExpr(1)};
+      *store1.vectorized_axis = {z0z1t->id};
+
+      auto output1 = Output("output1", store1);
+    }
+  }
+
+  return SetGmHardwareAttr(graph);
+}
+
+Status BuildTwoGroupTestAscGraph_Z0_0(ge::AscGraph &graph) {
+  return BuildTwoGroupTestAscGraphCommon(graph, "Z0_0", "z0_0");
+}
+
+Status BuildTwoGroupTestAscGraph_Z0_1(ge::AscGraph &graph) {
+  return BuildTwoGroupTestAscGraphCommon(graph, "Z0_1", "z0_1");
 }
 }
 }
@@ -187,7 +389,7 @@ ge::Status GenTilingImplForGraphS0WithVectorFunc(bool tile_key=false) {
     ascir::ScheduleGroup schedule_group2;
     ascir::ScheduledResult schedule_result2;
     std::vector<ascir::ScheduledResult> schedule_results;
-    ascir::AscGraph graph_s0(kFirstGraphName.c_str());
+    ge::AscGraph graph_s0(kFirstGraphName.c_str());
     if (tile_key) {
       GE_ASSERT_SUCCESS(ge::ascir::cg::BuildConcatGroupAscendGraphS0WithVectorFuncV1(graph_s0));
     } else {
@@ -232,7 +434,7 @@ ge::Status GenTilingImplForGraphS0WithVectorFunc(bool tile_key=false) {
   return ge::SUCCESS;
 }
 
-TEST_F(STestGenConcat, test_vector_function_parse)
+TEST_F(STestGenConcatV2, test_vector_function_parse)
 {
 setenv("AUTOFUSE_DFX_FLAGS", "--att_accuracy_level=0", 1);
 EXPECT_EQ(GenTilingImplForGraphS0WithVectorFunc(), ge::SUCCESS);
@@ -273,8 +475,9 @@ EXPECT_EQ(ret, 0);
 ret = std::system("./tiling_func_main_concat");
 }
 
-TEST_F(STestGenConcat, test_vector_function_parse_with_auto_tuning)
+TEST_F(STestGenConcatV2, test_vector_function_parse_with_auto_tuning)
 {
+setenv("AUTOFUSE_DFX_FLAGS", "--att_accuracy_level=0", 1);
 EXPECT_EQ(GenTilingImplForGraphS0WithVectorFunc(true), ge::SUCCESS);
 std::ofstream oss;
 oss.open("tiling_func_main_concat.cpp", std::ios::out);
@@ -283,8 +486,8 @@ const std::string kRunTilingFuncMainLocal = R"(
 using namespace optiling;
 void PrintResult(graph_ndTilingData& tilingData) {
   std::cout << "====================================================" << std::endl;
-  MY_ASSERT_EQ(tilingData.get_z0t_size(), 10);
-  MY_ASSERT_EQ(tilingData.get_block_dim(), 1);
+  MY_ASSERT_EQ(tilingData.get_z0t_size(), 1);
+  MY_ASSERT_EQ(tilingData.get_block_dim(), 10);
   MY_ASSERT_EQ(tilingData.get_ub_size(), 245760);
   std::cout << "====================================================" << std::endl;
 }
@@ -310,4 +513,121 @@ auto ret =
 EXPECT_EQ(ret, 0);
 ret = std::system("./tiling_func_main_concat");
 EXPECT_EQ(ret, 0);
+}
+
+// 辅助函数：构建两Group测试的ScheduleResult
+void BuildTwoGroupScheduleResult(ascir::FusedScheduledResult &fused_scheduled_result,
+                                  const std::string &graph_name) {
+  ascir::ScheduleGroup schedule_group1;
+  ascir::ScheduleGroup schedule_group2;
+  ascir::ScheduledResult schedule_result1;
+  std::vector<ascir::ScheduledResult> schedule_results;
+
+  ge::AscGraph graph_0(graph_name.c_str());
+  ge::AscGraph graph_1("graph_1");
+
+  ASSERT_EQ(ge::ascir::cg::BuildTwoGroupTestAscGraph_Z0_0(graph_0), ge::SUCCESS);
+  ASSERT_EQ(ge::ascir::cg::BuildTwoGroupTestAscGraph_Z0_1(graph_1), ge::SUCCESS);
+
+  graph_0.SetTilingKey(0U);
+  std::vector<ge::AscGraph> graphs_0 = {graph_0};
+  GraphConstructUtils::UpdateGraphsVectorizedStride(graphs_0);
+  schedule_group1.impl_graphs.emplace_back(graph_0);
+
+  graph_1.SetTilingKey(1U);
+  std::vector graphs_1 = {graph_1};
+  GraphConstructUtils::UpdateGraphsVectorizedStride(graphs_1);
+  schedule_group2.impl_graphs.emplace_back(graph_1);
+
+  schedule_result1.schedule_groups.emplace_back(schedule_group1);
+  schedule_result1.schedule_groups.emplace_back(schedule_group2);
+  schedule_result1.enable_group_parallel = true;
+  schedule_results.emplace_back(schedule_result1);
+
+  fused_scheduled_result.node_idx_to_scheduled_results.emplace_back(schedule_results);
+}
+
+// 辅助函数：生成tiling函数和数据
+void GenerateTwoGroupTilingFuncAndData(const ascir::FusedScheduledResult &fused_scheduled_result,
+                                        const std::string &op_name,
+                                        const std::string &graph_name) {
+  std::map<std::string, std::string> options;
+  std::map<std::string, std::string> tiling_funcs;
+  options.emplace(kGenConfigType, "AxesReorder");
+
+  // 生成tiling函数
+  auto res = GenTilingImplAutoFuseV3(op_name, fused_scheduled_result, options, tiling_funcs, true);
+  std::string tiling_func;
+  CombineTilings(tiling_funcs, tiling_func);
+  std::ofstream oss;
+  oss.open("Concat_tiling_func.cpp", std::ios::out);
+  oss << "#include \"Concat_tiling_data.h\"\n";
+  oss << tiling_func;
+  oss.close();
+  EXPECT_EQ(res, true);
+
+  // 生成tiling数据
+  TilingCodeGenerator generator;
+  TilingCodeGenConfig generator_config;
+  std::map<std::string, std::string> tiling_res;
+  FusedParsedScheduleResult all_model_infos;
+  GetModelInfoMap(fused_scheduled_result, options, all_model_infos);
+  generator_config.type = TilingImplType::HIGH_PERF;
+  generator_config.tiling_data_type_name = options[kTilingDataTypeName];
+  generator_config.gen_tiling_data = true;
+  generator_config.gen_extra_infos = true;
+  EXPECT_EQ(generator.GenTilingCode(op_name, all_model_infos, generator_config, tiling_res), ge::SUCCESS);
+
+  oss.open("Concat_tiling_data.h", std::ios::out);
+  oss << tiling_res[graph_name + "TilingData"];
+  oss.close();
+}
+
+// 辅助函数：准备测试环境
+void PrepareTwoGroupTestEnv() {
+  auto ret = std::system(std::string("cp ").append(TOP_DIR).append("/tests/autofuse/st/att/testcase/op_log.h ./ -f").c_str());
+  ret = autofuse::test::CopyStubFiles(TOP_DIR, "tests/autofuse/st/att/testcase/stub/");
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(ResultCheckerUtils::ReplaceLogMacrosGeneric("Concat_tiling_func.cpp"), true);
+
+  std::ofstream oss;
+  oss.open("tiling_func_main_concat.cpp", std::ios::out);
+  oss << kRunTilingFuncMainTwoGroup;
+  oss.close();
+}
+
+// 辅助函数：编译和运行测试
+void CompileAndRunTwoGroupTest() {
+  auto ret = std::system("g++ tiling_func_main_concat.cpp Concat_tiling_func.cpp -o tiling_func_main_concat -I ./ -DSTUB_LOG");
+  EXPECT_EQ(ret, 0);
+
+  ret = std::system("./tiling_func_main_concat > ./info.log");
+  EXPECT_EQ(ret, 0);
+}
+
+// 辅助函数：验证测试输出
+void VerifyTwoGroupTestOutput() {
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Two Group Test"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Test passed"), true);
+  EXPECT_TRUE(VerifySecondaryTilingCoreUsage("./info.log", 64))
+      << "二次tiling核数应该大于首次tiling且大于总核数(64)的80%";
+}
+
+// 测试用例：两个Group，每个Group有一个AscGraph
+// - 每个AscGraph有两个轴：z0（动态）和z1（固定32）
+// - 两个Group的z0轴名不同：Group0为z0_0，Group1为z0_1
+// - 调度策略：先z1做Tile切分，然后z1T和z0合轴成z0z1T，再Block切分
+// - 图结构：Load -> Abs -> Store
+TEST_F(STestGenConcatV2, two_group_different_z0_axis_name)
+{
+  const std::string kFirstGraphName = "graph_two_group_test";
+  const std::string kOpName = "Concat";
+
+  ascir::FusedScheduledResult fused_scheduled_result;
+  BuildTwoGroupScheduleResult(fused_scheduled_result, kFirstGraphName);
+
+  GenerateTwoGroupTilingFuncAndData(fused_scheduled_result, kOpName, kFirstGraphName);
+  PrepareTwoGroupTestEnv();
+  CompileAndRunTwoGroupTest();
+  VerifyTwoGroupTestOutput();
 }

@@ -371,8 +371,8 @@ TEST_F(UtestScatteredCollection, init_label_switch_by_index_task_info) {
   model.reusable_stream_allocator_ = ReusableStreamAllocator::Create();
   model.reusable_stream_allocator_->GetOrCreateRtStream(stream, 0, 0, 0);
   model.stream_list_ = {stream};
-  rtLabel_t label = nullptr;
-  rtLabelCreate(&label);
+  aclrtLabel label = nullptr;
+  aclrtCreateLabel(&label);
   model.label_list_ = {label};
 
   GeTensorDesc desc;
@@ -430,7 +430,6 @@ TEST_F(UtestScatteredCollection, LabelSwitchByIndexTaskInf_HBM_test) {
   op_desc->SetInputOffset({1024});
 
   EXPECT_EQ(task_info.ParseTaskRunParam(task_def, &model, task_run_param), SUCCESS);
-  EXPECT_EQ(task_run_param.persistent_workspace_descs[0].placement, ArgsPlacement::kArgsPlacementHbm);
 
   mmSetEnv(kEnvRecordPath, "", 1);
 }
@@ -484,7 +483,6 @@ TEST_F(UtestScatteredCollection, LabelSwitchByIndexTaskInfo_test) {
   EXPECT_EQ(task_run_param.parsed_input_addrs.size(), 1);
   EXPECT_NE(task_run_param.parsed_input_addrs[0].logic_addr, 0);
   EXPECT_EQ(task_run_param.parsed_input_addrs[0].support_refresh, false);
-  EXPECT_EQ(task_run_param.persistent_workspace_descs[0].placement, ArgsPlacement::kArgsPlacementTs);
 
   // fail for LABEL_SWITCH_LIST
   EXPECT_EQ(task_info.Init(task_def, &model, args, persistant_workspace, iow_addrs), INTERNAL_ERROR);

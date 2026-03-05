@@ -292,7 +292,7 @@ Status DFlowSession::FeedDataFlowGraph(uint32_t graph_id, const std::vector<uint
   return ret;
 }
 
-Status DFlowSession::FeedRawData(uint32_t graph_id, const std::vector<RawData> &raw_data_list, const uint32_t index,
+Status DFlowSession::FeedRawData(uint32_t graph_id, const std::vector<RawData> &raw_data_list, uint32_t index,
                             const DataFlowInfo &info, int32_t timeout) {
   if (!g_dflow_ge_initialized) {
     GELOGE(GE_CLI_GE_NOT_INITIALIZED, "[Feed][RawData]Failed because lack GEInitialize call before.");
@@ -364,4 +364,4 @@ Status DFlowSession::FetchDataFlowGraph(uint32_t graph_id, const std::vector<uin
   return ret;
 }
 } // namespace dflow
-} // nanamespace ge
+} // namespace ge

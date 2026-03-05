@@ -127,6 +127,15 @@ TEST_F(UtestFileUtils, WriteBinToFileSuccess) {
   system(("rm -f " + so_bin).c_str());
 }
 
+TEST_F(UtestFileUtils, WriteBinToFile_OK_FilePathNoDirName) {
+  std::string file_name = "file_name_without_dir_prefix.txt";
+  uint32_t data_len = 4;
+  char so_data[4] = {'1', '2', '3'};
+  ASSERT_EQ(WriteBinToFile(file_name, so_data, data_len), GRAPH_SUCCESS);
+  ASSERT_EQ(SaveBinToFile(so_data, data_len, file_name), GRAPH_SUCCESS);
+  system(("rm -f " + file_name).c_str());
+}
+
 TEST_F(UtestFileUtils, WriteBinToFilePathNullFail) {
   std::string so_bin = "";
   uint32_t data_len = 4;

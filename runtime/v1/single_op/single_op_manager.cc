@@ -16,6 +16,7 @@
 #include "graph/manager/mem_manager.h"
 #include "hybrid/common/npu_memory_allocator.h"
 #include "runtime/stream.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 Status SingleOpManager::GetOpFromModel(const std::string &model_name, const ModelData &model_data,
@@ -143,7 +144,7 @@ Status SingleOpManager::GetResourceId(rtStream_t const stream, uintptr_t &resour
   if (stream == nullptr) {
     // get current context default stream
     rtStream_t curCtxDefaultStream = nullptr;
-    GE_CHK_RT_RET(rtCtxGetCurrentDefaultStream(&curCtxDefaultStream));
+    GE_CHK_RT_RET(aclrtCtxGetCurrentDefaultStream(&curCtxDefaultStream));
     GELOGI("use current context default stream as resource index");
     resource_id = static_cast<uintptr_t>(PtrToValue(curCtxDefaultStream));
   } else {

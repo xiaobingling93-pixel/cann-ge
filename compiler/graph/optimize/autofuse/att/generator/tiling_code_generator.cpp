@@ -212,6 +212,7 @@ ge::Status TilingCodeGenerator::GenTilingBody(const GenTilingParams& params, std
   GELOGI("Start to gen tiling body.");
   TilingCodeGenImplPtr impl = CreateTilingCodeGenImpl(params.op_type, params.config, params.all_model_infos, {}, is_uniq_group);
   GE_ASSERT_NOTNULL(impl, "Create tiling code gen impl failed, type[%d].", static_cast<int32_t>(params.config.type));
+
   GE_ASSERT_SUCCESS(impl->GenTiling(tiling_res, params.cache_reuse_info, cache_capacity, enable_group_parallels),
                     "Gen tiling body impl failed, type[%d].",
                     static_cast<int32_t>(params.config.type));
@@ -274,11 +275,22 @@ ge::Status TilingCodeGenerator::GenScheduleGroupTilingBodies(
     GELOGD("[DFX] asc_graph_id: %zu, results: %zu, op_type[%s]", asc_graph.first, asc_graph.second.size(), op_type.c_str());
     for (auto &result : asc_graph.second) {
       GELOGD("[DFX] got result(impl_graph_id): %zu, op_type[%s]", result.first, op_type.c_str());
+      // 计算当前ScheduleResult中的Group个数
+      size_t group_num = result.second.groups_tiling_model_info.size();
       for (auto &group_graphs : result.second.groups_tiling_model_info) {
         TilingCodeGenConfig cur_config = config;
         cur_config.tiling_data_type_name = group_graphs.second[0].schedule_group_ident.GetGroupPrefix() + kDefaultTilingDataTypeName;
         GenTilingParams params = {op_type, group_graphs.second, cur_config, cache_reuse_info};
-        GE_ASSERT_SUCCESS(GenTilingBody(params, tiling_res, false, cache_capacity, enable_group_parallels));
+        // 创建impl并设置Group个数
+        TilingCodeGenImplPtr impl = CreateTilingCodeGenImpl(params.op_type, params.config, params.all_model_infos, {}, false);
+        GE_ASSERT_NOTNULL(impl, "Create tiling code gen impl failed, type[%d].", params.config.type);
+        auto key = std::make_pair(group_graphs.second[0].schedule_group_ident.asc_graph_id,
+                                  group_graphs.second[0].schedule_group_ident.impl_graph_id);
+        std::map<std::pair<size_t, size_t>, size_t> schedule_result_group_nums;
+        schedule_result_group_nums[key] = group_num;
+        impl->SetScheduleResultGroupNums(schedule_result_group_nums);
+        GE_ASSERT_SUCCESS(impl->GenTiling(tiling_res, params.cache_reuse_info, cache_capacity, enable_group_parallels),
+                          "Gen tiling body impl failed, type[%d].", params.config.type);
         tiling_res[config.tiling_data_type_name] += tiling_res[cur_config.tiling_data_type_name];
       }
     }

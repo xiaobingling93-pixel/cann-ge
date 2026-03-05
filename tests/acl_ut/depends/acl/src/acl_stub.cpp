@@ -179,7 +179,7 @@ aclError aclStub::aclrtDeviceGetStreamPriorityRange(int32_t *leastPriority, int3
 
 aclError aclStub::aclrtCtxGetCurrentDefaultStream(aclrtStream *stream)
 {
-    int tmp = 0x1;
+    static int tmp = 0x1;
     *stream = (aclrtStream)(&tmp);
     return ACL_SUCCESS;
 }

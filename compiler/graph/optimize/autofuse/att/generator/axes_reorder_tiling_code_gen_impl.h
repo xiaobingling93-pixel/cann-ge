@@ -12,7 +12,7 @@
 #define ATT_AXES_REORDER_TILING_CODE_GEN_IMPL_H_
 #include <string>
 #include "tiling_code_gen_impl.h"
-#include "high_perf_tiling_code_gen_impl.h"
+#include "solver_pass_manager.h"
 namespace att {
 class AxesReorderTilingCodeGenImpl : public TilingCodeGenImpl {
  public:
@@ -33,6 +33,10 @@ class AxesReorderTilingCodeGenImpl : public TilingCodeGenImpl {
   ge::Status GenPipeTypeObj(const ModelInfo &model_info) override;
   ge::Status GenGetObj(const ModelInfo &model_info) override;
   ge::Status GenExtraSummaryInfo(const ModelInfo &model_info, const ArgsManager &args_manager, std::string &case_info_str) override;
+
+ private:
+  // 辅助函数：配置SolverPassManager的公共参数
+  void ConfigureSolverPassManagerCommon(SolverPassManager &solver_pass_manager);
 };
 }
 #endif

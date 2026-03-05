@@ -122,6 +122,7 @@ target_include_directories(ut_acl_model_src PRIVATE
     ${ASCEND_INSTALL_PATH}/include/graph
     ${ASCEND_INSTALL_PATH}/pkg_inc
     ${ASCEND_INSTALL_PATH}/pkg_inc/runtime
+    ${ASCEND_INSTALL_PATH}/pkg_inc/runtime/runtime
     ${ASCEND_INSTALL_PATH}/pkg_inc/profiling
     ${ASCEND_INSTALL_PATH}/pkg_inc/base
 )
@@ -145,6 +146,7 @@ target_link_libraries(ut_acl_model_src PRIVATE
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     c_sec
     json
+    ge_stub
     -lgcov
 )
 
@@ -219,6 +221,7 @@ target_include_directories(ut_acl_op_exec_src PRIVATE
     ${ASCEND_INSTALL_PATH}/include/graph
     ${ASCEND_INSTALL_PATH}/pkg_inc
     ${ASCEND_INSTALL_PATH}/pkg_inc/runtime
+    ${ASCEND_INSTALL_PATH}/pkg_inc/runtime/runtime
     ${ASCEND_INSTALL_PATH}/pkg_inc/profiling
     ${ASCEND_INSTALL_PATH}/pkg_inc/watchdog
     ${ASCEND_INSTALL_PATH}/pkg_inc/base

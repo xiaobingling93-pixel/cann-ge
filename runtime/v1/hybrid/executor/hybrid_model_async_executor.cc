@@ -29,7 +29,6 @@ namespace ge {
 namespace hybrid {
 namespace {
 const size_t kMinimumPiplineStages = 2U;
-const uint64_t kStopOnFailure = 1U;
 
 Status CheckBlockingOp(const ComputeGraphPtr &graph, bool &has_blocking_op) {
   GE_CHECK_NOTNULL(graph);
@@ -149,13 +148,13 @@ Status HybridModelAsyncExecutor::Stop() {
   if (stream_ != nullptr) {
     if (owner_stream_) {
       NpuMemoryAllocator::ClearStream(stream_);
-      GE_CHK_RT(rtStreamSynchronize(stream_));
+      GE_CHK_RT(aclrtSynchronizeStream(stream_));
       GE_CHK_RT(rtStreamDestroyForce(stream_));
     } else if (default_stream_guarder.default_stream != nullptr) {
       default_stream_guarder.stream_ref_count--;
       if (default_stream_guarder.stream_ref_count == 0U) {
         NpuMemoryAllocator::ClearStream(default_stream_guarder.default_stream);
-        GE_CHK_RT(rtStreamSynchronize(default_stream_guarder.default_stream));
+        GE_CHK_RT(aclrtSynchronizeStream(default_stream_guarder.default_stream));
         GE_CHK_RT(rtStreamDestroyForce(default_stream_guarder.default_stream));
         default_stream_guarder.default_stream = nullptr;
       }
@@ -212,14 +211,14 @@ Status HybridModelAsyncExecutor::Init(const rtStream_t stream) {
       if (default_stream_guarder.default_stream == nullptr) {
         GE_CHK_RT_RET(rtStreamCreateWithFlags(&default_stream_guarder.default_stream,
                                               static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT), stream_flags));
-        GE_CHK_RT_RET(rtStreamSetMode(default_stream_guarder.default_stream, kStopOnFailure));
+        GE_CHK_RT_RET(aclrtSetStreamFailureMode(default_stream_guarder.default_stream, ACL_STOP_ON_FAILURE));
         GELOGD("Create default stream=%p, device id = %u", default_stream_guarder.default_stream, device_id_);
       }
       default_stream_guarder.stream_ref_count++;
       stream_ = default_stream_guarder.default_stream;
     } else {
       GE_CHK_RT_RET(rtStreamCreateWithFlags(&stream_, static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT), stream_flags));
-      GE_CHK_RT_RET(rtStreamSetMode(stream_, kStopOnFailure));
+      GE_CHK_RT_RET(aclrtSetStreamFailureMode(stream_, ACL_STOP_ON_FAILURE));
       GELOGD("Create stream=%p, device id = %u", stream_, device_id_);
       owner_stream_ = true;
     }
@@ -232,9 +231,9 @@ Status HybridModelAsyncExecutor::Init(const rtStream_t stream) {
 Status HybridModelAsyncExecutor::RunInternal() {
   const auto device_id = static_cast<int32_t>(device_id_);
   GELOGD("Hybrid model start. model_id = %u, device_id = %u", model_id_, device_id_);
-  GE_CHK_RT_RET(rtSetDevice(device_id));
+  GE_CHK_RT_RET(aclrtSetDevice(device_id));
   // DeviceReset before thread run finished!
-  GE_MAKE_GUARD(not_used_var, [&device_id] { GE_CHK_RT(rtDeviceReset(device_id)); });
+  GE_MAKE_GUARD(not_used_var, [&device_id] { GE_CHK_RT(aclrtResetDevice(device_id)); });
 
   while (run_flag_) {
     // Model has not indeedly started running before received data

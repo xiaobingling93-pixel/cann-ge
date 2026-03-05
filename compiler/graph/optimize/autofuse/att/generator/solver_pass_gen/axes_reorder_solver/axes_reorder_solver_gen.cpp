@@ -968,21 +968,30 @@ std::string AxesReorderSolverGen::GenInput(const TradeOffConfig &trade_off_confi
 
   // 三种场景（优先级从高到低）：
   // 1. 用户配置使能（enable_multicore_ub_tradeoff_ == true）
-  // 2. ModelInfo 惩罚配置（trade_off_config.is_enable == true 且来自惩罚）
-  // 3. 默认配置
-  GELOGI("[DFX] GenInput: enable_multicore_ub_tradeoff=%d, trade_off_config.is_enable=%d, ub_threshold=%lf, "
-         "corenum_threshold=%lf",
-         enable_multicore_ub_tradeoff_, trade_off_config.is_enable, ub_threshold_, corenum_threshold_);
+  // 2. Group并行场景（enable_group_parallel_ == true && group_num_ > 1）
+  // 3. ModelInfo 惩罚配置（trade_off_config.is_enable == true）
+  // 4. 默认配置
+  GELOGI("[DFX] GenInput: enable_multicore_ub_tradeoff=%d, enable_group_parallel_=%d, group_num_=%zu, "
+         "trade_off_config.is_enable=%d, ub_ratio=%s, core_num_ratio=%s",
+         enable_multicore_ub_tradeoff_, enable_group_parallel_, group_num_, trade_off_config.is_enable,
+         Str(trade_off_config.ub_ratio).c_str(), Str(trade_off_config.core_num_ratio).c_str());
   if (enable_multicore_ub_tradeoff_) {
     // 场景1: 用户配置使能（最高优先级）
     ub_threshold_str = std::to_string(ub_threshold_);
     core_num_threshold_str = std::to_string(corenum_threshold_);
   } else if (trade_off_config.is_enable) {
-    // 场景2: ModelInfo 级别的 TilingScheduleConfig（惩罚配置）
-    ub_threshold_str = Str(trade_off_config.ub_ratio);
-    core_num_threshold_str = Str(trade_off_config.core_num_ratio);
+    if (enable_group_parallel_ && group_num_ > 1) {
+      // 场景2: Group并行场景，按照Group数均分核数
+      double group_ratio = 1.0 / static_cast<double>(group_num_);
+      ub_threshold_str = Str(trade_off_config.ub_ratio);
+      core_num_threshold_str = std::to_string(group_ratio);
+    } else {
+      // 场景3: ModelInfo 级别的 TilingScheduleConfig（惩罚配置）
+      ub_threshold_str = Str(trade_off_config.ub_ratio);
+      core_num_threshold_str = Str(trade_off_config.core_num_ratio);
+    }
   } else {
-    // 场景3: 默认配置
+    // 场景4: 默认配置
     ub_threshold_str = std::to_string(kDefaultSolverUbThreshold);
     core_num_threshold_str = std::to_string(kDefaultSolverCoreNumThreshold);
   }
@@ -1101,7 +1110,7 @@ std::string AxesReorderSolverGen::GenSolverRunInvoke(const std::string &class_na
   const ge::char_t *high_perf_val = (enable_high_perf_ && (!enable_group_parallel_)) ? "true" : "false";
   bool hit_pattern = NeedUBMultiCoreBalance();
   const auto enable_block_loop_trade_off_by_perf = IsEnableBlockLoopTradeOffByPerf();
-  const bool model_tradeoff_enable = tiling_schedule_config_.trade_off_config.is_enable && (!enable_group_parallel_);
+  const bool model_tradeoff_enable = tiling_schedule_config_.trade_off_config.is_enable;
   const std::string enable_multicore_ub_tradeoff =
       ((enable_multicore_ub_tradeoff_ || model_tradeoff_enable) && hit_pattern)
         ? "true"
@@ -1222,6 +1231,16 @@ std::string AxesReorderSolverGen::GenSolverFuncImpl() {
   codes += GenInputInfo(all_cons, local_buffer_cons, mc_mixed_cons);
   // 直接使用 ModelInfo 中的 TilingScheduleConfig
   codes += GenInput(tiling_schedule_config_.trade_off_config, all_cons);
+  // 支持二次Tiling：使用调整后的核数比例（需在创建solver之前设置）
+  // 注意：g_secondary_tiling_ratio 只在 enable_group_parallel_ 为 true 时才声明
+  if (enable_group_parallel_ && group_num_ > 1) {
+    codes += "    // 支持二次Tiling：使用调整后的核数比例（需在创建solver之前设置）\n";
+    codes += "    if (g_secondary_tiling_ratio > 0.0) {\n";
+    codes += "      OP_LOGI(OP_NAME, \"CorenumThreshold update from %lf to %lf\", input.corenum_threshold, "
+        "g_secondary_tiling_ratio);\n";
+    codes += "      input.corenum_threshold = g_secondary_tiling_ratio;\n";
+    codes += "    }\n";
+  }
   codes += "    " + class_name + " solver(input);\n";
   codes += GenSolverRunInvoke(class_name);
   codes += GenEmptyTensorCheckInSolver();

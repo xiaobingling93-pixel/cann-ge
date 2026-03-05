@@ -14,11 +14,9 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 #include <list>
 #include <deque>
-#include "graph/ge_attr_value.h"
 #include "graph/anchor.h"
 #include "graph/node.h"
 #include "graph/op_desc.h"

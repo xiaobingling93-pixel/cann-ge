@@ -144,7 +144,7 @@ TEST_F(EventUT, SendEvents_Success) {
       {(rtEvent_t)0x300, {(rtStream_t)0x1000}},
   };
   // rts record correct
-  ASSERT_EQ(runtime_stub.GetRtsRuntimeStub().GetRtEventRecordRecords(), expect_send_event_records);
+  ASSERT_EQ(runtime_stub.GetAclRuntimeStub().GetRtEventRecordRecords(), expect_send_event_records);
 
   // event space correct
   ge::SmallVector<memory::VersionBlock, 10> expect_local_recycle_blocks{

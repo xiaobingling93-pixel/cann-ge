@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${GE_METADEF_DIR}/cmake/build_type.cmake)
+include(${AIR_CODE_DIR}/cmake/build_type.cmake)
 set(SRC_LIST
     "register.cpp"
     "register_custom_pass.cpp"

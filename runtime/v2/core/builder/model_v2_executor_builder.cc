@@ -39,6 +39,7 @@
 #include "graph/utils/attr_utils.h"
 #include "framework/runtime/model_rt_var_manager.h"
 #include "graph/manager/session_id_manager.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 ge::ExecuteGraphPtr GetExecuteGraph(ge::ExecuteGraph *const root_graph, SubExeGraphType eg_type) {
@@ -296,7 +297,7 @@ ge::graphStatus ModelV2ExecutorBuilder::RestoreDeviceVarMem(ModelV2Executor &exe
   executor.load_session_id_ = session_->GetSessionId();
   GELOGI("load_session_id_: %lu, session_: %p", executor.load_session_id_, session_);
   int32_t device_id{0};
-  GE_ASSERT_RT_OK(rtGetDevice(&device_id));
+  GE_ASSERT_RT_OK(aclrtGetDevice(&device_id));
   auto rt_var_manager = ModelRtVarManager::Instance(executor.load_session_id_);
   GE_ASSERT_NOTNULL(rt_var_manager);
   void *external_var_addr = nullptr;

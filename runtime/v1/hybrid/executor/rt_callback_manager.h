@@ -17,7 +17,9 @@
 #include "hybrid/executor/callback_manager.h"
 #include "common/blocking_queue.h"
 #include "ge/ge_api_error_codes.h"
+#include "acl/acl_rt.h"
 #include "runtime/rt.h"
+
 namespace ge {
 namespace hybrid {
 class RtCallbackManager : public CallbackManager {
@@ -29,14 +31,14 @@ class RtCallbackManager : public CallbackManager {
 
   Status Destroy() override;
 
-  Status RegisterCallbackFunc(const rtStream_t stream, const std::function<void()> &callback) override;
+  Status RegisterCallbackFunc(const aclrtStream stream, const std::function<void()> &callback) override;
 
  private:
-  Status RegisterCallback(const rtStream_t stream, const rtCallback_t callback, void *const user_data);
-  Status CallbackProcess(const rtContext_t context);
+  Status RegisterCallback(const aclrtStream stream, const rtCallback_t callback, void *const user_data);
+  Status CallbackProcess(const aclrtContext context);
   static void RtCallbackFunc(void *const data);
 
-  BlockingQueue<std::pair<rtEvent_t, std::pair<rtCallback_t, void *>>> callback_queue_;
+  BlockingQueue<std::pair<aclrtEvent, std::pair<rtCallback_t, void *>>> callback_queue_;
   std::future<Status> ret_future_;
 };
 }  // namespace hybrid

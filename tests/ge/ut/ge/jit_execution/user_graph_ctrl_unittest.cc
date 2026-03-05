@@ -30,6 +30,8 @@ namespace ge {
 class UserGraphControlUT : public testing::Test {
  protected:
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     CommonSetupUtil::CommonSetup();
     gert_stub_.GetKernelStub().StubTiling();
     RuntimeStub::Install(nullptr); // gert的rts stub不能在多线程环境下工作，因此使用默认rts stub
@@ -40,8 +42,12 @@ class UserGraphControlUT : public testing::Test {
   void TearDown() override {
     CommonSetupUtil::CommonTearDown();
     gert_stub_.Clear();
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
   gert::GertRuntimeStub gert_stub_;
+  const char *env;
 };
 
 TEST_F(UserGraphControlUT, AddGraphInstance_Success) {

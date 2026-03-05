@@ -389,6 +389,7 @@ target_link_libraries(davinci_executor
     adump_headers
     mmpa_headers
     hccl_headers
+    acl_rt
     $<$<TARGET_EXISTS:datagw_headers>:datagw_headers>
     -Wl,--no-as-needed
     graph_base
@@ -405,6 +406,7 @@ target_link_libraries(davinci_executor
     -Wl,--as-needed
     $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
     -ldl
+    ${AIR_COMMON_LINK_OPTION}
   PUBLIC
     air_headers
 )
@@ -440,8 +442,7 @@ add_dependencies(hybrid_executor
 )
 
 target_compile_options(hybrid_executor PRIVATE
-    -fno-common -Werror -Wextra -Wfloat-equal -fvisibility=default
-    -O2
+    ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
 )
 
 target_compile_definitions(hybrid_executor PRIVATE
@@ -489,6 +490,7 @@ target_link_libraries(hybrid_executor
     -Wl,--no-as-needed
     graph
     register
+    acl_rt
     opp_registry
     ge_common
     ge_common_base
@@ -504,6 +506,7 @@ target_link_libraries(hybrid_executor
     -Wl,--as-needed
     $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
     -ldl
+    ${AIR_COMMON_LINK_OPTION}
   PUBLIC
     air_headers
 )

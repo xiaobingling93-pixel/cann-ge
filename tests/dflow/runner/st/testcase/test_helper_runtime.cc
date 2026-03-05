@@ -999,6 +999,8 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
   }
 
   void SetUp() {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     st_dir_path = PathUtils::Join({EnvPath().GetAirBasePath(), "/tests/dflow/runner/st/"});
     hybrid::NodeExecutorManager::GetInstance().
         engine_mapping_.emplace("AiCoreLib", hybrid::NodeExecutorManager::ExecutorType::AICORE);
@@ -1011,6 +1013,7 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
     // default config
     auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
     setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
+    ReInitGe();
   }
   void TearDown() {
     MemoryGroupManager::GetInstance().Finalize();
@@ -1031,6 +1034,9 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
     MmpaStub::GetInstance().Reset();
     RuntimeStub::Reset();
     unsetenv("RESOURCE_CONFIG_PATH");
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
 
   static void CreateCompilerJson(const std::string &npu_compile_config_file) {
@@ -1094,6 +1100,7 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
 
  protected:
   std::string st_dir_path;
+  const char *env;
 };
 namespace {
   PneModelPtr BuildPneModel(ComputeGraphPtr root_graph) {
@@ -1410,6 +1417,7 @@ TEST_F(STEST_helper_runtime, TestDeployModelWithFileConstant) {
       "\"value_bin_file\":\"./test_copy_one_weight.bin\"}]}";
   map<AscendString, AscendString> options{{a, b}};
   options["ge.exec.graphExecTimeout"] = "600000";
+  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   Session session(options);
   session.AddGraph(1, graph, options);
   std::vector<InputTensorInfo> inputs;
@@ -1512,6 +1520,7 @@ TEST_F(STEST_helper_runtime, TestDeployModelNoTiling) {
   auto graph = GraphUtilsEx::CreateGraphFromComputeGraph(compute_graph);
   map<AscendString, AscendString> options;
   options["ge.exec.graphExecTimeout"] = "600000";
+  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   Session session(options);
   session.AddGraph(1, graph, options);
   std::vector<InputTensorInfo> inputs;
@@ -2699,6 +2708,7 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelWriteTarSuccessByMultiTimes) {
 }
 
 TEST_F(STEST_helper_runtime, TestHeterogeneousInitInvalid) {
+  ge::GEFinalize();
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaForHeterogeneousRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
   GEFinalize();
@@ -2978,11 +2988,11 @@ TEST_F(STEST_helper_runtime, TestDeployHostCpuDynamicModel) {
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
 
   rtEschedEventSummary_t event_info{};
-  CpuSchedEventDispatcher::GetInstance().OnInputsReady(event_info);
   AICPUSubEventInfo subevent_info{};
-  subevent_info.modelId = 1023 - 0;
   event_info.msgLen = sizeof(subevent_info);
   event_info.msg = (char *)&subevent_info;
+  CpuSchedEventDispatcher::GetInstance().OnInputsReady(event_info);
+  subevent_info.modelId = 1023 - 0;
   CpuSchedEventDispatcher::GetInstance().OnInputsReady(event_info);
   subevent_info.modelId = 1023 - 1;
   CpuSchedEventDispatcher::GetInstance().OnInputsReady(event_info);
@@ -5545,6 +5555,9 @@ TEST_F(STEST_helper_runtime, TestDynamicSchedDeployWithFlow) {
 }
 
 TEST_F(STEST_helper_runtime, UpdateAbnormalInstanceInTrimmingModel) {
+  auto base_path = EnvPath().GetAirBasePath();
+  std::string cmd = "mkdir -p " + base_path + "/build_st/dflow/bin";
+  (void)system(cmd.c_str());
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
   std::map<std::string, std::string> options;
@@ -5563,6 +5576,7 @@ TEST_F(STEST_helper_runtime, UpdateAbnormalInstanceInTrimmingModel) {
     CHAIN(NODE("add_2", add_2)->EDGE(0, 0)->NODE("Node_Output", NETOUTPUT));
   };
 
+  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   auto graph = ToComputeGraph(g1);
   auto output_node = graph->FindNode("Node_Output");
   output_node->GetOpDesc()->SetSrcIndex({0});

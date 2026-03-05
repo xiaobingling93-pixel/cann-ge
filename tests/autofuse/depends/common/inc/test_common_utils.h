@@ -13,6 +13,16 @@
 
 #include <cstdlib>
 #include <string>
+#include <map>
+
+// 前置声明
+namespace ge {
+namespace ascir {
+class AscGraph;
+class ScheduleGroup;
+class FusedScheduledResult;
+}
+}
 
 namespace autofuse {
 namespace test {
@@ -54,6 +64,38 @@ inline int CopyStubFiles(const std::string& base_dir, const std::string& stub_pa
 
   return ret;
 }
+
+// 辅助函数：构建单图到ScheduleGroup
+// 需要前置声明相关类型，使用时需包含对应头文件
+class AscGraph;
+class ScheduleGroup;
+
+inline void BuildSingleGraphToScheduleGroup(
+    AscGraph& graph,
+    ScheduleGroup& schedule_group,
+    uint32_t tiling_key);
+
+// 辅助函数：生成tiling函数并写文件
+// 需要前置声明相关类型，使用时需包含对应头文件
+class FusedScheduledResult;
+
+inline void GenerateTilingFunctionAndWriteToFile(
+    const std::string& op_name,
+    const FusedScheduledResult& fused_scheduled_result,
+    std::map<std::string, std::string>& options);
+
+// 辅助函数：生成tiling数据和头文件
+inline void GenerateTilingDataAndHeader(
+    const std::string& op_name,
+    const std::string& graph_name,
+    const FusedScheduledResult& fused_scheduled_result,
+    std::map<std::string, std::string>& options);
+
+// 辅助函数：准备测试环境文件
+inline void PrepareTestEnvironmentFiles(const std::string& test_header_content = "");
+
+// 辅助函数：编译生成的tiling代码
+inline void CompileGeneratedTilingCode();
 
 }  // namespace test
 }  // namespace autofuse

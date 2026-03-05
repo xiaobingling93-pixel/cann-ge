@@ -123,3 +123,40 @@ Status GetVarBaseAddrAndSize(const char_t *var_name, uint64_t &base_addr, uint64
 }
 
 }  // namespace ge
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ge::Status GeApiWrapper_InitRdmaPool(size_t size, rtMemType_t mem_type) {
+  return ge::InitRdmaPool(size, mem_type);
+}
+
+ge::Status GeApiWrapper_RdmaRemoteRegister(const std::vector<std::pair<uint64_t, uint64_t>> &var_info,
+                                           rtMemType_t mem_type) {
+  std::vector<ge::HostVarInfo> ge_var_info;
+  for (const auto& info : var_info) {
+    ge::HostVarInfo host_var_info;
+    host_var_info.base_addr = info.first;
+    host_var_info.var_size = info.second;
+    ge_var_info.push_back(host_var_info);
+  }
+  return ge::RdmaRemoteRegister(ge_var_info, mem_type);
+}
+
+ge::Status GeApiWrapper_GetVarBaseAddrAndSize(const char *var_name, uint64_t &base_addr, uint64_t &var_size) {
+  return ge::GetVarBaseAddrAndSize(var_name, base_addr, var_size);
+}
+
+ge::Status GeApiWrapper_MallocSharedMemory(const std::string &var_name, const std::vector<int64_t> &dims,
+                                           ge::DataType data_type, uint64_t &dev_addr, uint64_t &memory_size) {
+  ge::TensorInfo tensor_info;
+  tensor_info.var_name = var_name;
+  tensor_info.dims = dims;
+  tensor_info.data_type = data_type;
+  return ge::MallocSharedMemory(tensor_info, dev_addr, memory_size);
+}
+
+#ifdef __cplusplus
+}
+#endif

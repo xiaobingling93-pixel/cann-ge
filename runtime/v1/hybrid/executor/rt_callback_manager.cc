@@ -27,26 +27,26 @@ namespace {
 constexpr int32_t kDefaultTimeOut = -1;
 }
 namespace hybrid {
-Status RtCallbackManager::RegisterCallback(const rtStream_t stream,
+Status RtCallbackManager::RegisterCallback(const aclrtStream stream,
                                            const rtCallback_t callback,
                                            void *const user_data) {
   GELOGD("To register callback");
-  rtEvent_t event = nullptr;
+  aclrtEvent event = nullptr;
   GE_PROFILING_START(kRtEventCreateRecord);
-  GE_CHK_RT_RET(rtEventCreateWithFlag(&event, RT_EVENT_STREAM_MARK));
-  const auto rt_ret = rtEventRecord(event, stream);
+  GE_CHK_RT_RET(aclrtCreateEventWithFlag(&event, ACL_EVENT_CAPTURE_STREAM_PROGRESS));
+  const auto rt_ret = aclrtRecordEvent(event, stream);
   GE_PROFILING_END(gert::profiling::kUnknownName, gert::profiling::kRtEventCreateRecord, kRtEventCreateRecord);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_FAILED, "[Invoke][rtEventRecord] failed, error code = %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Invoke rtEventRecord failed, error code = %d", rt_ret);
-    (void)rtEventDestroy(event);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_FAILED, "[Invoke][aclrtRecordEvent] failed, error code = %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Invoke aclrtRecordEvent failed, error code = %d", rt_ret);
+    (void)aclrtDestroyEvent(event);
     return RT_FAILED;
   }
 
   auto cb = std::pair<rtCallback_t, void *>(callback, user_data);
-  const auto entry = std::pair<rtEvent_t, std::pair<rtCallback_t, void *>>(event, std::move(cb));
+  const auto entry = std::pair<aclrtEvent, std::pair<rtCallback_t, void *>>(event, std::move(cb));
   if (!callback_queue_.Push(entry)) {
-    (void) rtEventDestroy(event);
+    (void)aclrtDestroyEvent(event);
     return INTERNAL_ERROR;
   }
 
@@ -55,9 +55,9 @@ Status RtCallbackManager::RegisterCallback(const rtStream_t stream,
 }
 
 Status RtCallbackManager::Init() {
-  rtContext_t ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&ctx));
-  ret_future_ = std::async(std::launch::async, [this](const rtContext_t context,
+  aclrtContext ctx = nullptr;
+  GE_CHK_RT_RET(aclrtSetCurrentContext(&ctx));
+  ret_future_ = std::async(std::launch::async, [this](const aclrtContext context,
       const struct error_message::ErrorManagerContext &error_context) ->Status {
     error_message::SetErrMgrContext(error_context);
     return CallbackProcess(context);
@@ -71,9 +71,9 @@ Status RtCallbackManager::Init() {
   return SUCCESS;
 }
 
-Status RtCallbackManager::CallbackProcess(const rtContext_t context) {
+Status RtCallbackManager::CallbackProcess(const aclrtContext context) {
   GE_CHK_RT_RET(rtCtxSetCurrent(context));
-  std::pair<rtEvent_t, std::pair<rtCallback_t, void *>> entry;
+  std::pair<aclrtEvent, std::pair<rtCallback_t, void *>> entry;
   bool rt_timeout = false;
   while (true) {
     GELOGD("start to pop");
@@ -94,15 +94,15 @@ Status RtCallbackManager::CallbackProcess(const rtContext_t context) {
     auto timeout = (!stream_synchronize_timeout.empty())
                        ? static_cast<int32_t>(std::strtol(stream_synchronize_timeout.c_str(), nullptr, 10))
                        : kDefaultTimeOut;
-    const auto rt_err = rtEventSynchronizeWithTimeout(event, timeout);
+    const auto rt_err = aclrtSynchronizeEventWithTimeout(event, timeout);
     if (rt_err == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
-      GELOGE(rt_err, "[Invoke][rtStreamSynchronizeWithTimeout] failed, ret:%d.", rt_err);
-      REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, ret:%d.", rt_err);
+      GELOGE(rt_err, "[Invoke][aclrtSynchronizeEventWithTimeout] failed, ret:%d.", rt_err);
+      REPORT_INNER_ERR_MSG("E19999", "aclrtSynchronizeEventWithTimeout failed, ret:%d.", rt_err);
       rt_timeout = true;
-    } else if (rt_err != RT_ERROR_NONE) {
-      GELOGE(RT_FAILED, "[Invoke][rtEventSynchronize] failed. ret = %d", rt_err);
-      REPORT_INNER_ERR_MSG("E19999", "Invoke rtEventSynchronize failed, ret = %d.", rt_err);
-      GE_CHK_RT(rtEventDestroy(event));
+    } else if (rt_err != ACL_SUCCESS) {
+      GELOGE(RT_FAILED, "[Invoke][aclrtSynchronizeEventWithTimeout] failed. ret = %d", rt_err);
+      REPORT_INNER_ERR_MSG("E19999", "Invoke aclrtSynchronizeEventWithTimeout failed, ret = %d.", rt_err);
+      GE_CHK_RT(aclrtDestroyEvent(event));
       return RT_FAILED;
     } else {
       // do nothing
@@ -110,7 +110,7 @@ Status RtCallbackManager::CallbackProcess(const rtContext_t context) {
     GE_PROFILING_END(gert::profiling::kUnknownName, gert::profiling::kRtEventSync, kRtEventSync);
 
     GE_PROFILING_START(kRtEventDestroy);
-    GE_CHK_RT(rtEventDestroy(event));
+    GE_CHK_RT(aclrtDestroyEvent(event));
     GE_PROFILING_END(gert::profiling::kUnknownName, gert::profiling::kRtEventDestroy, kRtEventDestroy);
 
     const auto cb_func = entry.second.first;
@@ -126,7 +126,7 @@ Status RtCallbackManager::Destroy() {
     return SUCCESS;
   }
 
-  std::pair<rtEvent_t, std::pair<rtCallback_t, void *>> eof_entry;
+  std::pair<aclrtEvent, std::pair<rtCallback_t, void *>> eof_entry;
   eof_entry.first = nullptr;
   (void) callback_queue_.Push(eof_entry);
 
@@ -142,7 +142,7 @@ void RtCallbackManager::RtCallbackFunc(void *const data) {
   delete callback_func;
 }
 
-Status RtCallbackManager::RegisterCallbackFunc(const rtStream_t stream, const std::function<void()> &callback) {
+Status RtCallbackManager::RegisterCallbackFunc(const aclrtStream stream, const std::function<void()> &callback) {
   auto func = MakeUnique<std::function<void()>>(std::function<void()>(callback));
   GE_CHECK_NOTNULL(func);
   GELOGD("Callback registered");

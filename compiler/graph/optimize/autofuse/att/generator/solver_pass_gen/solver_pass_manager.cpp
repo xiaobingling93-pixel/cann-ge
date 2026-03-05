@@ -479,6 +479,7 @@ void SolverPassManager::InitSolverGen(AxesReorderSolverGen &solver_gen) {
   solver_gen.SetTilingScheduleConfig(args_manager_.GetModelInfo().tiling_schedule_config);
   solver_gen.SetCacheLineConfig(&args_manager_.GetModelInfo().cache_line_config);
   solver_gen.SetEnableParallel(args_manager_.GetModelInfo().enable_group_parallel);
+  solver_gen.SetGroupNum(group_num_);
   solver_gen.SetTilingCaseIdent({args_manager_.GetModelInfo().schedule_group_ident,
                                  args_manager_.GetModelInfo().tiling_case_id,
                                  args_manager_.GetModelInfo().sub_case_tag});

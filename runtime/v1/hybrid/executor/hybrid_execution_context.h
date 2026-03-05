@@ -26,6 +26,7 @@
 #include "hybrid/executor/rt_callback_manager.h"
 #include "hybrid/model/hybrid_model.h"
 #include "hybrid/executor/resource_manager.h"
+#include "acl/acl_rt.h"
 
 // If expr is not SUCCESS, print the log and return the same value
 #define HYBRID_CHK_STATUS_RET(expr, ...)        \
@@ -54,16 +55,16 @@ struct GraphExecutionContext {
   void SetErrorCode(const Status error_code);
   Status InitProfiler() const;
   Status GetStatus() const;
-  Status Synchronize(const rtStream_t rt_stream);
+  Status Synchronize(const aclrtStream rt_stream);
   bool IsDumpEnabled() const;
 
   uint64_t session_id = 0U;
   uint64_t context_id = 0U;
   const HybridModel *model = nullptr;
   const GEThreadLocalContext *ge_context = nullptr;
-  rtStream_t stream = nullptr;
-  rtStream_t hccl_stream = nullptr;
-  rtContext_t rt_context = nullptr;
+  aclrtStream stream = nullptr;
+  aclrtStream hccl_stream = nullptr;
+  aclrtContext rt_context = nullptr;
   CallbackManager *callback_manager = nullptr;
   NpuMemoryAllocator *allocator = nullptr;
   mutable std::unique_ptr<HybridProfiler> profiler = nullptr;

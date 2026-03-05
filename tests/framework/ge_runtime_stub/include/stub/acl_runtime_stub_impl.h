@@ -127,8 +127,6 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
   };
 
   std::map<BinData, BinHandle> bin_data_to_handles_;
-  std::list<ge::GeFakeLaunchArgs> all_launch_args_;
-  std::map<const void *, HandleArgsPtrList> launch_with_handle_args_;
   std::map<std::string, HandleArgsPtrList> cpu_launch_args_;
   std::map<uintptr_t, uintptr_t> dst_addrs_to_src_addrs_;
   std::vector<ge::GeFakeRtMemcpyArgs> rt_memcpy_args_;
@@ -136,11 +134,8 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
   std::list<ge::GetAllSwitchArgs> all_switch_args_;
   std::unordered_map<void *, MemoryInfo> addrs_to_mem_info_;
   std::list<ge::GeLaunchSqeUpdateTaskArgs> all_launch_sqe_update_records_;
-  std::mutex mtx_;
   std::unique_ptr<std::string> last_tag_;
   // uint32_t task_id_{0}; // 同一个模型的task在一条流上分配，只用来区分不同task
-  uint64_t last_stream_;
-  std::map<uint64_t, uint32_t> stream_to_task_id_;
   std::vector<uintptr_t> lite_exception_args_;
   std::map<rtEvent_t, std::vector<rtStream_t>> events_to_record_records_;
   GertStreamStub stream_stub_;

@@ -68,8 +68,6 @@ fi
 
 # ---------- 自动获取系统架构 ----------
 ARCH=$(uname -m)
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-
 # 映射架构名称
 case "${ARCH}" in
   x86_64|amd64)

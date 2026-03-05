@@ -36,6 +36,7 @@ set(LOCAL_UDF_EXECUTOR_TEST_CASE_FILES
         flow_func_statistic_utest.cpp
         memory_statistic_manager_utest.cpp
         mbuf_flow_msg_queue_utest.cpp
+        ${UDF_SRC_PATH}/toolchain/dump/udf_dump_task_device.cpp
 )
 
 set(proto_src_files
@@ -50,7 +51,6 @@ protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files})
 
 add_executable(ut_flow_func_executor
         ${PROTO_SRCS}
-        ${LOCAL_UDF_EXECUTOR_SRC_FILES}
         ${LOCAL_STUB_FILES}
         ${LOCAL_UDF_EXECUTOR_TEST_CASE_FILES}
 )
@@ -67,9 +67,13 @@ target_include_directories(ut_flow_func_executor PRIVATE
         ../../../
 )
 
-target_link_libraries(ut_flow_func_executor PRIVATE ${AIR_COMMON_LINK_OPTION}
+target_link_libraries(ut_flow_func_executor PRIVATE
         c_sec
         ascend_protobuf
+        flow_func
+        udf_static
+        udf_dump
+        udf_profiling
         -rdynamic
         $<BUILD_INTERFACE:intf_llt_pub>
         $<BUILD_INTERFACE:slog_headers>
@@ -79,7 +83,7 @@ target_link_libraries(ut_flow_func_executor PRIVATE ${AIR_COMMON_LINK_OPTION}
         GTest::gtest GTest::gmock GTest::gmock_main
 )
 
-target_compile_options(ut_flow_func_executor PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_flow_func_executor PRIVATE
         -fpermissive
         -Werror=format
         -Wno-deprecated-declarations
@@ -89,6 +93,7 @@ target_compile_options(ut_flow_func_executor PRIVATE ${AIR_COMMON_COMPILE_OPTION
 target_compile_definitions(ut_flow_func_executor PRIVATE
         STATISTIC
         google=ascend_private
+        PUBLIC
         UDF_TEST
 )
 

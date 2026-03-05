@@ -39,7 +39,6 @@ target_include_directories(mmpa_stub PRIVATE
 )
 
 target_link_libraries(mmpa_stub PRIVATE
-        $<BUILD_INTERFACE:intf_pub>
         -Wl,--no-as-needed
         c_sec
         GTest::gtest

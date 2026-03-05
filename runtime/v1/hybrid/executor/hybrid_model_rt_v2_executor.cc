@@ -130,12 +130,12 @@ Status EnsureModelVarMemoryMalloced(const GeRootModelPtr &model, const std::shar
 
 ge::Status DoRtStreamSyncWithTimeout(rtStream_t stream) {
   auto timeout = ge::GetContext().StreamSyncTimeout();
-  auto rt_ret = rtStreamSynchronizeWithTimeout(stream, timeout);
+  auto rt_ret = aclrtSynchronizeStreamWithTimeout(stream, timeout);
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
-    GELOGE(rt_ret, "[Invoke][rtStreamSynchronizeWithTimeout] failed, stream synchronize timeout:%d, ret:%d.", timeout,
-           rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, stream synchronize timeout:%d, ret:%d.",
-                      timeout, rt_ret);
+    GELOGE(rt_ret, "[Invoke][aclrtSynchronizeStreamWithTimeout] failed, stream synchronize timeout:%d, ret:%d.",
+        timeout, rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "aclrtSynchronizeStreamWithTimeout failed, stream synchronize timeout:%d, ret:%d.",
+        timeout, rt_ret);
     return ge::FAILED;
   } else if (rt_ret == ACL_ERROR_RT_END_OF_SEQUENCE) {
     GELOGD("SyncStream return END_OF_SEQUENCE");
@@ -339,10 +339,10 @@ Status GraphVarVisitor::AssembleDeviceSharedConstants(const vector<ge::NodePtr> 
 
 Status GraphVarVisitor::CopySharedConstant(const std::shared_ptr<ge::VarManager> &var_manager, uint32_t device_id,
                                            const std::vector<SharedConstantCopyHelper> &helpers) const {
-  // every thread needs to rtSetDevice
-  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(device_id)));
+  // every thread needs to aclrtSetDevice
+  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(device_id)));
   GE_MAKE_GUARD(reset_device, [device_id]() {
-      GE_CHK_RT(rtDeviceReset(static_cast<int32_t>(device_id)));
+      GE_CHK_RT(aclrtResetDevice(static_cast<int32_t>(device_id)));
   });
 
   for (const auto &helper : helpers) {
@@ -505,10 +505,10 @@ Status GraphVarVisitor::PreLoadFileConstant(const ge::OpDescPtr &op_desc, const 
 
 Status GraphVarVisitor::LoadFileConstantToDevice(const ExternalWeightManagerPtr &manager, const uint32_t device_id,
                                                  std::vector<H2DCopyHelper> &node_infos) const {
-  // every thread needs to rtSetDevice
-  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(device_id)));
+  // every thread needs to aclrtSetDevice
+  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(device_id)));
   GE_MAKE_GUARD(reset_device, [device_id]() {
-    GE_CHK_RT(rtDeviceReset(static_cast<int32_t>(device_id)));
+    GE_CHK_RT(aclrtResetDevice(static_cast<int32_t>(device_id)));
   });
 
   for (auto &helper : node_infos) {
@@ -1261,7 +1261,7 @@ Status HybridModelRtV2Executor::Execute(const InputData &input_data, ExecuteArgs
   int32_t cur_device_id = -1;
   if (run_ctx_.enable_input_batch_cpy_) {
     ResetMemcpyBatchParams();
-    GE_CHK_RT_RET(rtGetDevice(&cur_device_id));
+    GE_CHK_RT_RET(aclrtGetDevice(&cur_device_id));
   }
   size_t idx = 0;
   for (size_t i = 0U; i < num_inputs_; ++i) {
@@ -1407,7 +1407,7 @@ Status HybridModelRtV2Executor::Execute(const std::vector<gert::Tensor> &inputs,
   int32_t cur_device_id = -1;
   if (run_ctx_.enable_input_batch_cpy_) {
     ResetMemcpyBatchParams();
-    GE_CHK_RT_RET(rtGetDevice(&cur_device_id));
+    GE_CHK_RT_RET(aclrtGetDevice(&cur_device_id));
   }
   size_t idx = 0;
   for (size_t i = 0U; i < num_inputs_; ++i) {

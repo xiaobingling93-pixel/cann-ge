@@ -221,27 +221,6 @@ std::stringstream GetDumpGraphPrefixAndCreateDir() {
   return stream_file_name;
 }
 
-static std::string ComputeTypeToStr(ge::ComputeType compute_type) {
-  static const std::map<ge::ComputeType, std::string> kTypeToStr = {
-      {ge::ComputeType::kComputeLoad, "load"},
-      {ge::ComputeType::kComputeStore, "store"},
-      {ge::ComputeType::kComputeReduceStore, "reduce_store"},
-      {ge::ComputeType::kComputeElewise, "elewise"},
-      {ge::ComputeType::kComputeBroadcast, "broadcast"},
-      {ge::ComputeType::kComputeReduce, "reduce"},
-      {ge::ComputeType::kComputeConcat, "concat"},
-      {ge::ComputeType::kComputeTranspose, "transpose"},
-      {ge::ComputeType::kComputeGather, "gather"},
-      {ge::ComputeType::kComputeSplit, "split"},
-      {ge::ComputeType::kComputeInvalid, "invalid"}};
-
-  auto it = kTypeToStr.find(compute_type);
-  if (it != kTypeToStr.end()) {
-    return it->second;
-  }
-  return "unknown";
-}
-
 static std::string ExecConditionToStr(ge::ExecuteCondition condition) {
   static const std::map<ge::ExecuteCondition, std::string> kTypeToStr = {
     {ge::ExecuteCondition::kNoCache, "no_cache"},
@@ -255,18 +234,6 @@ static std::string ExecConditionToStr(ge::ExecuteCondition condition) {
   }
   return "unknown";
 }
-
-static std::string ApiTypeToStr(ge::ApiType compute_type) {
-  const char *kTypeName[] = {
-      [static_cast<int32_t>(ge::ApiType::kAPITypeBuffer)] = "Buffer",
-      [static_cast<int32_t>(ge::ApiType::kAPITypeCompute)] = "Compute",
-  };
-
-  if (static_cast<size_t>(compute_type) >= sizeof(kTypeName) / sizeof(kTypeName[0])) {
-    return "unknown";
-  }
-  return kTypeName[static_cast<size_t>(compute_type)];
-};
 
 static std::string ComputeUnitToStr(ge::ComputeUnit compute_unit) {
   const char *kTypeName[] = {
@@ -283,21 +250,6 @@ static std::string ComputeUnitToStr(ge::ComputeUnit compute_unit) {
     return "unknown";
   }
   return kTypeName[static_cast<size_t>(compute_unit)];
-}
-
-static std::string AllocTypeToStr(ge::AllocType alloc_type) {
-  const char *kTypeName[] = {
-      [static_cast<int32_t>(ge::AllocType::kAllocTypeGlobal)] = "Global",
-      [static_cast<int32_t>(ge::AllocType::kAllocTypeL1)] = "L1",
-      [static_cast<int32_t>(ge::AllocType::kAllocTypeL2)] = "L2",
-      [static_cast<int32_t>(ge::AllocType::kAllocTypeBuffer)] = "Buffer",
-      [static_cast<int32_t>(ge::AllocType::kAllocTypeQueue)] = "Queue",
-  };
-
-  if (static_cast<size_t>(alloc_type) >= sizeof(kTypeName) / sizeof(kTypeName[0])) {
-    return "unknown";
-  }
-  return kTypeName[static_cast<size_t>(alloc_type)];
 }
 
 static std::string MemHardwareToStr(ge::MemHardware mem_hardware) {
@@ -331,25 +283,6 @@ static std::map<ge::AxisId, std::string> GetAxisIdToName(const std::vector<ge::A
     id_to_name[iter->id] = iter->name;
   }
   return id_to_name;
-}
-
-static std::stringstream &AxisListStr(std::stringstream &ss, const ascir::Graph &graph,
-                                      const std::vector<ascir::AxisId> &axis_list) {
-  auto axis = graph.GetAllAxis();
-  std::map<ge::AxisId, std::string> axis_id_to_name = GetAxisIdToName(axis);
-  for (auto axis_id : axis_list) {
-    ss << axis_id_to_name[axis_id] << ", ";
-  }
-  return ss;
-}
-
-static std::stringstream &SizeExprListStr(std::stringstream &ss, const ascir::Graph &graph,
-                                          const std::vector<ascir::SizeExpr> &size_expr_list) {
-  (void)graph;
-  for (auto &size_expr : size_expr_list) {
-    ss << ge::SymbolicUtils::ToString(size_expr) << ", ";
-  }
-  return ss;
 }
 
 static std::stringstream &GraphNameStr(std::stringstream &ss, const ascir::Graph &graph) {
@@ -410,33 +343,39 @@ static std::stringstream &GraphAxisStr(std::stringstream &ss, const ascir::Graph
 
 static std::stringstream &NodeAttrStr(std::stringstream &ss, const ascir::Graph &graph, ascir::NodeView &node,
                                       bool verbose = false) {
-  // Node ir attrs
   auto &ir_attr = node->GetOpDesc()->GetAttrsGroup<ge::AscNodeAttr>()->ir_attr;
   if (ir_attr != nullptr) {
     ascendc_ir::proto::AscIrAttrDef asc_ir_attr_def;
     (void)ir_attr->Serialize(asc_ir_attr_def);
-    const auto &attr_map = asc_ir_attr_def.attr();
-    ss << "    .ir_attr =  {";
-    for (const auto &pair : attr_map) {
-      ss << "." << pair.first << " = " << pair.second.DebugString();
+    if (!asc_ir_attr_def.attr().empty()) {
+      ss << "    .ir_attr =  {";
+      for (const auto &pair : asc_ir_attr_def.attr()) {
+        ss << "." << pair.first << " = " << pair.second.ShortDebugString();
+      }
+      ss << "}" << std::endl;
     }
-    ss << "    }" << std::endl;
   }
 
-  // Node sched axis
-  ss << "    .axis = "
-     << "{";
   auto all_axis = graph.GetAllAxis();
   std::map<ge::AxisId, std::string> axis_id_to_name = GetAxisIdToName(all_axis);
-  for (auto axis_id : node->attr.sched.axis) {
-    ss << axis_id_to_name[axis_id] << ", ";
+
+  bool is_buf = (node->attr.api.type == ge::ApiType::kAPITypeBuffer);
+
+  if (!is_buf) {
+    ss << "    .axis = "
+       << "{";
+    for (auto axis_id : node->attr.sched.axis) {
+      ss << axis_id_to_name[axis_id] << ", ";
+    }
+    ss << "}" << std::endl;
   }
-  ss << "}" << std::endl;
 
-  // Node sched exec_condition
-  ss << "    .exec_condition = " << ExecConditionToStr(node->attr.sched.exec_condition) << std::endl;
+  // Node sched exec_condition (只显示非默认值)
+  if (node->attr.sched.exec_condition != ge::ExecuteCondition::kNoCache) {
+    ss << "    .exec_condition = " << ExecConditionToStr(node->attr.sched.exec_condition) << std::endl;
+  }
 
-  if (verbose) {
+  if (verbose && !is_buf) {
     const auto loop_axis = node->attr.sched.loop_axis;
     if ((loop_axis >= 0) && (loop_axis < static_cast<int64_t>(all_axis.size()))) {
       ss << "    .loop_axis = " << axis_id_to_name[loop_axis] << std::endl;
@@ -445,83 +384,223 @@ static std::stringstream &NodeAttrStr(std::stringstream &ss, const ascir::Graph 
     }
   }
 
-  ss << "    .api:" << std::endl;
-  ss << "      .compute_type = " << ComputeTypeToStr(node->attr.api.compute_type) << std::endl;
-  if (verbose) {
-    ss << "      .type = " << ApiTypeToStr(node->attr.api.type) << std::endl;
-    ss << "      .unit = " << ComputeUnitToStr(node->attr.api.unit) << std::endl;
+  if (verbose && !is_buf) {
+    ss << "    .api.unit = " << ComputeUnitToStr(node->attr.api.unit) << std::endl;
     const auto &tmp_buffers = node->attr.tmp_buffers;
-    for (size_t i = 0UL; i < tmp_buffers.size(); i++) {
-      ss << "      .tmp_buf[" << std::to_string(i) << "]:" << std::endl;
-      ss << "        .size = " << ge::SymbolicUtils::ToString(tmp_buffers[i].buf_desc.size) << std::endl;
-      ss << "        .id = " << to_string(tmp_buffers[i].id) << std::endl;
+    if (!tmp_buffers.empty()) {
+      ss << "    .tmp_buf = {";
+      for (size_t i = 0; i < tmp_buffers.size(); ++i) {
+        if (i > 0) ss << ", ";
+        ss << "{buf_id=" << tmp_buffers[i].id << ", size=" << ge::SymbolicUtils::ToString(tmp_buffers[i].buf_desc.size) << "}";
+      }
+      ss << "}" << std::endl;
     }
   }
 
   return ss;
 }
 
-static std::stringstream &NodeInputStr(std::stringstream &ss, const ascir::Graph &graph, ge::InDataAnchorPtr &in_anchor,
-                                       bool verbose) {
-  (void)verbose;
+static std::vector<std::string> CollectInputNames(const ascir::Graph &graph, const ge::AscNodePtr &node) {
   (void)graph;
-  auto input_name = in_anchor->GetOwnerNode()->GetOpDesc()->GetInputNameByIndex(in_anchor->GetIdx());
-  auto peer_out_anchor = in_anchor->GetPeerOutAnchor();
-  if (peer_out_anchor == nullptr) {
-    ss << "    ." << input_name << " = " << "nil" << std::endl;
+  std::vector<std::string> input_names;
+
+  for (uint32_t index = 0U; index < node->GetAllInDataAnchorsSize(); index++) {
+    auto in_anchor = node->GetInDataAnchor(static_cast<int32_t>(index));
+    if (in_anchor == nullptr) {
+      input_names.push_back("nil");
+      continue;
+    }
+    auto peer_out_anchor = in_anchor->GetPeerOutAnchor();
+    if (peer_out_anchor == nullptr) {
+      input_names.push_back("nil");
+    } else {
+      auto peer_name = peer_out_anchor->GetOwnerNode()->GetName();
+      input_names.push_back(peer_name + ".y");
+    }
+  }
+  return input_names;
+}
+
+static std::stringstream &NodeInputStr(std::stringstream &ss, const std::vector<std::string> &input_names) {
+  bool all_nil = true;
+  for (const auto &name : input_names) {
+    if (name != "nil") {
+      all_nil = false;
+      break;
+    }
+  }
+  if (all_nil) {
+    return ss;
+  }
+
+  if (input_names.size() == 1) {
+    ss << "    .x = " << input_names[0] << std::endl;
   } else {
-    auto peer_name = peer_out_anchor->GetOwnerNode()->GetName();
-    auto peer_output_name = in_anchor->GetOwnerNode()->GetOpDesc()->GetOutputNameByIndex(peer_out_anchor->GetIdx());
-    ss << "    ." << input_name << " = " << peer_name << "." << peer_output_name << std::endl;
+    ss << "    .x = {";
+    for (size_t i = 0; i < input_names.size(); ++i) {
+      if (i > 0) ss << ", ";
+      if (input_names[i] != "nil") {
+        ss << input_names[i];
+      }
+    }
+    ss << "}" << std::endl;
   }
 
   return ss;
 }
 
+// 输出形状信息 (axis, repeats, strides)
+static std::stringstream &OutputShapeStr(std::stringstream &ss, const ascir::Graph &graph,
+                                         const ge::AscTensorAttr &output_attr) {
+  // 输出 axis 列表
+  if (!output_attr.axis.empty()) {
+    auto all_axis = graph.GetAllAxis();
+    std::map<ge::AxisId, std::string> axis_id_to_name = GetAxisIdToName(all_axis);
+    ss << "        .axis = {";
+    for (size_t i = 0; i < output_attr.axis.size(); ++i) {
+      if (i > 0) ss << ", ";
+      ss << axis_id_to_name[output_attr.axis[i]];
+    }
+    ss << "}" << std::endl;
+  }
+
+  // 输出 repeats
+  if (!output_attr.repeats.empty()) {
+    ss << "        .repeats = (";
+    for (size_t i = 0; i < output_attr.repeats.size(); ++i) {
+      if (i > 0) ss << ", ";
+      ss << ge::SymbolicUtils::ToString(output_attr.repeats[i]);
+    }
+    ss << ")" << std::endl;
+  }
+
+  // 输出 strides
+  if (!output_attr.strides.empty()) {
+    ss << "        .strides = (";
+    for (size_t i = 0; i < output_attr.strides.size(); ++i) {
+      if (i > 0) ss << ", ";
+      ss << ge::SymbolicUtils::ToString(output_attr.strides[i]);
+    }
+    ss << ")" << std::endl;
+  }
+
+  return ss;
+}
+
+// 输出 vectorized 信息
+static std::stringstream &OutputVectorizedStr(std::stringstream &ss, const ascir::Graph &graph,
+                                              const ge::AscTensorAttr &output_attr) {
+  if (!output_attr.vectorized_axis.empty()) {
+    auto all_axis = graph.GetAllAxis();
+    std::map<ge::AxisId, std::string> axis_id_to_name = GetAxisIdToName(all_axis);
+
+    ss << "        .vectorized = {";
+    for (size_t i = 0; i < output_attr.vectorized_axis.size(); ++i) {
+      if (i > 0) ss << ", ";
+      auto axis_name = axis_id_to_name[output_attr.vectorized_axis[i]];
+      ss << axis_name << ":";
+      if (i < output_attr.vectorized_strides.size()) {
+        ss << ge::SymbolicUtils::ToString(output_attr.vectorized_strides[i]);
+      }
+    }
+    ss << "}" << std::endl;
+  }
+  return ss;
+}
+
+// 输出 Queue 类型的内存信息
+static std::stringstream &OutputQueueMemStr(std::stringstream &ss, const ge::AscTensorAttr &output_attr,
+                                            const std::string &pos_str) {
+  const auto &que = output_attr.que;
+  ss << MemHardwareToStr(output_attr.mem.hardware) << "[";
+  if (output_attr.mem.tensor_id != ge::kIdNone) {
+    ss << "tensor_id=" << output_attr.mem.tensor_id << ", ";
+  }
+  ss << "que_id=" << que.id;
+  if (output_attr.mem.reuse_id >= 0) {
+    ss << ", reuse_id=" << output_attr.mem.reuse_id;
+  }
+  ss << ", depth=" << que.depth << ", pos=" << pos_str << "]";
+  return ss;
+}
+
+// 输出 Buffer 类型的内存信息
+static std::stringstream &OutputBufferMemStr(std::stringstream &ss, const ge::AscTensorAttr &output_attr,
+                                             const std::string &pos_str) {
+  ss << MemHardwareToStr(output_attr.mem.hardware) << "[";
+  if (output_attr.mem.tensor_id != ge::kIdNone) {
+    ss << "tensor_id=" << output_attr.mem.tensor_id << ", ";
+  }
+  ss << "buf_id=" << output_attr.buf.id;
+  if (output_attr.mem.reuse_id >= 0) {
+    ss << ", reuse_id=" << output_attr.mem.reuse_id;
+  }
+  ss << ", pos=" << pos_str << "]";
+  return ss;
+}
+
+// 输出普通类型的内存信息
+static std::stringstream &OutputNormalMemStr(std::stringstream &ss, const ge::AscTensorAttr &output_attr,
+                                             const std::string &pos_str) {
+  ss << MemHardwareToStr(output_attr.mem.hardware);
+  if (output_attr.mem.tensor_id != ge::kIdNone) {
+    ss << "[tensor_id=" << output_attr.mem.tensor_id << ", pos=" << pos_str << "]";
+  } else {
+    ss << "[pos=" << pos_str << "]";
+  }
+  return ss;
+}
+
+// 输出内存信息
+static std::stringstream &OutputMemStr(std::stringstream &ss, const ge::AscTensorAttr &output_attr, bool verbose) {
+  if (!verbose && (output_attr.mem.alloc_type != ge::AllocType::kAllocTypeQueue) &&
+      (output_attr.mem.alloc_type != ge::AllocType::kAllocTypeBuffer)) {
+    return ss;
+  }
+
+  ss << "        .mem = ";
+  // 获取 position 字符串
+  std::string pos_str;
+  switch (output_attr.mem.position) {
+    case ge::Position::kPositionVecIn:
+      pos_str = "VECIN";
+      break;
+    case ge::Position::kPositionVecCalc:
+      pos_str = "VECCALC";
+      break;
+    case ge::Position::kPositionVecOut:
+      pos_str = "VECOUT";
+      break;
+    case ge::Position::kPositionGM:
+      pos_str = "GM";
+      break;
+    default:
+      pos_str = PositionToStr(output_attr.mem.position);
+      break;
+  }
+
+  if (output_attr.mem.alloc_type == ge::AllocType::kAllocTypeQueue) {
+    OutputQueueMemStr(ss, output_attr, pos_str);
+  } else if (output_attr.mem.alloc_type == ge::AllocType::kAllocTypeBuffer) {
+    OutputBufferMemStr(ss, output_attr, pos_str);
+  } else {
+    OutputNormalMemStr(ss, output_attr, pos_str);
+  }
+  ss << std::endl;
+  return ss;
+}
+
+// 输出节点信息
 static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Graph &graph, ge::AscNode &node,
                                         ge::AscTensorAttr &output_attr, size_t output_idx, bool verbose) {
   auto output_name = node.GetOpDesc()->GetOutputNameByIndex(output_idx);
   auto dtype = node.GetOpDesc()->GetOutputDesc(output_idx).GetDataType();
-  ss << "    ." << output_name << ".dtype = " << DtypeToStr(dtype) << std::endl;
 
-  ss << "    ." << output_name << ".axis = " << "{";
-  AxisListStr(ss, graph, output_attr.axis);
-  ss << "}" << std::endl;
+  ss << "    ." << output_name << ": " << DtypeToStr(dtype) << std::endl;
 
-  ss << "    ." << output_name << ".repeats = " << "{";
-  SizeExprListStr(ss, graph, output_attr.repeats);
-  ss << "}" << std::endl;
-
-  ss << "    ." << output_name << ".strides = " << "{";
-  SizeExprListStr(ss, graph, output_attr.strides);
-  ss << "}" << std::endl;
-
-  ss << "    ." << output_name << ".vectorized_axis = " << "{";
-  AxisListStr(ss, graph, output_attr.vectorized_axis);
-  ss << "}" << std::endl;
-
-  ss << "    ." << output_name << ".vectorized_strides = " << "{";
-  SizeExprListStr(ss, graph, output_attr.vectorized_strides);
-  ss << "}" << std::endl;
-
-  if (verbose) {
-    ss << "    ." << output_name << ".mem:" << std::endl;
-    ss << "      .tensor_id = " << output_attr.mem.tensor_id << std::endl;
-    ss << "      .alloc_type = " << AllocTypeToStr(output_attr.mem.alloc_type) << std::endl;
-    ss << "      .hardware = " << MemHardwareToStr(output_attr.mem.hardware) << std::endl;
-    ss << "      .position = " << PositionToStr(output_attr.mem.position) << std::endl;
-    if (output_attr.mem.alloc_type == ge::AllocType::kAllocTypeBuffer) {
-      ss << "    ." << output_name << ".buf:" << std::endl;
-      ss << "      .id = " << output_attr.buf.id << std::endl;
-      ss << "      .reuse_id = " << IdentifierToStr(output_attr.mem.reuse_id) << std::endl;
-    } else if (output_attr.mem.alloc_type == ge::AllocType::kAllocTypeQueue) {
-      ss << "    ." << output_name << ".que:" << std::endl;
-      ss << "      .id = " << output_attr.que.id << std::endl;
-      ss << "      .depth = " << output_attr.que.depth << std::endl;
-      ss << "      .buf_num = " << output_attr.que.buf_num << std::endl;
-      ss << "      .reuse_id = " << IdentifierToStr(output_attr.mem.reuse_id) << std::endl;
-    }
-  }
+  OutputShapeStr(ss, graph, output_attr);
+  OutputVectorizedStr(ss, graph, output_attr);
+  OutputMemStr(ss, output_attr, verbose);
 
   return ss;
 }
@@ -631,13 +710,8 @@ std::string DebugStr(const ascir::Graph &graph, bool verbose) {
     NodeAttrStr(ss, graph, node, verbose);
 
     // Node inputs
-    for (uint32_t index = 0U; index < node->GetAllInDataAnchorsSize(); index++) {
-      auto in_anchor = node->GetInDataAnchor(static_cast<int32_t>(index));
-      if (in_anchor == nullptr) {
-        continue;
-      }
-      NodeInputStr(ss, graph, in_anchor, verbose);
-    }
+    auto input_names = CollectInputNames(graph, node);
+    NodeInputStr(ss, input_names);
 
     // Node outputs
     for (size_t i = 0UL; i < node->outputs().size(); i++) {

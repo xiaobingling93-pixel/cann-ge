@@ -25,6 +25,7 @@
 #include "common/checker.h"
 #include "formats/utils/formats_trans_utils.h"
 #include "base/err_msg.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -1182,7 +1183,7 @@ ge::Status VarManager::VarManagerToDeserial(const uint64_t session_id, const dep
   if (var_resource_ == nullptr) {
     version_ = static_cast<SessionVersion>(info.version());
     int32_t device_id = -1;
-    GE_CHK_RT_RET(rtGetDevice(&device_id));
+    GE_CHK_RT_RET(aclrtGetDevice(&device_id));
     device_id_ = static_cast<uint32_t>(device_id);
     GELOGD("[VarManager] Success to get device id = %u.", device_id_);
     session_id_ = info.session_id();

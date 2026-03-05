@@ -9,7 +9,7 @@
  */
 
 #include "common/dump/dump_op.h"
-
+#include "acl/acl_rt.h"
 #include <array>
 #include "common/dump/dump_manager.h"
 #include "common/plugin/datatype_util.h"
@@ -526,7 +526,7 @@ Status DumpOp::BuildFftsSubOpTask(toolkit::aicpu::dump::OpMappingInfo &op_mappin
 Status DumpOp::GenerateFftsDump(const DumpProperties &dump_properties, void *&load_dump_info, uint32_t &load_dump_len,
                                 void *&unload_dump_info, uint32_t &unload_dump_len, const bool is_single_op_dump) {
   int32_t device_id = 0;
-  GE_CHK_RT_RET(rtGetDevice(&device_id));
+  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
   GE_RETURN_WITH_LOG_IF_TRUE(device_id < 0, "Check device_id %d failed", device_id);
   dump_properties_ = dump_properties;
 
@@ -616,10 +616,10 @@ Status DumpOp::LaunchDumpOp(const bool is_single_op_dump, bool need_device_args)
          op_desc_->GetName().c_str(), static_cast<int32_t>(is_single_op_dump), static_cast<int32_t>(need_device_args));
 
   int32_t device_id = 0;
-  const rtError_t rt_ret = rtGetDevice(&device_id);
+  const rtError_t rt_ret = aclrtGetDevice(&device_id);
   if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtGetDevice]Failed, ret %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "[Call][rtGetDevice]Failed, ret %d", rt_ret);
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtGetDevice]Failed, ret %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "[Call][aclrtGetDevice]Failed, ret %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   if (device_id < 0) {

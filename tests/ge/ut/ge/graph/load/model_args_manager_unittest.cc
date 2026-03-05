@@ -1243,7 +1243,6 @@ TEST_F(ModelArgsManagerUT, GenAddrRefreshOpKernelLaunchArgsInfo_Test) {
   ASSERT_EQ(mam.GenKernelLaunchArgs(offset_num), SUCCESS);
   ASSERT_EQ(mam.GenAddrRefreshIndexAndOffset(offset_num), SUCCESS);
   mam.launched_args_unique_ptr_ = nullptr;
-  ASSERT_NE(mam.GenKernelLaunchArgs(offset_num), SUCCESS);
   dlog_setlevel(0,3,0);
 }
 

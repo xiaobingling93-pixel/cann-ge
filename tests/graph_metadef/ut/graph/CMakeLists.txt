@@ -29,7 +29,7 @@ file(GLOB_RECURSE FAKER_SRCS CONFIGURE_DEPENDS "${GE_METADEF_TEST_DIR}/depends/f
 add_executable(ut_graph ${UT_FILES} ${FAKE_FILES} ${UTILS_FILES} ${FAKER_SRCS})
 
 target_compile_options(ut_graph PRIVATE
-    -g --coverage -fprofile-arcs -ftest-coverage
+    -g
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -fno-access-control
@@ -42,12 +42,17 @@ target_compile_definitions(ut_graph PRIVATE
 )
 
 target_link_libraries(ut_graph PRIVATE
-    intf_pub -lgcov
+    intf_pub
+    -Wl,-z,muldefs
     -Wl,--no-as-needed
     platform
     slog_headers
+    unified_dlog
+    lowering
+    register
+    ascend_dump
     ge_runtime_stub eager_style_graph_builder_base
-    metadef_headers mmpa_stub graph graph_base error_manager aihac_symbolizer runtime_headers
+    metadef_headers mmpa_stub graph graph_base error_manager runtime_headers
     msprof_headers GTest::gtest GTest::gtest_main ascend_protobuf slog_stub c_sec json -lrt -ldl
     ascendcl_stub
 )

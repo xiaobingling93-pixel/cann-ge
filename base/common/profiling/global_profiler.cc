@@ -492,7 +492,7 @@ ge::Status GlobalProfilingWrapper::ReportTaskMemoryInfo(const std::string &model
   auto memory_info_data = reinterpret_cast<MsprofMemoryInfo *>(task_memory_info.data);
   memory_info_data->nodeId = MsprofGetHashId(model_name.c_str(), model_name.size());
   int32_t device_id = 0;
-  (void)rtGetDevice(&device_id);
+  (void)aclrtGetDevice(&device_id);
   memory_info_data->deviceId = static_cast<uint32_t>(device_id);
   memory_info_data->deviceType = 0U;
   while (!DeviceMemoryRecorder::IsRecorderEmpty()) {
@@ -572,7 +572,7 @@ ge::Status GlobalProfilingWrapper::ReportGraphIdMap(const uint64_t prof_time, co
 }
 
 ge::Status GlobalProfilingWrapper::ProfileStepTrace(const uint64_t step_id, const uint32_t model_id,
-                                                    const uint16_t tag_id, const rtStream_t stream) {
+                                                    const uint16_t tag_id, const aclrtStream stream) {
   {
     const auto subscribe_graph_id = ge::ProfilingProperties::Instance().GetSubscribeGraphId();
     const bool is_this_model_unsubscribed = (subscribe_graph_id.find(model_id) == subscribe_graph_id.end());
@@ -773,5 +773,10 @@ bool ProfilerRegistry::IsProfLaunchType(const std::string &kernel_type, const bo
 
 bool ProfilerRegistry::IsProfDavinciModelExecuteType(const std::string &kernel_type) const {
   return kernel_type == std::string("DavinciModelExecute");
+}
+
+GlobalProfilingWrapper *GlobalProfilingWrapper::GetInstance() {
+  static GlobalProfilingWrapper global_prof_wrapper;
+  return &global_prof_wrapper;
 }
 }  // namespace gert

@@ -464,7 +464,7 @@ ge::Graph BuildConstGraph() {
       .OutCnt(1)
       .Build("const1");
   std::vector<int32_t> value2(24, 1);
-  GeTensorPtr data_tensor2 = make_shared<GeTensor>(desc, (uint8_t *)value2.data(), sizeof(int32_t));
+  GeTensorPtr data_tensor2 = make_shared<GeTensor>(desc, (uint8_t *)value2.data(), sizeof(int32_t) * 24);
   auto const2 = OP_CFG(CONSTANT).Weight(data_tensor2).TensorDesc(FORMAT_NCHW, DT_INT32, shape)
       .InCnt(2)
       .OutCnt(1)

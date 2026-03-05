@@ -54,7 +54,33 @@ bool IsAnyModelEnableEqualOrderTiling(const TilingModelInfo &model_info) {
   }
   return false;
 }
+
+// 辅助函数：获取Group个数并设置到SolverPassManager
+size_t GetGroupNumAndSetToSolver(
+    const ModelInfo &model_info,
+    const std::map<std::pair<size_t, size_t>, size_t> &schedule_result_group_nums,
+    SolverPassManager &solver_pass_manager) {
+  const auto key = std::make_pair(model_info.schedule_group_ident.asc_graph_id,
+                                  model_info.schedule_group_ident.impl_graph_id);
+  size_t group_num = 1UL; // 默认值为1
+  if (const auto it = schedule_result_group_nums.find(key); it != schedule_result_group_nums.end()) {
+    group_num = it->second;
+  }
+  solver_pass_manager.SetGroupNum(group_num);
+  return group_num;
 }
+}
+
+void AxesReorderTilingCodeGenImpl::ConfigureSolverPassManagerCommon(SolverPassManager &solver_pass_manager) {
+  solver_pass_manager.SetUBThreshold(config_.ub_threshold);
+  solver_pass_manager.SetCoreNumThreshold(config_.corenum_threshold);
+  solver_pass_manager.SetEnableMulticoreUBTradeoff(config_.enable_multicore_ub_tradeoff);
+  solver_pass_manager.SetEnableAutofusePGO(config_.enable_autofuse_pgo);
+  solver_pass_manager.SetAutofusePGOStepMax(config_.pgo_step_max);
+  solver_pass_manager.SetVariableReplace(config_.do_variable_replace);
+  solver_pass_manager.SetHighPerfTiling(config_.high_precision);
+}
+
 ge::Status AxesReorderTilingCodeGenImpl::GenSolverBaseClass() {
   const bool is_enable_equal_order_tiling = IsAnyModelEnableEqualOrderTiling(tiling_model_info_);
   std::string basic_solvers_head = SolverPassManager::GenAxesReorderBaseClassesHead(is_enable_equal_order_tiling);
@@ -74,14 +100,15 @@ ge::Status AxesReorderTilingCodeGenImpl::GenSolverTiling(const ModelInfo &model_
   ArgsManager args_manager(model_info);
   SolverPassManager solver_pass_manager(args_manager, {args_manager.GetTilingCaseId(), model_info.sub_case_tag},
                                         config_.tiling_data_type_name);
-  solver_pass_manager.SetUBThreshold(config_.ub_threshold);
+  ConfigureSolverPassManagerCommon(solver_pass_manager);
   solver_pass_manager.SetReservedUbSize(model_info.reserved_ub_size);
-  solver_pass_manager.SetCoreNumThreshold(config_.corenum_threshold);
-  solver_pass_manager.SetEnableMulticoreUBTradeoff(config_.enable_multicore_ub_tradeoff);
-  solver_pass_manager.SetEnableAutofusePGO(config_.enable_autofuse_pgo);
-  solver_pass_manager.SetAutofusePGOStepMax(config_.pgo_step_max);
-  solver_pass_manager.SetVariableReplace(config_.do_variable_replace);
-  solver_pass_manager.SetHighPerfTiling(config_.high_precision);
+
+  // 获取同一ScheduleResult中的Group个数并设置到SolverPassManager
+  size_t group_num = GetGroupNumAndSetToSolver(model_info, schedule_result_group_nums_, solver_pass_manager);
+  GELOGI("[DFX] GenSolverTiling: asc_graph_id=%zu, impl_graph_id=%zu, group_num=%zu, group_ids_in_map=%zu",
+         model_info.schedule_group_ident.asc_graph_id, model_info.schedule_group_ident.impl_graph_id,
+         group_num, schedule_result_group_nums_.size());
+
   tiling_func_.AddLine(solver_pass_manager.GenAxesReorderClass());
   return ge::SUCCESS;
 }
@@ -90,13 +117,11 @@ ge::Status AxesReorderTilingCodeGenImpl::GenDoTiling(const ModelInfo &model_info
   ArgsManager args_manager(model_info);
   SolverPassManager solver_pass_manager(args_manager, {args_manager.GetTilingCaseId(), model_info.sub_case_tag},
                                         config_.tiling_data_type_name);
-  solver_pass_manager.SetUBThreshold(config_.ub_threshold);
-  solver_pass_manager.SetCoreNumThreshold(config_.corenum_threshold);
-  solver_pass_manager.SetEnableMulticoreUBTradeoff(config_.enable_multicore_ub_tradeoff);
-  solver_pass_manager.SetEnableAutofusePGO(config_.enable_autofuse_pgo);
-  solver_pass_manager.SetAutofusePGOStepMax(config_.pgo_step_max);
-  solver_pass_manager.SetVariableReplace(config_.do_variable_replace);
-  solver_pass_manager.SetHighPerfTiling(config_.high_precision);
+  ConfigureSolverPassManagerCommon(solver_pass_manager);
+
+  // 获取同一ScheduleResult中的Group个数并设置到SolverPassManager
+  GetGroupNumAndSetToSolver(model_info, schedule_result_group_nums_, solver_pass_manager);
+
   solver_pass_manager.SetEnableEqualOrder(IsEnableEqualOrderTiling(model_info));
 
   GenGetSetTilingImpl(model_info);

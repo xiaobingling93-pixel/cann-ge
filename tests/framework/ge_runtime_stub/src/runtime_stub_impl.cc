@@ -16,19 +16,30 @@
 #include "mmpa/mmpa_api.h"
 
 namespace gert {
+namespace {
+std::mutex global_mtx_;
+uint64_t last_stream_{0UL};
+std::list<ge::GeFakeLaunchArgs> all_launch_args_;
+std::map<const void *, HandleArgsPtrList> launch_with_handle_args_;
+std::map<uint64_t, uint32_t> stream_to_task_id_;
+}
 void RuntimeStubImpl::Clear() {
-  launch_with_handle_args_.clear();
-  all_launch_args_.clear();
   all_switch_args_.clear();
   cpu_launch_args_.clear();
   rt_memcpy_args_.clear();
   rt_memcpy_sync_args_.clear();
   all_launch_sqe_update_records_.clear();
   events_to_record_records_.clear();
+  const std::lock_guard<std::mutex> lk(global_mtx_);
+  launch_with_handle_args_.clear();
+  all_launch_args_.clear();
 }
 
-const std::map<const void *, HandleArgsPtrList> &RuntimeStubImpl::GetLaunchWithHandleArgs() {
-  return launch_with_handle_args_;
+RuntimeStubImpl::RuntimeStubImpl() {
+  const std::lock_guard<std::mutex> lk(global_mtx_);
+  last_stream_ = 0UL;
+  all_launch_args_.clear();
+  launch_with_handle_args_.clear();
 }
 
 ge::GeFakeLaunchArgs *RuntimeStubImpl::PopLaunchArgsBy(const void *handle) {
@@ -92,7 +103,7 @@ uintptr_t RuntimeStubImpl::FindSrcAddrCpyToDst(uintptr_t dst_addr) {
 
 rtError_t RuntimeStubImpl::rtKernelLaunchWithHandle(void *handle, uint64_t devFunc, uint32_t blockDim, rtArgsEx_t *args,
                                                     rtSmDesc_t *smDesc, rtStream_t stream, const void *kernelInfo) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(handle, devFunc, blockDim, args, smDesc, stream, kernelInfo, std::move(last_tag_));
   launch_with_handle_args_[handle].emplace_back(&all_launch_args_.back());
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stream));
@@ -108,7 +119,7 @@ rtError_t RuntimeStubImpl::rtKernelLaunchWithHandle(void *handle, uint64_t devFu
 
 rtError_t RuntimeStubImpl::rtKernelLaunchWithFlag(const void *stubFunc, uint32_t blockDim, rtArgsEx_t *argsInfo,
                                                   rtSmDesc_t *smDesc, rtStream_t stream, uint32_t flag) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(stubFunc, blockDim, argsInfo, smDesc, stream, flag, std::move(last_tag_));
   launch_with_handle_args_[stubFunc].emplace_back(&all_launch_args_.back());
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stream));
@@ -125,7 +136,7 @@ rtError_t RuntimeStubImpl::rtKernelLaunchWithFlag(const void *stubFunc, uint32_t
 rtError_t RuntimeStubImpl::rtKernelLaunchWithHandleV2(void *hdl, const uint64_t tilingKey, uint32_t blockDim,
                                                       rtArgsEx_t *argsInfo, rtSmDesc_t *smDesc, rtStream_t stm,
                                                       const rtTaskCfgInfo_t *cfgInfo) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(hdl, tilingKey, blockDim, argsInfo, smDesc, stm, cfgInfo, std::move(last_tag_));
   launch_with_handle_args_[hdl].emplace_back(&all_launch_args_.back());
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stm));
@@ -142,7 +153,7 @@ rtError_t RuntimeStubImpl::rtKernelLaunchWithHandleV2(void *hdl, const uint64_t 
 rtError_t RuntimeStubImpl::rtKernelLaunchWithFlagV2(const void *stubFunc, uint32_t blockDim, rtArgsEx_t *argsInfo,
                                                     rtSmDesc_t *smDesc, rtStream_t stm, uint32_t flags,
                                                     const rtTaskCfgInfo_t *cfgInfo) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(stubFunc, blockDim, argsInfo, smDesc, stm, flags, std::move(last_tag_));
   launch_with_handle_args_[stubFunc].emplace_back(&all_launch_args_.back());
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stm));
@@ -159,7 +170,7 @@ rtError_t RuntimeStubImpl::rtKernelLaunchWithFlagV2(const void *stubFunc, uint32
 rtError_t RuntimeStubImpl::rtAicpuKernelLaunchWithFlag(const rtKernelLaunchNames_t *launch_names, uint32_t blockDim,
                                                        const rtArgsEx_t *args, rtSmDesc_t *smDesc, rtStream_t stream,
                                                        uint32_t flags) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   // todo : 当前只使用了args信息，其余参数未使用
   all_launch_args_.emplace_back(launch_names, blockDim, args, smDesc, stream, flags, std::move(last_tag_));
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stream));
@@ -186,7 +197,7 @@ rtError_t RuntimeStubImpl::rtRegisterAllKernel(const rtDevBinary_t *bin, void **
 rtError_t RuntimeStubImpl::rtCpuKernelLaunchWithFlag(const void *so_name, const void *kernel_name, uint32_t block_dim,
                                                      const rtArgsEx_t *args, rtSmDesc_t *smDesc, rtStream_t stream,
                                                      uint32_t flags) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(kernel_name, block_dim, args->args, args->argsSize, stream, std::move(last_tag_));
   std::string kernel_name_str = reinterpret_cast<const char *>(kernel_name);
   cpu_launch_args_[kernel_name_str].emplace_back(&all_launch_args_.back());
@@ -201,7 +212,7 @@ rtError_t RuntimeStubImpl::rtCpuKernelLaunchWithFlag(const void *so_name, const 
 }
 
 rtError_t RuntimeStubImpl::rtGeneralCtrl(uintptr_t *ctrl, uint32_t num, uint32_t type) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(ctrl, num, type, std::move(last_tag_));
   cpu_launch_args_["test_haha"].emplace_back(&all_launch_args_.back());
   // task_id_++;
@@ -221,14 +232,14 @@ rtError_t RuntimeStubImpl::rtMemcpy(void *dst, uint64_t dest_max, const void *sr
   if (dst != nullptr && src != nullptr) {
     memcpy_s(dst, dest_max, src, count);
   }
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   dst_addrs_to_src_addrs_[reinterpret_cast<uintptr_t>(dst)] = reinterpret_cast<uintptr_t>(src);
   rt_memcpy_sync_args_.emplace_back(ge::GeFakeRtMemcpyArgs::RtMemcpy(dst, dest_max, src, count));
   return RT_ERROR_NONE;
 }
 rtError_t RuntimeStubImpl::rtMemcpyAsync(void *dst, uint64_t dest_max, const void *src, uint64_t count,
                                          rtMemcpyKind_t kind, rtStream_t stream) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   rt_memcpy_args_.emplace_back(ge::GeFakeRtMemcpyArgs::RtMemcpyAsync(dst, dest_max, src, count, stream));
   stream_stub_.LaunchTaskToStream(TaskTypeOnStream::rtMemcpyAsync, stream);
   return RuntimeStub::rtMemcpyAsync(dst, dest_max, src, count, kind, stream);
@@ -241,7 +252,7 @@ rtError_t RuntimeStubImpl::rtsMemcpyBatch(void **dsts, void **srcs, size_t *size
 
 rtError_t RuntimeStubImpl::rtMemcpyAsyncPtr(void *memcpy_addr_info, uint64_t dst_max, uint64_t count,
                                             rtMemcpyKind_t kind, rtStream_t stream, uint32_t qos_cfg) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   char soc_version[32] = {};
   mmGetEnv("MOCK_SOC_VERSION", &soc_version[0], sizeof(soc_version));
 
@@ -262,7 +273,7 @@ rtError_t RuntimeStubImpl::rtMemcpyAsyncPtr(void *memcpy_addr_info, uint64_t dst
 
 rtError_t RuntimeStubImpl::rtStreamSwitchEx(void *ptr, rtCondition_t condition, void *value_ptr, rtStream_t true_stream,
                                             rtStream_t stream, rtSwitchDataType_t data_type) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
 
   all_switch_args_.emplace_back(ptr, value_ptr, std::move(last_tag_));
   return RuntimeStub::rtStreamSwitchEx(ptr, condition, value_ptr, true_stream, stream, data_type);
@@ -274,7 +285,7 @@ rtError_t RuntimeStubImpl::rtMemGetInfoEx(rtMemInfoType_t memInfoType, size_t *f
   return RT_ERROR_NONE;
 }
 rtError_t RuntimeStubImpl::rtMalloc(void **dev_ptr, uint64_t size, rtMemType_t type, uint16_t moduleId) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   auto ret = RuntimeStub::rtMalloc(dev_ptr, size, type, moduleId);
   if (ret == RT_ERROR_NONE) {
     addrs_to_mem_info_[*dev_ptr] = MemoryInfo{*dev_ptr, size, type, moduleId};
@@ -282,7 +293,7 @@ rtError_t RuntimeStubImpl::rtMalloc(void **dev_ptr, uint64_t size, rtMemType_t t
   return ret;
 }
 rtError_t RuntimeStubImpl::rtFree(void *dev_ptr) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   auto iter = addrs_to_mem_info_.find(dev_ptr);
   if (iter != addrs_to_mem_info_.end()) {
     addrs_to_mem_info_.erase(iter);
@@ -291,7 +302,7 @@ rtError_t RuntimeStubImpl::rtFree(void *dev_ptr) {
 }
 rtError_t RuntimeStubImpl::rtLaunchSqeUpdateTask(uint32_t streamId, uint32_t taskId, void *src, uint64_t cnt,
                                                  rtStream_t stm) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_sqe_update_records_.emplace_back(ge::GeLaunchSqeUpdateTaskArgs{streamId, taskId, src, cnt, stm});
   stream_stub_.LaunchTaskToStream(TaskTypeOnStream::rtLaunchSqeUpdateTask, stm);
   for (auto &launch_arg : all_launch_args_) {
@@ -318,7 +329,7 @@ const std::list<ge::GetAllSwitchArgs> &RuntimeStubImpl::GetAllSwitchArgs() const
 }
 
 rtError_t RuntimeStubImpl::rtModelCreate(rtModel_t *model, uint32_t flag) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
 
   *model = new uint32_t;
   stream_to_task_id_.clear();
@@ -327,7 +338,7 @@ rtError_t RuntimeStubImpl::rtModelCreate(rtModel_t *model, uint32_t flag) {
 }
 
 rtError_t RuntimeStubImpl::rtModelGetTaskId(void *handle, uint32_t *task_id, uint32_t *stream_id) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
 
   *task_id = stream_to_task_id_[last_stream_];
   *stream_id = static_cast<uint32_t>(last_stream_);
@@ -340,7 +351,7 @@ rtError_t RuntimeStubImpl::rtModelGetTaskId(void *handle, uint32_t *task_id, uin
 
 rtError_t RuntimeStubImpl::rtsStreamGetId(void *stm, int32_t *streamId)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   (void) stm;
 
   *streamId = static_cast<uint32_t>(last_stream_);
@@ -365,7 +376,7 @@ rtError_t RuntimeStubImpl::rtsUseStreamResInCurrentThread(const rtStream_t stm) 
 
 rtError_t RuntimeStubImpl::rtsGetThreadLastTaskId(uint32_t *taskId)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
 
   *taskId = stream_to_task_id_[last_stream_];
 
@@ -469,7 +480,7 @@ rtError_t RuntimeStubImpl::rtsFuncGetByName(const rtBinHandle binHandle, const c
 rtError_t RuntimeStubImpl::rtsLaunchCpuKernel(const rtFuncHandle funcHandle, const uint32_t blockDim, rtStream_t st,
                                               const rtKernelLaunchCfg_t *cfg, rtCpuKernelArgs_t *argsInfo)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(funcHandle, blockDim, st, cfg, argsInfo, std::move(last_tag_));
   cpu_launch_args_["cpu_new_args_launch"].emplace_back(&all_launch_args_.back());
   last_stream_ = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(st));
@@ -485,7 +496,7 @@ rtError_t RuntimeStubImpl::rtsLaunchKernelWithHostArgs(rtFuncHandle funcHandle, 
                                                        rtKernelLaunchCfg_t *cfg, void *hostArgs, uint32_t argsSize,
                                                        rtPlaceHolderInfo_t *placeHolderArray, uint32_t placeHolderNum)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(funcHandle, blockDim, stm, cfg, hostArgs, argsSize,
                                 placeHolderArray, placeHolderNum, std::move(last_tag_));
   cpu_launch_args_["cpu_new_args_launch_with_place_holder"].emplace_back(&all_launch_args_.back());
@@ -501,7 +512,7 @@ rtError_t RuntimeStubImpl::rtsLaunchKernelWithHostArgs(rtFuncHandle funcHandle, 
 rtError_t RuntimeStubImpl::rtsLaunchKernelWithDevArgs(rtFuncHandle funcHandle, uint32_t blockDim, rtStream_t stm,
                                                       rtKernelLaunchCfg_t *cfg, const void *args, uint32_t argsSize, void *reserve)
 {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_launch_args_.emplace_back(funcHandle, blockDim, stm, cfg, args, argsSize,
                                 reserve, std::move(last_tag_));
   cpu_launch_args_["cpu_new_args_launch_with_place_holder"].emplace_back(&all_launch_args_.back());
@@ -532,21 +543,26 @@ rtError_t RuntimeStubImpl::rtsRegisterCpuFunc(const rtBinHandle binHandle, const
 
 // -----------------AclRuntimeStubImpl-----------------
 void AclRuntimeStubImpl::Clear() {
-  launch_with_handle_args_.clear();
-  all_launch_args_.clear();
   all_switch_args_.clear();
   cpu_launch_args_.clear();
   rt_memcpy_args_.clear();
   rt_memcpy_sync_args_.clear();
   all_launch_sqe_update_records_.clear();
   events_to_record_records_.clear();
+  const std::lock_guard<std::mutex> lk(global_mtx_);
+  launch_with_handle_args_.clear();
+  all_launch_args_.clear();
 }
 
 AclRuntimeStubImpl::AclRuntimeStubImpl() {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   last_stream_ = 0UL;
   all_launch_args_.clear();
   launch_with_handle_args_.clear();
+}
+
+const std::map<const void *, HandleArgsPtrList> &RuntimeStubImpl::GetLaunchWithHandleArgs() {
+  return launch_with_handle_args_;
 }
 
 const std::map<const void *, HandleArgsPtrList> &AclRuntimeStubImpl::GetLaunchWithHandleArgs() {
@@ -629,7 +645,7 @@ const std::list<ge::GetAllSwitchArgs> &AclRuntimeStubImpl::GetAllSwitchArgs() co
 }
 
 aclError AclRuntimeStubImpl::aclrtStreamGetId(aclrtStream stream, int32_t *streamId) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   (void) stream;
 
   *streamId = static_cast<uint32_t>(last_stream_);
@@ -641,7 +657,7 @@ aclError AclRuntimeStubImpl::aclrtStreamGetId(aclrtStream stream, int32_t *strea
 }
 
 aclError AclRuntimeStubImpl::aclrtGetThreadLastTaskId(uint32_t *taskId) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   *taskId = stream_to_task_id_[last_stream_];
 
   auto it = stream_to_task_id_.find(last_stream_);
@@ -675,7 +691,7 @@ aclError AclRuntimeStubImpl::aclrtCreateStreamWithConfig(aclrtStream *stream, ui
 aclError AclRuntimeStubImpl::aclrtSwitchStream(void *leftValue, aclrtCondition cond, void *rightValue,
   aclrtCompareDataType dataType, aclrtStream trueStream, aclrtStream falseStream,
   aclrtStream stream) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   all_switch_args_.emplace_back(leftValue, rightValue, std::move(last_tag_));
   return AclRuntimeStub::aclrtSwitchStream(leftValue, cond, rightValue, dataType, trueStream, falseStream, stream);
 }
@@ -728,21 +744,21 @@ aclError AclRuntimeStubImpl::aclrtMemcpy(void *dst, size_t destMax, const void *
   if (dst != nullptr && src != nullptr) {
     memcpy_s(dst, destMax, src, count);
   }
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   dst_addrs_to_src_addrs_[reinterpret_cast<uintptr_t>(dst)] = reinterpret_cast<uintptr_t>(src);
   rt_memcpy_sync_args_.emplace_back(ge::GeFakeRtMemcpyArgs::RtMemcpy(dst, destMax, src, count));
   return RT_ERROR_NONE;
 }
 
 aclError AclRuntimeStubImpl::aclrtMemcpyAsync(void *dst, size_t dest_max, const void *src, size_t src_count, aclrtMemcpyKind kind, aclrtStream stream) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   rt_memcpy_args_.emplace_back(ge::GeFakeRtMemcpyArgs::RtMemcpyAsync(dst, dest_max, src, src_count, stream));
   stream_stub_.LaunchTaskToStream(TaskTypeOnStream::rtMemcpyAsync, stream);
   return AclRuntimeStub::aclrtMemcpyAsync(dst, dest_max, src, src_count, kind, stream);
 }
 
 aclError AclRuntimeStubImpl::aclrtMalloc(void **dev_ptr, size_t size, aclrtMemMallocPolicy policy) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   auto ret = AclRuntimeStub::aclrtMalloc(dev_ptr, size, policy);
   if (ret == RT_ERROR_NONE) {
     addrs_to_mem_info_[*dev_ptr] = MemoryInfo{*dev_ptr, size, 0, 0};
@@ -751,7 +767,7 @@ aclError AclRuntimeStubImpl::aclrtMalloc(void **dev_ptr, size_t size, aclrtMemMa
 }
 
 aclError AclRuntimeStubImpl::aclrtFree(void *dev_ptr) {
-  const std::lock_guard<std::mutex> lk(mtx_);
+  const std::lock_guard<std::mutex> lk(global_mtx_);
   auto iter = addrs_to_mem_info_.find(dev_ptr);
   if (iter != addrs_to_mem_info_.end()) {
     addrs_to_mem_info_.erase(iter);

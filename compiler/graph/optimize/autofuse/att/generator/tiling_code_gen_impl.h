@@ -62,6 +62,11 @@ class TilingCodeGenImpl {
                        uint32_t cache_capacity = 0,
                        const EnableGroupParallels &enable_group_parallels = {});
 
+  // 设置每个ScheduleResult的Group个数
+  void SetScheduleResultGroupNums(const std::map<std::pair<size_t, size_t>, size_t> &group_nums) {
+    schedule_result_group_nums_ = group_nums;
+  }
+
  protected:
   // 用于判断求解器是否有效
   ge::Status CheckImplPtr(const std::string &indent);
@@ -98,11 +103,21 @@ class TilingCodeGenImpl {
   void GenGetScoreFuncsCalling(const size_t asc_graph_id, const AscGraphNamepspaceMap &namespace_map);
   // 生成sche group的cache初始化部分
   void GenCacheInit();
-  void GenSetHardwareCodes(const std::string& group_prefix, const std::set<std::string>& hardware_names);
+  void GenSetHardwareCodes(const std::string &group_prefix, const std::set<std::string> &hardware_names);
   ge::Status GenScheduleGroupDoTiling(std::string &check_cond, const std::string &hardware_param,
                                       const std::string &schedule_result_prefix);
   void GenGetScheduleResultTail(const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
   void GenUpdateWorkspace(const size_t asc_graph_id, const size_t impl_graph_id);
+  // 生成DoGroupTiling公共函数，支持首次Tiling和二次Tiling
+  ge::Status GenDoGroupTilingFunction(
+      const size_t asc_graph_id,
+      const size_t impl_graph_id,
+      const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
+  // 辅助函数：生成perf计算和更新部分
+  ge::Status GenGetScheduleResultPerfAndTail(
+      const size_t asc_graph_id,
+      const size_t impl_graph_id,
+      const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
   ge::Status GenGetScheduleResult(
       const size_t asc_graph_id, const size_t impl_graph_id,
       const std::map<size_t, std::pair<std::string, std::string>> &graph_info,
@@ -232,6 +247,33 @@ class TilingCodeGenImpl {
   // 生成目标函数
   virtual ge::Status GenGetObj(const ModelInfo &model_info);
 
+  // 辅助函数：生成ArrangeBlockOffsets函数声明
+  void GenArrangeBlockOffsetsDeclarations(const FusedGraphNamespaceMap &namespace_map);
+  // 辅助函数：生成DoGroupTiling函数的调用GetTiling部分
+  void GenDoGroupTilingGetTilingCalls(const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
+  // 辅助函数：生成DoGroupTiling函数的失败处理部分
+  void GenDoGroupTilingFailureHandler(const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
+  // 辅助函数：生成Group并行场景的首次Tiling部分
+  void GenGroupParallelFirstTiling(const size_t impl_graph_id);
+  // 辅助函数：生成Group并行场景的二次Tiling部分
+  void GenGroupParallelSecondTiling(const size_t impl_graph_id,
+                                    const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
+  // 辅助函数：生成Group并行首次Tiling后的声明和计算
+  void GenGroupParallelFirstTilingDecls(const std::map<size_t, std::pair<std::string, std::string>> &graph_info);
+  // 辅助函数：生成单Group场景的tiling处理
+  ge::Status GenSingleGroupScheduleResult(
+      const size_t asc_graph_id, const size_t impl_graph_id,
+      const std::map<size_t, std::pair<std::string, std::string>> &graph_info,
+      const std::map<std::string, std::set<std::string>> &hardware_map);
+  // 辅助函数：生成perf更新代码（消除GenUpdatePerf和GenGetScheduleResultPerfAndTail的重复）
+  static std::string GenPerfUpdateCode(const std::vector<std::string> &groups_perf,
+                                       const std::vector<std::string> &groups_block_num,
+                                       const std::string &indent);
+  // 辅助函数：生成best perf更新代码
+  void GenBestPerfUpdateCode(const size_t asc_graph_id, const size_t impl_graph_id,
+                             const std::vector<std::string> &assign_max_block_num,
+                             const std::string &indent);
+
   ge::CodePrinter tiling_data_;
   ge::CodePrinter tiling_func_;
   ge::CodePrinter tiling_head_;
@@ -252,6 +294,8 @@ class TilingCodeGenImpl {
   uint32_t cache_capacity_{0};
   bool with_reuse_info_{false};
   std::string arrange_code_;
+  // 存储每个ScheduleResult的Group个数：(asc_graph_id, impl_graph_id) -> group_num
+  std::map<std::pair<size_t, size_t>, size_t> schedule_result_group_nums_;
 
   // 缓存代码生成器
   std::unique_ptr<cache::OperatorLevelCacheGen> operator_level_cache_gen_;

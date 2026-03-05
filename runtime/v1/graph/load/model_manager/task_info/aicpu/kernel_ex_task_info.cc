@@ -17,6 +17,7 @@
 #include "graph/load/model_manager/model_utils.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "graph/load/model_manager/kernel/kernel_register_info_builder.h"
+#include "acl/acl_rt.h"
 
 namespace {
 const std::string kAttrAicpuAllshape = "_AllShape";
@@ -416,8 +417,8 @@ Status KernelExTaskInfo::Distribute() {
   launch_kernel_param.launch_config.is_data_dump = is_data_dump_;
   GE_ASSERT_SUCCESS(KernelHandleUtils::LaunchKernel(func_handle_, launch_kernel_param));
   GE_CHECK_NOTNULL(davinci_model_);
-  GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-  GE_CHK_RT_RET(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_CHK_RT_RET(aclrtGetThreadLastTaskId(&task_id_));
+  GE_CHK_RT_RET(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
 
   GELOGI("KernelExTaskInfo %s Distribute Success. task id: %u, stream id: %u, stream: %p.",
          op_desc_->GetNamePtr(), task_id_, stream_id_, stream_);
@@ -443,7 +444,7 @@ void KernelExTaskInfo::PostProcess(const domi::TaskDef &task_def) {
 
 Status KernelExTaskInfo::CheckDeviceSupportBlockingAicpuOpProcess(bool &is_support) const {
   int32_t device_id = 0;
-  GE_CHK_RT_RET(rtGetDevice(&device_id));
+  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
   int32_t value = 0;
   GE_CHK_RT_RET(rtGetDeviceCapability(device_id, FEATURE_TYPE_BLOCKING_OPERATOR, RT_MODULE_TYPE_AICPU, &value));
 
@@ -499,7 +500,7 @@ Status KernelExTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
     return SUCCESS;
   }
   GELOGD("Distribute wait task begin");
-  rtEvent_t rt_event = nullptr;
+  aclrtEvent rt_event = nullptr;
   if (davinci_model_->GetEventByStream(stream_, rt_event) != SUCCESS) {
     GELOGE(FAILED, "[Call][GetEventByStream] Call GetEventByStream failed");
     return FAILED;
@@ -507,7 +508,7 @@ Status KernelExTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
   uint32_t timeout = 0xffffffff;
   (void)AttrUtils::GetInt(op_desc_, ATTR_NAME_BLOCKING_OP_TIMEOUT, timeout);
   GE_CHK_RT_RET(rtStreamWaitEventWithTimeout(stream_, rt_event, timeout));
-  GE_CHK_RT_RET(rtEventReset(rt_event, stream_));
+  GE_CHK_RT_RET(aclrtResetEvent(rt_event, stream_));
 
   return SUCCESS;
 }

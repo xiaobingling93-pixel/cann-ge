@@ -343,6 +343,23 @@ Status aclStub::UnloadModel(uint32_t modelId)
     return SUCCESS;
 }
 
+ge::Status aclStub::LoadOm2DataFromFile(const std::string &model_path, ge::ModelData &model_data) {
+  return SUCCESS;
+}
+std::unique_ptr<gert::Om2ModelExecutor> aclStub::LoadOm2ExecutorFromData(ge::ModelData &model_data, ge::Status &error_code) {
+  return nullptr;
+}
+ge::Status aclStub::IsOm2Model(const void *data, size_t size, bool &is_support) {
+  return SUCCESS;
+}
+ge::Status aclStub::IsOm2Model(const char *file_path, bool &is_support) {
+  return SUCCESS;
+}
+ge::Status aclStub::GetModelDescInfo(std::vector<ge::TensorDesc> &input_desc, std::vector<ge::TensorDesc> &output_desc,
+                                     bool new_model_desc) {
+  return SUCCESS;
+}
+
 Status aclStub::GetMemAndWeightSize(const std::string &path, size_t &mem_size, size_t &weight_size)
 {
     return SUCCESS;
@@ -669,6 +686,24 @@ std::map<string, AnyValue> g_geAttrMap;
 
     TensorDesc::TensorDesc(TensorDesc const& desc)
     {
+    }
+
+    Shape::Shape() {}
+
+    size_t Shape::GetDimNum() const {
+        return 0;
+    }
+
+    int64_t Shape::GetDim(size_t index) const {
+        return 0;
+    }
+
+    Shape TensorDesc::GetOriginShape() const {
+        return {};
+    }
+
+    Format TensorDesc::GetOriginFormat() const {
+        return FORMAT_ND;
     }
 
     GeExecutor::GeExecutor(void)
@@ -2352,6 +2387,66 @@ namespace gert {
     uint32_t ModelV2Executor::GetIterationNum() const {
         return 0;
     }
+
+    ge::graphStatus Om2ModelExecutor::Load(ge::ModelData &model_data) const {
+        (void)model_data;
+        return ge::GRAPH_SUCCESS;
+    }
+    ge::graphStatus Om2ModelExecutor::Run(std::vector<gert::Tensor *> &inputs,
+                                          std::vector<gert::Tensor *> &outputs) const {
+      (void)inputs;
+      (void)outputs;
+      return ge::GRAPH_SUCCESS;
+    }
+    ge::graphStatus Om2ModelExecutor::RunAsync(void *stream, std::vector<gert::Tensor *> &inputs,
+                                               std::vector<gert::Tensor *> &outputs) const {
+        (void)inputs;
+        (void)outputs;
+        return ge::GRAPH_SUCCESS;
+    }
+    ge::graphStatus Om2ModelExecutor::GetModelDescInfo(std::vector<ge::TensorDesc> &input_desc,
+                                                       std::vector<ge::TensorDesc> &output_desc,
+                                                       bool new_model_desc) const {
+
+      return MockFunctionTest::aclStubInstance().GetModelDescInfo(input_desc, output_desc, new_model_desc);
+    }
+    ge::graphStatus Om2ModelExecutor::GetModelAttrs(std::vector<std::string> &dynamic_output_shape) const {
+        (void)dynamic_output_shape;
+        return ge::GRAPH_SUCCESS;
+    }
+    ge::graphStatus Om2ModelExecutor::GetDynamicBatchInfo(std::vector<std::vector<int64_t>> &dynamic_batch_info,
+                                                          int32_t &dynamic_type) const {
+        (void)dynamic_batch_info;
+        (void)dynamic_type;
+        return ge::GRAPH_SUCCESS;
+    }
+    ge::graphStatus Om2ModelExecutor::GetUserDesignateShapeOrder(
+        std::vector<std::string> &user_designate_shape_order) const {
+      (void)user_designate_shape_order;
+      return ge::GRAPH_SUCCESS;
+    }
+
+    class Om2ModelExecutor::Impl {
+      public:
+        int dummy;
+    };
+    Om2ModelExecutor::Om2ModelExecutor() {}
+    Om2ModelExecutor::~Om2ModelExecutor() {}
+
+    ge::Status LoadOm2DataFromFile(const std::string &model_path, ge::ModelData &model_data) {
+        return MockFunctionTest::aclStubInstance().LoadOm2DataFromFile(model_path, model_data);
+    }
+    std::unique_ptr<gert::Om2ModelExecutor> LoadOm2ExecutorFromData(ge::ModelData &model_data,
+                                                                    ge::Status &error_code) {
+        return MockFunctionTest::aclStubInstance().LoadOm2ExecutorFromData(model_data, error_code);
+    }
+    ge::Status IsOm2Model(const void *data, size_t size, bool &is_support) {
+        return MockFunctionTest::aclStubInstance().IsOm2Model(data, size, is_support);
+    }
+    ge::Status IsOm2Model(const char *file_path, bool &is_support) {
+        return MockFunctionTest::aclStubInstance().IsOm2Model(file_path, is_support);
+    }
+
 }
 
 namespace error_message {

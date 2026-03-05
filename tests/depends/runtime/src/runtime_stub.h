@@ -342,6 +342,8 @@ class RuntimeStub {
 
   virtual rtError_t rtsFuncGetByEntry(const rtBinHandle binHandle, const uint64_t funcEntry,
       rtFuncHandle *funcHandle) {
+    uint64_t stub_func_addr = 0x1700;
+    *funcHandle = reinterpret_cast<void *>(static_cast<uintptr_t>(stub_func_addr));
     return RT_ERROR_NONE;
   }
 

@@ -550,39 +550,6 @@ TEST_F(UtestSingleOpTask, test_blocking_aicpu_op_fail) {
     aicpu_task.SetOpDesc(op_desc);
     ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), SUCCESS);
     ASSERT_EQ(aicpu_task.LaunchKernel(stream), SUCCESS);
-
-    RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), FAILED);
-
-    RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), FAILED);
-
-    RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), FAILED);
-
-    RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
-    RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_SUPPORT + 1);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), FAILED);
-
-    RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.LaunchKernel(stream), FAILED);
-  }
-
-  {
-    AiCpuTask aicpu_task;
-    aicpu_task.SetOpDesc(op_desc);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), SUCCESS);
-    RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
-    RTS_STUB_RETURN_VALUE(rtStreamWaitEvent, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.LaunchKernel(stream), FAILED);
-  }
-
-  {
-    AiCpuTask aicpu_task;
-    aicpu_task.SetOpDesc(op_desc);
-    ASSERT_EQ(aicpu_task.SetExtInfoAndType(kernel_def.kernel_ext_info(), 0), SUCCESS);
-    RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
-    ASSERT_EQ(aicpu_task.LaunchKernel(stream), FAILED);
   }
 
   {

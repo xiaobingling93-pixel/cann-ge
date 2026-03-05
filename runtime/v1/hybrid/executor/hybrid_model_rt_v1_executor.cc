@@ -21,6 +21,8 @@
 #include "common/profiling_definitions.h"
 #include "common/memory/tensor_trans_utils.h"
 #include "formats/utils/formats_trans_utils.h"
+#include "acl/acl_rt.h"
+
 namespace ge {
 namespace {
 InputData GetInputDataFromGertTensors(const std::vector<gert::Tensor> &inputs) {
@@ -284,8 +286,8 @@ Status HybridModelRtV1Executor::Cleanup() {
 }
 
 Status HybridModelRtV1Executor::InitExecutionContext(CallbackManager *const callback_manager) {
-  GE_CHK_RT_RET(rtCtxGetCurrent(&context_.rt_context));
-  GE_CHK_RT_RET(rtCtxSetCurrent(context_.rt_context));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&context_.rt_context));
+  GE_CHK_RT_RET(aclrtSetCurrentContext(context_.rt_context));
 
   context_.is_host_cpu = ::ge::GetContext().GetHostExecFlag();
   context_.global_step = model_->GetGlobalStep();

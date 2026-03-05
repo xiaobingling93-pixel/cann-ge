@@ -9,11 +9,11 @@
  */
 
 #include "graph/load/model_manager/task_info/rts/label_goto_ex_task_info.h"
-
+#include "acl/acl_rt.h"
 #include "graph/load/model_manager/davinci_model.h"
 
 namespace ge {
-constexpr uint8_t kGotoBranchMax = 1U;
+constexpr uint32_t kGotoBranchMax = 1U;
 
 LabelGotoExTaskInfo::~LabelGotoExTaskInfo() {
   args_ = nullptr;
@@ -74,14 +74,14 @@ Status LabelGotoExTaskInfo::Distribute() {
   if (args_size_ == 0U) {
     REPORT_INNER_ERR_MSG("E19999", "Param args_size_ is 0, check fail");
     GELOGE(PARAM_INVALID, "[Check][Param] branch max:%u, args size:%u invalid.",
-           static_cast<uint32_t>(kGotoBranchMax), args_size_);
+        kGotoBranchMax, args_size_);
     return PARAM_INVALID;
   }
 
-  const rtError_t rt_ret = rtLabelSwitchByIndex(index_value_, kGotoBranchMax, args_, stream_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtLabelSwitchByIndex failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtLabelSwitchByIndex] failed, ret:%d", rt_ret);
+  const auto rt_ret = aclrtSwitchLabelByIndex(index_value_, kGotoBranchMax, args_, stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtSwitchLabelByIndex failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtSwitchLabelByIndex] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   is_support_redistribute_ = true;

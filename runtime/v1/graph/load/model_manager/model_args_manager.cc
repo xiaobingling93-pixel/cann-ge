@@ -771,7 +771,7 @@ Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
             i, active_mem_base_addr[i]);
   }
 
-  GE_CHK_RT_RET(rtStreamSynchronize(stm));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stm));
   std::vector<uint64_t> model_args_device_addrs(model_args_len_[0] / sizeof(uint64_t), 0);
   (void)rtMemcpy(model_args_device_addrs.data(), model_args_len_[0], ValueToPtr(model_args_[0].model_args_device_addr),
                   model_args_len_[0], RT_MEMCPY_DEVICE_TO_HOST);
@@ -1000,7 +1000,7 @@ Status ModelArgsManager::ReportKernelLaunchOpProfilingData(const uint64_t begin_
     bool l0_prof_enable = gert::GlobalProfilingWrapper::GetInstance()->IsEnabled(gert::ProfilingType::kTaskTime);
     uint64_t kernel_launch_prof_begin_time = 0;
     GE_IF_BOOL_EXEC(l0_prof_enable, kernel_launch_prof_begin_time = MsprofSysCycleTime());
-    GE_IF_BOOL_EXEC(dfx_info_.get_model_args_device_table_flag, GE_CHK_RT_RET(rtStreamSynchronize(stm)));
+    GE_IF_BOOL_EXEC(dfx_info_.get_model_args_device_table_flag, GE_CHK_RT_RET(aclrtSynchronizeStream(stm)));
 
     LaunchKernelParam launch_kernel_param;
     launch_kernel_param.stream = stm;

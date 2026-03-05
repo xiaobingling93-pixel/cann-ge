@@ -28,10 +28,7 @@ class LabelMakerFactory {
   // TaskManagerCreator function def
   using LabelCreatorFun = std::function<LabelMakerPtr(const ComputeGraphPtr &, const NodePtr &)>;
 
-  static LabelMakerFactory &Instance() {
-    static LabelMakerFactory instance;
-    return instance;
-  }
+  static LabelMakerFactory &Instance();
 
   LabelMakerPtr Create(const std::string &node_type, const ComputeGraphPtr &graph, const NodePtr &node) {
     auto it = creator_map_.find(node_type);

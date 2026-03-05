@@ -20,6 +20,11 @@ target_compile_options(ge_graph_dsl_test PRIVATE
     -g
 )
 
+target_link_options(ge_graph_dsl_test PRIVATE
+    -Wl,--disable-new-dtags
+    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
+)
+
 target_link_libraries(ge_graph_dsl_test PUBLIC intf_pub GTest::gtest ge_graph_dsl)
 
 add_test(NAME ge_graph_dsl_test COMMAND ge_graph_dsl_test --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/ge_graph_dsl_test.xml)

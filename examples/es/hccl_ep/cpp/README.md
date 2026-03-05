@@ -11,7 +11,10 @@ cpp/
 |   ├── es_showcase.h                 // 头文件
 |   └── make_ep_graph.cpp             // sample文件
 ├── rank_table/
-|   └── rank_table_2p.json            // 2卡rank table配置
+|   ├── a2/
+|   |   └── rank_table_2p.json        // A2(d802) 2卡rank table配置(v1.0)
+|   └── a5/
+|       └── rank_table_2p.json        // A5(d806) 2卡rank table配置(v2.0)
 ├── CMakeLists.txt                    // CMake构建文件
 ├── main.cpp                          // 程序主入口
 ├── README.md                         // README文件
@@ -47,6 +50,11 @@ bash run_sample.sh
 
 **重要前提：确保您的系统有至少2个可用的NPU设备**
 
+**平台支持说明：**
+- A5 平台：`lspci | grep d806` 有输出，脚本自动使用 `rank_table/a5/rank_table_2p.json`
+- A2 平台：`lspci | grep d802` 有输出，脚本自动使用 `rank_table/a2/rank_table_2p.json`
+- 其他平台：当前版本暂不支持，会在脚本中直接报错退出
+
 除了基本的图构建和dump功能外，本示例还支持在多卡上实际执行EP图。
 
 **使用方法：**
@@ -62,8 +70,8 @@ bash run_sample.sh -t sample_and_run
 5. 使用HcomAllGather、HcomReduceScatter进行卡间数据同步
 
 **注意事项：**
-- 脚本会自动从 `rank_table/rank_table_2p.json` 中读取设备ID配置
-- 如需使用其他设备（如2,3或4,5），只需修改 `rank_table_2p.json` 文件中的 `device_id`
+- 脚本会通过 `lspci` 自动识别硬件并选择对应 rank table（A5 用 `rank_table/a5/rank_table_2p.json`，A2 用 `rank_table/a2/rank_table_2p.json`）
+- 如需使用其他设备（如2,3或4,5），请修改对应平台目录下 rank table 文件中的 `device_id`
 - `run_sample.sh` 会自动设置所有必需的环境变量，无需手动配置
 
 执行成功后会看到：
@@ -98,8 +106,8 @@ export DUMP_GE_GRAPH=2
 运行多卡示例时，脚本会自动设置以下环境变量：
 - `RANK_ID`：逻辑进程编号（本示例中为 0 或 1）
 - `DEVICE_ID`：物理设备ID（本示例中为 0 或 1）
-- `RANK_TABLE_FILE`：rank table 配置文件路径（指向 `rank_table/rank_table_2p.json`）
-- 关于`RANK_TABLE_FILE`、`RANK_ID`、`DEVICE_ID`的详细介绍可以参考 [rank table配置资源信息](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha002/hccl/hcclug/hcclug_000068.html)
+- `RANK_TABLE_FILE`：rank table 配置文件路径（A5: `rank_table/a5/rank_table_2p.json`；A2: `rank_table/a2/rank_table_2p.json`）
+- 关于`RANK_TABLE_FILE`、`RANK_ID`、`DEVICE_ID`的详细介绍可以参考 [以a2为例:rank table配置资源信息](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha002/hccl/hcclug/hcclug_000067.html)
 
 **GE 初始化配置：**
 ```cpp
@@ -174,4 +182,3 @@ EsCTensorHolder *EsHcomReduceScatter(EsCTensorHolder *x, const char *reduction, 
 EsTensorHolder HcomReduceScatter(const EsTensorHolder &x, const char *reduction, const char *group, int64_t rank_size, int64_t fusion=0, int64_t fusion_id=-1);
 ```
 注：C++ API中fusion和fusion_id为可选参数，具有默认值，通常可以省略
-

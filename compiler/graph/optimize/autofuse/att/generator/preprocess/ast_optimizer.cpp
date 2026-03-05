@@ -167,8 +167,17 @@ ASTPtr Parser::ParseTerm() {
 ASTPtr Parser::Parse() {
   tokens_ = Tokenize(expr_);
   GELOGD("tokenize success, tokens are: ");
-  for (auto &token : tokens_) {
-    GELOGD("%s", token.c_str());
+  std::string buf;
+  for (auto &t : tokens_) {
+    if (constexpr int32_t kMaxLen = 800; buf.size() + t.size() > kMaxLen) {
+      GELOGD("%s", buf.c_str());
+      buf.clear();
+      continue;
+    }
+    buf.append(" ").append(t);
+  }
+  if (!buf.empty()) {
+    GELOGD("%s", buf.c_str());
   }
   return ParseExpr();
 }

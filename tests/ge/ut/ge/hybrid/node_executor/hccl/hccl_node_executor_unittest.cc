@@ -81,7 +81,7 @@ TEST_F(UtestHcclNodeExecutor, test_rdmatask_extract_tensor) {
   GeShape s({1, 3});
   GeTensorDesc tensor_desc(s);
   GeTensorPtr tensor = make_shared<GeTensor>(tensor_desc);
-  std::vector<uint8_t> data = {1, 2, 3, 4};
+  std::vector<uint8_t> data(32, 1);
   tensor->SetData(data);
   graph_context.runtime_context_.SetTensor(1, 0, tensor);
 
@@ -408,7 +408,9 @@ TEST_F(UtestHcclNodeExecutor, test_GetInputsOutPuts) {
   EXPECT_EQ(inputs.size(), 2);
   EXPECT_EQ(outputs.size(), 1);
   delete[] (TensorValue*)(context->outputs_start_);
+  context->outputs_start_ = nullptr;
   delete[] (TensorValue*)(context->inputs_start_);
+  context->inputs_start_ = nullptr;
 }
 
 TEST_F(UtestHcclNodeExecutor, test_RdmaNodeTask) {
@@ -495,7 +497,7 @@ TEST_F(UtestHcclNodeExecutor, test_RdmaNodeTask) {
   RuntimeInferenceContext &rt_ctx =
       const_cast<RuntimeInferenceContext &>(node_state->GetTaskContext()->GetExecutionContext()->runtime_context_);
   std::vector<HcomRemoteAccessAddrInfo> addr_infos;
-  uint64_t *data = new uint64_t[4];
+  uint64_t *data = new uint64_t[16];
   ASSERT_NE((dynamic_cast<RdmaNodeTask *>(task.get()))
                 ->SetAddrInfo(*node_state->GetTaskContext(), rt_ctx, data, 4, addr_infos),
             FAILED);  // ??

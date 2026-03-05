@@ -17,6 +17,7 @@
 #include "graph/load/model_manager/model_manager.h"
 #include "aprof_pub.h"
 #include "graph/ge_context.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -60,15 +61,15 @@ bool IsProfConfigValid(const uint32_t deviceid_list[], const uint32_t device_num
   }
 
   // real device num
-  int32_t dev_count = 0;
-  const rtError_t rt_err = rtGetDeviceCount(&dev_count);
-  if (rt_err != RT_ERROR_NONE) {
+  uint32_t dev_count = 0;
+ 	const auto rt_err = aclrtGetDeviceCount(&dev_count);
+  if (rt_err != ACL_SUCCESS) {
     GELOGE(INTERNAL_ERROR, "[Get][DeviceCount]Failed, error_code %d", rt_err);
     REPORT_INNER_ERR_MSG("E19999", "Get device count failed, error_code %d", rt_err);
     return false;
   }
 
-  if (device_nums > static_cast<uint32_t>(dev_count)) {
+  if (device_nums > dev_count) {
     GELOGE(PARAM_INVALID, "[Check][Param]Device num %u is not in range [1,%d]", device_nums, dev_count);
     REPORT_INNER_ERR_MSG("E19999", "Device num %u check invalid, it is not in range [1,%d]", device_nums, dev_count);
     return false;
@@ -234,8 +235,8 @@ rtError_t HandleCtrlSwitch(const MsprofCommandHandle &prof_command_handle) {
 
 rtError_t HandleCtrlSetStepInfo(const ProfStepInfoCmd_t &prof_set_stepinfo) {
   int32_t device_id = 0;
-  const rtError_t rt_ret = rtGetDevice(&device_id);
-  if (rt_ret != RT_ERROR_NONE) {
+  const aclError rt_ret = aclrtGetDevice(&device_id);
+  if (rt_ret != ACL_SUCCESS) {
     GELOGE(ge::RT_FAILED, "[Get][LogicDeviceId]Failed, ret %d", rt_ret);
     REPORT_INNER_ERR_MSG("E19999", "Get logic device id failed, ret %d", rt_ret);
     return RT_ERROR;

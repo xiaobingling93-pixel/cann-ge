@@ -140,6 +140,8 @@ REGISTER_LABEL_MAKER(CASE, FakeLabelMaker);
 class UtestGeApi : public testing::Test {
  protected:
   void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     OperatorFactoryImpl::RegisterInferShapeFunc("Data", [](Operator &op) {return GRAPH_SUCCESS;});
     OperatorFactoryImpl::RegisterInferShapeFunc("Add", [](Operator &op) {return GRAPH_SUCCESS;});
     OperatorFactoryImpl::RegisterInferShapeFunc("NetOutput", [](Operator &op) {return GRAPH_SUCCESS;});
@@ -154,6 +156,9 @@ class UtestGeApi : public testing::Test {
     OperatorFactoryImpl::operator_infershape_funcs_->erase("Add");
     OperatorFactoryImpl::operator_infershape_funcs_->erase("NetOutput");
     RuntimeStub::Reset();
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
 
   void CreateSharedLibrary(const std::string &path) {
@@ -169,6 +174,7 @@ class UtestGeApi : public testing::Test {
     system(cmd.c_str());
     std::remove((path + ".cpp").c_str());
   }
+  const char *env;
 };
 
 TEST_F(UtestGeApi, run_graph_with_stream) {
@@ -1932,13 +1938,19 @@ namespace {
       return 1; // failed
     }
   };
+  class AbnormalAclStub : public AclRuntimeStub {
+  public:
+    rtError_t aclrtCreateContext(aclrtContext*context, int32_t deviceId) override {
+      return 1; // failed
+    }
+  };
 } // namespace
   /**
    * 若session创建失败，确保session manager没有残留的未成功创建的session
    */
 TEST_F(UtestGeApi, CreateSessionFailed) {
-  auto rts_stub = std::make_shared<AbnormalRtsStub>();
-  RuntimeStub::Install(rts_stub.get());
+  auto acl_stub = std::make_shared<AbnormalAclStub>();
+  AclRuntimeStub::Install(acl_stub.get());
 
   GEFinalize();
   std::map<std::string, std::string> options;
@@ -1955,7 +1967,7 @@ TEST_F(UtestGeApi, CreateSessionFailed) {
   EXPECT_NE(sess1.AddGraph(2, tmp_graph), SUCCESS);
   EXPECT_EQ(SessionUtils::NumSessions(), 0);
 
-  RuntimeStub::UnInstall(rts_stub.get());
+  AclRuntimeStub::UnInstall(acl_stub.get());
 }
 
 #define EXPECT_STR_EQ(x, y) EXPECT_EQ(std::string(x.GetString()), std::string(y))

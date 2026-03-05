@@ -20,7 +20,7 @@ class DataFlowExecutorUtils {
  public:
   static Status FillRuntimeTensorDesc(const GeTensorDesc &tensor_desc,
                                       RuntimeTensorDesc &runtime_tensor_desc,
-                                      const bool calc_size = true);
+                                      bool calc_size = true);
 };
 }
 

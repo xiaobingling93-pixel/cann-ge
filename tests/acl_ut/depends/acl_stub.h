@@ -16,6 +16,7 @@
 #include "framework/runtime/gert_api.h"
 #include "framework/memory/allocator_desc.h"
 #include "framework/runtime/gert_api.h"
+#include "framework/runtime/om2_model_executor.h"
 #include "exe_graph/runtime/tensor_data.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/attr_utils.h"
@@ -195,8 +196,17 @@ public:
                                         gert::Tensor **outputs, size_t output_num);
     virtual ge::graphStatus UnLoad();
 
-    // fe function
-    virtual uint32_t InitializePlatformInfo();
+    // OM2
+    virtual ge::Status LoadOm2DataFromFile(const std::string &model_path, ge::ModelData &model_data);
+    virtual std::unique_ptr<gert::Om2ModelExecutor> LoadOm2ExecutorFromData(ge::ModelData &model_data,
+                                                                            ge::Status &error_code);
+    virtual ge::Status IsOm2Model(const void *data, size_t size, bool &is_support);
+    virtual ge::Status IsOm2Model(const char *file_path, bool &is_support);
+    virtual ge::Status GetModelDescInfo(std::vector<ge::TensorDesc> &input_desc,
+                                        std::vector<ge::TensorDesc> &output_desc, bool new_model_desc);
+
+        // fe function
+        virtual uint32_t InitializePlatformInfo();
     virtual uint32_t GetPlatformInfos(
         const std::string SoCVersion, fe::PlatFormInfos &platformInfo, fe::OptionalInfos &optionalInfo);
     virtual uint32_t InitRuntimePlatformInfos(const std::string &SoCVersion);
@@ -426,6 +436,15 @@ public:
                                               gert::Tensor **outputs, size_t output_num));
 
     MOCK_METHOD0(UnLoad, ge::graphStatus());
+
+    // OM2
+    MOCK_METHOD2(LoadOm2DataFromFile, ge::Status(const std::string &model_path, ge::ModelData &model_data));
+    MOCK_METHOD2(LoadOm2ExecutorFromData,
+                 std::unique_ptr<gert::Om2ModelExecutor>(ge::ModelData &model_data, ge::Status &error_code));
+    MOCK_METHOD3(IsOm2Model, ge::Status(const void *data, size_t size, bool &is_support));
+    MOCK_METHOD2(IsOm2Model, ge::Status(const char *file_path, bool &is_support));
+    MOCK_METHOD3(GetModelDescInfo, ge::Status(std::vector<ge::TensorDesc> &input_desc,
+                                              std::vector<ge::TensorDesc> &output_desc, bool new_model_desc));
 
     // fe function
     MOCK_METHOD0(InitializePlatformInfo, uint32_t());

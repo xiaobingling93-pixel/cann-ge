@@ -54,6 +54,8 @@
 #include "graph/load/model_manager/kernel/model_kernel_handles_manager.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "runtime/rts/rts_dqs.h"
+#include "acl/acl_rt.h"
+#include "acl/acl_mdl.h"
 
 namespace ge {
 enum class ModelProcStage : uint32_t {
@@ -259,7 +261,7 @@ class DavinciModel {
                    const std::vector<gert::Tensor> &input_tensor,
                    std::vector<gert::Tensor> &output_tensor);
 
-  Status CheckRtStreamSynchronize(rtError_t rt_ret);
+  Status CheckRtStreamSynchronize(aclError rt_ret);
 
   Status InitAddrRefreshKernelBin();
 
@@ -340,10 +342,10 @@ class DavinciModel {
   uintptr_t FeatureMapBase() const { return mem_base_; }
 
   // get Notify list
-  const std::vector<rtEvent_t> &GetNotifyList() const { return notify_list_; }
+  const std::vector<aclrtNotify> &GetNotifyList() const { return notify_list_; }
 
   // get Event list
-  const std::vector<rtEvent_t> &GetEventList() const { return event_list_; }
+  const std::vector<aclrtEvent> &GetEventList() const { return event_list_; }
 
   const std::vector<rtStream_t> &GetStreamList() const { return stream_list_; }
 
@@ -362,7 +364,7 @@ class DavinciModel {
     return active_stream_indication_.find(stream_id) != active_stream_indication_.end();
   }
 
-  const std::vector<rtLabel_t> &GetLabelList() const { return label_list_; }
+  const std::vector<aclrtLabel> &GetLabelList() const { return label_list_; }
 
   uint64_t GetAllStreamNum() const { return stream_list_.size() + all_hccl_stream_list_.size(); }
 
@@ -404,7 +406,7 @@ class DavinciModel {
     // MDC特定形态下多单流模型加载保证串行，需要加锁保证不同流之间不串
   Status SetStreamLockOrUnlocK(rtStream_t stm, const bool is_lock) const;
 
-  rtModel_t GetRtModelHandle() const { return rt_model_handle_; }
+  aclmdlRI GetRtModelHandle() const { return rt_model_handle_; }
 
   uint64_t GetRtBaseAddr() const { return runtime_param_.logic_mem_base; }
 
@@ -786,7 +788,7 @@ class DavinciModel {
   void SetAiCpuCustFlag(const bool flag) { aicpu_flg_ = flag; }
 
   // for blocking aicpu op
-  Status GetEventByStream(rtStream_t const stream, rtEvent_t &rt_event);
+  Status GetEventByStream(rtStream_t const stream, aclrtEvent &rt_event);
   Status GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtStream_t const stream, uint32_t &event_id);
 
   uint32_t GetResultCode();
@@ -1492,11 +1494,11 @@ class DavinciModel {
   std::mutex capacity_of_stream_mutex_;
   std::map<int64_t, std::vector<rtStream_t>> main_follow_stream_mapping_;
 
-  std::vector<rtNotify_t> notify_list_;
-  std::vector<rtEvent_t> event_list_;
+  std::vector<aclrtNotify> notify_list_;
+  std::vector<aclrtEvent> event_list_;
 
-  std::unordered_set<std::string > hccl_group_id_set_;
-  std::vector<rtEvent_t> hccl_group_ordered_event_list_;
+  std::unordered_set<std::string> hccl_group_id_set_;
+  std::vector<aclrtEvent> hccl_group_ordered_event_list_;
   std::vector<rtStream_t> hccl_group_ordered_stream_list_; // 流资源为hccl管理
 
   std::mutex hccl_task_stream_set_mutex_;
@@ -1504,7 +1506,7 @@ class DavinciModel {
   std::map<uint64_t, std::vector<size_t>> stream_to_task_index_list_;
   std::map<int64_t, int64_t> split_logic_stream_2_origin_logic_stream_;
 
-  std::vector<rtLabel_t> label_list_;
+  std::vector<aclrtLabel> label_list_;
   std::set<uint32_t> label_id_indication_;
 
   std::mutex label_args_mutex_;
@@ -1534,7 +1536,7 @@ class DavinciModel {
 
   std::vector<TaskInfoPtr> task_list_;
   // rt_model_handle
-  rtModel_t rt_model_handle_{nullptr};
+  aclmdlRI rt_model_handle_{nullptr};
 
   rtStream_t rt_model_stream_{nullptr};
 
@@ -1657,7 +1659,7 @@ class DavinciModel {
   // op name to attrs mapping
   std::map<std::string, std::map<std::string, std::vector<std::string>>> op_name_to_attrs_;
 
-  std::map<rtStream_t, rtEvent_t> stream_2_event_;
+  std::map<rtStream_t, aclrtEvent> stream_2_event_;
 
   AiCpuResources aicpu_resources_;
   std::map<std::string, std::string> file_id_and_path_map_;

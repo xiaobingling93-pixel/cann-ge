@@ -23,10 +23,7 @@ using UdfAttrMap = google::protobuf::Map<std::string, udf::AttrValue>;
 
 class UdfModelBuilder {
  public:
-  static UdfModelBuilder &GetInstance() {
-    static UdfModelBuilder instance;
-    return instance;
-  }
+  static UdfModelBuilder &GetInstance();
 
   Status Build(UdfModel &udf_model) const;
 

@@ -21,6 +21,11 @@ aclmdlDataset *AclModelInput::GetDataSet()
     return dataset_;
 }
 
+aclmdlDataset *AclLlmModelInput::GetDataSet()
+{
+    return dataset_;
+}
+
 size_t AclModelWork::GetModelWorkSize()
 {
     return modelWorkSize_;
@@ -74,6 +79,50 @@ AclModelInput::~AclModelInput()
 
     for (size_t i = 0; i < aclmdlGetDatasetNumBuffers(dataset_); ++i) {
         aclDataBuffer *dataBuffer = aclmdlGetDatasetBuffer(dataset_, i);
+        CHECK(aclDestroyDataBuffer(dataBuffer));
+    }
+    CHECK(aclmdlDestroyDataset(dataset_));
+    dataset_ = nullptr;
+}
+
+AclLlmModelInput::AclLlmModelInput(
+    const std::vector<InputTensor>& inputs,
+    aclmdlDesc* modelDesc)
+{
+    dataset_ = aclmdlCreateDataset();
+    CHECK_NOT_NULL(dataset_);
+
+    size_t num_inputs = aclmdlGetNumInputs(modelDesc);
+    for (size_t i = 0; i < num_inputs; ++i) {
+        size_t expected_size = aclmdlGetInputSizeByIndex(modelDesc, i);
+        void* device_ptr = nullptr;
+        CHECK(aclrtMalloc(&device_ptr, expected_size, ACL_MEM_MALLOC_HUGE_FIRST));
+        CHECK(aclrtMemset(device_ptr, expected_size, 0, expected_size));
+        if (i < inputs.size()) {
+            const auto& input = inputs[i];
+            if (input.byte_size > expected_size) {
+                ERROR_LOG("Input %zu: host data size (%zu) > model expected size (%zu)",
+                          i, input.byte_size, expected_size);
+                aclrtFree(device_ptr);
+            }
+            CHECK(aclrtMemcpy(device_ptr, expected_size,
+                              input.data, input.byte_size,
+                              ACL_MEMCPY_HOST_TO_DEVICE));
+        }
+
+        aclDataBuffer* buffer = aclCreateDataBuffer(device_ptr, expected_size);
+        CHECK(aclmdlAddDatasetBuffer(dataset_, buffer));
+    }
+}
+
+AclLlmModelInput::~AclLlmModelInput()
+{
+    CHECK_NOT_NULL(dataset_);
+
+    for (size_t i = 0; i < aclmdlGetDatasetNumBuffers(dataset_); ++i) {
+        aclDataBuffer *dataBuffer = aclmdlGetDatasetBuffer(dataset_, i);
+        void *data = aclGetDataBufferAddr(dataBuffer);
+        CHECK(aclrtFree(data));
         CHECK(aclDestroyDataBuffer(dataBuffer));
     }
     CHECK(aclmdlDestroyDataset(dataset_));

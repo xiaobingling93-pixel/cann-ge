@@ -18,6 +18,7 @@
         <file value="libdavinci_executor.so" file_type="shared"/>
         <file value="libhybrid_executor.so" file_type="shared"/>
         <file value="libgert.so" file_type="shared"/>
+        <file value="libom2_executor.so" file_type="shared"/>
         <file value="libgraph.so" file_type="shared"/>
         <file value="libregister.so" file_type="shared"/>
         <file value="libregister.a" file_type="static"/>

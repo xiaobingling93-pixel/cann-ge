@@ -79,7 +79,7 @@ target_link_libraries(ge_executor_c_static PRIVATE
     -Wl,--no-whole-archive
     -s
 PUBLIC
-    runtime_headers
+    npu_runtime_headers
     air_headers
     slog_headers
 )

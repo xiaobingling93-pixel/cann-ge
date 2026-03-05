@@ -33,6 +33,7 @@
 #include "core/debug/kernel_tracing.h"
 #include "graph/manager/graph_var_manager.h"
 #include "graph/ge_context.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -58,7 +59,7 @@ void SetDaviciModel(ge::DavinciModel &davinci_model, const ge::GeModelPtr &model
   davinci_model.SetKnownNode(true);
   davinci_model.SetId(model->GetModelId());
   int32_t device_id = 0;
-  rtGetDevice(&device_id);
+  aclrtGetDevice(&device_id);
   davinci_model.SetDeviceId(static_cast<uint32_t>(device_id));
   davinci_model.SetOmName(model->GetOmName());
 }
@@ -397,7 +398,7 @@ ge::graphStatus DavinciModelExecute(KernelContext *context) {
   auto stream = context->GetInputValue<void *>(static_cast<int32_t>(ModelExecute::kStream));
   GE_CHECK_NOTNULL(stream);
 
-  ret = rtModelExecute(davinci_model->GetRtModelHandle(), stream, 0U);
+  ret = aclmdlRIExecuteAsync(davinci_model->GetRtModelHandle(), stream);
   if (ret != RT_ERROR_NONE) {
     GELOGE(ge::GRAPH_FAILED, "model execute failed. ret = %d", ret);
     return ge::GRAPH_FAILED;

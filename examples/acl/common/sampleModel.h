@@ -85,6 +85,20 @@ private:
     aclmdlDataset *dataset_;
 };
 
+struct InputTensor {
+    void* data;
+    size_t byte_size;
+};
+
+class AclLlmModelInput {
+public:
+    AclLlmModelInput(const std::vector<InputTensor>& inputs, aclmdlDesc *modelDesc);
+    ~AclLlmModelInput();
+    aclmdlDataset *GetDataSet();
+private:
+    aclmdlDataset *dataset_;
+};
+
 class AclModelOutput {
 public:
     AclModelOutput(aclmdlDesc *modelDesc);

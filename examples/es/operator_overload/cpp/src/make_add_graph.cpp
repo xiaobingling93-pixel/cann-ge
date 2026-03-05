@@ -44,6 +44,7 @@ int RunGraphAdd(ge::Graph &graph, const std::vector<ge::Tensor> &inputs,
   }
   (void)s->RemoveGraph(graph_id);
   ge::Utils::PrintTensorsToFile(outputs, output_prefix);
+  delete s;
   return 0;
 }
 std::unique_ptr<ge::Graph> MakeAddGraphByEs() {

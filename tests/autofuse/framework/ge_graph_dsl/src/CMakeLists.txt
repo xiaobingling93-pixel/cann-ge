@@ -16,6 +16,8 @@ target_include_directories(ge_graph_dsl_b
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AIR_CODE_DIR}/inc
 )
 
+target_compile_options(ge_graph_dsl_b PRIVATE -g)
+
 target_link_libraries(ge_graph_dsl_b PUBLIC intf_pub)
 
 set_target_properties(ge_graph_dsl_b PROPERTIES CXX_STANDARD 17)

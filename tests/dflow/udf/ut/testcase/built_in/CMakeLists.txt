@@ -13,14 +13,6 @@ set(BUILT_IN_LOCAL_STUB_FILES
         ../../../builtin_stub/hal_stub.cpp
 )
 
-# built in flow func ut
-set(LOCAL_BUILT_IN_FLOW_FUNC_SRC_FILES
-        ${LOCAL_UDF_EXECUTOR_SRC_FILES}
-)
-file(GLOB_RECURSE LLM_FLOW_FUNC_SRC_FILES
-        ${UDF_SRC_PATH}/built_in/*.cpp
-)
-
 set(LOCAL_BUILT_IN_FLOW_FUNC_TEST_CASE_FILES
         ../../main.cpp
         time_batch_flow_func_utest.cpp
@@ -40,10 +32,8 @@ protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files})
 
 add_executable(ut_built_in_flow_func
         ${PROTO_SRCS}
-        ${LOCAL_STUB_FILES}
         ${BUILT_IN_LOCAL_STUB_FILES}
-        ${LOCAL_BUILT_IN_FLOW_FUNC_SRC_FILES}
-        ${LLM_FLOW_FUNC_SRC_FILES}
+        ${LOCAL_STUB_FILES}
         ${LOCAL_BUILT_IN_FLOW_FUNC_TEST_CASE_FILES}
 )
 
@@ -62,11 +52,15 @@ target_include_directories(ut_built_in_flow_func PRIVATE
         ${SRC_PATH}/built_in
 )
 
-target_link_libraries(ut_built_in_flow_func PRIVATE ${AIR_COMMON_LINK_OPTION}
+target_link_libraries(ut_built_in_flow_func PRIVATE
         c_sec
         ascend_protobuf
+        udf_dump
+        udf_static
+        mmpa
         -rdynamic
-        $<BUILD_INTERFACE:intf_llt_pub>
+        built_in_flowfunc
+        intf_llt_pub
         $<BUILD_INTERFACE:slog_headers>
         $<BUILD_INTERFACE:mmpa_headers>
         $<BUILD_INTERFACE:ascend_hal_headers>
@@ -74,7 +68,7 @@ target_link_libraries(ut_built_in_flow_func PRIVATE ${AIR_COMMON_LINK_OPTION}
         GTest::gtest GTest::gmock GTest::gmock_main
 )
 
-target_compile_options(ut_built_in_flow_func PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_built_in_flow_func PRIVATE
         -rdynamic
         -fpermissive
         -Werror=format
@@ -85,6 +79,7 @@ target_compile_options(ut_built_in_flow_func PRIVATE ${AIR_COMMON_COMPILE_OPTION
 target_compile_definitions(ut_built_in_flow_func PRIVATE
         STATISTIC
         google=ascend_private
+        PUBLIC
         UDF_TEST
 )
 

@@ -23,6 +23,7 @@ set(PROTO_LIST
     "${METADEF_PROTO_DIR}/tensorflow/tensor.proto"
     "${METADEF_PROTO_DIR}/tensorflow/resource_handle.proto"
     "${METADEF_PROTO_DIR}/tensorflow/tensor_shape.proto"
+    "${METADEF_PROTO_DIR}/tensorflow/graph_library.proto"
     "${METADEF_PROTO_DIR}/tensorflow/types.proto"
     "${METADEF_PROTO_DIR}/tensorflow/node_def.proto"
     "${METADEF_PROTO_DIR}/onnx/ge_onnx.proto"
@@ -51,6 +52,7 @@ include_directories(${AIR_CODE_DIR}/inc/graph_metadef)
 include_directories(${AIR_CODE_DIR}/inc/external)
 include_directories(${AIR_CODE_DIR}/inc/framework)
 include_directories(${AIR_CODE_DIR}/runtime/v2)
+include_directories(${AIR_CODE_DIR}/runtime/om2)
 
 include_directories(${PARSER_DIR})
 include_directories(${AIR_CODE_DIR}/parser)
@@ -69,737 +71,12 @@ include_directories(${METADEF_DIR}/inc)
 include_directories(${METADEF_DIR}/pkg_inc)
 include_directories(${METADEF_DIR})
 include_directories(${ASCGEN_DIR}/inc)
-set(PARSER_SRC_FILES
-    "${PARSER_DIR}/parser/common/op_map.cc"
-    "${PARSER_DIR}/parser/common/pre_checker.cc"
-    "${PARSER_DIR}/parser/common/convert/pb2json.cc"
-    "${PARSER_DIR}/parser/common/parser_factory.cc"
-    "${PARSER_DIR}/parser/common/model_saver.cc"
-    "${PARSER_DIR}/parser/common/parser_types.cc"
-    "${PARSER_DIR}/parser/common/parser_utils.cc"
-    "${PARSER_DIR}/parser/common/parser_inner_ctx.cc"
-    "${PARSER_DIR}/parser/tensorflow/iterator_fusion_pass.cc"
-    "${PARSER_DIR}/parser/common/op_registration_tbe.cc"
-    "${PARSER_DIR}/parser/common/op_parser_factory.cc"
-    "${PARSER_DIR}/parser/tensorflow/tensorflow_custom_parser_adapter.cc"
-    "${PARSER_DIR}/parser/tensorflow/tensorflow_fusion_op_parser.cc"
-    "${PARSER_DIR}/parser/tensorflow/tensorflow_fusion_custom_parser_adapter.cc"
-    "${PARSER_DIR}/parser/tensorflow/tensorflow_util.cc"
-    "${PARSER_DIR}/parser/common/parser_fp16_t.cc"
-    "${PARSER_DIR}/parser/common/op_def/operator.cc"
-)
-
-set(COMMON_SRC_FILES
-    "${AIR_CODE_DIR}/base/common/helper/file_saver.cc"
-    "${AIR_CODE_DIR}/base/common/b_cast.cc"
-    "${AIR_CODE_DIR}/base/common/context/ctx.cc"
-    "${AIR_CODE_DIR}/base/common/tbe_handle_store/cust_aicpu_kernel_store.cc"
-    "${AIR_CODE_DIR}/base/common/debug/memory_dumper.cc"
-    "${AIR_CODE_DIR}/base/common/dump/dump_op.cc"
-    "${AIR_CODE_DIR}/base/common/dump/exception_dumper.cc"
-    "${AIR_CODE_DIR}/base/common/dump/dump_manager.cc"
-    "${AIR_CODE_DIR}/base/common/profiling/global_profiler.cc"
-    "${AIR_CODE_DIR}/base/common/profiling/device_memory_recorder.cc"
-    "${AIR_CODE_DIR}/base/common/dump/global_dumper.cc"
-    "${AIR_CODE_DIR}/base/common/global_variables/diagnose_switch.cc"
-    "${AIR_CODE_DIR}/base/common/dump/dump_properties.cc"
-    "${AIR_CODE_DIR}/base/common/datatype_transfer.cc"
-    "${AIR_CODE_DIR}/base/common/fp16_t.cc"
-    "${AIR_CODE_DIR}/base/common/math/hif8_t.cc"
-    "${AIR_CODE_DIR}/base/common/file_constant_utils.cc"
-    "${AIR_CODE_DIR}/base/common/fmk_error_codes.cc"
-    "${AIR_CODE_DIR}/base/common/helper/model_helper.cc"
-    "${AIR_CODE_DIR}/base/common/helper/nano_model_save_helper.cc"
-    "${AIR_CODE_DIR}/base/common/helper/pre_model_helper.cc"
-    "${AIR_CODE_DIR}/base/common/helper/om_file_helper.cc"
-    "${AIR_CODE_DIR}/base/common/tbe_handle_store/kernel_store.cc"
-    "${AIR_CODE_DIR}/base/common/context/local_context.cc"
-    "${AIR_CODE_DIR}/base/common/model/ge_model.cc"
-    "${AIR_CODE_DIR}/base/common/model/ge_root_model.cc"
-    "${AIR_CODE_DIR}/base/common/model/external_allocator_manager.cc"
-    "${AIR_CODE_DIR}/base/common/model/model_introduction.cc"
-    "${AIR_CODE_DIR}/base/common/model/tlv/model_tensor_descs_value.cc"
-    "${AIR_CODE_DIR}/base/common/model/tlv/vec_int_int_value.cc"
-    "${AIR_CODE_DIR}/base/common/model/tlv/vec_int_value.cc"
-    "${AIR_CODE_DIR}/base/common/model/tlv/vec_str_value.cc"
-    "${AIR_CODE_DIR}/base/common/helper/model_parser_base.cc"
-    "${AIR_CODE_DIR}/base/common/helper/model_saver.cc"
-    "${AIR_CODE_DIR}/base/common/omg_util.cc"
-    "${AIR_CODE_DIR}/base/common/op/ge_op_utils.cc"
-    "${AIR_CODE_DIR}/base/common/plugin/datatype_util.cc"
-    "${AIR_CODE_DIR}/base/common/plugin/op_tiling_manager.cc"
-    "${AIR_CODE_DIR}/base/common/plugin/plugin_caller.cc"
-    "${AIR_CODE_DIR}/base/common/plugin/runtime_plugin_loader.cc"
-    "${AIR_CODE_DIR}/base/common/profiling/profiling_properties.cc"
-    "${AIR_CODE_DIR}/base/common/profiling/profiling_definitions.cc"
-    "${AIR_CODE_DIR}/base/common/context/properties_manager.cc"
-    "${AIR_CODE_DIR}/base/common/tbe_handle_store/bin_register_utils.cc"
-    "${AIR_CODE_DIR}/base/common/tbe_handle_store/tbe_handle_store.cc"
-    "${AIR_CODE_DIR}/base/common/tbe_handle_store/tbe_kernel_store.cc"
-    "${AIR_CODE_DIR}/base/common/kernel_handles_manager/aicore_kernel_handles_manager.cc"
-    "${AIR_CODE_DIR}/base/common/kernel_handles_manager/aicpu_kernel_handles_manager.cc"
-    "${AIR_CODE_DIR}/base/common/kernel_handles_manager/cust_aicpu_kernel_handles_manager.cc"
-    "${AIR_CODE_DIR}/base/common/kernel_handles_manager/kernel_handles_manager.cc"
-    "${AIR_CODE_DIR}/base/common/kernel_handles_manager/kernel_handle_utils.cc"
-    "${AIR_CODE_DIR}/base/common/thread_pool.cc"
-    "${AIR_CODE_DIR}/base/common/op/transop_util.cc"
-    "${AIR_CODE_DIR}/base/common/types.cc"
-    "${AIR_CODE_DIR}/base/common/util.cc"
-    "${AIR_CODE_DIR}/base/common/platform_info_util.cc"
-    "${AIR_CODE_DIR}/base/common/proto_util.cc"
-    "${AIR_CODE_DIR}/base/common/single_op_parser.cc"
-    "${AIR_CODE_DIR}/base/graph/bin_cache/node_bin_selector_factory.cc"
-    "${AIR_CODE_DIR}/base/graph/bin_cache/node_compile_cache_module.cc"
-    "${AIR_CODE_DIR}/base/graph/bin_cache/op_binary_cache.cc"
-    "${AIR_CODE_DIR}/base/graph/build/memory/var_mem_assign_util.cc"
-    "${AIR_CODE_DIR}/base/graph/manager/graph_manager_utils.cc"
-    "${AIR_CODE_DIR}/base/graph/manager/graph_var_manager.cc"
-    "${AIR_CODE_DIR}/base/graph/manager/session_id_manager.cc"
-    "${AIR_CODE_DIR}/base/graph/manager/graph_external_weight_manager.cc"
-    "${AIR_CODE_DIR}/base/slice/data_slice_default_impl.cc"
-    "${AIR_CODE_DIR}/base/slice/data_slice_elementwise_impl.cc"
-    "${AIR_CODE_DIR}/base/slice/data_slice_factory.cc"
-    "${AIR_CODE_DIR}/base/slice/data_slice_adapter.cc"
-    "${AIR_CODE_DIR}/base/slice/data_slice_helper.cc"
-    "${AIR_CODE_DIR}/base/host_cpu_engine/host_cpu_engine.cc"
-    "${AIR_CODE_DIR}/base/common/error_tracking/error_tracking.cc"
-    "${AIR_CODE_DIR}/base/common/op_so_store/op_so_store.cc"
-    "${AIR_CODE_DIR}/base/common/op_tiling/op_tiling_rt2.cc"
-    "${AIR_CODE_DIR}/base/common/op_tiling/tiling_memcheck.cc"
-    "${AIR_CODE_DIR}/base/common/op_tiling/tiling_dfx.cc"
-    "${AIR_CODE_DIR}/base/common/model/model_compress_manager.cc"
-    "${AIR_CODE_DIR}/base/common/preload/dbg/nano_dbg_data.cc"
-    "${AIR_CODE_DIR}/base/common/preload/model/nano_davinci_model.cc"
-    "${AIR_CODE_DIR}/base/common/preload/model/pre_davinci_model.cc"
-    "${AIR_CODE_DIR}/base/common/preload/model/pre_model_partition_utils.cc"
-    "${AIR_CODE_DIR}/base/common/preload/model/pre_model_utils.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_partition_base.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/nano_task_desc_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_desc_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_desc_extend_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_kernel_args_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_kernel_bin_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/partition/model_task_desc_partition.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/aicore/aicore_task_info.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/aicore/nano_aicore_task_info.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/aicpu/nano_hostfunc_task_info.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/aicpu/nano_hostfunc_param.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/rts/nano_default_task_info.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/pre_generate_task_registry.cc"
-    "${AIR_CODE_DIR}/base/common/preload/task_info/pre_task_status.cc"
-    "${AIR_CODE_DIR}/base/common/allocator/stream_allocator.cc"
-    "${AIR_CODE_DIR}/base/common/allocator/event_allocator.cc"
-    "${AIR_CODE_DIR}/base/common/memory/mem_type_utils.cc"
-    "${AIR_CODE_DIR}/base/common/memory/feature_memory_impl.cc"
-    "${AIR_CODE_DIR}/base/common/memory/external_weight_desc_impl.cc"
-    "${AIR_CODE_DIR}/base/common/option_supportion_checker.cc"
-    "${AIR_CODE_DIR}/base/common/host_resource_center/host_resource_center.cc"
-    "${AIR_CODE_DIR}/base/common/host_resource_center/host_resource_serializer.cc"
-    "${AIR_CODE_DIR}/base/common/host_resource_center/tiling_resource_manager.cc"
-    "${AIR_CODE_DIR}/base/common/host_resource_center/weight_manager.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile_model_helper.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/compatible_info_v2.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/compiled_model.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/compiled_target_saver.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/compiled_target.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/kernelbin_info.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/large_memory_ops.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/model_buffer_helper.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/model_file_saver.cc"
-    "${AIR_CODE_DIR}/base/common/helper/mobile/model.cc"
-)
-
-set(DATA_FLOW_GRAPH_SRC_FILES
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/compile_config_json.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/convert_batch_attr_to_udf_pass.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_graph_prune_pass.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_graph.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_attr_utils.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_graph_utils.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/process_point_loader.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_graph_model_relation_builder.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/function_compile.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/data_flow_graph_auto_deployer.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/data_flow_graph/inner_pp_loader.cc"
-)
 
 # libge_ut_common.a resembles a testing-version of libge_compiler.so (and many more?),
 # hence should also include what libge_compiler.so needs.
 # See also tests/framework/cmake/graphengine.cmake for more info.
 set(COMPILER_LINKED_PROTO_SRCS
     "${CMAKE_BINARY_DIR}/proto/ge/proto/optimizer_priority.pb.cc"
-)
-file(GLOB_RECURSE SYMBOL_SHAPE_INFER_FUNCS_SRCS CONFIGURE_DEPENDS
-    "${AIR_CODE_DIR}/compiler/graph/optimize/symbolic/*.cc"
-)
-
-set(COMPILER_COMMON_SRC_FILES
-    "${AIR_CODE_DIR}/compiler/analyzer/analyzer.cc"
-    "${AIR_CODE_DIR}/compiler/engines/manager/engine_manager/dnnengine_manager.cc"
-    "${AIR_CODE_DIR}/compiler/api/generator/ge_generator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/graph_builder.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/label_allocator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/assign_attached_stream_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/assign_attached_notify_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/assign_attached_event_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/attach_resource_assign_helper.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/logical_stream_allocator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/stream_allocator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/stream_info.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/dynamic_stream_allocator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream/stream_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/binary_block_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/block_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/block_type_list.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/continuous_mem.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/dependency_analyzer.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/reuse_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/special_node_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/atomic_clean_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker_register.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker/continuous_input_node_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker/continuous_output_node_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker/nopadding_continuous_input_node_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/checker/node_checker/nopadding_continuous_output_node_checker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/buffer_pool_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/graph_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/hybrid_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/mem_inplace.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/max_block_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/memory_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/graph_mem_splitter.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/dynamic_batch_mem_assigner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/memory/mem_reuse_strategy.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/model_builder.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/model_data_info.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/run_context_util.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/stream_graph_optimizer.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/task_generator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/task_generator_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/graph_compile_summary_impl.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/profiling_task_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/build/model_cache.cc"
-    "${AIR_CODE_DIR}/compiler/graph/common/trans_op_creator.cc"
-    "${AIR_CODE_DIR}/compiler/graph/common/ge_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pattern.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/match_result.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/node_matcher.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pattern_matcher.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pattern_matcher_config.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/subgraph_boundary.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/graph_rewriter.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/fusion_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pass/decompose_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pass/pattern_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pass/fusion_pass_reg.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pass/pass_registry.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fusion/pass/fusion_pass_executor.cc"
-    "${AIR_CODE_DIR}/compiler/graph/fuzz_compile/fuzz_compile_bin_selector.cc"
-    "${AIR_CODE_DIR}/compiler/graph/manager/graph_context.cc"
-    "${AIR_CODE_DIR}/compiler/graph/manager/graph_manager.cc"
-    "${AIR_CODE_DIR}/compiler/graph/manager/util/graph_optimize_utility.cc"
-    "${AIR_CODE_DIR}/compiler/graph/manager/util/graph_rebuild_state_ctrl.cc"
-    "${AIR_CODE_DIR}/compiler/graph/manager/util/rt_context_util.cc"
-    "${AIR_CODE_DIR}/compiler/graph/optimize/graph_optimize.cc"
-    "${AIR_CODE_DIR}/compiler/graph/optimize/mem_rw_conflict_optimize.cc"
-    "${AIR_CODE_DIR}/compiler/graph/optimize/summary_optimize.cc"
-    "${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/autofuse_optimize.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/base_cluster.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/base_partitioner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/dynamic_shape_partition.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/engine_place.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/engine_partitioner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/optimizer/dynamic_data_flow_engine_reassign_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/optimizer/dynamic_data_flow_partitioner_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/stage_partitioner.cc"
-    "${AIR_CODE_DIR}/compiler/graph/partition/optimizer/hostcpu_engine_update_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/multi_batch_copy_graph.cc"
-    "${AIR_CODE_DIR}/compiler/api/gelib/gelib.cc"
-    "${AIR_CODE_DIR}/compiler/api/aclgrph/attr_options/keep_dtype_option.cc"
-    "${AIR_CODE_DIR}/compiler/api/aclgrph/attr_options/utils.cc"
-    "${AIR_CODE_DIR}/compiler/api/aclgrph/attr_options/weight_compress_option.cc"
-    "${AIR_CODE_DIR}/compiler/api/aclgrph/ge_ir_build.cc"
-    "${AIR_CODE_DIR}/compiler/api/aclgrph/option_utils.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/engine/ge_local_engine.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/engine/ge_local_graph_optimizer.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/ge_local_ops_kernel_builder.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/ge_local_ops_kernel_info_store.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/ge_local_ops_kernel_calc_op_param.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/op/ge_deleted_op.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/op/no_op.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/op/op.cc"
-    "${AIR_CODE_DIR}/compiler/engines/local_engine/ops_kernel_store/op/op_factory.cc"
-    "${AIR_CODE_DIR}/api/atc/main_impl.cc"
-    "${AIR_CODE_DIR}/api/atc/cmd_flag_info.cc"
-    "${AIR_CODE_DIR}/api/atc/omg.cc"
-    "${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/ops_kernel_builder_manager.cc"
-    "${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/ops_kernel_manager.cc"
-    "${AIR_CODE_DIR}/compiler/engines/custom_engine/custom_graph_optimizer.cc"
-    "${AIR_CODE_DIR}/compiler/engines/custom_engine/custom_ops_kernel_info_store.cc"
-    "${AIR_CODE_DIR}/compiler/engines/custom_engine/custom_ops_kernel_builder.cc"
-    "${AIR_CODE_DIR}/compiler/opt_info/ge_opt_info.cc"
-    "${AIR_CODE_DIR}/compiler/engines/manager/engine/dnnengines.cc"
-    "${AIR_CODE_DIR}/compiler/engines/manager/engine/engine_manager.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/model/flow_model_builder.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/model/dflow_graph_manager.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/model/flow_model_cache.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/model/flow_model_helper.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/process_node_engine_manager.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/npu/npu_process_node_engine.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/cpu/cpu_process_node_engine.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/udf/udf_process_node_engine.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/udf/udf_attr_utils.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/udf/udf_model.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/udf/udf_model_builder.cc"
-    "${SYMBOL_SHAPE_INFER_FUNCS_SRCS}"
-    "${DATA_FLOW_GRAPH_SRC_FILES}"
-    "${COMPILER_LINKED_PROTO_SRCS}"
-)
-
-set(EXECUTOR_COMMON_SRC_FILES
-    "${AIR_CODE_DIR}/runtime/v1/common/dump/opdebug_register.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/dump/dump_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/profiling/command_handle.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/profiling/ge_profiling.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/profiling/profiling_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/profiling/profiling_init.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/runtime/model_rt_var_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/runtime/rt_session.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/execute/graph_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/execute/model_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/graph_loader.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/caching_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/graph_mem_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/active_memory_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/mem_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/host_mem_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/host_mem_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/memory_api.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/rdma_pool_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/session_scope_mem_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/trans_var_data_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/manager/util/hcom_ome_util.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/common/bin_cache/one_node_single_bin_selector.cc"
-)
-
-set(COMMON_FORMAT_SRC_FILES
-    "${AIR_CODE_DIR}/base/formats/ge_format_util.cc"
-    "${AIR_CODE_DIR}/base/formats/formats.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_transpose.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_nchw_nc1hwc0.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fractal_z.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fractal_nz.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fractal_zz.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fractal_z_tbe.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_nhwc_nc1hwc0.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_nc1hwc0_nchw.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_nc1hwc0_nhwc.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_hwcn_c1hwncoc0.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_c1hwncoc0_hwcn.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fracz_nchw.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fracz_nhwc.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fracz_hwcn.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_dhwcn_fractal_z_3D.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_dhwnc_fractal_z_3D_transpose.cc"
-    "${AIR_CODE_DIR}/base/formats/format_transfers/format_transfer_fz_c04.cc"
-    "${AIR_CODE_DIR}/base/formats/register_format_transfer.cc"
-    "${AIR_CODE_DIR}/base/formats/utils/formats_trans_utils.cc"
-)
-
-set(GRAPH_PREPARE_COMMON_SRC_FILES
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/graph_prepare.cc"
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/checker/graph_lint.cc"
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/insert_op/insert_aipp_op_util.cc"
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/insert_op/aipp_op.cc"
-    "${AIR_CODE_DIR}/compiler/graph/preprocess/multi_batch_options.cc"
-)
-
-set(GRAPH_DAVINCI_MODEL_SRC_FILES
-    "${AIR_CODE_DIR}/tests/ge/ut/ge/ffts_plus_proto_tools.cc"
-    "${AIR_CODE_DIR}/runtime/v1/opskernel_executor/ops_kernel_executor_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/aipp_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/cpu_queue_schedule.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/dump/data_dumper.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/runtime_api_wrapper.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/davinci_model.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/memory_block_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/reusable_stream_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/model_args_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/memory_app_type_classifier.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_args_refresh_type_classifier.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_node_map.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/model_args_layout_planner.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/aicpu_resources.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/model_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/model_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/zero_copy_offset.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/tbe_kernel_handle.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/args_format/args_format_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/kernel/model_kernel_handles_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/kernel/kernel_register_info_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/cmo_barrier_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/cmo_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/cmo_addr_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/dsa_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/dvpp/dvpp_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/npu_get_float_status_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/npu_clear_float_status_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/end_graph_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/event_record_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/event_wait_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/notify_record_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/event_mem_record_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/event_mem_wait_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/notify_wait_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/ffts_plus/ffts_plus_context_adapter.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/ffts_plus/ffts_plus_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/ffts_plus/ffts_plus_args_helper.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/ffts_plus/ffts_plus_proto_transfer.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/fusion_start_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/fusion_stop_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/hccl/hccl_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/hccl/hccl_util.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/aicpu/kernel_ex_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/kernel_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/fusion_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/super_kernel_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/fe/update_pc_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/nop_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/label_goto_ex_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/label_set_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/label_switch_by_index_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/memcpy_addr_async_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/memcpy_async_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/ge/profiler_trace_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/stream_active_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/rts/stream_switch_task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/task_info.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/task_info_factory.cc"
-    "${AIR_CODE_DIR}/runtime/v1/graph/load/model_manager/task_info/args_io_addrs_updater.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/aicpu/aicpu_ext_info_handler.cc"
-    "${AIR_CODE_DIR}/dflow/executor/data_flow_executor_utils.cc"
-    "${AIR_CODE_DIR}/dflow/executor/data_flow_info_impl.cc"
-    "${AIR_CODE_DIR}/dflow/executor/flow_msg.cc"
-    "${AIR_CODE_DIR}/dflow/executor/heterogeneous_model_executor.cc"
-    "${AIR_CODE_DIR}/dflow/executor/heterogeneous_model_io_helper.cc"
-    "${AIR_CODE_DIR}/dflow/executor/inner_process_msg_forwarding.cc"
-    "${AIR_CODE_DIR}/dflow/executor/data_flow_exception_handler.cc"
-    "${AIR_CODE_DIR}/dflow/executor/data_flow_data_aligner.cc"
-    "${AIR_CODE_DIR}/dflow/executor/flow_model_manager.cc"
-)
-
-set(GRAPH_BUILD_COMMON_SRC_FILES
-    "${AIR_CODE_DIR}/api/session/client/ge_api.cc"
-    "${AIR_CODE_DIR}/api/session/client/ge_api_v2.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/session/dflow_api.cc"
-    "${AIR_CODE_DIR}/api/session/common/plugin/tbe_plugin_manager.cc"
-    "${AIR_CODE_DIR}/api/session/session/inner_session.cc"
-    "${AIR_CODE_DIR}/api/session/session/user_hybrid_graph_manager.cc"
-    "${AIR_CODE_DIR}/api/session/session/ge_session_impl.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/session/dflow_session_impl.cc"
-    "${AIR_CODE_DIR}/api/session/session/session_manager.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/session/dflow_session_manager.cc"
-    "${AIR_CODE_DIR}/dflow/compiler/pne/process_node_engine_manager.cc"
-    "${AIR_CODE_DIR}/base/exec_runtime/execution_runtime_utils.cc"
-)
-
-file(GLOB_RECURSE MEM_LAYOUT_CONFLICT_OPTIMIZE_SRCS CONFIGURE_DEPENDS
-        "${AIR_CODE_DIR}/compiler/graph/optimize/mem_layout_conflict_optimize/*.cc" )
-
-set(GRAPH_PASS_COMMON_SRC_FILES
-    "${MEM_LAYOUT_CONFLICT_OPTIMIZE_SRCS}"
-    "${AIR_CODE_DIR}/compiler/graph/passes/pass_manager.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/base_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_prepare_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_ref_delete_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/atomic_addr_clean_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/set_ffts_plus_attr_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/constant_folding_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/iterator_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/net_output_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/print_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/unchanged_transpose_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/dim1_transpose_to_squeeze_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/dimension_compute_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/dimension_adjust_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/get_original_format_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/stop_gradient_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/guarantee_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/prevent_gradient_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/identity_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/placeholder_with_default_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/snapshot_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/shape_operate_op_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/permute_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/var_is_initialized_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/prune_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/enter_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/next_iteration_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/pass_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/addn_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/save_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/merge_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/switch_logic_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/assert_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/split_shape_n_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/merge_unknown_shape_n_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/dropout_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/unused_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/reshape_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_same_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/useless_control_out_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_breadth_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_without_reshape_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_nearby_allreduce_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/same_transdata_breadth_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/tensor_move_delete_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/compile_nodes_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/inner_tensor_move_add_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/inner_tensor_move_delete_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/flow_ctrl_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/parallel_group_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/folding_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transpose_transdata_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/hccl_memcpy_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/no_use_reshape_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infer_base_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infershape_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infer_value_range_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/pass_utils.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/base_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/constant_clip_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/reshape_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/reshape_recovery_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_breadth_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_nearby_allreduce_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_without_reshape_fusion_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/compile_nodes_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_prepare_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_ref_delete_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_ref_useless_control_out_delete_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/subgraph_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/data_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/net_output_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/replace_transshape_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_fuse_same_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/fuse_data_nodes_with_common_input_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/print_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/no_use_reshape_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/super_kernel_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/input_output_connection_identify_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/atomic_addr_clean_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/mark_same_addr_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/mark_graph_unknown_status_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/mark_agnostic_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/dimension_compute_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/dimension_adjust_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/get_original_format_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/shape_operate_op_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/assert_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/dropout_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infer_base_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infershape_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/infer_value_range_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/unused_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/permute_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/ctrl_edge_transfer_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/end_of_sequence_add_control_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/start_of_sequence_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/stop_gradient_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/prevent_gradient_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/identity_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/ref_identity_delete_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/placeholder_with_default_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/snapshot_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_unsupported_op/guarantee_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/var_is_initialized_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/parallel_concat_start_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/folding_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/prune_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/merge_to_stream_merge_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/merge_input_memcpy_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/switch_to_stream_switch_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/shape_optimize/mark_force_unknown_for_cond_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/attach_stream_label_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/attached_resource_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/create_subgraph_with_scope_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/multi_batch_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/subgraph_multi_dims_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/multi_batch_clone_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/subgraph_multi_dims_clone_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/subexpression_migration_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/multi_batch/subgraph_const_migration_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/unused_args_clean_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/next_iteration_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/control_trigger_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/cond_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/cond_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/symbolic/symbolic_cond_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/for_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/enter_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/assign_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/inplace_support_check_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/addn_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/common_subexpression_elimination_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transop_symmetry_elimination_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/save_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/switch_dead_branch_elimination.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/switch_logic_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/switch_data_edges_bypass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/merge_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/variable_op_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/cast_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/format_optimize/transpose_transdata_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/hccl_continuous_memcpy_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/control_flow_and_stream/flow_ctrl_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/global_step_insert_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/link_gen_mask_nodes_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/replace_with_empty_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/hccl_group_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/hccl_sequence_adjust_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/hccl_tailing_optimization_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/memcpy_addr_async_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_conflict/set_input_output_offset_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/remove_same_const_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/useless_control_out_remove_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/parallel_group_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/buffer_pool_memory_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/data_flow_prepare_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/potential_const_taken_effect_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/standard_optimize/constant_folding/potential_folding_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_optimize/swap_space_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/recompute_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/variable_optimize/split_variable_into_subgraph_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/memory_optimize/concat_notask_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/auto_fuse_pass.cc"
-    "${AIR_CODE_DIR}/compiler/graph/passes/feature/algebraic_simplification_pass.cc"
-)
-
-set(KERNEL_SRC_FILES
-    "${AIR_CODE_DIR}/compiler/host_kernels/kernel_utils.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/broadcast_gradient_args_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/broadcast_args_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/empty_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/expanddims_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/gathershapes_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/identity_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/rank_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/reshape_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/shape_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/shape_n_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/size_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/squeeze_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/squeezev3_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/unsqueeze_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/array_ops/unsqueezev3_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/custom_ops/reformat_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/custom_ops/ssd_prior_box_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/data_flow_ops/dynamic_stitch_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/greater_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/maximum_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/floormod_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/floordiv_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/mul_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/cast_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/add_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/sub_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/elewise_calculation_ops/rsqrt_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/pad_ops/fill_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/reduce_ops/reduce_prod_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/selection_ops/gather_v2_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/selection_ops/range_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/selection_ops/strided_slice_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/selection_ops/slice_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/selection_ops/slice_d_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/split_combination_ops/pack_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/split_combination_ops/concat_v2_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/split_combination_ops/concat_offset_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/split_combination_ops/unpack_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/transformation_ops/flattenv2_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/transformation_ops/transdata_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/transformation_ops/permute_kernel.cc"
-    "${AIR_CODE_DIR}/compiler/host_kernels/transformation_ops/transpose_kernel.cc"
-)
-
-set(SINGLE_OP_SRC_FILES
-    "${AIR_CODE_DIR}/runtime/v1/common/utils/executor_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/executor/ge_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/build_task_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/op_task.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/tbe_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/single_op.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/single_op_model.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/stream_resource.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/single_op_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/aicpu_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/aicpu_c_c_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/rts_kernel_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/single_op/task/dsa_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/common/tensor_value.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/common/npu_memory_allocator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/rt_callback_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/host_cpu_callback_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/node_state.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/node_done_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_profiler.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_model_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_model_async_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_execution_context.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_model_pipeline_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_model_rt_v2_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_model_rt_v1_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/cann_tracing_profiler.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/rt_v2_executor_factory.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/rt_v2_pipeline_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/rt_v2_simple_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/rt_v2_stage_state.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/rt_v2_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/runtime_v2/scalable_allocator_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/subgraph_context.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/subgraph_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/hybrid_data_flow.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/resource_manager.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/worker/shape_inference_engine.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/executor/worker/execution_engine.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/graph_stage_cache.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/node_shape_infer.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/node_shape_propagator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/shape_utils.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/shape_propagator.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/tensor_desc_observer.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/infer/tensor_desc_holder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/hybrid_model.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/hybrid_model_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/node_item.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/model/graph_item.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/aicore/aicore_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/aicore/aicore_op_task.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/aicore/aicore_task_builder.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/aicpu/aicpu_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/compiledsubgraph/known_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/ge_local/data_flow_kernels.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/ge_local/ge_local_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/host_cpu/host_cpu_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/controlop/control_op_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/partitioned_call/partitioned_call_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/hccl/hccl_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/rts/rts_node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/rts/rts_node_task.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/rts/rts_task_factory.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/node_executor.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/node_executor/task_context.cc"
-    "${AIR_CODE_DIR}/runtime/v1/hybrid/hybrid_davinci_model.cc"
-    "${AIR_CODE_DIR}/runtime/v1/common/dump/dump_callback.cc"
-)
-
-set(LABEL_MAKER_SRC_FILES
-    "${AIR_CODE_DIR}/compiler/graph/label/label_maker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/label/case_op_label_maker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/label/if_op_label_maker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/label/while_op_label_maker.cc"
-    "${AIR_CODE_DIR}/compiler/graph/label/partitioned_call_op_label_maker.cc"
 )
 
 # test files
@@ -848,9 +125,11 @@ set(DISTINCT_GRAPH_LOAD_TEST_FILES
     "graph/load/cpu_queue_schedule_unittest.cc"
     "graph/load/model_parser_base_unittest.cc"
     "executor/ge_executor_unittest.cc"
+    "executor/om2_model_executor_unittest.cc"
     "executor/executor_utils_unittest.cc"
     "executor/runtime/model_rt_var_manager_unittest.cc"
     "graph/load/model_helper_unittest.cc"
+    "graph/load/om2_package_helper_unittest.cc"
     "graph/load/om_file_helper_unittest.cc"
     "hybrid/hybrid_davinci_model_unittest.cc"
     "graph/load/model_utils_unittest.cc"
@@ -1117,6 +396,9 @@ set(BASE_COMMON_TEST_FILES
     "common/mobile_model_helper_unittest.cc"
     "common/dump_callback_unittest.cc"
     "common/error_registry_unittest.cc"
+    "common/zip_archive_unittest.cc"
+    "common/om2_codegen_unittest.cc"
+    "common/program_generator_unittest.cc"
 )
 
 file(GLOB_RECURSE SYMBOL_SHAPE_INFER_FUNCS_TEST_SRCS CONFIGURE_DEPENDS "graph/optimize/symbolic/*.cc")
@@ -1124,6 +406,7 @@ file(GLOB_RECURSE ES_GRAPH_BUILDER_TEST_SRCS CONFIGURE_DEPENDS "graph/eager_styl
 
 set(MULTI_PARTS_TEST_FILES
     "${AIR_CODE_DIR}/tests/ge/ut/ge/test_tools_task_info.cc"
+    "${AIR_CODE_DIR}/tests/ge/ut/ge/ffts_plus_proto_tools.cc"
     "graph/common/trans_op_creator_unittest.cc"
     "graph/common/ge_utils_unittest.cc"
     "graph/build/test_memory_shared_graph.cc"
@@ -1202,7 +485,7 @@ set(MULTI_PARTS_TEST_FILES
     "graph/manager/trans_var_data_utils_unittest.cc"
     "graph/manager/session_scope_mem_allocator_unittest.cc"
     "graph/manager/run_graph_unittest.cc"
-        "graph/partition/dynamic_shape_partition_unittest.cc"
+    "graph/partition/dynamic_shape_partition_unittest.cc"
     "graph/partition/engine_place_unittest.cc"
     "graph/partition/graph_partition_unittest.cc"
     "graph/partition/stage_partition_unittest.cc"
@@ -1315,38 +598,6 @@ list(APPEND COMMON_SHARED_LIBRARIES
     json
 )
 
-# build graph
-add_library(ge_ut_parser STATIC ${PARSER_SRC_FILES})
-
-add_dependencies(ge_ut_parser ge)
-
-target_compile_definitions(ge_ut_parser PRIVATE
-    google=ascend_private
-    FMK_SUPPORT_DUMP
-)
-
-target_compile_options(ge_ut_parser PRIVATE
-    -g
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_ut_parser PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_ut_parser PRIVATE
-    intf_pub
-    metadef_headers
-    slog_headers
-    c_sec
-    ascend_protobuf
-    json
-    ascendcl_stub
-    mmpa_headers
-)
-
 # build common
 add_library(ge_ut_common STATIC ${COMMON_SRC_FILES} ${COMPILER_COMMON_SRC_FILES}
     ${EXECUTOR_COMMON_SRC_FILES} ${PROTO_HDRS})
@@ -1385,248 +636,19 @@ target_link_libraries(ge_ut_common PRIVATE
     flow_graph
     c_sec
     ascend_protobuf
-    ge_ut_parser
     json
+    Boost::boost
     runtime_stub
     profiler_stub
     crypto_static
     ascendcl_stub
     data_flow_base
+    minizip_static
 )
 
 target_link_libraries(ge_ut_common PUBLIC
     ge_graph_dsl
     ascendcl_stub)
-
-# build common format
-add_library(ge_ut_common_format STATIC ${COMMON_FORMAT_SRC_FILES} ${PROTO_HDRS})
-
-target_compile_definitions(ge_ut_common_format PRIVATE
-    google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
-
-target_compile_options(ge_ut_common_format PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_ut_common_format PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_ut_common_format PRIVATE
-    intf_pub
-    metadef_headers
-    slog_headers
-    c_sec
-    ascend_protobuf
-    json
-    ascendcl_stub
-)
-
-# build graph prepare common
-add_library(ge_prepare_common STATIC ${GRAPH_PREPARE_COMMON_SRC_FILES} ${PROTO_HDRS})
-
-add_dependencies(ge_prepare_common ge)
-
-target_include_directories(ge_prepare_common PRIVATE
-        ${AIR_CODE_DIR}
-)
-target_compile_definitions(ge_prepare_common PRIVATE
-    google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
-
-target_compile_options(ge_prepare_common PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_prepare_common PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_prepare_common PRIVATE
-    intf_pub
-    metadef_headers
-    slog_headers
-    runtime_headers
-    msprof_headers
-    c_sec
-    ascend_protobuf
-    json
-    ascendcl_stub
-)
-
-# build build graph load common
-add_library(ge_davinci_model STATIC ${GRAPH_DAVINCI_MODEL_SRC_FILES} ${PROTO_HDRS})
-
-target_include_directories(ge_davinci_model PRIVATE
-        ${AIR_CODE_DIR}
-)
-
-target_compile_definitions(ge_davinci_model PRIVATE
-    google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
-
-target_compile_options(ge_davinci_model PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-write-strings
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_davinci_model PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_davinci_model PRIVATE
-    intf_pub
-    metadef_headers
-    slog_headers
-    runtime_headers
-    cce_headers
-    msprof_headers
-    hccl_headers
-    datagw_headers
-    adump_headers
-    c_sec
-    ascend_protobuf
-    json
-    ascendcl_stub
-)
-
-# build graph build common
-add_library(ge_build_common STATIC ${GRAPH_BUILD_COMMON_SRC_FILES} ${PROTO_HDRS})
-
-target_compile_definitions(ge_build_common PRIVATE
-    google=ascend_private
-)
-
-target_compile_options(ge_build_common PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_build_common PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_build_common PRIVATE
-    intf_pub
-    metadef_headers
-    runtime_headers
-    slog_headers
-    msprof_headers
-    adump_headers
-    c_sec
-    ascend_protobuf
-    json
-    gert
-    ascendcl_stub
-)
-
-target_include_directories(ge_build_common PRIVATE
-    ${AIR_CODE_DIR}
-    ${ASCEND_INSTALL_PATH}/include
-    ${ASCGEN_DIR}/inc
-)
-
-# build graph pass common
-add_library(ge_pass_common STATIC
-        ${GRAPH_PASS_COMMON_SRC_FILES}
-        ${PROTO_HDRS}
-)
-
-target_compile_definitions(ge_pass_common PRIVATE
-    google=ascend_private
-)
-
-target_compile_options(ge_pass_common PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-    -Wno-subobject-linkage
-)
-
-target_include_directories(ge_pass_common PRIVATE
-        ${AIR_CODE_DIR}
-        ${AIR_CODE_DIR}/base/
-        ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/inc
-        ${ASCGEN_DIR}
-        ${ASCGEN_DIR}/inc
-        ${ASCEND_INSTALL_PATH}/include
-)
-
-target_link_options(ge_pass_common PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_pass_common PRIVATE
-    intf_pub
-    metadef_headers
-    slog_headers
-    runtime_headers
-    msprof_headers
-    ascend_protobuf
-    c_sec
-    json
-    aihac_autofusion
-    ascendcl_stub
-#    aihacb_autofusion
-)
-
-# build single_op common
-add_library(ge_single_op STATIC ${SINGLE_OP_SRC_FILES} ${PROTO_HDRS})
-target_include_directories(ge_single_op PRIVATE
-    ${AIR_CODE_DIR}
-    ${AIR_CODE_DIR}/runtime/v2
-    ${ASCEND_INSTALL_PATH}/include
-    ${ASCGEN_DIR}/inc
-)
-add_dependencies(ge_single_op ge)
-target_compile_definitions(ge_single_op PRIVATE
-    intf_pub
-    google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
-
-target_compile_options(ge_single_op PRIVATE -g ${AIR_COV_COMPILE_OPTION}
-    -Werror=format
-    -Wno-deprecated-declarations
-    -Wall -Wfloat-equal -Werror
-)
-
-target_link_options(ge_single_op PRIVATE
-    -Wl,--disable-new-dtags
-    -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_link_libraries(ge_single_op PRIVATE
-    intf_pub
-    metadef_headers
-    runtime_headers
-    cce_headers
-    slog_headers
-    msprof_headers
-    adump_headers
-    hccl_headers
-    datagw_headers
-    ascend_protobuf
-    json
-    c_sec
-    ascendcl_stub
-)
 
 # ut binary
 file(GLOB_RECURSE JIT_EXECUTION_SRC_FILES CONFIGURE_DEPENDS "${AIR_CODE_DIR}/api/session/jit_execution/*.cc")
@@ -1634,26 +656,30 @@ file(GLOB_RECURSE JIT_EXECUTION_SRC_FILES CONFIGURE_DEPENDS "${AIR_CODE_DIR}/api
 add_executable(ut_libge_multiparts_utest
     ${COMMON_TEST_FILES}
     ${MULTI_PARTS_TEST_FILES}
-    ${JIT_EXECUTION_SRC_FILES}
+    ${AIR_CODE_DIR}/tests/ge/st/stubs/src/mock_ops_kernel_builder.cc
 )
 
-target_compile_options(ut_libge_multiparts_utest PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_libge_multiparts_utest PRIVATE
     -Werror=format
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
     -Wno-write-strings
+    -fno-access-control
 )
 
 target_compile_definitions(ut_libge_multiparts_utest PRIVATE
     google=ascend_private
+    FUNC_VISIBILITY
 )
 
 target_include_directories(ut_libge_multiparts_utest PRIVATE
+    ${AIR_CODE_DIR}/tests/st/stubs
     ${AIR_CODE_DIR}/tests/framework/ge_runtime_stub/include
     ${ASCEND_INSTALL_PATH}/include
     ${ASCGEN_DIR}/inc
     ${CMAKE_BINARY_DIR}/proto/data_flow_protos
     ${AIR_CODE_DIR}/inc/graph_metadef
+    ${AIR_CODE_DIR}/tests/ge/st/stubs/
 )
 
 target_link_options(ut_libge_multiparts_utest PRIVATE
@@ -1665,12 +691,35 @@ target_link_libraries(ut_libge_multiparts_utest
     intf_pub
     metadef_headers
     ascendcl_stub
+    -Wl,-z,muldefs
     flow_graph
-    ${AIR_COMMON_LINK_OPTION}
+    symengine
+    unified_dlog
+    graph
+    graph_base
+    ge_executor_shared
+    hybrid_executor
+    davinci_executor
+    lowering
+    register
+    ge_local_engine
+    ge_local_opskernel_builder
+    ge_runner
+    udf_compiler
+    dflow_runner
+    ge_runner_v2
+    engine
+    json
+    ascend_protobuf
+    ge_graph_dsl
+    ge_compiler
+    data_flow_base
+    ascendcl_stub
     -Wl,--whole-archive
-    gert gert_op_impl ge_davinci_model es_ge_test ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common
+    atc_static gert gert_op_impl es_ge_test
     -Wl,--no-whole-archive
-    ge_running_env ge_runtime_stub st_stubs  GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+    ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt
+    -ldl
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1685,7 +734,7 @@ add_executable(ut_libge_symbol_infer_utest
         ${JIT_EXECUTION_SRC_FILES}
 )
 
-target_compile_options(ut_libge_symbol_infer_utest PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_libge_symbol_infer_utest PRIVATE
         -Werror=format
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
@@ -1709,15 +758,29 @@ target_link_options(ut_libge_symbol_infer_utest PRIVATE
         -Wl,-Bsymbolic
         -Wl,--disable-new-dtags
         -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
+        ${AIR_COMMON_LINK_OPTION}
         )
 
 target_link_libraries(ut_libge_symbol_infer_utest
         intf_pub
+        -Wl,-z,muldefs
+        symengine
+        lowering
+        register
+        graph
+        graph_base
+        ge_compiler
+        gert
+        ascendcl
+        ge_executor_shared
+        hybrid_executor
+        davinci_executor
+        unified_dlog
         -Wl,--whole-archive
         rt2_registry_static
-        ge_davinci_model es_ge_test ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common
+        es_ge_test
         -Wl,--no-whole-archive
-        ge_runtime_stub st_stubs GTest::gtest_main GTest::gmock_main -lrt -ldl -lgcov
+        ge_runtime_stub st_stubs GTest::gtest_main GTest::gmock_main -lrt -ldl
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1728,10 +791,13 @@ set_tests_properties(ut_libge_symbol_infer_utest PROPERTIES LABELS "ut;ge_common
 add_executable(ut_libge_common_utest
     ${COMMON_TEST_FILES}
     ${BASE_COMMON_TEST_FILES}
-    ${JIT_EXECUTION_SRC_FILES}
+    ${AIR_CODE_DIR}/tests/ge/ut/ge/ffts_plus_proto_tools.cc
+    ${CMAKE_BINARY_DIR}/proto/ge/proto/tensorflow/graph_library.pb.cc
 )
 
-target_compile_options(ut_libge_common_utest PRIVATE -g ${AIR_COV_COMPILE_OPTION}
+add_dependencies(ut_libge_common_utest ge)
+
+target_compile_options(ut_libge_common_utest PRIVATE -g -O0
     -Werror=format
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
@@ -1753,12 +819,28 @@ target_link_libraries(ut_libge_common_utest
     intf_pub
     metadef_headers
     ascendcl_stub
+    symengine
+    slice
+    ge_graph_dsl
+    ge_compiler
+    ge_runner
+    ge_executor_shared
+    hybrid_executor
+    davinci_executor
+    lowering
+    register
+    graph
+    graph_base
+    gert
+    unified_dlog
+    -Wl,-z,muldefs
     -Wl,--whole-archive
+    ge_runtime_stub
     es_ge_test
-    ge_davinci_model ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common ge_runtime_stub
-    gert    gert_op_impl_static rt2_registry_static
+    gert_op_impl_static rt2_registry_static
     -Wl,--no-whole-archive
-    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+    minizip_static
+    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1780,6 +862,7 @@ add_executable(ut_libge_others_utest
     ${OTHERS_TEST_FILES}
     ${GE_OPT_INFO_TEST_FILES}
     ${JIT_EXECUTION_SRC_FILES}
+    ${DEPLOYER_PROTO_SRCS}
 )
 
 add_dependencies(ut_libge_others_utest mdat)
@@ -1798,6 +881,7 @@ target_include_directories(ut_libge_others_utest PRIVATE
 )
 
 target_compile_definitions(ut_libge_others_utest PRIVATE
+    google=ascend_private
     $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
@@ -1811,11 +895,20 @@ target_link_libraries(ut_libge_others_utest
     metadef_headers
     ascendcl_stub
     ${AIR_COMMON_LINK_OPTION}
+    ge_compiler
+    dflow_runner
+    gert
+    ge_runner
+    ge_runner_v2
+    udf_compiler
+    cpu_compiler
+    gRPC::grpc++
+    gRPC::grpc
     -Wl,--whole-archive
-    ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format es_ge_test
+    es_ge_test
     rt2_registry_static
     -Wl,--no-whole-archive
-    ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+    ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl ${AIR_COMMON_LINK_OPTION}
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1830,7 +923,11 @@ add_executable(ut_libge_label_maker_utest
     ${JIT_EXECUTION_SRC_FILES}
 )
 
-target_compile_options(ut_libge_label_maker_utest PRIVATE -g ${AIR_COV_COMPILE_OPTION}
+target_compile_definitions(ut_libge_label_maker_utest PRIVATE
+    google=ascend_private
+)
+
+target_compile_options(ut_libge_label_maker_utest PRIVATE -g -O0
     -Werror=format
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
@@ -1850,11 +947,16 @@ target_link_libraries(ut_libge_label_maker_utest
     intf_pub
     metadef_headers
     ascendcl_stub
+    ge_common
+    ge_common_base
+    gert
+    ge_compiler
+    gRPC::grpc++
+    gRPC::grpc
     -Wl,--whole-archive
-    ge_common_base    es_ge_test
-    ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format
+    es_ge_test
     -Wl,--no-whole-archive
-    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl
     -Wl,--no-as-needed unified_dlog GTest::gmock -Wl,--as-needed
 )
 
@@ -1868,9 +970,15 @@ add_executable(ut_libge_kernel_utest
         ${FORMAT_TRANSFERS_TEST_FILES}
         ${KERNEL_SRC_FILES}
         ${JIT_EXECUTION_SRC_FILES}
+        ${DEPLOYER_PROTO_SRCS}
 )
 
-target_compile_options(ut_libge_kernel_utest PRIVATE -g ${AIR_COV_COMPILE_OPTION}
+target_compile_definitions(ut_libge_kernel_utest PRIVATE
+    google=ascend_private
+    FUNC_VISIBILITY
+)
+
+target_compile_options(ut_libge_kernel_utest PRIVATE -g
         -Werror=format
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
@@ -1882,15 +990,22 @@ target_link_options(ut_libge_kernel_utest PRIVATE
     -Wl,-rpath,${CMAKE_CURRENT_LIST_DIR}
 )
 
+target_include_directories(ut_libge_kernel_utest PRIVATE
+    ${CMAKE_BINARY_DIR}/proto/metadef_protos
+)
+
 target_link_libraries(ut_libge_kernel_utest
         intf_pub
         metadef_headers
         -Wl,--whole-archive
         ascendcl_stub
-        ge_common_base        es_ge_test
-        ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_single_op ge_ut_common ge_ut_common_format
+        es_ge_test
+        ge_common
+        ge_common_base
+        gert
+        ge_compiler
         -Wl,--no-whole-archive
-        ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+        ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1908,12 +1023,15 @@ add_executable(ut_libge_distinct_load_utest
         ${PROFILING_MNG_TEST_FILES}
         ${HYBRID_TEST_FILES}
         ${JIT_EXECUTION_SRC_FILES}
+        "${AIR_CODE_DIR}/tests/ge/ut/ge/ffts_plus_proto_tools.cc"
 )
 
-target_compile_options(ut_libge_distinct_load_utest PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_libge_distinct_load_utest PRIVATE
     -Werror=format
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
+    -fno-access-control
+    ${AIR_COMMON_COMPILE_OPTION}
 )
 
 target_compile_definitions(ut_libge_distinct_load_utest PRIVATE
@@ -1944,13 +1062,18 @@ target_link_libraries(ut_libge_distinct_load_utest
     datagw_headers
     msprof_headers
     flow_graph
-    ${AIR_COMMON_LINK_OPTION}
+    symengine
+    gert
+    ge_compiler
+    om2_executor
+    -Wl,-z,muldefs
     -Wl,--whole-archive
-    ge_common_base
-    ge_single_op ge_davinci_model ge_build_common ge_prepare_common ge_pass_common ge_ut_common ge_ut_common_format ge_graph_dsl ge_runtime_stub
+    ge_graph_dsl ge_runtime_stub
     profiler_stub es_ge_test gert_op_impl_static rt2_registry_static
     -Wl,--no-whole-archive
-    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lpthread -lgcov
+    json
+    minizip_static
+    ge_running_env GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl ${AIR_COMMON_LINK_OPTION} -lpthread
     -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -1967,12 +1090,6 @@ add_executable(ge_manual_test
         ${MANUAL_TEST_FILES}
         )
 
-target_compile_options(ge_manual_test PRIVATE
-        -Werror=format
-        -Wno-deprecated-declarations
-        -Wall -Wfloat-equal -Werror
-        )
-
 target_compile_definitions(ge_manual_test PRIVATE
         google=ascend_private
         )
@@ -1981,6 +1098,7 @@ target_include_directories(ge_manual_test PRIVATE ${AIR_CODE_DIR}/tests/framewor
         ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/autofuse
         ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/ascir/meta
         ${CMAKE_BINARY_DIR}/tests/depends/aihacb_autofusion
+        ${CMAKE_BINARY_DIR}/graph_metadef/graph/ascendc_ir/generator/
         ${ASCEND_INSTALL_PATH}/include
         ${ASCGEN_DIR}/inc
 )
@@ -1994,10 +1112,11 @@ target_link_libraries(ge_manual_test
         intf_pub
         metadef_headers
         ascendcl_stub
-        -Wl,--whole-archive
-        ge_davinci_model ge_build_common ge_prepare_common ge_single_op ge_pass_common ge_ut_common_format ge_ut_common
-        jit_exe
-        -Wl,--no-whole-archive
+        ge_compiler
+        graph_base
+        gert
+        aihac_ir
+        aihac_autofusion
         ge_running_env ge_runtime_stub GTest::gtest GTest::gtest_main GTest::gmock_main
         ${COMMON_SHARED_LIBRARIES} -lrt -ldl
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
@@ -2013,14 +1132,16 @@ add_executable(ut_jit_execution
         ${JIT_EXECUTION_TEST_FILES}
         ${JIT_EXECUTION_UTIL_SRC_FILES}
         "${SYMBOL_SHAPE_INFER_FUNCS_SRCS}"
+        "${AIR_CODE_DIR}/tests/ge/ut/ge/test.cc"
         "${AIR_CODE_DIR}/tests/graph_metadef/depends/checker/tensor_check_utils.cc"
         )
 
-target_compile_options(ut_jit_execution PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_jit_execution PRIVATE -g -O0
         -Werror=format
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -Wno-write-strings
+        -fno-access-control
 )
 
 target_compile_definitions(ut_jit_execution PRIVATE
@@ -2047,11 +1168,18 @@ target_link_libraries(ut_jit_execution
         -Wl,--whole-archive
         ge_common_base
         ge_graph_dsl
+        ge_compiler
+        ge_runner
+        ge_runner_v2
+        dflow_runner
+        symengine
+        aihacb_autofusion_stub
+        gert
         rt2_registry_static
-        es_ge_test ge_davinci_model gert ge_single_op ge_build_common ge_prepare_common ge_pass_common ge_ut_common_format
+        es_ge_test
         -Wl,--no-whole-archive
         ge_ut_common
-        ge_running_env ge_runtime_stub st_stubs GTest::gtest GTest::gtest_main GTest::gmock_main -lrt -ldl -lgcov
+        ge_running_env ge_runtime_stub st_stubs GTest::gtest GTest::gtest_main GTest::gmock_main -lrt -ldl
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
 )
 
@@ -2072,7 +1200,7 @@ file(COPY ${ES_HISTORY_REGISTRY_FIXTURE_SRC_DIR} DESTINATION ${CMAKE_CURRENT_BIN
 add_executable(ut_eager_style_builder
         ${ES_GRAPH_BUILDER_TEST_SRCS}
         )
-target_compile_options(ut_eager_style_builder PRIVATE ${AIR_COMMON_COMPILE_OPTION}
+target_compile_options(ut_eager_style_builder PRIVATE -g -O0
         -Werror=format
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
@@ -2090,16 +1218,20 @@ target_link_options(ut_eager_style_builder PRIVATE
 
 target_link_libraries(ut_eager_style_builder
         intf_pub
+        -Wl,-z,muldefs
         metadef_headers
         es_generator_inner_headers
         json
-        ${AIR_COMMON_LINK_OPTION}
+        symengine
+        Boost::boost
         -Wl,--whole-archive
         ge_common_base
         gen_esb_impl
         eager_style_graph_builder_base
-        -Wl,--no-whole-archive
-        st_stubs GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl -lgcov
+        aihac_symbolizer
+        ge_running_env
+        ge_compiler
+        GTest::gtest GTest::gtest_main GTest::gmock_main ${COMMON_SHARED_LIBRARIES} -lrt -ldl ${AIR_COMMON_LINK_OPTION}
         -Wl,--no-as-needed GTest::gmock -Wl,--as-needed
         ascendcl_stub
         )

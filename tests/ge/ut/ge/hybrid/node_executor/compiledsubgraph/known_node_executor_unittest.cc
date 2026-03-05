@@ -251,13 +251,18 @@ TEST_F(UtestKnownNodeExecutor, test_KnownNodeTask) {
   dynamic_cast<KnownNodeTask *>(task.get())->davinci_model_->task_list_.push_back(std::make_shared<KernelTaskInfo>());
   ASSERT_EQ(node_executor.ExecuteTask(*task, *node_state->GetTaskContext(), done), SUCCESS);
   ASSERT_EQ(graph_context.callback_manager->Destroy(), SUCCESS);
-  delete node_state->GetTaskContext()->execution_context_->allocator;
+
+  auto allocator = node_state->GetTaskContext()->execution_context_->allocator;
+  auto inputs_start = (TensorValue *)node_state->GetTaskContext()->inputs_start_;
+  auto outputs_start = (TensorValue *)node_state->GetTaskContext()->outputs_start_;
+  subgraph_context.node_states_.clear();
+  delete allocator;
   delete[] (uint8_t *)test4;
   delete[] (uint8_t *)test3;
   delete[] (uint8_t *)test2;
   delete[] (uint8_t *)test1;
-  delete[] (TensorValue *)node_state->GetTaskContext()->inputs_start_;
-  delete[] (TensorValue *)node_state->GetTaskContext()->outputs_start_;
+  delete[] inputs_start;
+  delete[] outputs_start;
   delete[] test_buffer;
 }
 } // namespace ge

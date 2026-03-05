@@ -72,6 +72,8 @@ public:
     static bool IsPathExist(const std::string &path);
     static Result CheckPathIsFile(const std::string &fileName);
     static Result MemcpyFileToDeviceBuffer(const std::string &fileName, void *&picDevBuffer, size_t inputBuffSize, bool isDevice);
+    static Result MemcpyFilesToDeviceBuffer(const std::vector<std::string> &fileNames, void **picDevBuffer,
+                                            size_t &inputBuffSize, uint64_t batchSize, bool isDevice);
 };
 
 #endif  // SAMPLE_ACL_COMMON_UTILS_H_

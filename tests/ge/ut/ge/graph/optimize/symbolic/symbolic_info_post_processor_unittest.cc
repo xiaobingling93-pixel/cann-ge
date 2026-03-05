@@ -69,7 +69,9 @@ IMPL_OP_INFER_SYMBOL_SHAPE_INNER(FooTest).InferSymbolShape(InferShape4FooTest);
 } // namespace
 class SymbolicInfoPostProcessorUT : public testing::Test {
  public:
-  void SetUp() override {
+void SetUp() override {
+    env = getenv("LD_PRELOAD");
+    unsetenv("LD_PRELOAD");
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistry();
     auto ascend_install_path = EnvPath().GetAscendInstallPath();
     setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
@@ -79,7 +81,11 @@ class SymbolicInfoPostProcessorUT : public testing::Test {
   void TearDown() override {
     unsetenv("ASCEND_OPP_PATH");
     unsetenv("LD_LIBRARY_PATH");
+    if (env != nullptr) {
+      setenv("LD_PRELOAD", env, 1);
+    }
   }
+  const char *env;
 };
 
 TEST_F(SymbolicInfoPostProcessorUT, run_test) {

@@ -72,7 +72,7 @@ if(${TARGET_SYSTEM_NAME} STREQUAL "Linux")
         intf_pub
         c_sec_headers
         msprof_headers
-        runtime_headers
+        npu_runtime_headers
         -Wl,--whole-archive
         c_json_static
         -Wl,--no-whole-archive
@@ -120,7 +120,7 @@ elseif(${TARGET_SYSTEM_NAME} STREQUAL "LiteOS")
         c_sec_headers
         msprof_headers
         c_mmpa_headers
-        runtime_headers
+        npu_runtime_headers
         slog_headers
         -s
     )
@@ -164,7 +164,7 @@ elseif(${TARGET_SYSTEM_NAME} STREQUAL "LiteOS")
         intf_pub
         c_sec_headers
         msprof_headers
-        runtime_headers
+        npu_runtime_headers
         c_mmpa_headers
         -Wl,--whole-archive
         c_json_static

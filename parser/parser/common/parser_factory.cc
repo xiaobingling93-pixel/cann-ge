@@ -82,4 +82,10 @@ FMK_FUNC_HOST_VISIBILITY OpRegTbeParserFactory *OpRegTbeParserFactory::Instance(
 void OpRegTbeParserFactory::Finalize(const domi::OpRegistrationData &reg_data) {
   (void)ge::OpRegistrationTbe::Instance()->Finalize(reg_data);
 }
+
+ModelParserRegisterar::ModelParserRegisterar(const domi::FrameworkType type,
+                                             MODEL_PARSER_CREATOR_FUN const fun) noexcept {
+  ModelParserFactory::Instance()->RegisterCreator(type, fun);
+}
+
 }  // namespace domi

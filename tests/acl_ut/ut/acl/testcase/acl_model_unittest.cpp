@@ -335,6 +335,48 @@ ge::graphStatus IsDynamicModelReturnFailed(const char *file_path, bool &is_dynam
   return ACL_ERROR_GE_PARAM_INVALID;
 }
 
+ge::Status IsOm2ModelFromFile(const char *file_path, bool &is_support) {
+  (void)file_path;
+  is_support = true;
+  return SUCCESS;
+}
+
+ge::Status IsOm2ModelFromData(const void *data, size_t size, bool &is_support) {
+  constexpr size_t kFileMagicSize = 4U;
+  if (data == nullptr || size < kFileMagicSize) {
+    is_support = false;
+    return ge::FAILED;
+  }
+  constexpr uint8_t kMagic[] = {0x50, 0x4B, 0x03, 0x04};
+  is_support = std::memcmp(data, kMagic, kFileMagicSize) == 0;
+  return ge::SUCCESS;
+}
+
+ge::Status LoadOm2DataFromFileSuccess(const std::string &model_path, ge::ModelData &model_data) {
+    (void) model_path;
+    model_data.model_data = new (std::nothrow) uint8_t[100];
+    model_data.model_len = 100;
+    return ge::SUCCESS;
+}
+ge::Status LoadOm2DataFromFileFail(const std::string &model_path, ge::ModelData &model_data) {
+    (void) model_path;
+    (void) model_data;
+    return ge::FAILED;
+}
+std::unique_ptr<gert::Om2ModelExecutor> LoadOm2ExecutorFromDataSuccess(ge::ModelData &model_data, 
+                                                                       ge::graphStatus &error_code) {
+    (void) model_data;
+    auto executor = std::unique_ptr<gert::Om2ModelExecutor>(new (std::nothrow) gert::Om2ModelExecutor);
+    error_code = ge::GRAPH_SUCCESS;
+    return executor;
+}
+std::unique_ptr<gert::Om2ModelExecutor> LoadOm2ExecutorFromDataFail(ge::ModelData &model_data, 
+                                                                    ge::graphStatus &error_code) {
+    (void) model_data;
+    error_code = ge::GRAPH_FAILED;
+    return nullptr;
+}
+
 TEST_F(UTEST_ACL_Model, aclmdlGetOpAttr)
 {
     aclmdlDesc *mdlDesc = aclmdlCreateDesc();
@@ -405,6 +447,25 @@ TEST_F(UTEST_ACL_Model, desc)
     EXPECT_EQ(ret, ACL_SUCCESS);
     ret = aclmdlDestroyDesc(nullptr);
     EXPECT_NE(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Model, aclmdlGetDesc_Ok_GetDescFromOm2) {
+    uint32_t modelId = std::numeric_limits<uint32_t>::max() / 2U + 1;
+    auto om2_executor = std::unique_ptr<gert::Om2ModelExecutor>(new (std::nothrow) gert::Om2ModelExecutor);
+    ASSERT_NE(om2_executor, nullptr);
+    std::shared_ptr<gert::RtSession> rtSession = nullptr;
+    acl::AclResourceManager::GetInstance().AddOm2Executor(modelId, std::move(om2_executor), rtSession);
+    
+    aclmdlDesc* desc = aclmdlCreateDesc();
+    EXPECT_NE(desc, nullptr);
+    
+    aclError ret = aclmdlGetDesc(desc, modelId);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    
+    ret = aclmdlDestroyDesc(desc);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    
+    acl::AclResourceManager::GetInstance().DeleteOm2Executor(modelId);
 }
 
 TEST_F(UTEST_ACL_Model, aclmdlGetDesc)
@@ -659,6 +720,56 @@ TEST_F(UTEST_ACL_Model, aclmdlLoadFromFileRTV2)
     EXPECT_NE(ret, ACL_SUCCESS);
 
     acl::AclResourceManager::GetInstance().enableRuntimeV2ForModel_ = false;
+}
+
+TEST_F(UTEST_ACL_Model, aclmdlLoadFromFile_Ok_LoadOm2Model)
+{
+    const char *modelPath = "/fake/om2_model.om";
+    uint32_t modelId = 1;
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), IsOm2Model(_, _))
+        .WillRepeatedly(Invoke(IsOm2ModelFromFile));
+    // Case 1: Load OM2 model from file successfully
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2DataFromFile(_, _))
+        .WillOnce(Invoke(LoadOm2DataFromFileSuccess));
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2ExecutorFromData(_, _))
+        .WillOnce(Invoke(LoadOm2ExecutorFromDataSuccess));
+    auto ret = aclmdlLoadFromFile(modelPath, &modelId);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    
+    // Case 2: Load OM2 model from file - LoadOm2DataFromFile fails
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2DataFromFile(_, _))
+        .WillOnce(Invoke(LoadOm2DataFromFileFail));
+    ret = aclmdlLoadFromFile(modelPath, &modelId);
+    EXPECT_NE(ret, ACL_SUCCESS);
+    
+    // Case 3: Load OM2 model from file - LoadOm2ExecutorFromData fails with error
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2DataFromFile(_, _))
+        .WillOnce(Invoke(LoadOm2DataFromFileSuccess));
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2ExecutorFromData(_, _))
+        .WillOnce(Invoke(LoadOm2ExecutorFromDataFail));
+    ret = aclmdlLoadFromFile(modelPath, &modelId);
+    EXPECT_NE(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Model, aclmdlLoadFromMem_Ok_LoadOm2Model)
+{
+    // OM2 magic header: {0x50, 0x4B, 0x03, 0x04} (ZIP signature)
+    uint8_t om2ModelData[] = {0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00};
+    uint32_t modelId = 1;
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), IsOm2Model(_, _, _))
+        .WillRepeatedly(Invoke(IsOm2ModelFromData));
+    
+    // Case 1: Load OM2 model from memory successfully
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2ExecutorFromData(_, _))
+        .WillOnce(Invoke(LoadOm2ExecutorFromDataSuccess));
+    auto ret = aclmdlLoadFromMem(om2ModelData, sizeof(om2ModelData), &modelId);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    
+    // Case 2: Load OM2 model from memory - LoadOm2ExecutorFromData fails with error
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), LoadOm2ExecutorFromData(_, _))
+        .WillOnce(Invoke(LoadOm2ExecutorFromDataFail));
+    ret = aclmdlLoadFromMem(om2ModelData, sizeof(om2ModelData), &modelId);
+    EXPECT_NE(ret, ACL_SUCCESS);
 }
 
 TEST_F(UTEST_ACL_Model, aclmdlLoadFromFileWithMemRTV2)

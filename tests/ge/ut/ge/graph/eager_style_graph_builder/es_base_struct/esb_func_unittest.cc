@@ -17,7 +17,6 @@
 #include "esb_funcs.h"
 #include "c_types.h"
 #include "node_adapter.h"
-#include "adxl/adxl_types.h"
 #include "mmpa/mmpa_api.h"
 #include <fstream>
 #include <symengine/logic.h>

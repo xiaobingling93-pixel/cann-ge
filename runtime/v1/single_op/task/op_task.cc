@@ -86,7 +86,7 @@ Status OpTask::SaveExceptionDumpInfo() {
     gert::PrintHex(reinterpret_cast<void **>(extra_op_info.args), extra_op_info.args_size / sizeof(void *), ss);
     extra_op_info.args_before_execute = ss.str();
     int32_t dev_id = 0;
-    GE_CHK_RT_RET(rtGetDevice(&dev_id));
+    GE_CHK_RT_RET(aclrtGetDevice(&dev_id));
     ge::OpDescInfoId id(task_id_, stream_id_, dev_id);
     gert::GlobalDumper::GetInstance()->MutableExceptionDumper()->SaveDumpOpInfo(op_desc_, extra_op_info, id, true);
   }
@@ -140,8 +140,8 @@ Status OpTask::OpenDump(rtStream_t const stream) {
 
 Status OpTask::GetTaskIdAndStreamId(rtStream_t const stream) {
   if (ProfilingManager::Instance().ProfilingModelLoadOn()) {
-    GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-    GE_CHK_RT_RET(rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
+    GE_CHK_RT_RET(aclrtGetThreadLastTaskId(&task_id_));
+    GE_CHK_RT_RET(aclrtStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
   }
   return SUCCESS;
 }
@@ -158,8 +158,8 @@ void OpTask::SetTaskTag() const {
 Status OpTask::PostProcess(rtStream_t const stream) {
   GE_CHK_STATUS_RET(OpenDump(stream), "[Open][Dump]failed, single op:%s.",
                     GetOpdesc()->GetName().c_str());
-  GE_ASSERT_RT_OK(rtsGetThreadLastTaskId(&task_id_));
-  GE_ASSERT_RT_OK(rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_ASSERT_RT_OK(aclrtGetThreadLastTaskId(&task_id_));
+  GE_ASSERT_RT_OK(aclrtStreamGetId(stream, reinterpret_cast<int32_t *>(&stream_id_)));
   ErrorTracking::GetInstance().SaveSingleOpTaskOpdescInfo(op_desc_, task_id_, stream_id_);
   GE_CHK_STATUS(SaveExceptionDumpInfo(), "Save Exception dump failed.");
   ResetDumperResource();
@@ -887,7 +887,7 @@ AiCpuBaseTask::~AiCpuBaseTask() noexcept {
     (void)rtFree(ext_info_addr_dev_);
   }
   if (rt_event_ != nullptr) {
-    (void)rtEventDestroy(rt_event_);
+    (void)aclrtDestroyEvent(rt_event_);
   }
   FreeHbm(copy_input_release_flag_dev_);
   FreeHbm(copy_input_data_size_dev_);
@@ -912,16 +912,16 @@ Status AiCpuBaseTask::UpdateEventIdForBlockingAicpuOp() {
     return SUCCESS;
   }
   uint32_t event_id = 0U;
-  auto rt_ret = rtEventCreateWithFlag(&rt_event_, RT_EVENT_WITH_FLAG);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventCreateWithFlag failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][rtEventCreateWithFlag] failed, ret:%d", rt_ret);
+  auto rt_ret = aclrtCreateEventWithFlag(&rt_event_, static_cast<uint32_t>(ACL_EVENT_SYNC));
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtCreateEventWithFlag failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtCreateEventWithFlag] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  rt_ret = rtGetEventID(rt_event_, &event_id);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtGetEventID failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][rtGetEventID] failed, ret:%d", rt_ret);
+  rt_ret = aclrtGetEventId(rt_event_, &event_id);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtGetEventId failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtGetEventId] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   if (aicpu_ext_handle_->UpdateEventId(event_id) != SUCCESS) {
@@ -1158,10 +1158,10 @@ Status AiCpuBaseTask::UpdateIoAddr(const std::vector<DataBuffer> &inputs, const 
 
 Status AiCpuBaseTask::CheckDeviceSupportBlockingAicpuOpProcess(bool &is_support) const {
   int32_t device_id = 0;
-  auto rt_ret = rtGetDevice(&device_id);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtGetDevice failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][rtGetDevice] failed, ret:%d", rt_ret);
+  auto rt_ret = aclrtGetDevice(&device_id);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtGetDevice failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtGetDevice] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   int32_t value = 0;
@@ -1199,16 +1199,16 @@ Status AiCpuBaseTask::DistributeWaitTaskForAicpuBlockingOp(rtStream_t const stre
     return FAILED;
   }
   SetTaskTag();
-  auto rt_ret = rtStreamWaitEvent(stream, rt_event_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtStreamWaitEvent failed, ret:%d", rt_ret);
+  auto rt_ret = aclrtStreamWaitEvent(stream, rt_event_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtStreamWaitEvent failed, ret:%d", rt_ret);
     GELOGE(RT_FAILED, "[Call][RtApi] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   SetTaskTag();
-  rt_ret = rtEventReset(rt_event_, stream);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventReset failed, ret:%d", rt_ret);
+  rt_ret = aclrtResetEvent(rt_event_, stream);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtResetEvent failed, ret:%d", rt_ret);
     GELOGE(RT_FAILED, "[Call][RtApi] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
@@ -1349,7 +1349,7 @@ Status AiCpuCCTask::CopyDataToHbm(std::vector<DataBuffer> &outputs,
                                              block_dim_, &args_ex,
                                              nullptr, stream, RT_KERNEL_DEFAULT);
   GE_CHK_RT_RET(ret);
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   return SUCCESS;
 }
 
@@ -1359,7 +1359,7 @@ Status AiCpuTask::CopyDataToHbm(std::vector<DataBuffer> &outputs,
 
   GE_CHK_RT_RET(rtKernelLaunchEx(copy_task_args_buf_, static_cast<uint32_t>(sizeof(STR_FWK_OP_KERNEL)),
                                  RT_KERNEL_DEFAULT, stream));
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   return SUCCESS;
 }
 
@@ -1513,10 +1513,10 @@ Status AiCpuTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
 
   GE_CHK_STATUS_RET_NOLOG(LaunchKernel(stream));
   if (unknown_type_ == DEPEND_SHAPE_RANGE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateOutputShape(output_desc));
   } else if (unknown_type_ == DEPEND_COMPUTE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateShapeAndDataByResultSummary(output_desc, output_buffers, stream));
   } else {
     // something else
@@ -1543,10 +1543,10 @@ Status AiCpuCCTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
 
   GE_CHK_STATUS_RET_NOLOG(LaunchKernel(stream));
   if (unknown_type_ == DEPEND_SHAPE_RANGE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateOutputShape(output_desc));
   } else if (unknown_type_ == DEPEND_COMPUTE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateShapeAndDataByResultSummary(output_desc, output_buffers, stream));
   } else {
     // something else

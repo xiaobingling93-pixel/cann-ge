@@ -55,6 +55,16 @@ DECLARE_string(optypelist_for_implmode);
 DECLARE_string(allow_hf32);
 DECLARE_string(compression_optimize_conf);
 DECLARE_string(input_hint_shape);
+DECLARE_string(check_report);
+DECLARE_int32(virtual_type);
+DECLARE_string(external_weight);
+DECLARE_string(enable_small_channel);
+DECLARE_string(quant_dumpable);
+DECLARE_string(ac_parallel_enable);
+DECLARE_string(tiling_schedule_optimize);
+DECLARE_string(atomic_clean_policy);
+DECLARE_string(status_check);
+DECLARE_string(input_shape_range);
 
 // Atc基类，涉及atc入口的可以继承此类
 class AtcTest : public testing::Test {
@@ -64,6 +74,7 @@ class AtcTest : public testing::Test {
   void TearDown() override {
     ge::OmgContext ctx;
     domi::GetContext() = ctx; // ctx全局对象需要重置
+    ge::flgs::GetUserOptions().clear();
     FLAGS_mode = 0;
     FLAGS_output.clear();
     FLAGS_framework = -1;
@@ -81,7 +92,7 @@ class AtcTest : public testing::Test {
     FLAGS_soc_version.clear();
     FLAGS_model.clear();
     FLAGS_dump_mode = "0";
-    FLAGS_insert_op_conf.clear();
+    FLAGS_insert_op_conf = "";
     FLAGS_display_model_info = "0";
     FLAGS_keep_dtype = "";
     FLAGS_is_input_adjust_hw_layout = "false";
@@ -102,6 +113,16 @@ class AtcTest : public testing::Test {
     FLAGS_allow_hf32 = "";
     FLAGS_compression_optimize_conf = "";
     FLAGS_input_hint_shape.clear();
+    FLAGS_check_report = "check_result.json";
+    FLAGS_virtual_type = 0;
+    FLAGS_external_weight = "0";
+    FLAGS_enable_small_channel = "0";
+    FLAGS_quant_dumpable = "";
+    FLAGS_ac_parallel_enable = "0";
+    FLAGS_tiling_schedule_optimize = "0";
+    FLAGS_atomic_clean_policy = "0";
+    FLAGS_status_check = "0";
+    FLAGS_input_shape_range = "";
   }
 };
 #endif  // AIR_CXX_TESTS_FRAMEWORK_GE_RUNNING_ENV_INCLUDE_GE_RUNNING_ENV_ATC_UTILS_H_

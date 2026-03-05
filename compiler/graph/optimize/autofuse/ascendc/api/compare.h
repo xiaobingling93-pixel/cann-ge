@@ -169,19 +169,78 @@ inline __aicore__ void CompareScalarExtend(const AscendC::LocalTensor<T> &dst,  
   }
 }
 
-// 只支持int32入参
-template <typename InT, typename OutT>
-inline __aicore__ void CompareScalarExtendGtInt32(const LocalTensor<OutT> &dst, const LocalTensor<InT> &src0,
-                                                  const InT scalar_src1, const uint32_t cal_cnt,
-                                                  LocalTensor<uint8_t> &tmp_buf) {
-  // 计算tmp_buf_size - 32B(scalar占用)
-  uint32_t tmp_buf_size = tmp_buf.GetSize() * sizeof(uint8_t) - ONE_BLK_SIZE;  // 单位:sizeof uint8_t
+inline __aicore__ void ApplyCompareMode(LocalTensor<int32_t> &inter_buf, CMPMODE mode, uint32_t num_elements) {
+  // 根据比较模式进行不同的后处理
+  switch (mode) {
+    case CMPMODE::GE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)1, num_elements);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::GT:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, num_elements);
+      AscendC::PipeBarrier<PIPE_V>();
+      AscendC::Mins(inter_buf, inter_buf, (int32_t)1, num_elements);
+      break;
+      
+    case CMPMODE::LE:
+      AscendC::Adds(inter_buf, inter_buf, (int32_t)(-1), num_elements);
+      AscendC::PipeBarrier<PIPE_V>();
+    case CMPMODE::LT:
+    case CMPMODE::NE:
+      AscendC::Maxs(inter_buf, inter_buf, (int32_t)(-1), num_elements);
+      AscendC::PipeBarrier<PIPE_V>();
+      if (mode == CMPMODE::NE) {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)1, num_elements);
+      } else {
+        AscendC::Mins(inter_buf, inter_buf, (int32_t)0, num_elements);
+      }
+      AscendC::PipeBarrier<PIPE_V>();
+      AscendC::Mul(inter_buf, inter_buf, inter_buf, num_elements);
+      break;
+  }
+  AscendC::PipeBarrier<PIPE_V>();
+}
+
+template <typename OutT>
+inline __aicore__ void PerformTypeConversion(const LocalTensor<OutT> &dst, LocalTensor<int32_t> &inter_buf,
+                                             uint32_t offset, uint32_t num_elements) {
+  // int32 -> int16
+  LocalTensor<int16_t> int16_buf = inter_buf.template ReinterpretCast<int16_t>();
+  AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, num_elements);
+  
+  // int16 -> half
+  LocalTensor<half> half_buf = inter_buf.template ReinterpretCast<half>();
+  AscendC::PipeBarrier<PIPE_V>();
+  AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, num_elements);
+  
+  // half -> OutT
+  AscendC::PipeBarrier<PIPE_V>();
+  AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, num_elements);
+}
+
+// 处理标量比较的一个计算块
+template <typename OutT>
+inline __aicore__ void ProcessScalarCompareBlock(const LocalTensor<OutT> &dst, const LocalTensor<int32_t> &src0,
+                                                 const LocalTensor<int32_t> &tensor_src1,
+                                                 LocalTensor<int32_t> &inter_buf, uint32_t offset, uint32_t mask,
+                                                 uint32_t repeat_times, uint32_t num_elements, CMPMODE mode,
+                                                 const BinaryRepeatParams &binary_param) {
+  AscendC::Sub(inter_buf, src0[offset], tensor_src1[0], mask, repeat_times, binary_param);
+  AscendC::PipeBarrier<PIPE_V>();
+  
+  ApplyCompareMode(inter_buf, mode, num_elements);
+  PerformTypeConversion(dst, inter_buf, offset, num_elements);
+}
+
+template <typename OutT>
+inline __aicore__ void CompareScalarExtendInt32(const LocalTensor<OutT> &dst, const LocalTensor<int32_t> &src0,
+                                                const int32_t scalar_src1, CMPMODE mode, const uint32_t cal_cnt,
+                                                LocalTensor<uint8_t> &tmp_buf) {
+  uint32_t tmp_buf_size = tmp_buf.GetSize() * sizeof(uint8_t) - ONE_BLK_SIZE;
   uint32_t loop_cnt;
   uint32_t repeat_times = MAX_REPEAT_TIME;
-  uint32_t one_blk_num = KernelUtils::BlkSize<InT>();
-  uint32_t one_repeat_num = KernelUtils::RptSize<InT>();
-  // 当tmp_bnf_size > ONE_REPEAT_BYTE_SIZE * MAX_REPEAT_NUM时，每次迭代重复MAX_REPEAT_NUM次，
-  // 当不够时，重新计算repeat_times,由于每次repeat计算256字节，当cast<half><unsigned char>时可以保证32B对齐
+  uint32_t one_blk_num = KernelUtils::BlkSize<int32_t>();
+  uint32_t one_repeat_num = KernelUtils::RptSize<int32_t>();
+  // 计算循环参数
   if (tmp_buf_size >= (ONE_REPEAT_BYTE_SIZE * MAX_REPEAT_TIME)) {
     loop_cnt = cal_cnt / (one_repeat_num * MAX_REPEAT_TIME);
   } else {
@@ -190,69 +249,41 @@ inline __aicore__ void CompareScalarExtendGtInt32(const LocalTensor<OutT> &dst, 
   }
 
   uint32_t one_step_num = repeat_times * one_repeat_num;
-  LocalTensor<InT> tensor_src1 = tmp_buf[0].template ReinterpretCast<InT>();
+  LocalTensor<int32_t> tensor_src1 = tmp_buf[0].template ReinterpretCast<int32_t>();
   tensor_src1.SetSize(one_blk_num);
   Duplicate(tensor_src1, scalar_src1, one_blk_num);
-  uint32_t inter_buf_offset = KernelUtils::BlkAlign<uint8_t>(one_blk_num * sizeof(InT));
-  LocalTensor<InT> inter_buf = tmp_buf[inter_buf_offset].template ReinterpretCast<InT>();
+  
+  uint32_t inter_buf_offset = KernelUtils::BlkAlign<uint8_t>(one_blk_num * sizeof(int32_t));
+  LocalTensor<int32_t> inter_buf = tmp_buf[inter_buf_offset].template ReinterpretCast<int32_t>();
   inter_buf.SetSize(one_step_num);
+  
   BinaryRepeatParams binary_param(1, 1, 0, 8, 8, 0);
-
-  // calculate
   uint64_t mask = one_repeat_num;
   uint32_t offset = 0;
+  // 主循环处理
   for (uint32_t i = 0; i < loop_cnt; i++) {
-    AscendC::Sub(inter_buf, src0[offset], tensor_src1[0], mask, repeat_times, binary_param);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, one_step_num);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, one_step_num);
-    AscendC::PipeBarrier<PIPE_V>();
-    LocalTensor<int16_t> int16_buf = inter_buf.template ReinterpretCast<int16_t>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, one_step_num);
-    LocalTensor<half> half_buf = inter_buf.template ReinterpretCast<half>();
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, one_step_num);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, one_step_num);
+    ProcessScalarCompareBlock(dst, src0, tensor_src1, inter_buf, offset, mask, 
+                              repeat_times, one_step_num, mode, binary_param);
     offset += one_step_num;
   }
+  // 剩余完整repeat块处理
   uint32_t remain_rpt_times = (cal_cnt - offset) / one_repeat_num;
   uint32_t remain_nums = remain_rpt_times * one_repeat_num;
+  
   if (remain_rpt_times != 0) {
-    AscendC::Sub(inter_buf, src0[offset], tensor_src1[0], mask, remain_rpt_times, binary_param);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, remain_nums);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, remain_nums);
-    AscendC::PipeBarrier<PIPE_V>();
-    LocalTensor<int16_t> int16_buf = inter_buf.template ReinterpretCast<int16_t>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, remain_nums);
-    LocalTensor<half> half_buf = inter_buf.template ReinterpretCast<half>();
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, remain_nums);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, remain_nums);
+    ProcessScalarCompareBlock(dst, src0, tensor_src1, inter_buf, offset, mask, 
+                              remain_rpt_times, remain_nums, mode, binary_param);
     offset += remain_nums;
   }
+  // 尾部处理
   uint32_t calc_tail = cal_cnt - offset;
-  binary_param.src0RepStride = KernelUtils::BlkAlign<InT>(calc_tail);
-  binary_param.dstRepStride = KernelUtils::BlkAlign<InT>(calc_tail);
-  mask = calc_tail;
   if (calc_tail != 0) {
-    AscendC::Sub(inter_buf, src0[offset], tensor_src1[0], mask, 1, binary_param);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, calc_tail);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, calc_tail);
-    AscendC::PipeBarrier<PIPE_V>();
-    LocalTensor<int16_t> int16_buf = inter_buf.template ReinterpretCast<int16_t>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, calc_tail);
-    LocalTensor<half> half_buf = inter_buf.template ReinterpretCast<half>();
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, calc_tail);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, calc_tail);
+    uint32_t aligned_tail = KernelUtils::BlkAlign<int32_t>(calc_tail);
+    BinaryRepeatParams tail_param(1, 1, 0, 8, 8, 0);
+    tail_param.src0RepStride = aligned_tail;
+    tail_param.dstRepStride = aligned_tail;
+    ProcessScalarCompareBlock(dst, src0, tensor_src1, inter_buf, offset, calc_tail, 
+                              1, calc_tail, mode, tail_param);
   }
 }
 
@@ -260,10 +291,11 @@ template <typename InT, typename OutT>
 inline __aicore__ void CompareScalarExtend(const LocalTensor<OutT> &dst, const LocalTensor<InT> &src,
                                            const InT constant_y, CMPMODE mode, const uint32_t cal_cnt,
                                            LocalTensor<uint8_t> &tmp_buf) {
-  // 如果输入是int32, 且model是GE, 则走特化处理方法
+  // 如果输入是int32, 且model是GE/GT/LE/LT/NE, 则走特化处理方法
   if constexpr (AscendC::IsSameType<InT, int32_t>::value) {
-    if (mode == CMPMODE::GT) {
-      return CompareScalarExtendGtInt32(dst, src, constant_y, cal_cnt, tmp_buf);
+    if (mode == CMPMODE::GT || mode == CMPMODE::GE || mode == CMPMODE::LE || mode == CMPMODE::LT ||
+        mode == CMPMODE::NE) {
+      return CompareScalarExtendInt32(dst, src, constant_y, mode, cal_cnt, tmp_buf);
     }
   }
 
@@ -489,46 +521,38 @@ inline __aicore__ void CompareExtendEQ(const AscendC::LocalTensor<T> &dst,      
   }
 }
 
-template <typename InT, typename OutT>
-inline __aicore__ void CompareExtendGtInt32(const LocalTensor<OutT> &dst, const LocalTensor<InT> &src0,
-                                            const LocalTensor<InT> &src1, const uint32_t cal_cnt,
-                                            LocalTensor<uint8_t> &tmp_buf) {
+template <typename OutT>
+inline __aicore__ void ProcessTensorCompareBlock(const LocalTensor<OutT> &dst, const LocalTensor<int32_t> &src0,
+                                                 const LocalTensor<int32_t> &src1, LocalTensor<int32_t> &inter_buf,
+                                                 uint32_t offset, uint32_t num_elements, CMPMODE mode) {
+  AscendC::Sub(inter_buf, src0[offset], src1[offset], num_elements);
+  AscendC::PipeBarrier<PIPE_V>();
+
+  ApplyCompareMode(inter_buf, mode, num_elements);
+  PerformTypeConversion(dst, inter_buf, offset, num_elements);
+}
+
+template <typename OutT>
+inline __aicore__ void CompareExtendInt32(const LocalTensor<OutT> &dst, const LocalTensor<int32_t> &src0,
+                                          const LocalTensor<int32_t> &src1, CMPMODE mode, const uint32_t cal_cnt,
+                                          LocalTensor<uint8_t> &tmp_buf) {
   uint32_t buf_max_cnt = tmp_buf.GetSize() * sizeof(uint8_t) / sizeof(int32_t);
   uint32_t loop_cnt = cal_cnt / buf_max_cnt;
+  uint32_t max_rpt_cnts = buf_max_cnt * sizeof(int32_t) / ONE_REPEAT_BYTE_SIZE;
+
   LocalTensor<int32_t> inter_buf = tmp_buf.ReinterpretCast<int32_t>();
   uint32_t offset = 0;
-  uint32_t max_rpt_cnts = buf_max_cnt * sizeof(int32_t) / ONE_REPEAT_BYTE_SIZE;
+
+  // 主循环处理完整块
   for (uint32_t i = 0; i < loop_cnt; i++) {
-    AscendC::Sub(inter_buf, src0[offset], src1[offset], buf_max_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, buf_max_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, buf_max_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    LocalTensor<int16_t> int16_buf = inter_buf.ReinterpretCast<int16_t>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, buf_max_cnt);
-    LocalTensor<half> half_buf = inter_buf.ReinterpretCast<half>();
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, buf_max_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, buf_max_cnt);
+    ProcessTensorCompareBlock(dst, src0, src1, inter_buf, offset, buf_max_cnt, mode);
     offset += buf_max_cnt;
   }
+
+  // 处理尾部剩余元素
   uint32_t tail_cnt = cal_cnt - offset;
   if (tail_cnt > 0) {
-    AscendC::Sub(inter_buf, src0[offset], src1[offset], tail_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Maxs(inter_buf, inter_buf, (int32_t)0, tail_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Mins(inter_buf, inter_buf, (int32_t)1, tail_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    LocalTensor<int16_t> int16_buf = inter_buf.ReinterpretCast<int16_t>();
-    AscendC::Cast(int16_buf, inter_buf, RoundMode::CAST_NONE, tail_cnt);
-    LocalTensor<half> half_buf = inter_buf.ReinterpretCast<half>();
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(half_buf, int16_buf, RoundMode::CAST_NONE, tail_cnt);
-    AscendC::PipeBarrier<PIPE_V>();
-    AscendC::Cast(dst[offset], half_buf, RoundMode::CAST_NONE, tail_cnt);
+    ProcessTensorCompareBlock(dst, src0, src1, inter_buf, offset, tail_cnt, mode);
   }
 }
 
@@ -537,11 +561,13 @@ inline __aicore__ void CompareExtend(const LocalTensor<OutT> &dst, const LocalTe
                                      const LocalTensor<InT> &src1, CMPMODE mode, const uint32_t cal_cnt,
                                      LocalTensor<uint8_t> &tmp_buf) {
   if constexpr (AscendC::IsSameType<InT, int32_t>::value && AscendC::IsSameType<OutT, uint8_t>::value) {
-    if (mode != CMPMODE::GT && mode != CMPMODE::EQ) {
-      ASSERT(false && "CompareExtend mode only support EQ/GT when DataType is int32.");
+    if (mode != CMPMODE::GT && mode != CMPMODE::GE && mode != CMPMODE::LE && mode != CMPMODE::LT &&
+        mode != CMPMODE::NE && mode != CMPMODE::EQ) {
+      ASSERT(false && "CompareExtend mode only support EQ/GT/GE/LE/LT/NE when DataType is int32.");
     }
-    if (mode == CMPMODE::GT) {
-      return CompareExtendGtInt32(dst, src0, src1, cal_cnt, tmp_buf);
+    if (mode == CMPMODE::GT || mode == CMPMODE::GE || mode == CMPMODE::LE || mode == CMPMODE::LT ||
+        mode == CMPMODE::NE) {
+      return CompareExtendInt32(dst, src0, src1, mode, cal_cnt, tmp_buf);
     }
   }
   constexpr int32_t one_block_cnt = ONE_BLK_SIZE / sizeof(half);

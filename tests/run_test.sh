@@ -52,7 +52,8 @@ usage() {
   echo "            =rts          Build rts engine ut"
   echo "            =hcce         Build hcce engine ut"
   echo "        =executor_c       Build executor_c ut"
-  echo "        =autofuse         Build autofuse ut"
+  echo "        =autofuse_framework         Build autofuse_framework ut"
+  echo "        =autofuse_ascendc_api       Build autofuse_ascendc_api ut"
   echo "    -s, --st       Build all st"
   echo "        =ge               Build all ge st"
   echo "            =ge_common    Build ge common st"
@@ -68,7 +69,8 @@ usage() {
   echo "            =ffts         Build ffts engine st"
   echo "            =hcce         Build hcce engine st"
   echo "        =executor_c       Build executor_c st"
-  echo "        =autofuse         Build autofuse st"
+  echo "        =autofuse_framework         Build autofuse_framework st"
+  echo "        =autofuse_ascendc_api       Build autofuse_ascendc_api st"
   echo "    -h, --help     Print usage"
   echo "    -c, --cov      Build ut/st with coverage tag"
   echo "                   Please ensure that the environment has correctly installed lcov, gcov, and genhtml."
@@ -375,6 +377,14 @@ checkopts() {
             ENABLE_GE_AUTOFUSE="on"
             shift 2
             ;;
+          "autofuse_framework")
+            ENABLE_GE_AUTOFUSE_FRAMEWORK="on"
+            shift 2
+            ;;
+          "autofuse_ascendc_api")
+            ENABLE_GE_AUTOFUSE_ASCENDC_API="on"
+            shift 2
+            ;;
           *)
             usage
             exit 1
@@ -542,12 +552,16 @@ run_ut_acl() {
   cp ${BUILD_PATH}/tests/acl_ut/ut/acl/acl_utest ${OUTPUT_PATH}
 
   local report_dir="${OUTPUT_PATH}/report/ut" && mk_dir "${report_dir}"
+  export LD_PRELOAD=${USE_ASAN}
+  export ASAN_OPTIONS=detect_odr_violation=0
   RUN_TEST_CASE="${OUTPUT_PATH}/acl_utest --gtest_output=xml:${report_dir}/acl_utest.xml" && ${RUN_TEST_CASE}
   if [[ "$?" -ne 0 ]]; then
     echo "!!! UT FAILED, PLEASE CHECK YOUR CHANGES !!!"
     echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
     exit 1;
   fi
+  unset LD_PRELOAD
+  unset ASAN_OPTIONS
   echo "Generated coverage statistics, please wait..."
   cd ${BASEPATH}
   rm -rf ${BASEPATH}/cov

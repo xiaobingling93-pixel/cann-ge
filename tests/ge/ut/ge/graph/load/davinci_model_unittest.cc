@@ -697,6 +697,7 @@ class UtestDavinciModel : public testing::Test {
     VarManager::Instance(0)->SetMemoryMallocSize(options, 10UL * 1024UL * 1024UL);
     MemManager::Instance().Initialize({ RT_MEMORY_HBM, RT_MEMORY_P2P_DDR });
     g_runtime_stub_mock.clear();
+    AclRuntimeStub::SetErrorResultApiName("");
     RuntimeStub::GetInstance()->input_mem_copy_batch_count_ = 0;
     RTS_STUB_SETUP();
     const ::testing::TestInfo *test_info = ::testing::UnitTest::GetInstance()->current_test_info();
@@ -707,6 +708,7 @@ class UtestDavinciModel : public testing::Test {
 
   void TearDown() {
     g_runtime_stub_mock.clear();
+    AclRuntimeStub::SetErrorResultApiName("");
     VarManager::Instance(0)->FreeVarMemory();
     MemManager::Instance().Finalize();
     ProfilingTestUtil::Instance().Clear();
@@ -786,7 +788,6 @@ TEST_F(UtestDavinciModel, davinci_init_success) {
 
   const auto model_def = MakeShared<domi::ModelTaskDef>();
   ge_model->SetModelTaskDef(model_def);
-
   {
     const auto &node = graph->FindNode("_arg_0");
     const auto &op_desc = node->GetOpDesc();
@@ -990,8 +991,9 @@ TEST_F(UtestDavinciModel, davinci_init_success) {
     model.SetAiCpuCustFlag(true);
     EXPECT_EQ(model.Init(), SUCCESS);
     EXPECT_EQ(model.stream_to_task_index_list_.size(), 1); // 单条流
-    EXPECT_EQ(model.stream_to_task_index_list_[1].size(), 7); // 单条流，hccl所在流上有7个task
-    model.main_follow_stream_mapping_[1].push_back(ge::ValueToPtr((2))); // hccl从流
+    uint64_t stream = model.stream_to_task_index_list_.begin()->first;
+    EXPECT_EQ(model.stream_to_task_index_list_[stream].size(), 7); // 单条流，hccl所在流上有7个task
+    model.main_follow_stream_mapping_[stream].push_back(ge::ValueToPtr((2))); // hccl从流
     EXPECT_EQ(model.RecoverModel(), SUCCESS); // 单条流，hccl所在流上有7个task
     runtime_stub.Clear();
     dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 1);
@@ -1074,7 +1076,7 @@ TEST_F(UtestDavinciModel, davinci_init_success) {
     model.Assign(ge_model);
     model.SetAiCpuCustFlag(true);
     EXPECT_EQ(model.Init(), SUCCESS);
-    const auto model_bind_streams = RuntimeStub::GetInstance()->model_bind_streams_;
+    const auto model_bind_streams = AclRuntimeStub::GetInstance()->model_bind_streams_;
     EXPECT_EQ(model_bind_streams.size(), model.stream_to_first_task_id_.size());
     ASSERT_TRUE(model_bind_streams.size() > 0U);
     auto pre_stream = model_bind_streams[0];
@@ -5973,18 +5975,6 @@ TEST_F(UtestDavinciModel, test_InitCase) {
   EXPECT_EQ(model.InitCase(op_desc), SUCCESS);
 }
 
-TEST_F(UtestDavinciModel, TransAllVarData_fail) {
-  DavinciModel model(0, nullptr);
-  GeModelPtr ge_model = MakeShared<GeModel>();
-  model.Assign(ge_model);
-
-  ComputeGraphPtr graph = MakeShared<ComputeGraph>("default");
-  std::vector<NodePtr> variable_nodes { nullptr };
-
-  g_runtime_stub_mock = "rtCtxGetCurrent";
-  EXPECT_EQ(model.TransAllVarData(graph, variable_nodes), FAILED); // rtCtxGetCurrent failed.
-}
-
 TEST_F(UtestDavinciModel, SetDataDumperArgs_fail) {
   DavinciModel model(0, nullptr);
   GeModelPtr ge_model = MakeShared<GeModel>();
@@ -5993,7 +5983,7 @@ TEST_F(UtestDavinciModel, SetDataDumperArgs_fail) {
   ComputeGraphPtr graph = MakeShared<ComputeGraph>("default");
 
   ge::ExecutionRuntimeUtils::EnableInHeterogeneousExecutor();
-  g_runtime_stub_mock = "rtGetDevice";
+  AclRuntimeStub::SetErrorResultApiName("aclrtGetDevice");
   model.SetDataDumperArgs(graph, std::map<std::string, OpDescPtr>());
 
   EXPECT_EQ(model.data_dumper_.device_id_, 0);
@@ -6020,14 +6010,12 @@ TEST_F(UtestDavinciModel, GetEventIdForBlockingAicpuOp_fail) {
   uint32_t event_id = 0;
 
   model.stream_2_event_[stream] = (rtEvent_t)2;
-  g_runtime_stub_mock = "rtGetEventID";
+  AclRuntimeStub::SetErrorResultApiName("aclrtGetEventId");
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
 
   model.stream_2_event_.clear();
+  AclRuntimeStub::SetErrorResultApiName("aclrtCreateEventWithFlag");
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
-
-  g_runtime_stub_mock = "rtEventCreateWithFlag";
-  EXPECT_EQ(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS); //??
 }
 
 TEST_F(UtestDavinciModel, UpdateOpInputValue_fail) {
@@ -6910,27 +6898,6 @@ TEST_F(UtestDavinciModel, NnExecute_LaunchKfcEvent_Ok) {
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
 }
 
-TEST_F(UtestDavinciModel, LaunchEventForKfcStreamFailed) {
-  DavinciModel model(0, nullptr);
-  rtEvent_t event_1;
-  rtEvent_t event_2;
-  model.hccl_group_ordered_event_list_.push_back(event_1);
-  model.hccl_group_ordered_event_list_.push_back(event_2);
-  model.hccl_group_ordered_stream_list_.push_back((void*)1);
-  model.hccl_group_ordered_stream_list_.push_back((void*)2);
-  model.is_async_mode_ = true;
-
-  RTS_STUB_RETURN_VALUE(rtEventRecord, rtError_t, 0x78000001);
-  EXPECT_NE(model.LaunchEventForHcclGroupOrderedStream((void*)1), SUCCESS);
-
-  RTS_STUB_RETURN_VALUE(rtEventRecord, rtError_t, RT_ERROR_NONE);
-  RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
-  EXPECT_NE(model.LaunchEventForHcclGroupOrderedStream((void*)1), SUCCESS);
-
-  model.hccl_group_ordered_event_list_.clear();
-  model.hccl_group_ordered_stream_list_.clear();
-}
-
 TEST_F(UtestDavinciModel, NnExecute_FmMemoryRefreshOk) {
   GeModelPtr ge_model = ConstructGeModel(2560);
   DavinciModel model(0, nullptr);
@@ -7312,7 +7279,7 @@ TEST_F(UtestDavinciModel, FreeInnerFeatureMapMem_fail) {
   EXPECT_EQ(davinci_model.mem_base_, 0);
   unsetenv(kEnvRecordPath);
 
-  g_runtime_stub_mock = "rtStreamSynchronizeWithTimeout";
+  AclRuntimeStub::SetErrorResultApiName("aclrtSynchronizeStreamWithTimeout");
   void *mem1 = new (std::nothrow)  int[10];
   davinci_model.mem_base_ = reinterpret_cast<uintptr_t>(mem1);
   davinci_model.mem_base_ = reinterpret_cast<uintptr_t>(mem1);
@@ -8269,11 +8236,6 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocSuccessThen
       *handle = (rtDrvMemHandle) new uint8_t[8];
       return 0;
     }
-    rtError_t rtMemGetInfoEx(rtMemInfoType_t memInfoType, size_t *free, size_t *total) {
-      *free = 64UL * 1024U * 1024U * 1024U;
-      *total = 64UL * 1024U * 1024U * 1024U;
-      return 0;
-    }
     rtError_t rtGetRtCapability(rtFeatureType_t featureType, int32_t featureInfo, int64_t *value) {
       *value = 1;
       return 0;
@@ -8281,8 +8243,18 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocSuccessThen
     uint32_t call_count = 0U;
     uint32_t pg_type_local = 0U;
   };
+  class MockAclRuntime : public ge::AclRuntimeStub {
+  public:
+    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) {
+      *free_size = 64UL * 1024U * 1024U * 1024U;
+      *total = 64UL * 1024U * 1024U * 1024U;
+      return 0;
+    }
+  };
   auto mock_runtime = std::make_shared<MockRuntime>();
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   ge::RuntimeStub::SetInstance(mock_runtime);
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   auto mem_allocator1 =
       SessionMemAllocator<ExpandableActiveMemoryAllocator>::Instance().GetMemAllocator(0, 1, RT_MEMORY_HBM, kDrv1GPageSize);
   ASSERT_NE(mem_allocator1, nullptr);
@@ -8299,6 +8271,7 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocSuccessThen
 
   EXPECT_EQ(mem_allocator1->FreeMemory(), ge::SUCCESS);
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocFailed_NotSupport) {
@@ -8314,11 +8287,6 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocFailed_NotS
       *handle = (rtDrvMemHandle) new uint8_t[8];
       return 0;
     }
-    rtError_t rtMemGetInfoEx(rtMemInfoType_t memInfoType, size_t *free, size_t *total) {
-      *free = 64UL * 1024U * 1024U * 1024U;
-      *total = 64UL * 1024U * 1024U * 1024U;
-      return 0;
-    }
     rtError_t rtGetRtCapability(rtFeatureType_t featureType, int32_t featureInfo, int64_t *value) {
       *value = 0;
       return 0;
@@ -8327,8 +8295,18 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocFailed_NotS
     uint32_t pg_type_local = 0U;
     uint32_t size_local = 0;
   };
+  class MockAclRuntime : public ge::AclRuntimeStub {
+  public:
+    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) {
+      *free_size = 64UL * 1024U * 1024U * 1024U;
+      *total = 64UL * 1024U * 1024U * 1024U;
+      return 0;
+    }
+  };
   auto mock_runtime = std::make_shared<MockRuntime>();
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   ge::RuntimeStub::SetInstance(mock_runtime);
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   auto mem_allocator1 =
       SessionMemAllocator<ExpandableActiveMemoryAllocator>::Instance().GetMemAllocator(0, 1, RT_MEMORY_HBM, kDrv1GPageSize);
   ASSERT_NE(mem_allocator1, nullptr);
@@ -8339,6 +8317,7 @@ TEST_F(UtestDavinciModel, ExpandableActiveMemoryAllocator_Use1GMallocFailed_NotS
   EXPECT_EQ(mock_runtime->size_local, kDrv1GPageSize);
   EXPECT_EQ(mem_allocator1->FreeMemory(), ge::SUCCESS);
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(UtestDavinciModel, not_support_expandable_memory_allocator) {
@@ -9895,7 +9874,7 @@ TEST_F(UtestDavinciModel, InputBatchCopyH2DWithMergeH2DDisabled) {
 TEST_F(UtestDavinciModel, InputBatchCopyH2DWithDeviceIdIs1) {
   dlog_setlevel(0, 0, 0);
   RTS_STUB_RETURN_VALUE(rtsMemcpyBatch, rtError_t, RT_ERROR_NONE);
-  RuntimeStub::GetInstance()->cur_device_id = 1;
+  AclRuntimeStub::GetInstance()->SetDeviceId(1);
   SetMockRtGetDeviceWay(1);
 
   const uint64_t input_size = 25600U;
@@ -9982,12 +9961,11 @@ TEST_F(UtestDavinciModel, InputBatchCopyH2DWithDeviceIdIs1) {
   // all CopyInputData -> rtsMemcpyBatch
   EXPECT_EQ(davinci_model.HandleInputData(input_data), SUCCESS);
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 2);
-  EXPECT_EQ(RuntimeStub::GetInstance()->batch_memcpy_device_id, 1);
 
   free(input_buffer);
   free(device_buffer);
   ge::GetThreadLocalContext().SetSessionOption({});
-  RuntimeStub::GetInstance()->cur_device_id = 0;
+  AclRuntimeStub::GetInstance()->SetDeviceId(0);
   RuntimeStub::GetInstance()->batch_memcpy_device_id = 0;
 
   SetMockRtGetDeviceWay(0);

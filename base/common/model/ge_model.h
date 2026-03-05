@@ -19,8 +19,6 @@
 #include "runtime/rt.h"
 #include "common/tbe_handle_store/tbe_kernel_store.h"
 #include "common/tbe_handle_store/cust_aicpu_kernel_store.h"
-#include "framework/common/debug/log.h"
-#include "framework/common/fmk_error_codes.h"
 #include "framework/common/ge_types.h"
 #include "graph/buffer.h"
 #include "graph/compute_graph.h"
