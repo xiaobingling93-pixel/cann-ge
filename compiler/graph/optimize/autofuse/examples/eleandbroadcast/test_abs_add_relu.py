@@ -15,7 +15,7 @@ import numpy as np
 ## TF1.X environment
 from npu_bridge.npu_init import *
 
-if __main__ == ‘__main__’:
+if __main__ == '__main__':
     data1 = tf.placeholder(tf.float32, shape=[128])
     input_data1 = np.random.rand(128).astype(np.float32)
     data2 = tf.placeholder(tf.float32, shape=[192, 128])
@@ -27,9 +27,10 @@ if __main__ == ‘__main__’:
 
     sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
     custom_op = sess_config.graph_options.rewrite_options.custom_optimizers.add()
-    custom_op.name = “NpuOptimizer”
-    custom_op.parameter_map[“use_off_line”].b = True
-    custom_op.parameter_map[“graph_run_mode”].i = 0
+    custom_op.name = "NpuOptimizer"
+    custom_op.parameter_map["use_off_line”].b = True
+    # 设置为推理模式
+    custom_op.parameter_map["graph_run_mode"].i = 0
 
     feed_dict = {data1: input_data1, data2: input_data2}
     step = 100
