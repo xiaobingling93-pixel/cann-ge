@@ -52,7 +52,8 @@ ge::Status InitVarIfHasInitValue(const VarDevAddrMgr *const var_mgr, void *var_d
     const auto init_value_size = init_value->GetData().GetSize();
     GE_ASSERT_TRUE(init_value_size <= static_cast<size_t>(var_size), "_init_value size too big."
                    " var_size: %" PRId64 ", init_value_size: %zu", var_size, init_value_size);
-    GE_CHK_RT_RET(rtMemcpy(var_dev_addr, static_cast<uint64_t>(var_size), init_value->GetData().GetData(), init_value_size, RT_MEMCPY_HOST_TO_DEVICE)); 
+    GE_CHK_RT_RET(aclrtMemcpy(var_dev_addr, static_cast<uint64_t>(var_size),
+        init_value->GetData().GetData(), init_value_size, ACL_MEMCPY_HOST_TO_DEVICE)); 
     GELOGI("variable offset[%p] has _init_value attr, init value success, var_dev_addr: %p, tensor size: %" PRId64 ","
            " value size: %zu, ", var_mgr->logic_addr, var_dev_addr, var_size, init_value_size);
   } 

@@ -495,10 +495,10 @@ Status ModelArgsManager::GenAddrRefreshIndexAndOffset(const uint64_t &offset_num
   }
 
   // 拷贝index和offset的device表
-  GE_ASSERT_RT_OK(rtMemcpy(model_args_device_offset_, args_offset_num * sizeof(uint64_t),
-      model_args_host_offset.get(), args_offset_num * sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
-  GE_ASSERT_RT_OK(rtMemcpy(model_args_device_index_, args_offset_num * sizeof(uint64_t),
-      model_args_host_index.get(), args_offset_num * sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(model_args_device_offset_, args_offset_num * sizeof(uint64_t),
+      model_args_host_offset.get(), args_offset_num * sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(model_args_device_index_, args_offset_num * sizeof(uint64_t),
+      model_args_host_index.get(), args_offset_num * sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
 
   // 补充args构成
   kernel_launch_args_ptr_->model_offset_args_device_addr = PtrToValue(model_args_device_offset_);
@@ -773,11 +773,11 @@ Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
 
   GE_CHK_RT_RET(aclrtSynchronizeStream(stm));
   std::vector<uint64_t> model_args_device_addrs(model_args_len_[0] / sizeof(uint64_t), 0);
-  (void)rtMemcpy(model_args_device_addrs.data(), model_args_len_[0], ValueToPtr(model_args_[0].model_args_device_addr),
-                  model_args_len_[0], RT_MEMCPY_DEVICE_TO_HOST);
+  (void)aclrtMemcpy(model_args_device_addrs.data(), model_args_len_[0],
+      ValueToPtr(model_args_[0].model_args_device_addr), model_args_len_[0], ACL_MEMCPY_DEVICE_TO_HOST);
   UpdateModelParamTilingData update_model_param_tiling_data_temp = {};
-  (void)rtMemcpy(static_cast<void*>(&update_model_param_tiling_data_temp), sizeof(UpdateModelParamTilingData),
-                 ValueToPtr(kernel_launch_args_ptr_->tiling_addr), sizeof(UpdateModelParamTilingData), RT_MEMCPY_DEVICE_TO_HOST);
+  (void)aclrtMemcpy(static_cast<void*>(&update_model_param_tiling_data_temp), sizeof(UpdateModelParamTilingData),
+      ValueToPtr(kernel_launch_args_ptr_->tiling_addr), sizeof(UpdateModelParamTilingData), ACL_MEMCPY_DEVICE_TO_HOST);
   GELOGI("Print device Tiling Data. tiling.totalActivateBaseTblCnt: %u, tiling.blockCnt:%u, tiling.tileCnt: %u , tiling.tileNum: %u, "
     "tiling.tailCnt: %u, tiling.lastTileNum: %u, tiling.lastTailCnt: %u, block dim is %u.",
     update_model_param_tiling_data_temp.totalActiveBaseTblCnt,
@@ -795,10 +795,12 @@ Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
 
   device_index_table.resize(model_args_refresh_len_ / sizeof(uint32_t));
   device_offset_table.resize(model_args_refresh_len_ / sizeof(uint64_t));
-  (void)rtMemcpy(device_offset_table.data(), model_args_refresh_len_,
-                 ValueToPtr(kernel_launch_args_ptr_->model_offset_args_device_addr), model_args_refresh_len_, RT_MEMCPY_DEVICE_TO_HOST);
-  (void)rtMemcpy(device_index_table.data(), model_args_refresh_len_,
-                 ValueToPtr(kernel_launch_args_ptr_->model_index_args_device_addr), model_args_refresh_len_, RT_MEMCPY_DEVICE_TO_HOST);
+  (void)aclrtMemcpy(device_offset_table.data(), model_args_refresh_len_,
+      ValueToPtr(kernel_launch_args_ptr_->model_offset_args_device_addr), model_args_refresh_len_,
+      ACL_MEMCPY_DEVICE_TO_HOST);
+  (void)aclrtMemcpy(device_index_table.data(), model_args_refresh_len_,
+      ValueToPtr(kernel_launch_args_ptr_->model_index_args_device_addr), model_args_refresh_len_,
+      ACL_MEMCPY_DEVICE_TO_HOST);
   for (size_t i = 0; i < model_args_refresh_len_ / sizeof(uint64_t); i++) {
     GELOGI("Print device offset table. index:%" PRId64 ", offset is:%" PRId64 ", index is %d, %d.",
           i, device_offset_table[i], device_index_table[2 * i], device_index_table[2 * i + 1]);
@@ -806,8 +808,9 @@ Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
 
   std::vector<uint64_t> device_active_mem_table;
   device_active_mem_table.resize(active_mem_base_addr_size);
-  (void)rtMemcpy(device_active_mem_table.data(), active_mem_base_addr_size * sizeof(uint64_t),
-                 ValueToPtr(kernel_launch_args_ptr_->active_mem_base_device_addr), active_mem_base_addr_size * sizeof(uint64_t), RT_MEMCPY_DEVICE_TO_HOST);
+  (void)aclrtMemcpy(device_active_mem_table.data(), active_mem_base_addr_size * sizeof(uint64_t),
+      ValueToPtr(kernel_launch_args_ptr_->active_mem_base_device_addr),
+      active_mem_base_addr_size * sizeof(uint64_t), ACL_MEMCPY_DEVICE_TO_HOST);
   for (size_t i = 0; i < active_mem_base_addr_size; i++) {
     GELOGI("Print active mem base. index:%" PRId64 ", value is:%" PRId64 ".", i, device_active_mem_table[i]);
   }
@@ -977,22 +980,23 @@ Status ModelArgsManager::ReportKernelLaunchOpProfilingData(const uint64_t begin_
         uint64_t host_input_device_addr =
             PtrToValue(activate_mem_base_device_addrs_dev_) + active_mem_base_addr_len_align32b;
         uint64_t host_input_host_addr = PtrToValue(active_mem_base_addr) + active_mem_base_addr_len_align32b;
-        GE_ASSERT_RT_OK(rtMemcpyAsync(ValueToPtr(host_input_device_addr), host_input_size_,
-            ValueToPtr(host_input_host_addr), host_input_size_, RT_MEMCPY_HOST_TO_DEVICE_EX, stm));
+        GE_ASSERT_RT_OK(aclrtMemcpyAsync(ValueToPtr(host_input_device_addr), host_input_size_,
+            ValueToPtr(host_input_host_addr), host_input_size_, ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stm));
         return SUCCESS;
       }
       // 加载阶段会做一次model args table表的全量刷新，本次刷新未使用地址刷新算子，所以未刷新device侧active mem base表
       // 需要在首次使用地址刷新算子时，完成对device侧active mem base表全量刷新，新增active_mem_base_table_h2d_copy_flag_区分是否部分拷贝active mem base表
       if (up > static_cast<uint32_t>(kUpdateModelIo) || !active_mem_base_table_h2d_copy_flag_) {
-        GE_ASSERT_RT_OK(rtMemcpyAsync(activate_mem_base_device_addrs_dev_, args_active_mem_base_size,
-          static_cast<void*>(active_mem_base_addr), args_active_mem_base_size, RT_MEMCPY_HOST_TO_DEVICE_EX, stm));
+        GE_ASSERT_RT_OK(aclrtMemcpyAsync(activate_mem_base_device_addrs_dev_, args_active_mem_base_size,
+            static_cast<void*>(active_mem_base_addr), args_active_mem_base_size,
+            ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stm));
         active_mem_base_table_h2d_copy_flag_ = true;
       } else {
         args_active_mem_base_size = args_active_mem_base_size - davinci_model_->GetNoFrozenInputAllocationBaseId() * sizeof(uint64_t);
-        GE_ASSERT_RT_OK(rtMemcpyAsync(ValueToPtr(PtrToValue(activate_mem_base_device_addrs_dev_) +
-	    davinci_model_->GetNoFrozenInputAllocationBaseId() * sizeof(uint64_t)), args_active_mem_base_size,
+        GE_ASSERT_RT_OK(aclrtMemcpyAsync(ValueToPtr(PtrToValue(activate_mem_base_device_addrs_dev_) +
+	      davinci_model_->GetNoFrozenInputAllocationBaseId() * sizeof(uint64_t)), args_active_mem_base_size,
             static_cast<void*>(active_mem_base_addr + davinci_model_->GetNoFrozenInputAllocationBaseId()),
-	    args_active_mem_base_size, RT_MEMCPY_HOST_TO_DEVICE_EX, stm));
+	          args_active_mem_base_size, ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stm));
       }
     }
 
@@ -1035,11 +1039,11 @@ Status ModelArgsManager::ReportKernelLaunchOpProfilingData(const uint64_t begin_
     || davinci_model_->GetForbiddenStreamFlag()) {
     for (const auto &cp_data : model_update_data->h2d_copy_datas) {
       if (davinci_model_->GetAsyncMode()) {
-        GE_ASSERT_RT_OK(rtMemcpyAsync(ValueToPtr(cp_data.device_addr), cp_data.len, cp_data.host_addr, cp_data.len,
-            RT_MEMCPY_HOST_TO_DEVICE_EX, stm));
+        GE_ASSERT_RT_OK(aclrtMemcpyAsync(ValueToPtr(cp_data.device_addr), cp_data.len, cp_data.host_addr, cp_data.len,
+            ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stm));
       } else {
-        GE_ASSERT_RT_OK(rtMemcpy(ValueToPtr(cp_data.device_addr), cp_data.len, cp_data.host_addr, cp_data.len,
-            RT_MEMCPY_HOST_TO_DEVICE));
+        GE_ASSERT_RT_OK(aclrtMemcpy(ValueToPtr(cp_data.device_addr), cp_data.len, cp_data.host_addr, cp_data.len,
+            ACL_MEMCPY_HOST_TO_DEVICE));
       }
       if (need_dev_va_2_pa_) {
         GE_ASSERT_RT_OK(rtDevVA2PA(cp_data.device_addr, cp_data.len, stm, davinci_model_->GetAsyncMode()));

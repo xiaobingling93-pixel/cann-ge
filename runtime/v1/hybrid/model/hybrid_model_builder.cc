@@ -1167,8 +1167,8 @@ Status HybridModelBuilder::CopyConstantData(const NodePtr &node, const GeTensor 
 
   GELOGI("[IMAS]InitConstant memcpy graph_%u type[V] name[%s] output[%d] memaddr[%p] mem_size[%zu] datasize[%zu]",
          runtime_param_.graph_id, node->GetName().c_str(), 0, output_addr, output_size, tensor.GetData().size());
-  GE_CHK_RT_RET(rtMemcpy(output_addr, output_size, tensor.GetData().data(), tensor.GetData().size(),
-                         RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(output_addr, output_size, tensor.GetData().data(), tensor.GetData().size(),
+      ACL_MEMCPY_HOST_TO_DEVICE));
 
   return SUCCESS;
 }
@@ -1440,11 +1440,8 @@ Status HybridModelBuilder::InitWeights() const {
                                  weight_data, weight_size),
                         "Copy weight data failed.");
     } else {
-      GE_CHK_RT_RET(rtMemcpy(sub_weight_buffer->GetData(),
-                             sub_weight_buffer->GetSize(),
-                             weight_data,
-                             weight_size,
-                             RT_MEMCPY_HOST_TO_DEVICE));
+      GE_CHK_RT_RET(aclrtMemcpy(sub_weight_buffer->GetData(), sub_weight_buffer->GetSize(), weight_data,
+          weight_size, ACL_MEMCPY_HOST_TO_DEVICE));
     }
 
     GELOGI("Init weight mem successfully, weight base %p, weight size = %zu",
@@ -2598,11 +2595,8 @@ Status HybridModelBuilder::Convert2HostTensor(const NodePtr &node, const int64_t
     const auto copy_size = static_cast<size_t>(tensor_size);
     GE_CHECK_GE(tensor_value->GetSize(), copy_size);
     std::vector<uint8_t> buffer(copy_size);
-    GE_CHK_RT_RET(rtMemcpy(buffer.data(),
-                           copy_size,
-                           tensor_value->GetData(),
-                           copy_size,
-                           RT_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(buffer.data(), copy_size, tensor_value->GetData(), copy_size,
+        ACL_MEMCPY_DEVICE_TO_HOST));
     (void)ge_tensor->SetData(std::move(buffer));
     GELOGD("[%s] Copy constant tensor to host successfully, size = %zu", node->GetName().c_str(), copy_size);
   }

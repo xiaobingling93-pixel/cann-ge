@@ -236,12 +236,13 @@ Status TensorTransUtils::TransHostGertTensorsToDevice(Allocator *allocator,
 
     if (enable_input_batch_cpy) {
       // rts 底层需要 void*, 不会修改，所以 const_cast 是安全的
-      MemcpyParam memcpy_param {dst_tensors[i].GetAddr(), aligned_size, const_cast<void *>(host_addr), src_size, attr_idx++}; // NOLINT(*)
+      MemcpyParam memcpy_param {dst_tensors[i].GetAddr(), aligned_size,
+          const_cast<void *>(host_addr), src_size, attr_idx++}; // NOLINT(*)
       AddMemcpyBatchParam(memcpy_param, memcpy_batch_param);
     } else {
-      GE_ASSERT_RT_OK(rtMemcpy(dst_tensors[i].GetAddr(), aligned_size, host_addr, src_size,
-                               RT_MEMCPY_HOST_TO_DEVICE));
-      GELOGD("Call rtMemcpy success, rt_tensor %p, dst_aligned_size %zu, host_addr %p, src_size %zu",
+      GE_ASSERT_RT_OK(aclrtMemcpy(dst_tensors[i].GetAddr(), aligned_size, host_addr, src_size,
+          ACL_MEMCPY_HOST_TO_DEVICE));
+      GELOGD("Call aclrtMemcpy success, rt_tensor %p, dst_aligned_size %zu, host_addr %p, src_size %zu",
              dst_tensors[i].GetAddr(), aligned_size, host_addr, src_size);
     }
   }
@@ -280,8 +281,9 @@ Status TensorTransUtils::HostTensorToDeviceGertTensor(ge::Allocator *allocator, 
   if (src_tensor_length <= 0U) {
     return SUCCESS;
   }
-  GE_ASSERT_RT_OK(rtMemcpy(dst_tensor.GetAddr(), dst_aligned_size, src_tensor_addr, src_tensor_length, RT_MEMCPY_HOST_TO_DEVICE));
-  GELOGD("Call rtMemcpy success, dst_tensor %p, dst_aligned_size %zu, src_tensor_addr %p, src_tensor_length %zu",
+  GE_ASSERT_RT_OK(aclrtMemcpy(dst_tensor.GetAddr(), dst_aligned_size, src_tensor_addr,
+      src_tensor_length, ACL_MEMCPY_HOST_TO_DEVICE));
+  GELOGD("Call aclrtMemcpy success, dst_tensor %p, dst_aligned_size %zu, src_tensor_addr %p, src_tensor_length %zu",
          dst_tensor.GetAddr(), dst_aligned_size, src_tensor_addr, src_tensor_length);
   return SUCCESS;
 }
@@ -351,8 +353,8 @@ Status TensorTransUtils::TransRtTensorToTensor(const std::vector<gert::Tensor> &
         GE_CHECK_NOTNULL(aligned_ptr);
         auto data_buf = aligned_ptr->MutableGet();
         GE_CHECK_NOTNULL(data_buf);
-        GE_CHK_RT_RET(rtMemcpy(data_buf, static_cast<uint64_t>(output_size), rt_tensor.GetAddr(),
-                               static_cast<uint64_t>(output_size), RT_MEMCPY_DEVICE_TO_HOST));
+        GE_CHK_RT_RET(aclrtMemcpy(data_buf, static_cast<uint64_t>(output_size), rt_tensor.GetAddr(),
+            static_cast<uint64_t>(output_size), ACL_MEMCPY_DEVICE_TO_HOST));
         ge_tensor.SetData(aligned_ptr, static_cast<size_t>(output_size));
       } else {
         GE_ASSERT_GRAPH_SUCCESS(ge_tensor.SetData(nullptr, 0));
@@ -524,8 +526,8 @@ Status TensorTransUtils::TransGertTensorToHost(const gert::Tensor &src_tensor, g
     GE_CHECK_NOTNULL(aligned_ptr);
     auto data_buf = aligned_ptr->MutableGet();
     GE_CHECK_NOTNULL(data_buf);
-    GE_CHK_RT_RET(rtMemcpy(data_buf, static_cast<uint64_t>(output_size), src_tensor.GetAddr(),
-                           static_cast<uint64_t>(output_size), RT_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(data_buf, static_cast<uint64_t>(output_size), src_tensor.GetAddr(),
+        static_cast<uint64_t>(output_size), ACL_MEMCPY_DEVICE_TO_HOST));
 
     // 创建 GeTensor 来持有数据，并使用 TensorWrapper 管理生命周期
     auto ge_tensor = ge::MakeShared<GeTensor>();
@@ -592,7 +594,8 @@ Status TensorTransUtils::TryBatchMemcpy(MemcpyBatchParam &args) {
   if (args.dsts.size() == 1) {
     GELOGW("The switch of input_batch_cpy is open but only one input remains, not enable batch memcpy");
     GE_ASSERT_TRUE(args.dst_aligned_sizes.size() == 1);
-    return static_cast<Status>(rtMemcpy(args.dsts[0],args.dst_aligned_sizes[0], args.srcs[0], args.src_sizes[0], RT_MEMCPY_HOST_TO_DEVICE));
+    return static_cast<Status>(aclrtMemcpy(args.dsts[0],args.dst_aligned_sizes[0], args.srcs[0],
+        args.src_sizes[0], ACL_MEMCPY_HOST_TO_DEVICE));
   }
   size_t fail_idx = std::numeric_limits<size_t>::max();
   const rtError_t ret =
@@ -602,8 +605,8 @@ Status TensorTransUtils::TryBatchMemcpy(MemcpyBatchParam &args) {
   if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
     GELOGW("Batch memcpy not supported, ret=%d, fallback to individual memcpy.", ret);
     for (size_t i = 0; i < args.srcs.size(); ++i) {
-      GE_ASSERT_RT_OK(rtMemcpy(args.dsts[i], args.dst_aligned_sizes[i], args.srcs[i],
-        args.src_sizes[i], RT_MEMCPY_HOST_TO_DEVICE));
+      GE_ASSERT_RT_OK(aclrtMemcpy(args.dsts[i], args.dst_aligned_sizes[i], args.srcs[i],
+        args.src_sizes[i], ACL_MEMCPY_HOST_TO_DEVICE));
     }
     GELOGI("Fallback individual memcpy completed successfully for %zu items", args.dsts.size());
     return SUCCESS;

@@ -388,7 +388,7 @@ class AiCpuBaseTask : public OpTask {
 
   std::vector<void *> out_shape_hbm_;
   int32_t deploy_type_flag_{0};
-  tagRtMemcpyKind memcpy_kind_{RT_MEMCPY_HOST_TO_DEVICE};
+  aclrtMemcpyKind memcpy_kind_{ACL_MEMCPY_HOST_TO_DEVICE};
   rtMemType_t mem_type_{RT_MEMORY_HBM};
 };
 

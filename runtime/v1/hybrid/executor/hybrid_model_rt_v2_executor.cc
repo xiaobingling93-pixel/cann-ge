@@ -348,8 +348,8 @@ Status GraphVarVisitor::CopySharedConstant(const std::shared_ptr<ge::VarManager>
   for (const auto &helper : helpers) {
     if (!var_manager->CheckAndSetVarLoaded(helper.op_desc, device_id)) {
       GELOGD("Copy constant %s size %ld to device addr %p", helper.op_desc->GetNamePtr(), helper.size, helper.addr);
-      GE_ASSERT_RT_OK(rtMemcpy(helper.addr, helper.size, helper.weight->GetData().data(),
-                               helper.weight->GetData().size(), RT_MEMCPY_HOST_TO_DEVICE));
+      GE_ASSERT_RT_OK(aclrtMemcpy(helper.addr, helper.size, helper.weight->GetData().data(),
+          helper.weight->GetData().size(), ACL_MEMCPY_HOST_TO_DEVICE));
     } else {
       GELOGD("Constant %s size %ld has been loaded to device addr %p, no need to reload.", helper.op_desc->GetNamePtr(),
              helper.size, helper.addr);
@@ -1011,7 +1011,7 @@ static Status InputTensorValidate(const std::vector<gert::Tensor> &inputs, size_
       if (logLevel <= DLOG_DEBUG) {
         GELOGD(
             "input[%zu] addres = %p, size = %zu, placement = %u, which is on device, no need do alloc memory and "
-            "rtmemcpy", i, address, size, inputs[i].GetPlacement());
+            "aclrtmemcpy", i, address, size, inputs[i].GetPlacement());
       }
     } else {
       GE_ASSERT(gert::TensorPlacementUtils::IsOnHostNotFollowing(inputs[i].GetPlacement()),
@@ -1156,7 +1156,7 @@ Status HybridModelRtV2Executor::ExecuteWithStreamAsync(const std::vector<GeTenso
     } else if (gert::TensorPlacementUtils::IsOnDevice(rt_input->GetPlacement())) {
       GELOGD(
           "input[%zu] addres = %p, size = %zu, placement = %u, which is on device, no need do alloc memory and "
-          "rtmemcpy", i, address, size, rt_input->GetPlacement());
+          "aclrtmemcpy", i, address, size, rt_input->GetPlacement());
     } else {
       GE_ASSERT(gert::TensorPlacementUtils::IsOnHostNotFollowing(rt_input->GetPlacement()),
                 "Input %zu has unexpected placement %d", i, rt_input->GetPlacement());
@@ -1272,7 +1272,7 @@ Status HybridModelRtV2Executor::Execute(const InputData &input_data, ExecuteArgs
     if (run_ctx_.host_exec_flag_) {
       input->SetData(gert::TensorData(input_data.blobs[i].data, nullptr, input_data.blobs[i].length, gert::kOnHost));
     } else if (input_data.blobs[i].placement == static_cast<uint32_t>(Placement::kPlacementDevice)) {
-      GELOGD("Construct RT2 input index[%u], placement: %u, no need to execute rtMemcpy.", i,
+      GELOGD("Construct RT2 input index[%u], placement: %u, no need to execute aclrtMemcpy.", i,
              input_data.blobs[i].placement);
       input->SetData(
           gert::TensorData(input_data.blobs[i].data, nullptr, input_data.blobs[i].length, gert::kOnDeviceHbm));
@@ -1284,7 +1284,7 @@ Status HybridModelRtV2Executor::Execute(const InputData &input_data, ExecuteArgs
         size_t data_size = 0U;
         TensorTransUtils::AllocDeviceMemory(allocator, ge_tensor_length, *input, mem_block_to_keep, data_size);
         if (ge_tensor_length <= 0) {
-          GELOGD("Skip input[%zu] with length %zu, no need to execute rtMemcpy.", i, input_data.blobs[i].length);
+          GELOGD("Skip input[%zu] with length %zu, no need to execute aclrtMemcpy.", i, input_data.blobs[i].length);
           input_mem_block.emplace_back(mem_block_to_keep);
           continue;
         }
@@ -1425,7 +1425,7 @@ Status HybridModelRtV2Executor::Execute(const std::vector<gert::Tensor> &inputs,
       ref_input->SetData(gert::TensorData(const_cast<void *>(arg_input.GetAddr()), nullptr,
         arg_input.GetSize(), gert::kOnHost));
     } else if (arg_input.GetPlacement() == gert::TensorPlacement::kOnDeviceHbm) {
-      GELOGD("Construct RT2 ref_input index[%u], placement: %u, no need to execute rtMemcpy.", i,
+      GELOGD("Construct RT2 ref_input index[%u], placement: %u, no need to execute aclrtMemcpy.", i,
              gert::TensorPlacement::kOnDeviceHbm);
       ref_input->SetData(gert::TensorData(const_cast<void *>(arg_input.GetAddr()), nullptr,
         arg_input.GetSize(), gert::kOnDeviceHbm));
@@ -1437,7 +1437,7 @@ Status HybridModelRtV2Executor::Execute(const std::vector<gert::Tensor> &inputs,
         size_t data_size = 0U;
         GE_ASSERT_SUCCESS(TensorTransUtils::AllocDeviceMemory(allocator, src_tensor_length, *ref_input, mem_block_to_keep, data_size));
         if (src_tensor_length == 0) {
-          GELOGD("Skip ref_input[%zu] with length %zu, no need to execute rtMemcpy.", i, arg_input.GetSize());
+          GELOGD("Skip ref_input[%zu] with length %zu, no need to execute aclrtMemcpy.", i, arg_input.GetSize());
           input_mem_block.emplace_back(mem_block_to_keep);
           continue;
         }

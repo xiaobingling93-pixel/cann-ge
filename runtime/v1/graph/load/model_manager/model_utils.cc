@@ -948,10 +948,10 @@ Status ModelUtils::GetInputOutputDescAddrs(const RuntimeParam &model_param, cons
     }
     RuntimeTensorDesc sink_tensor_desc;
     GE_CHK_STATUS_RET_NOLOG(FillSinkTensorDesc(sink_tensor_desc, tensor_desc, PtrToValue(v_addrs[tensor_cnt])));
-    const rtError_t rt_ret = rtMemcpy(mem_addr, size, &sink_tensor_desc, size, RT_MEMCPY_HOST_TO_DEVICE);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%zu, ret:%d", size, rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtMemcpy] copy data_addr failed, size:%zu, ret:%d", size, rt_ret);
+    const aclError rt_ret = aclrtMemcpy(mem_addr, size, &sink_tensor_desc, size, ACL_MEMCPY_HOST_TO_DEVICE);
+    if (rt_ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%zu, ret:%d", size, rt_ret);
+      GELOGE(RT_FAILED, "[Call][aclrtMemcpy] copy data_addr failed, size:%zu, ret:%d", size, rt_ret);
       return RT_ERROR_TO_GE_STATUS(rt_ret);
     }
     v_addrs[tensor_cnt] = mem_addr;

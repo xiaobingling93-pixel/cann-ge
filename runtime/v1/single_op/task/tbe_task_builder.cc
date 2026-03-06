@@ -235,7 +235,7 @@ Status TbeTaskBuilder::InitKernelArgs(void *const args_addr, const size_t arg_si
   if (!tensor_device_addr_vec.empty()) {
     void *const src_addr = reinterpret_cast<void *>(tensor_device_addr_vec.data());
     const size_t src_len = sizeof(void *) * tensor_device_addr_vec.size();
-    GE_CHK_RT_RET(rtMemcpy(args_addr, arg_size, src_addr, src_len, RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(args_addr, arg_size, src_addr, src_len, ACL_MEMCPY_HOST_TO_HOST));
   }
   return SUCCESS;
 }
@@ -287,13 +287,13 @@ Status TbeTaskBuilder::SetKernelArgs(TbeOpTask &task, const SingleOpModelParam &
   REQUIRE_COMPAT_UINT16(arg_size);
   args = MakeUnique<uint8_t[]>(arg_size);
   GE_CHECK_NOTNULL(args);
-  GE_CHK_RT_RET(rtMemcpy(args.get(), arg_size, kernel_def_args, kernel_def_arg_size,
-                         RT_MEMCPY_HOST_TO_HOST));
+  GE_CHK_RT_RET(aclrtMemcpy(args.get(), arg_size, kernel_def_args, kernel_def_arg_size,
+      ACL_MEMCPY_HOST_TO_HOST));
   if (task.has_overflow_attr_) {
     GE_CHECK_GE(kernel_def_arg_size, sizeof(void *));
     const size_t argsize_idx_with_overflow = kernel_def_arg_size - sizeof(void *);
-    GE_CHK_RT_RET(rtMemcpy(args.get() + argsize_idx_with_overflow, sizeof(void *), &(task.overflow_addr_),
-                           sizeof(void *), RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(args.get() + argsize_idx_with_overflow, sizeof(void *), &(task.overflow_addr_),
+        sizeof(void *), ACL_MEMCPY_HOST_TO_HOST));
   }
   const domi::KernelContext &context = (task_type == ModelTaskType::MODEL_TASK_ALL_KERNEL) ?
                                        kernel_def_with_handle_.context() : kernel_def_.context();
@@ -304,8 +304,8 @@ Status TbeTaskBuilder::SetKernelArgs(TbeOpTask &task, const SingleOpModelParam &
   if (task.ffts_addr_num_ == 1UL) {
     void *mode_addr_ptr = nullptr;
     GE_CHK_RT_RET(aclrtGetHardwareSyncAddr(&mode_addr_ptr));
-    GE_CHK_RT_RET(
-        rtMemcpy(args.get() + offset, sizeof(uint64_t), &mode_addr_ptr, sizeof(uint64_t), RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(args.get() + offset, sizeof(uint64_t), &mode_addr_ptr,
+                              sizeof(uint64_t), ACL_MEMCPY_HOST_TO_HOST));
     offset += sizeof(uint64_t);
   }
 
@@ -485,7 +485,7 @@ Status MixL2TaskBuilder::BuildMixL2Task(MixL2OpTask &task, SingleOpModelParam &p
   task.arg_size_ = kernel_def_arg_size + task.max_tiling_size_ + len;
   if (task.arg_size_ > 0UL) {
     task.host_args_.resize(task.arg_size_ / sizeof(uintptr_t));
-    GE_CHK_RT_RET(rtMalloc(&task.device_args_, task.arg_size_, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&task.device_args_, task.arg_size_, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   }
 
   // Init Mode addr
@@ -531,8 +531,8 @@ Status MixL2TaskBuilder::InitTilingDataAddrToArgs(MixL2OpTask &task) const {
   const size_t tiling_data_idx = op_desc_->GetAllInputsDescPtr().size() + op_desc_->GetWorkspaceBytes().size() +
                                  static_cast<size_t>(op_desc_->GetAllOutputsDescSize());
   GE_CHECK_GE(task.host_args_.size(), (task.args_addr_base_idx_ + tiling_data_idx + 1U));
-  GE_CHK_RT_RET(rtMemcpy(&task.host_args_[task.args_addr_base_idx_ + tiling_data_idx], sizeof(uintptr_t),
-                         &tiling_data_addr_, sizeof(uintptr_t), RT_MEMCPY_HOST_TO_HOST));
+  GE_CHK_RT_RET(aclrtMemcpy(&task.host_args_[task.args_addr_base_idx_ + tiling_data_idx], sizeof(uintptr_t),
+      &tiling_data_addr_, sizeof(uintptr_t), ACL_MEMCPY_HOST_TO_HOST));
   GELOGI("Init tiling data addr of %s, tiling_data_idx: %zu.", op_desc_->GetName().c_str(), tiling_data_idx);
   return SUCCESS;
 }

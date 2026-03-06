@@ -1547,7 +1547,7 @@ class DavinciModel {
 
   bool is_forbidden_stream_{false};
 
-  bool is_async_mode_{false};  // For NN execute, Async mode use rtMemcpyAsync on rt_model_stream_.
+  bool is_async_mode_{false};  // For NN execute, Async mode use aclrtMemcpyAsync on rt_model_stream_.
   ExecuteMode last_execute_mode_{ExecuteMode::INITIALIZATION};
 
   bool is_stream_list_bind_{false};

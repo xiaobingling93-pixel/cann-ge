@@ -23,6 +23,8 @@
 #include "graph/utils/graph_utils.h"
 #include "ge/ut/ge/ffts_plus_proto_tools.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "stub/gert_runtime_stub.h"
+
 using namespace std;
 using namespace testing;
 
@@ -76,6 +78,25 @@ class MockMalloc : public RuntimeStub {
     malloc_flag -= 1;
     delete[](uint8_t *) dev_ptr;
     return RT_ERROR_NONE;
+  }
+
+  int64_t malloc_flag = 0;
+};
+
+class MockAclMalloc : public AclRuntimeStub {
+ public:
+  aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy) override {
+    malloc_flag += 1;
+    *devPtr = new uint8_t[size];
+    memset_s(*devPtr, size, 0, size);
+
+    return ACL_ERROR_NONE;
+  }
+
+  aclError aclrtFree(void *devPtr) override {
+    malloc_flag -= 1;
+    delete[](uint8_t *) devPtr;
+    return ACL_ERROR_NONE;
   }
 
   int64_t malloc_flag = 0;
@@ -569,6 +590,8 @@ TEST_F(UtestHybridRt1Executor, TestMemLeak) {
 
   auto malloc_mock = std::make_shared<MockMalloc>();
   RuntimeStub::SetInstance(malloc_mock);
+  auto malloc_acl_mock = std::make_shared<MockAclMalloc>();
+  AclRuntimeStub::SetInstance(malloc_acl_mock);
 
   auto allocator = NpuMemoryAllocator::GetAllocator();
   auto tensor_buffer = TensorBuffer::Create(allocator, 100);
@@ -578,9 +601,9 @@ TEST_F(UtestHybridRt1Executor, TestMemLeak) {
 
   (void)executor.BuildDeviceTensor(tensor, ge_tensor_desc, 100, outputs);
 
-  EXPECT_EQ(malloc_mock->malloc_flag > 0, true);
+  EXPECT_EQ(malloc_acl_mock->malloc_flag > 0, true);
   outputs.clear();
-  EXPECT_EQ(malloc_mock->malloc_flag, 0);
+  EXPECT_EQ(malloc_acl_mock->malloc_flag, 0);
 }
 TEST_F(UtestHybridRt1Executor, test_ExecuteWithStreamAsync) {
   ComputeGraphPtr graph = std::make_shared<ComputeGraph>("test");

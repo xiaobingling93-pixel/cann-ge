@@ -529,20 +529,20 @@ void ExceptionDumper::LogExceptionArgs(const OpDescInfo &op_desc_info) const {
     return;
   }
   uint8_t *host_addr = nullptr;
-  rtError_t ret = rtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), static_cast<uint64_t>(op_desc_info.args_size),
-                               GE_MODULE_NAME_U16);
-  if (ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMallocHost failed, size:%zu, ret:%d", op_desc_info.args_size,
+  aclError ret = aclrtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), op_desc_info.args_size);
+  if (ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMallocHost failed, size:%zu, ret:%d", op_desc_info.args_size,
                       ret);
     GELOGE(FAILED, "[Call][RtMallocHost] failed, size:%zu, ret:%d", op_desc_info.args_size, ret);
     return;
   }
   GE_MAKE_GUARD_RTMEM(host_addr);
-  ret = rtMemcpy(host_addr, static_cast<uint64_t>(op_desc_info.args_size), reinterpret_cast<void *>(op_desc_info.args),
-                 static_cast<uint64_t>(op_desc_info.args_size), RT_MEMCPY_DEVICE_TO_HOST);
-  if (ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%zu, ret:%d", op_desc_info.args_size, ret);
-    GELOGE(FAILED, "[Call][RtMemcpy] failed, size:%zu, ret:%d", op_desc_info.args_size, ret);
+  ret = aclrtMemcpy(host_addr, static_cast<uint64_t>(op_desc_info.args_size),
+      reinterpret_cast<void *>(op_desc_info.args), static_cast<uint64_t>(op_desc_info.args_size),
+      ACL_MEMCPY_DEVICE_TO_HOST);
+  if (ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%zu, ret:%d", op_desc_info.args_size, ret);
+    GELOGE(FAILED, "[Call][aclrtMemcpy] failed, size:%zu, ret:%d", op_desc_info.args_size, ret);
     return;
   }
 
@@ -703,10 +703,10 @@ void ExceptionDumper::RefreshAddrs(OpDescInfo &op_desc_info) const {
   const size_t output_num = op_desc_info.output_addrs.size();
   const size_t target_size = (input_num + output_num) * sizeof(void *);
   std::vector<void *> host_addr(input_num + output_num);
-  const auto rt_ret = rtMemcpy(host_addr.data(), target_size, ValueToPtr(static_cast<uint64_t>(op_desc_info.args)),
-                               target_size, RT_MEMCPY_DEVICE_TO_HOST);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGI("op:%s(%s) can't rtMemcpy to host, store args:%zu, memcpy size:%zu, skip refresh addr",
+  const auto rt_ret = aclrtMemcpy(host_addr.data(), target_size,
+      ValueToPtr(static_cast<uint64_t>(op_desc_info.args)), target_size, ACL_MEMCPY_DEVICE_TO_HOST);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGI("op:%s(%s) can't aclrtMemcpy to host, store args:%zu, memcpy size:%zu, skip refresh addr",
            op_desc_info.op_name.c_str(), op_desc_info.op_type.c_str(), op_desc_info.args, target_size);
     return;
   }
@@ -756,17 +756,17 @@ Status ExceptionDumper::DumpDevMem(const ge::char_t *const file, const void *con
     return SUCCESS;
   }
   uint8_t *host_addr = nullptr;
-  rtError_t ret = rtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), size, GE_MODULE_NAME_U16);
-  if (ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMallocHost failed, size:%" PRIu64 ", ret:%d", size, ret);
+  aclError ret = aclrtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), size);
+  if (ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMallocHost failed, size:%" PRIu64 ", ret:%d", size, ret);
     GELOGE(FAILED, "[Call][RtMallocHost] failed, size:%zu, ret:%d", size, ret);
     return FAILED;
   }
   GE_MAKE_GUARD_RTMEM(host_addr);
-  ret = rtMemcpy(host_addr, size, addr, size, RT_MEMCPY_DEVICE_TO_HOST);
-  if (ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%" PRIu64 ", ret:%d", size, ret);
-    GELOGE(FAILED, "[Call][RtMemcpy] failed, size:%zu, ret:%d", size, ret);
+  ret = aclrtMemcpy(host_addr, size, addr, size, ACL_MEMCPY_DEVICE_TO_HOST);
+  if (ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%" PRIu64 ", ret:%d", size, ret);
+    GELOGE(FAILED, "[Call][aclrtMemcpy] failed, size:%zu, ret:%d", size, ret);
     return FAILED;
   }
 

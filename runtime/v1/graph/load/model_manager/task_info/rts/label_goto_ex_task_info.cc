@@ -60,7 +60,8 @@ Status LabelGotoExTaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *co
   GE_ASSERT_NOTNULL(index_value_);
 
   constexpr uint64_t branch_index = 0U;
-  GE_CHK_RT_RET(rtMemcpy(index_value_, sizeof(uint64_t), &branch_index, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(index_value_, sizeof(uint64_t), &branch_index,
+      sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
 
   GELOGI("LabelGotoExTaskInfo %s Init Success, label id:%u, logic stream id: %u, stream: %p.",
     op_desc->GetNamePtr(), label_index, task_def.stream_id(), stream_);

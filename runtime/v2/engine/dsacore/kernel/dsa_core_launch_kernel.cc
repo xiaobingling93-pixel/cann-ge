@@ -164,9 +164,9 @@ ge::graphStatus DsaCoreUpdateSqeArg(KernelContext *context) {
     }
     FE_ASSERT_TRUE((sizeof(uint64_t) * input_addr.size()) <=
                    static_cast<uint64_t>(ws_sizes_data[workspace->GetSize() - 1U]));
-    FE_ASSERT_RT_OK(rtMemcpyAsync(const_cast<TensorAddress>(addrs_data[workspace->GetSize() - 1U]->GetAddr()),
-                                  static_cast<uint64_t>(ws_sizes_data[workspace->GetSize() - 1U]), input_addr.data(),
-                                  sizeof(uint64_t) * input_addr.size(), RT_MEMCPY_HOST_TO_DEVICE_EX, stream));
+    FE_ASSERT_RT_OK(aclrtMemcpyAsync(const_cast<TensorAddress>(addrs_data[workspace->GetSize() - 1U]->GetAddr()),
+        static_cast<uint64_t>(ws_sizes_data[workspace->GetSize() - 1U]), input_addr.data(),
+        sizeof(uint64_t) * input_addr.size(), ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stream));
   } else {
     uint64_t input_data[2] = {0U, 0U};
     FE_ASSERT_EOK(memcpy_s(&input_data[0], sizeof(uint64_t), input1_value_string, strlen(input1_value_string)));
@@ -174,9 +174,9 @@ ge::graphStatus DsaCoreUpdateSqeArg(KernelContext *context) {
       FE_ASSERT_EOK(memcpy_s(&input_data[1], sizeof(uint64_t), input2_value_string, strlen(input2_value_string)));
     }
     FE_ASSERT_TRUE(static_cast<size_t>(ws_sizes_data[workspace->GetSize() - 1U]) >= sizeof(input_data));
-    FE_ASSERT_RT_OK(rtMemcpyAsync(const_cast<TensorAddress>(addrs_data[workspace->GetSize() - 1U]->GetAddr()),
-                                  static_cast<uint64_t>(ws_sizes_data[workspace->GetSize() - 1U]), input_data,
-                                  sizeof(input_data), RT_MEMCPY_HOST_TO_DEVICE_EX, stream));
+    FE_ASSERT_RT_OK(aclrtMemcpyAsync(const_cast<TensorAddress>(addrs_data[workspace->GetSize() - 1U]->GetAddr()),
+        static_cast<uint64_t>(ws_sizes_data[workspace->GetSize() - 1U]), input_data,
+        sizeof(input_data), ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stream));
   }
 
   return ge::GRAPH_SUCCESS;

@@ -30,9 +30,9 @@ std::mutex HcclTaskInfo::hccl_follow_stream_mutex_;
 
 HcclTaskInfo::~HcclTaskInfo() {
   if (private_def_ != nullptr) {
-    const rtError_t ret = rtFreeHost(private_def_);
-    if (ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtFreeHost failed, ret:%d", ret);
+    const aclError ret = aclrtFreeHost(private_def_);
+    if (ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtFreeHost failed, ret:%d", ret);
       GELOGE(RT_FAILED, "[Call][RtFree] Fail, ret = %d.", ret);
     }
     private_def_ = nullptr;
@@ -670,9 +670,9 @@ void HcclTaskInfo::GetPrivateDefByTaskDef(const OpDescPtr &op_desc, const domi::
   const std::string &private_def_temp = task.private_def();
   if ((!private_def_temp.empty()) && (private_def_temp.size() <= static_cast<size_t>(UINT32_MAX))) {
     private_def_len_ = static_cast<uint32_t>(private_def_temp.size());
-    GE_CHK_RT_EXEC(rtMallocHost(&private_def_, static_cast<uint64_t>(private_def_len_), GE_MODULE_NAME_U16), return);
-    GE_CHK_RT_EXEC(rtMemcpy(private_def_, static_cast<uint64_t>(private_def_len_), task.private_def().c_str(),
-                   static_cast<uint64_t>(private_def_len_), RT_MEMCPY_HOST_TO_HOST), return);
+    GE_CHK_RT_EXEC(aclrtMallocHost(&private_def_, static_cast<uint64_t>(private_def_len_)), return);
+    GE_CHK_RT_EXEC(aclrtMemcpy(private_def_, static_cast<uint64_t>(private_def_len_), task.private_def().c_str(),
+        static_cast<uint64_t>(private_def_len_), ACL_MEMCPY_HOST_TO_HOST), return);
     GELOGI("The first address of the custom info, privateDef=%p.", private_def_);
   }
 }

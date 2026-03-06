@@ -417,10 +417,10 @@ Status GeExecutor::SetDynamicBatchSize(const uint32_t model_id, void *const dyna
     return ret;
   }
   // memcpy dynamic_batch_size from host to device
-  const rtError_t rt_ret = rtMemcpy(dynamic_input_addr, length, &batch_size, size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy, size:%" PRIu64 " ret:%d", length, rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy dynamic batch input data failed! size:%" PRIu64 " ret:%d",
+  const aclError rt_ret = aclrtMemcpy(dynamic_input_addr, length, &batch_size, size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy, size:%" PRIu64 " ret:%d", length, rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy dynamic batch input data failed! size:%" PRIu64 " ret:%d",
       length, rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
@@ -475,24 +475,24 @@ Status GeExecutor::SetDynamicImageSize(const uint32_t model_id, void *const dyna
   }
 
   // Memcpy dynamic resolution height from host to device
-  rtError_t rt_ret =
-      rtMemcpy(dynamic_input_addr, size, &image_height, size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed! size:%" PRIu64 ", ret:%d, model id:%u",
+  aclError rt_ret =
+      aclrtMemcpy(dynamic_input_addr, size, &image_height, size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed! size:%" PRIu64 ", ret:%d, model id:%u",
                       size, rt_ret, model_id);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", "
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", "
       "ret:%d, model id:%u", size, rt_ret, model_id);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 
   const uint64_t remain_size = length - size;
   // Memcpy dynamic resolution width from host to device
-  rt_ret = rtMemcpy(ValueToPtr(PtrToValue(dynamic_input_addr) + size), remain_size, &image_width,
-                    size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed! size:%" PRIu64 ", ret:%d, model id:%u",
+  rt_ret = aclrtMemcpy(ValueToPtr(PtrToValue(dynamic_input_addr) + size), remain_size, &image_width,
+      size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed! size:%" PRIu64 ", ret:%d, model id:%u",
                       remain_size, rt_ret, model_id);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", "
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", "
       "ret:%d, model id:%u", remain_size, rt_ret, model_id);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
@@ -551,14 +551,15 @@ Status GeExecutor::SetDynamicDims(const uint32_t model_id, void *const dynamic_i
   if (length >= static_cast<uint64_t>(dynamic_dim_num * sizeof(uint64_t))) {
     size = sizeof(uint64_t);
   }
-  rtError_t rt_ret;
+  aclError rt_ret;
   for (size_t i = 0U; i < dynamic_dim_num; ++i) {
     // Memcpy dynamic dim[i] from host to device
-    rt_ret = rtMemcpy(ValueToPtr(PtrToValue(dynamic_input_addr) + (size * i)),
-                      length - (size * i), &cur_dynamic_dims[i], size, RT_MEMCPY_HOST_TO_DEVICE);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%" PRIu64 ", ret:%d", (length - (size * i)), rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", ret:%d",
+    rt_ret = aclrtMemcpy(ValueToPtr(PtrToValue(dynamic_input_addr) + (size * i)),
+        length - (size * i), &cur_dynamic_dims[i], size, ACL_MEMCPY_HOST_TO_DEVICE);
+    if (rt_ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%" PRIu64 ", ret:%d",
+          (length - (size * i)), rt_ret);
+      GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy dynamic resolution input data failed! size:%" PRIu64 ", ret:%d",
              (length - (size * i)), rt_ret);
       return RT_ERROR_TO_GE_STATUS(rt_ret);
     }
@@ -664,22 +665,23 @@ Status GeExecutor::SetDynamicAippData(const uint32_t model_id, void *const dynam
     return ACL_ERROR_GE_DYNAMIC_INPUT_LENGTH_INVALID;
   }
   // Memcpy real kAippDynamicBatchPara from host to device
-  rtError_t rt_ret = rtMemcpy(dynamic_input_addr, length, &aipp_parms, real_aippParms_size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%" PRIu64 ", ret:%d", length, rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy aipp_parms failed! size:%" PRIu64 ", ret:%d", length, rt_ret);
+  aclError rt_ret = aclrtMemcpy(dynamic_input_addr, length, &aipp_parms,
+      real_aippParms_size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%" PRIu64 ", ret:%d", length, rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy aipp_parms failed! size:%" PRIu64 ", ret:%d", length, rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   const uint64_t remain_len = length - real_aippParms_size;
   const uint64_t aipp_batch_para_dev = PtrToValue(dynamic_input_addr) + real_aippParms_size;
 
   for (uint64_t i = 0U; i < batch_num; ++i) {
-    rt_ret = rtMemcpy(ValueToPtr(aipp_batch_para_dev + (i * sizeof(kAippDynamicBatchPara))),
-                      (remain_len - (i * sizeof(kAippDynamicBatchPara))), &(aipp_batch_para[i]),
-                      sizeof(kAippDynamicBatchPara), RT_MEMCPY_HOST_TO_DEVICE);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, ret:%d", rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtMemcpy] memcpy kAippDynamicBatchPara input data failed! ret:%d", rt_ret);
+    rt_ret = aclrtMemcpy(ValueToPtr(aipp_batch_para_dev + (i * sizeof(kAippDynamicBatchPara))),
+        (remain_len - (i * sizeof(kAippDynamicBatchPara))), &(aipp_batch_para[i]),
+        sizeof(kAippDynamicBatchPara), ACL_MEMCPY_HOST_TO_DEVICE);
+    if (rt_ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, ret:%d", rt_ret);
+      GELOGE(RT_FAILED, "[Call][aclrtMemcpy] memcpy kAippDynamicBatchPara input data failed! ret:%d", rt_ret);
       return RT_ERROR_TO_GE_STATUS(rt_ret);
     }
   }

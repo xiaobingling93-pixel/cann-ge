@@ -308,20 +308,19 @@ Status ExecutorUtils::AssembleReuseBinaryArgs(const OpDescPtr &op_desc, optiling
   args_ex.hasTiling = true;
 
   GE_CHECK_GE(max_tiling_size, tiling_data_size);
-  const rtMemcpyKind_t
-      memcpy_kind = op_desc->HasAttr(ge::ATTR_SINGLE_OP_SCENE) ? RT_MEMCPY_HOST_TO_HOST : RT_MEMCPY_HOST_TO_DEVICE;
+  const aclrtMemcpyKind
+      memcpy_kind = op_desc->HasAttr(ge::ATTR_SINGLE_OP_SCENE) ? ACL_MEMCPY_HOST_TO_HOST : ACL_MEMCPY_HOST_TO_DEVICE;
   void *const tiling_data_addr = ge::ValueToPtr(ge::PtrToValue(args_ex.args) + args_ex.tilingDataOffset);
   void *const tiling_addr_offset = ge::ValueToPtr(ge::PtrToValue(args_ex.args) + args_ex.tilingAddrOffset);
-  GE_CHK_RT_RET(rtMemcpy(tiling_addr_offset, sizeof(uintptr_t), &tiling_data_addr,
-                         sizeof(uintptr_t), memcpy_kind));
-  GE_CHK_RT_RET(rtMemcpy(tiling_data_addr, max_tiling_size, run_info.GetAllTilingData().str().data(), tiling_data_size,
-                         memcpy_kind));
+  GE_CHK_RT_RET(aclrtMemcpy(tiling_addr_offset, sizeof(uintptr_t), &tiling_data_addr,
+      sizeof(uintptr_t), memcpy_kind));
+  GE_CHK_RT_RET(aclrtMemcpy(tiling_data_addr, max_tiling_size, run_info.GetAllTilingData().str().data(),
+      tiling_data_size, memcpy_kind));
 
   GELOGD("Update args of %s, block dim: %u, tiling key: %" PRIu64 ", tilingAddrOffset: %u,"
          "tilingDataOffset: %u, max_tiling_size: %zu, arg_size: %u.",
          op_desc->GetName().c_str(), run_info.GetBlockDim(), run_info.GetTilingKey(),
          args_ex.tilingAddrOffset, args_ex.tilingDataOffset, max_tiling_size, args_ex.argsSize);
-
   return SUCCESS;
 }
 }

@@ -14,6 +14,7 @@
 #include "graph/load/model_manager/cpu_queue_schedule.h"
 #include "graph/def_types.h"
 #include "runtime_stub.h"
+#include "stub/gert_runtime_stub.h"
 #include "macro_utils/dt_public_unscope.h"
 
 using namespace std;
@@ -170,6 +171,17 @@ TEST_F(UtestCpuQueueSchedule, CpuTaskInfo_Init_args_valid) {
 }
 
 TEST_F(UtestCpuQueueSchedule, CpuTaskModelDequeue_Init_failed) {
+  class MockAclRuntime : public ge::AclRuntimeStub {
+   public:
+    aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy) override {
+      return ACL_ERROR_RT_INTERNAL_ERROR;
+    }
+
+    aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind) override {
+      return ACL_ERROR_RT_INTERNAL_ERROR;
+    }
+  };
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   rtStream_t stream = nullptr;
   CpuTaskModelDequeue cpu_task_model_dequeue(stream);
   uint32_t queue_id = 0U;
@@ -183,12 +195,17 @@ TEST_F(UtestCpuQueueSchedule, CpuTaskModelDequeue_Init_failed) {
   auto ret = cpu_task_model_dequeue.Init(queue_id, in_mbuf);
   EXPECT_EQ(ret, FAILED);
 
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
+
   cpu_task_model_dequeue.args_size_ = 0;
   g_runtime_stub_mock = "rtMalloc";
+  g_runtime_stub_mock = "aclrtMalloc";
   EXPECT_NE(cpu_task_model_dequeue.Init(queue_id, in_mbuf), SUCCESS);
 
   g_runtime_stub_mock = "rtMemcpy";
+  g_runtime_stub_mock = "aclrtMemcpy";
   EXPECT_NE(cpu_task_model_dequeue.Init(queue_id, in_mbuf), SUCCESS);
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(UtestCpuQueueSchedule, CpuTaskZeroCopy_Init_failed) {

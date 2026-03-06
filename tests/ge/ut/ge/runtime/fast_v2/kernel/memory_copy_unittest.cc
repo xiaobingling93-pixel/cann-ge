@@ -36,6 +36,11 @@ class MyMockRuntime : public ge::RuntimeStub {
   MOCK_METHOD6(rtMemcpyAsync, int32_t(void *dst, uint64_t dest_max, const void *src, uint64_t count,
                                       rtMemcpyKind_t kind, rtStream_t stream));
 };
+class MyMockAclRuntime : public ge::AclRuntimeStub {
+ public:
+  MOCK_METHOD6(aclrtMemcpyAsync, int32_t(void *dst, size_t dest_max, const void *src, size_t src_count,
+                                         aclrtMemcpyKind kind, aclrtStream stream));
+};
 }
 namespace kernel {
 ge::graphStatus CopyD2H(KernelContext *context);
@@ -833,9 +838,23 @@ TEST_F(MemCopyKernelTest, SinkWeightDataTestSuccess) {
     }
     return 0;
   };
+  auto MockAclrtMemcpyAsync = [&memcpy_async_has_been_called] (void *dst,
+                                                              size_t dest_max,
+                                                              const void *src,
+                                                              size_t src_count,
+                                                              aclrtMemcpyKind kind,
+                                                              aclrtStream stream) {
+    if (kind == ACL_MEMCPY_HOST_TO_DEVICE) {
+      memcpy_async_has_been_called = true;
+    }
+    return 0;
+  };
   auto runtime_stub = std::make_shared<MyMockRuntime>();
+  auto acl_runtime_stub = std::make_shared<MyMockAclRuntime>();
   ge::RuntimeStub::SetInstance(runtime_stub);
+  ge::AclRuntimeStub::SetInstance(acl_runtime_stub);
   EXPECT_CALL(*runtime_stub, rtMemcpyAsync).WillRepeatedly(testing::Invoke(MockRtMemcpyAsync));
+  EXPECT_CALL(*acl_runtime_stub, aclrtMemcpyAsync).WillRepeatedly(testing::Invoke(MockAclrtMemcpyAsync));
 
   rtStream_t stream;
   auto context_holder = KernelRunContextFaker()
@@ -849,6 +868,8 @@ TEST_F(MemCopyKernelTest, SinkWeightDataTestSuccess) {
   ASSERT_EQ(registry.FindKernelFuncs("SinkWeightData")->run_func(valid_context), ge::GRAPH_SUCCESS);
   free(device_mem2);
   ASSERT_TRUE(memcpy_async_has_been_called);
+  ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(MemCopyKernelTest, SinkWeightDataZeroStillSuccess) {

@@ -30,7 +30,7 @@ void *MemoryBlockManager::Malloc(const std::string &purpose, const size_t size) 
   GE_ASSERT_TRUE((rt_ret == RT_ERROR_NONE) && (ptr != nullptr),
                  "call rtMalloc failed, size: %zu, memory type: %u, rt_ret: %d",
                  block_size, mem_type_, rt_ret);
-  GE_ASSERT(rtMemset(ptr, block_size, 0U, block_size) == RT_ERROR_NONE);
+  GE_ASSERT(aclrtMemset(ptr, block_size, 0U, block_size) == RT_ERROR_NONE);
   mem_blocks_.emplace_back(RtMemBlock{ptr, block_size, aligned_size});
   int32_t device_id = 0;
   (void)aclrtGetDevice(&device_id);

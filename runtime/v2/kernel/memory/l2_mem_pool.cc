@@ -75,8 +75,8 @@ ge::MemBlock *L2MemPool::MoveL2ToL1(ge::MemBlock *block) {
     auto size = block->GetSize();
     l1_block = first_level_pool_.Alloc(size);
     GE_ASSERT_NOTNULL(l1_block);
-    GE_ASSERT_RT_OK(rtMemcpyAsync(l1_block->GetAddr(), size, block->GetAddr(), block->GetSize(),
-                                  RT_MEMCPY_DEVICE_TO_DEVICE, stream_));
+    GE_ASSERT_RT_OK(aclrtMemcpyAsync(l1_block->GetAddr(), size, block->GetAddr(), block->GetSize(),
+        ACL_MEMCPY_DEVICE_TO_DEVICE, stream_));
     GELOGI("l2 block %p addr %p is splited, it has been moved to L1 block %p addr %p", block, block->GetAddr(),
            l1_block, l1_block->GetAddr());
     block->Free();

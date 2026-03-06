@@ -189,10 +189,9 @@ void *NpuMemoryAllocator::AllocateCachingMem(const std::size_t size, void *const
   if (caching_allocator_ != nullptr) {
     buffer = caching_allocator_->Malloc(size, PtrToPtr<void, uint8_t>(try_reuse_addr), device_id_);
   } else {
-    const rtError_t rt_ret = rtMalloc(&buffer, size, RT_MEMORY_HBM,
-                                      GE_MODULE_NAME_U16); // check buffer null after call
-    if (rt_ret != RT_ERROR_NONE) {
-      GELOGE(rt_ret, "[Call][rtMalloc] failed, size:%lu, ret = 0x%X", size, rt_ret);
+    const aclError rt_ret = aclrtMalloc(&buffer, size, ACL_MEM_TYPE_HIGH_BAND_WIDTH); // check buffer null after call
+    if (rt_ret != ACL_SUCCESS) {
+      GELOGE(rt_ret, "[Call][aclrtMalloc] failed, size:%lu, ret = 0x%X", size, rt_ret);
       return nullptr;
     }
   }
@@ -276,7 +275,7 @@ void NpuMemoryAllocator::Deallocate(void *const data, const MemStorageType mem_s
     } else if (caching_allocator_ != nullptr) {
       (void)caching_allocator_->Free(PtrToPtr<void, uint8_t>(data), device_id_);
     } else {
-      (void)rtFree(data);
+      (void)aclrtFree(data);
     }
   }
 }

@@ -97,12 +97,12 @@ int64_t CalcVarSizeInBytes(const GeTensorDesc &desc) {
 Status CopyVarToDevice(const NodePtr &var, const formats::TransResult &trans_result, void *const var_addr) {
   GE_CHECK_NOTNULL(var);
   GELOGD("Copy var %s from host to device, size %zu", var->GetName().c_str(), trans_result.length);
-  const auto ret = rtMemcpy(var_addr, trans_result.length, PtrToPtr<uint8_t, void>(trans_result.data.get()),
-                            trans_result.length, RT_MEMCPY_HOST_TO_DEVICE);
-  if (ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, op:%s(%s), size:%" PRIu64 ", ret:%d,", var->GetName().c_str(),
-                      var->GetType().c_str(), static_cast<uint64_t>(trans_result.length), ret);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] failed, op:%s(%s), size:%" PRIu64 ", ret:%d,", var->GetName().c_str(),
+  const auto ret = aclrtMemcpy(var_addr, trans_result.length, PtrToPtr<uint8_t, void>(trans_result.data.get()),
+      trans_result.length, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, op:%s(%s), size:%" PRIu64 ", ret:%d,",
+        var->GetName().c_str(), var->GetType().c_str(), static_cast<uint64_t>(trans_result.length), ret);
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] failed, op:%s(%s), size:%" PRIu64 ", ret:%d,", var->GetName().c_str(),
            var->GetType().c_str(), trans_result.length, ret);
     return RT_FAILED;
   }
@@ -144,13 +144,12 @@ Status CopyVarFromDevice(const uint64_t session_id, const NodePtr &var, std::uni
     return OUT_OF_MEMORY;
   }
 
-  const auto rt_rslt = rtMemcpy(PtrToPtr<uint8_t, void>(var_host.get()), static_cast<uint64_t>(var_size_bytes),
-                                PtrToPtr<uint8_t, void>(var_addr), static_cast<uint64_t>(var_size_bytes),
-                                RT_MEMCPY_DEVICE_TO_HOST);
-  if (rt_rslt != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, size:%" PRId64 ", op:%s(%s), session_id:%" PRIu64 ", ret:%d",
-                      var_size_bytes, var->GetName().c_str(), var->GetType().c_str(), session_id, rt_rslt);
-    GELOGE(RT_FAILED, "[Call][RtMemcpy] failed, size:%" PRId64 ", op:%s(%s), session_id:%" PRIu64 ", ret:%d",
+  const auto rt_rslt = aclrtMemcpy(PtrToPtr<uint8_t, void>(var_host.get()), static_cast<uint64_t>(var_size_bytes),
+      PtrToPtr<uint8_t, void>(var_addr), static_cast<uint64_t>(var_size_bytes), ACL_MEMCPY_DEVICE_TO_HOST);
+  if (rt_rslt != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, size:%" PRId64 ", op:%s(%s), session_id:%" PRIu64 ", ret:%d",
+        var_size_bytes, var->GetName().c_str(), var->GetType().c_str(), session_id, rt_rslt);
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy] failed, size:%" PRId64 ", op:%s(%s), session_id:%" PRIu64 ", ret:%d",
            var_size_bytes, var->GetName().c_str(), var->GetType().c_str(), session_id, rt_rslt);
     return RT_FAILED;
   }

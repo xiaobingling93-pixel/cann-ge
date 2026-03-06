@@ -726,8 +726,8 @@ Status FusionTaskInfo::CopyTilingDataIfNeeded() {
   tiling_data_size_ = tiling_data_host_.size();
   tiling_data_addr_ = davinci_model_->MallocDynamicMemory(tiling_data_size_);
   GE_CHECK_NOTNULL(tiling_data_addr_);
-  GE_CHK_RT_RET(rtMemcpy(tiling_data_addr_, tiling_data_size_, tiling_data_host_.data(), tiling_data_host_.size(),
-                          RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(tiling_data_addr_, tiling_data_size_,
+      tiling_data_host_.data(), tiling_data_host_.size(), ACL_MEMCPY_HOST_TO_DEVICE));
 
   GELOGI("Success to update tiling data to io_addr of %s, device addr: %p, size: %zu, host tiling data addr: %p",
           op_desc_->GetNamePtr(), tiling_data_addr_, tiling_data_host_.size(), tiling_data_host_.data());
@@ -902,8 +902,8 @@ void FusionTaskInfo::GetTilingKeyAndData(uint32_t &tiling_key, std::string &tili
   tiling_key = static_cast<uint32_t>(tiling_key_);
   const auto tiling_data_holder = MakeUnique<uint8_t[]>(static_cast<size_t>(tiling_data_size_));
   GE_CHECK_NOTNULL_JUST_RETURN(tiling_data_holder);
-  if (rtMemcpy(tiling_data_holder.get(), static_cast<uint64_t>(tiling_data_size_), tiling_data_addr_,
-                static_cast<uint64_t>(tiling_data_size_), RT_MEMCPY_DEVICE_TO_HOST) != RT_ERROR_NONE) {
+  if (aclrtMemcpy(tiling_data_holder.get(), static_cast<uint64_t>(tiling_data_size_), tiling_data_addr_,
+      static_cast<uint64_t>(tiling_data_size_), ACL_MEMCPY_DEVICE_TO_HOST) != ACL_SUCCESS) {
     return;
   }
   std::stringstream ss;

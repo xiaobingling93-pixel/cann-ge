@@ -97,8 +97,8 @@ Status NodeDoneCallback::PrepareConstInputs(const NodeItem &node_item) const {
       GELOGD("[%s] To cache output[%d] to host, size = %zu", node_item.NodeName().c_str(),
              output_idx, output_tensor->GetSize());
       if (tensor_size > 0) {
-        GE_CHK_RT_RET(rtMemcpy(host_buffer.data(), static_cast<uint64_t>(tensor_size),
-            output_tensor->GetData(), static_cast<uint64_t>(tensor_size), RT_MEMCPY_DEVICE_TO_HOST));
+        GE_CHK_RT_RET(aclrtMemcpy(host_buffer.data(), static_cast<uint64_t>(tensor_size),
+            output_tensor->GetData(), static_cast<uint64_t>(tensor_size), ACL_MEMCPY_DEVICE_TO_HOST));
       }
       (void)ge_tensor->SetData(std::move(host_buffer));
     }

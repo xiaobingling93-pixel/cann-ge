@@ -167,11 +167,11 @@ inline bool IsNoTaskAndDumpNeeded(const OpDescPtr &op_desc) {
   return save_dump_info;
 }
 
-inline rtMemcpyKind_t GetRtMemcpyKindByPlacement(const uint32_t placement, const bool out2model) {
+inline aclrtMemcpyKind GetRtMemcpyKindByPlacement(const uint32_t placement, const bool out2model) {
   if (out2model) {
-    return (placement == kPlaceHostData) ? RT_MEMCPY_HOST_TO_DEVICE : RT_MEMCPY_DEVICE_TO_DEVICE;
+    return (placement == kPlaceHostData) ? ACL_MEMCPY_HOST_TO_DEVICE : ACL_MEMCPY_DEVICE_TO_DEVICE;
   }
-  return (placement == kPlaceHostData) ? RT_MEMCPY_DEVICE_TO_HOST : RT_MEMCPY_DEVICE_TO_DEVICE;
+  return (placement == kPlaceHostData) ? ACL_MEMCPY_DEVICE_TO_HOST : ACL_MEMCPY_DEVICE_TO_DEVICE;
 }
 
 bool IsEventWaitNode(const ge::OpDescPtr &op_desc) {
@@ -550,8 +550,8 @@ Status DavinciModel::InitWeightMem(const uintptr_t mem_ptr, const uintptr_t weig
     }
     GELOGI("[IMAS]InitWeightMem graph_%u MallocMemory type[W] memaddr[0x%" PRIx64 "] mem_size[%zu]",
       runtime_param_.graph_id, weights_mem_base_, weights_size);
-    GE_CHK_RT_RET(rtMemcpy(ValueToPtr(weights_mem_base_), weights_size, ge_model_->GetWeightData(), weights_size,
-                           RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(ValueToPtr(weights_mem_base_), weights_size, ge_model_->GetWeightData(), weights_size,
+        ACL_MEMCPY_HOST_TO_DEVICE));
     GELOGI("copy weights data to device");
   }
   dev_mem_statistic_.alloc_size += weights_size;
@@ -2188,7 +2188,7 @@ Status DavinciModel::InitNoTaskAndDumpNeededNode(const OpDescPtr &op_desc) {
     GE_ASSERT_NOTNULL(addr);
     saved_task_addrs_[op_desc] = addr;
 
-    GE_CHK_RT_RET(rtMemcpy(addr, addr_size, device_addrs.data(), addr_size, RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(addr, addr_size, device_addrs.data(), addr_size, ACL_MEMCPY_HOST_TO_DEVICE));
   }
 
   return SUCCESS;
@@ -3126,7 +3126,7 @@ void* DavinciModel::GetMemEventIdAddr(const uint32_t mem_event_id) {
     const size_t mem_event_size = 8;
     void *cur_mem = MallocDynamicMemory(mem_event_size);
     GE_ASSERT_NOTNULL(cur_mem);
-    (void)rtMemset(cur_mem, mem_event_size, 0, mem_event_size);
+    (void)aclrtMemset(cur_mem, mem_event_size, 0, mem_event_size);
     mem_event_id_mem_map_[mem_event_id] = cur_mem;
     GELOGI("append mem_event_id %u, addr is %p", mem_event_id, cur_mem);
     return cur_mem;
@@ -4409,8 +4409,8 @@ Status DavinciModel::GetOutputDescInfo(std::vector<InputOutputDescInfo> &output_
 static Status CopyInputForNoTiling(const InputData &input_data, const size_t data_idx, void *&mem_addr) {
   RuntimeTensorDesc tensor_desc;
   // copy data_addr from tensor_desc addr
-  GE_CHK_RT_RET(rtMemcpy(&tensor_desc, sizeof(RuntimeTensorDesc), mem_addr, sizeof(RuntimeTensorDesc),
-      RT_MEMCPY_DEVICE_TO_HOST));
+  GE_CHK_RT_RET(aclrtMemcpy(&tensor_desc, sizeof(RuntimeTensorDesc), mem_addr, sizeof(RuntimeTensorDesc),
+      ACL_MEMCPY_DEVICE_TO_HOST));
   if (data_idx >= input_data.shapes.size()) {
     GELOGE(PARAM_INVALID, "invalid index[%zu], input shape size[%zu]", data_idx, input_data.shapes.size());
     return PARAM_INVALID;
@@ -4428,8 +4428,8 @@ static Status CopyInputForNoTiling(const InputData &input_data, const size_t dat
   }
   // fill actual shape and copy to tensor_desc addr
   GE_CHK_RT_RET(
-      rtMemcpy(mem_addr, sizeof(RuntimeTensorDesc), &tensor_desc, sizeof(RuntimeTensorDesc),
-      RT_MEMCPY_HOST_TO_DEVICE));
+      aclrtMemcpy(mem_addr, sizeof(RuntimeTensorDesc), &tensor_desc, sizeof(RuntimeTensorDesc),
+      ACL_MEMCPY_HOST_TO_DEVICE));
   mem_addr = ValueToPtr(tensor_desc.data_addr);
   GELOGD("copy tensor desc for no tiling, data_addr:%p, dim:%" PRId64, mem_addr, tensor_desc.shape[0]);
   return SUCCESS;
@@ -4494,8 +4494,8 @@ Status DavinciModel::CopyInputData(const InputData &input_data) {
     const auto kind = GetRtMemcpyKindByPlacement(data_buf.placement, true);
     // 目前只有开启了批拷贝开关+H2D场景支持batch memcpy
     memcpy_batch_params_.device_id = cur_device_id;
-    if (!enable_input_batch_cpy_ || kind != RT_MEMCPY_HOST_TO_DEVICE) {
-      GE_CHK_RT_RET(rtMemcpy(mem_addr, data_size, data_buf.data, data_buf.length, kind));
+    if (!enable_input_batch_cpy_ || kind != ACL_MEMCPY_HOST_TO_DEVICE) {
+      GE_CHK_RT_RET(aclrtMemcpy(mem_addr, data_size, data_buf.data, data_buf.length, kind));
     } else {
       MemcpyParam memcpy_param {mem_addr, data_size, data_buf.data, data_buf.length, idx++};
       TensorTransUtils::AddMemcpyBatchParam(memcpy_param, memcpy_batch_params_);
@@ -4539,7 +4539,7 @@ Status DavinciModel::CopyInputDataWithMergeH2D(const InputData &input_data) {
     const auto kind = GetRtMemcpyKindByPlacement(data_buf.placement, true);
     const auto &merge_copy_offset = input_index_to_merge_copy_offset_.find(data_idx);
 
-    if ((kind != RT_MEMCPY_HOST_TO_DEVICE) || (merge_copy_offset == input_index_to_merge_copy_offset_.end())) {
+    if ((kind != ACL_MEMCPY_HOST_TO_DEVICE) || (merge_copy_offset == input_index_to_merge_copy_offset_.end())) {
       GELOGD("index[%zu] push back to non_merge_copy_indexs", data_idx);
       non_merge_copy_indexs.push_back(data_idx);
       continue;
@@ -4567,8 +4567,8 @@ Status DavinciModel::CopyInputDataWithMergeH2D(const InputData &input_data) {
          input_merge_copy_mem_size_);
   GE_CHECK_NOTNULL(input_merge_copy_device_addr,
                    "invalid input_merge_copy_device_addr value, input_merge_copy_device_addr is nullptr");
-  GE_CHK_RT_RET(rtMemcpy(input_merge_copy_device_addr, input_merge_copy_mem_size_, input_merge_copy_mem_base_.get(),
-                         input_merge_copy_mem_size_, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(input_merge_copy_device_addr, input_merge_copy_mem_size_, input_merge_copy_mem_base_.get(),
+      input_merge_copy_mem_size_, ACL_MEMCPY_HOST_TO_DEVICE));
   // copy non merge copy input
 
   int32_t cur_device_id = -1;
@@ -4590,9 +4590,9 @@ Status DavinciModel::CopyInputDataWithMergeH2D(const InputData &input_data) {
     const auto kind = GetRtMemcpyKindByPlacement(data_buf.placement, true);
     // 目前只有H2D场景支持batch memcpy
     memcpy_batch_params_.device_id = cur_device_id;
-    if (!enable_input_batch_cpy_ || kind != RT_MEMCPY_HOST_TO_DEVICE) {
-      GELOGD("Call rtMemcpy for non_merge_copy_indexs");
-      GE_CHK_RT_RET(rtMemcpy(mem_addr, data_size, data_buf.data, data_buf.length, kind));
+    if (!enable_input_batch_cpy_ || kind != ACL_MEMCPY_HOST_TO_DEVICE) {
+      GELOGD("Call aclrtMemcpy for non_merge_copy_indexs");
+      GE_CHK_RT_RET(aclrtMemcpy(mem_addr, data_size, data_buf.data, data_buf.length, kind));
     } else {
       MemcpyParam memcpy_param {mem_addr, data_size, data_buf.data, data_buf.length, idx++};
       TensorTransUtils::AddMemcpyBatchParam(memcpy_param, memcpy_batch_params_);
@@ -4973,7 +4973,7 @@ Status DavinciModel::CopyOutputForNoZeroCopy(const std::vector<GeTensor> &output
     GE_ASSERT_TRUE((id < logical_mem_allocations_.size()), "invalid id:%zu, active_allocations size:%zu",
                    id, logical_mem_allocations_.size());
     const void *const src_addr = ValueToPtr(allocation_ids_to_active_base_addr_[id] + offset);
-    const auto kind = (buffer_placement == kPlaceHostData) ? RT_MEMCPY_DEVICE_TO_HOST : RT_MEMCPY_DEVICE_TO_DEVICE;
+    const auto kind = (buffer_placement == kPlaceHostData) ? ACL_MEMCPY_DEVICE_TO_HOST : ACL_MEMCPY_DEVICE_TO_DEVICE;
     if (logLevel_ <= DLOG_INFO) {
       GELOGI("[ForceCopy%s] model_id:%u, output_index:%u, id:%zu, offset:0x%" PRIx64 ", base:0x%" PRIx64 ", dst_addr:%p, "
              "dst_size:%" PRIu64 ", src_addr:%p, src_size:%" PRIu64 ", async_mode:%d, kind:%d",
@@ -4986,10 +4986,9 @@ Status DavinciModel::CopyOutputForNoZeroCopy(const std::vector<GeTensor> &output
     }
 
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsyncWithoutCheckKind(data, buffer_length, src_addr, data_size,
-                                                  kind, rt_model_stream_));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(data, buffer_length, src_addr, data_size, kind, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(data, buffer_length, src_addr, data_size, kind));
+      GE_CHK_RT_RET(aclrtMemcpy(data, buffer_length, src_addr, data_size, kind));
     }
   }
 
@@ -5027,7 +5026,8 @@ Status DavinciModel::CopyOutputForNoZeroCopy(const std::vector<gert::Tensor> &ou
     GE_ASSERT_TRUE((id < logical_mem_allocations_.size()), "invalid id:%zu, active_allocations size:%zu",
                    id, logical_mem_allocations_.size());
     const void *const src_addr = ValueToPtr(allocation_ids_to_active_base_addr_[id] + offset);
-    const auto kind = (buffer_placement == static_cast<uint32_t>(gert::kOnDeviceHbm)) ? RT_MEMCPY_DEVICE_TO_DEVICE : RT_MEMCPY_DEVICE_TO_HOST;
+    const auto kind = (buffer_placement == static_cast<uint32_t>(gert::kOnDeviceHbm)) ?
+        ACL_MEMCPY_DEVICE_TO_DEVICE : ACL_MEMCPY_DEVICE_TO_HOST;
     if (logLevel_ <= DLOG_INFO) {
       GELOGI("[ForceCopy%s] model_id:%u, output_index:%zu, id:%zu, offset:0x%" PRIx64 ", base:0x%" PRIx64 ", "
              "dst_addr:%p, dst_size:%" PRIu64 ", src_addr:%p, src_size:%" PRIu64 ", async_mode:%d, kind:%d",
@@ -5040,10 +5040,9 @@ Status DavinciModel::CopyOutputForNoZeroCopy(const std::vector<gert::Tensor> &ou
     }
 
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsyncWithoutCheckKind(data, buffer_length, src_addr, data_size,
-                                                  kind, rt_model_stream_));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(data, buffer_length, src_addr, data_size, kind, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(data, buffer_length, src_addr, data_size, kind));
+      GE_CHK_RT_RET(aclrtMemcpy(data, buffer_length, src_addr, data_size, kind));
     }
   }
 
@@ -5054,11 +5053,11 @@ Status DavinciModel::UpdateStepInfoWithStream() {
   // iterator_count_ used both in tran and inferance, to get(or manager) resouces between diffrence run times
   if ((global_step_addr_ != 0U) && (global_step_size_ != 0U)) {
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsync(ValueToPtr(static_cast<uint64_t>(global_step_addr_)), global_step_size_,
-                                  &iterator_count_, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE_EX, rt_model_stream_));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(ValueToPtr(static_cast<uint64_t>(global_step_addr_)), global_step_size_,
+          &iterator_count_, sizeof(uint64_t), ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(ValueToPtr(static_cast<uint64_t>(global_step_addr_)), global_step_size_,
-                             &iterator_count_, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
+      GE_CHK_RT_RET(aclrtMemcpy(ValueToPtr(static_cast<uint64_t>(global_step_addr_)), global_step_size_,
+          &iterator_count_, sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
     }
   }
   return SUCCESS;
@@ -5099,7 +5098,7 @@ Status DavinciModel::CopyOutputData(const OutputData &output_data,
 /// @already malloced in ModelLoad, no need to malloc again
 /// @param [in] data_id: the index of output_data
 /// @param [in/out] output_data: real user output_data
-/// @param [in] kind: the kind of rtMemcpy
+/// @param [in] kind: the kind of aclrtMemcpy
 /// @return Status result
 /// @author
 ///
@@ -5130,7 +5129,7 @@ Status DavinciModel::CopyOutputDataLegacy(const OutputData &output_data) {
     void *output_addr = output.second.GetBasicAddr();
     const DataBuffer &buffer = blobs.at(output_idx);
     auto kind = GetRtMemcpyKindByPlacement(buffer.placement, false);
-    const bool feed_by_zero_copy = (kind == RT_MEMCPY_DEVICE_TO_DEVICE) &&
+    const bool feed_by_zero_copy = (kind == ACL_MEMCPY_DEVICE_TO_DEVICE) &&
                                    (copy_only_addrs_.Count(PtrToValue(output_addr)) == 0);
     if (feed_by_zero_copy) {
       continue;  // Skip: Feed by zero copy.
@@ -5158,16 +5157,16 @@ Status DavinciModel::CopyOutputDataLegacy(const OutputData &output_data) {
       }
     }
     const uint64_t copied_size = static_cast<uint64_t>(data_size);
-    kind = (is_async_mode_ && (kind == RT_MEMCPY_HOST_TO_DEVICE)) ? RT_MEMCPY_HOST_TO_DEVICE_EX : kind;
+    kind = (is_async_mode_ && (kind == ACL_MEMCPY_HOST_TO_DEVICE)) ? ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE : kind;
     GELOGI("CopyPlainData memcpy %s graph_%u type[F] output[%u] dst[%p] memaddr[%p] "
            "mem_size[%" PRIu64 "] datasize[%" PRIu64 "]",
            (is_async_mode_ ? "async" : "sync"), runtime_param_.graph_id, output.first, buffer.data, output_addr,
            copied_size, buffer.length);
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsync(buffer.data, buffer.length, output_addr,
+      GE_CHK_RT_RET(aclrtMemcpyAsync(buffer.data, buffer.length, output_addr,
                                   copied_size, kind, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(buffer.data, buffer.length, output_addr, copied_size, kind));
+      GE_CHK_RT_RET(aclrtMemcpy(buffer.data, buffer.length, output_addr, copied_size, kind));
     }
   }
   return SUCCESS;
@@ -5217,8 +5216,8 @@ Status DavinciModel::BuildOutputShapeInfo(const size_t output_idx, std::vector<i
       return FAILED;
     }
     RuntimeTensorDesc tensor_desc;
-    GE_CHK_RT_RET(rtMemcpy(&tensor_desc, sizeof(RuntimeTensorDesc), output->second.GetBasicAddr(),
-                           sizeof(RuntimeTensorDesc), RT_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(&tensor_desc, sizeof(RuntimeTensorDesc), output->second.GetBasicAddr(),
+        sizeof(RuntimeTensorDesc), ACL_MEMCPY_DEVICE_TO_HOST));
     const int64_t dim_num = tensor_desc.shape[0];
     for (int64_t dim_loop = 0; dim_loop < dim_num; dim_loop++) {
       output_shape.emplace_back(tensor_desc.shape[dim_loop + 1]);
@@ -5383,9 +5382,9 @@ void DavinciModel::AssembleListenerOutput(const std::shared_ptr<RunArgs> &args, 
     GELOGD("Reinit cur dynamic dims when getnext sink dynamic.");
     cur_dynamic_dims_.clear();
     cur_dynamic_dims_.resize(shape_of_cur_dynamic_dims_);
-    const auto ret = rtMemcpy(cur_dynamic_dims_.data(), shape_of_cur_dynamic_dims_ * sizeof(int32_t),
-                              netoutput_last_input_addr_, static_cast<uint64_t>(netoutput_last_input_size_),
-                              RT_MEMCPY_DEVICE_TO_HOST);
+    const auto ret = aclrtMemcpy(cur_dynamic_dims_.data(), shape_of_cur_dynamic_dims_ * sizeof(int32_t),
+        netoutput_last_input_addr_, static_cast<uint64_t>(netoutput_last_input_size_),
+        ACL_MEMCPY_DEVICE_TO_HOST);
     GE_CHK_RT_EXEC(ret, return);
   }
   OutputData output_data;
@@ -6652,7 +6651,8 @@ Status DavinciModel::CopyInputForNoZeroCopy(const std::vector<DataBuffer> &blobs
                    "invalid user input id:%zu, active mem base size:%zu", id,
                    logical_mem_allocations_.size());
     void *const des_addr = ValueToPtr(allocation_ids_to_active_base_addr_[id] + offset);
-    const auto kind = (buffer_placement == kPlaceHostData) ? RT_MEMCPY_HOST_TO_DEVICE_EX : RT_MEMCPY_DEVICE_TO_DEVICE;
+    const auto kind = (buffer_placement == kPlaceHostData) ?
+        ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE : ACL_MEMCPY_DEVICE_TO_DEVICE;
     const auto src_len = buffer_length > data_size ? data_size : buffer_length;
     if (logLevel_ <= DLOG_INFO) {
       GELOGI("[ForceCopy] model_id:%u, input_index:%zu, id:%zu, offset:0x%" PRIx64 ", base:0x%" PRIx64 ", dst_addr:%p, "
@@ -6661,9 +6661,9 @@ Status DavinciModel::CopyInputForNoZeroCopy(const std::vector<DataBuffer> &blobs
            static_cast<int32_t>(is_async_mode_), static_cast<int32_t>(kind));
     }
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsync(des_addr, data_size, data, src_len, kind, rt_model_stream_));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(des_addr, data_size, data, src_len, kind, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(des_addr, data_size, data, src_len, kind));
+      GE_CHK_RT_RET(aclrtMemcpy(des_addr, data_size, data, src_len, kind));
     }
   }
 
@@ -6711,7 +6711,8 @@ Status DavinciModel::CopyInputForNoZeroCopy(const std::vector<DataBuffer> &blobs
                    "invalid user input id:%zu, active mem base size:%zu", id,
                    logical_mem_allocations_.size());
     void *const des_addr = ValueToPtr(allocation_ids_to_active_base_addr_[id] + offset);
-    const auto kind = (buffer_placement == kPlaceHostData) ? RT_MEMCPY_HOST_TO_DEVICE_EX : RT_MEMCPY_DEVICE_TO_DEVICE;
+    const auto kind = (buffer_placement == kPlaceHostData) ?
+        ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE : ACL_MEMCPY_DEVICE_TO_DEVICE;
     const auto src_len = buffer_length > data_size ? data_size : buffer_length;
     if (logLevel_ <= DLOG_INFO) {
       GELOGI("[ForceCopy] model_id:%u, input_index:%zu, id:%zu, offset:0x%" PRIx64 ", base:0x%" PRIx64 ", dst_addr:%p, "
@@ -6721,9 +6722,9 @@ Status DavinciModel::CopyInputForNoZeroCopy(const std::vector<DataBuffer> &blobs
     }
 
     if (is_async_mode_) {
-      GE_CHK_RT_RET(rtMemcpyAsync(des_addr, data_size, data, src_len, kind, rt_model_stream_));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(des_addr, data_size, data, src_len, kind, rt_model_stream_));
     } else {
-      GE_CHK_RT_RET(rtMemcpy(des_addr, data_size, data, src_len, kind));
+      GE_CHK_RT_RET(aclrtMemcpy(des_addr, data_size, data, src_len, kind));
     }
   }
 
@@ -7297,8 +7298,8 @@ Status DavinciModel::InitConstant(const OpDescPtr &op_desc) {
   GE_CHECK_NOTNULL(var_manager);
   if (!var_manager->CheckAndSetVarLoaded(op_desc, device_id_)) {
     GELOGD("Copy weight to device, node:%s, weight size:%zu", op_desc->GetName().c_str(), tensor->GetData().size());
-    GE_CHK_RT_RET(rtMemcpy(v_output_addr[0U], static_cast<uint64_t>(v_output_size[0U]), tensor->GetData().data(),
-                           tensor->GetData().size(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(v_output_addr[0U], static_cast<uint64_t>(v_output_size[0U]), tensor->GetData().data(),
+        tensor->GetData().size(), ACL_MEMCPY_HOST_TO_DEVICE));
   }
   return SUCCESS;
 }
@@ -7891,7 +7892,7 @@ uint8_t *DavinciModel::MallocFeatureMapMem(const size_t data_size) {
 
     temp_mem_base = mem_instance.MallocMemory(kPurpose, mem_size, GetDeviceId());
     GE_ASSERT_NOTNULL(temp_mem_base);
-    auto ret = rtMemset(temp_mem_base, mem_size, 0U, mem_size);
+    auto ret = aclrtMemset(temp_mem_base, mem_size, 0U, mem_size);
     if (ret != RT_ERROR_NONE) {
       GELOGE(FAILED, "[RtMemset][Memory] failed, ret = %d", ret);
       GE_ASSERT_SUCCESS(mem_instance.FreeMemory(temp_mem_base, GetDeviceId()),
@@ -8367,11 +8368,8 @@ Status DavinciModel::UpdateOpInputValue(const OpDescPtr &op_desc, const int32_t 
   GE_CHECK_NOTNULL(input_desc);
   int64_t tensor_size = 0;
   (void)TensorUtils::GetSize(*input_desc, tensor_size);
-  GE_CHK_RT_RET(rtMemcpy(ValueToPtr(input_addresses[static_cast<size_t>(input_index)]),
-                         static_cast<uint64_t>(tensor_size),
-                         &queue_id,
-                         sizeof(queue_id),
-                         RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(ValueToPtr(input_addresses[static_cast<size_t>(input_index)]),
+      static_cast<uint64_t>(tensor_size), &queue_id, sizeof(queue_id), ACL_MEMCPY_HOST_TO_DEVICE));
   return SUCCESS;
 }
 
@@ -8614,7 +8612,8 @@ Status DavinciModel::CpuInputCopyProcess() {
       RuntimeTensorDesc *const tensor_desc =
           PtrToPtr<void, RuntimeTensorDesc>(ValueToPtr(iter->second.GetDataInfo().at(0U).second));
       GE_CHECK_NOTNULL(tensor_desc);
-      GE_CHK_RT_RET(rtMemcpy(&data_ptr, sizeof(data_ptr), tensor_desc, sizeof(data_ptr), RT_MEMCPY_DEVICE_TO_HOST));
+      GE_CHK_RT_RET(aclrtMemcpy(&data_ptr, sizeof(data_ptr), tensor_desc,
+          sizeof(data_ptr), ACL_MEMCPY_DEVICE_TO_HOST));
     }
     if (copy_only_addrs_.Count(data_ptr) == 0) {
       continue;

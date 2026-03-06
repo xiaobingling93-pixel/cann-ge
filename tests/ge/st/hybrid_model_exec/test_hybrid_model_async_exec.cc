@@ -56,6 +56,7 @@
 #include "graph/ge_attr_value.h"
 #include "common/global_variables/diagnose_switch.h"
 #include "stub/gert_runtime_stub.h"
+#include "src/ascendcl_stub.h"
 #include "hybrid/common/npu_memory_allocator.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "common/model/external_allocator_manager.h"
@@ -136,6 +137,12 @@ ge::Status CreateFileConstantFile(const std::string &file_location, const ge::fl
 class MockMallocFailed : public RuntimeStub {
  public:
   rtError_t rtMalloc(void **dev_ptr, uint64_t size, rtMemType_t type, uint16_t moduleId) override {
+    return -1;
+  }
+};
+class MockAclrtMemcpy : public AclRuntimeStub {
+public:
+  aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind) override {
     return -1;
   }
 };
@@ -1303,11 +1310,14 @@ TEST_F(HybridModelAsyncTest, ExecuteWithStreamAsync_execute_model_online_BatchH2
   output_tensors[0].SetData(nullptr, 0U);
   RTS_STUB_RETURN_VALUE(rtsMemcpyBatch, rtError_t, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
   RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  MockAclrtMemcpy mock_aclrt_memcpy;
+  AclRuntimeStub::Install(&mock_aclrt_memcpy);
   std::vector<gert::Tensor> gert_inputs = InputData2GertTensors(inputs);
   ret = executor_rt_v2.ExecuteOnlineModel(gert_inputs, nullptr);
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 0);
   EXPECT_NE(ret, SUCCESS);
 
+  AclRuntimeStub::UnInstall(&mock_aclrt_memcpy);
   RuntimeStub::Reset();
   options["ge.inputBatchCpy"] = "0";
   ge::GetThreadLocalContext().SetSessionOption(options);
@@ -1385,9 +1395,12 @@ TEST_F(HybridModelAsyncTest, ExecuteWithStreamAsync_execute_model_online_BatchH2
   HybridModelExecutor::ExecuteArgs args;
 
   RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  MockAclrtMemcpy mock_aclrt_memcpy;
+  AclRuntimeStub::Install(&mock_aclrt_memcpy);
   ret = executor_rt_v2.Execute(inputs, args);
   EXPECT_NE(ret, SUCCESS);
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 0);
+  AclRuntimeStub::UnInstall(&mock_aclrt_memcpy);
   RuntimeStub::Reset();
   options["ge.inputBatchCpy"] = "0";
   ge::GetThreadLocalContext().SetSessionOption(options);

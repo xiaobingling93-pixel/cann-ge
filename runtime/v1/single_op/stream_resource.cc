@@ -48,21 +48,21 @@ MemBlock *InternalAllocator::Malloc(size_t size) {
     if (aclrtSynchronizeStream(stream_) != RT_ERROR_NONE) {
       GELOGW("Failed to invoke aclrtSynchronizeStream");
     }
-    (void)rtFree(current_buffer);
+    (void)aclrtFree(current_buffer);
   }
 
   uint8_t *buffer = nullptr;
-  auto ret = rtMalloc(PtrToPtr<uint8_t *, void *>(&buffer), size, RT_MEMORY_HBM, GE_MODULE_NAME_U16);
+  auto ret = aclrtMalloc(PtrToPtr<uint8_t *, void *>(&buffer), size, ACL_MEM_TYPE_HIGH_BAND_WIDTH);
   if (ret != RT_ERROR_NONE) {
     GELOGE(RT_FAILED, "[RtMalloc][Memory] failed, size = %zu, ret = %d", size, ret);
-    REPORT_INNER_ERR_MSG("E19999", "rtMalloc failed, size = %zu, ret = %d.", size, ret);
+    REPORT_INNER_ERR_MSG("E19999", "aclrtMalloc failed, size = %zu, ret = %d.", size, ret);
     return nullptr;
   }
-  ret = rtMemset(buffer, size, 0U, size);
+  ret = aclrtMemset(buffer, size, 0U, size);
   if (ret != RT_ERROR_NONE) {
     GELOGE(RT_FAILED, "[RtMemset][Memory] failed, ret = %d", ret);
-    REPORT_INNER_ERR_MSG("E19999", "rtMemset failed, ret = %d.", ret);
-    const auto rt_ret = rtFree(buffer);
+    REPORT_INNER_ERR_MSG("E19999", "aclrtMemset failed, ret = %d.", ret);
+    const auto rt_ret = aclrtFree(buffer);
     GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE, GELOGE(RT_FAILED, "[RtFree][Memory] failed"));
     return nullptr;
   }
@@ -81,13 +81,13 @@ StreamResource::StreamResource(const uintptr_t resource_id) : resource_id_(resou
 StreamResource::~StreamResource() noexcept {
   for (const auto weight : weight_list_) {
     if (weight != nullptr) {
-      const auto rt_ret = rtFree(weight);
+      const auto rt_ret = aclrtFree(weight);
       GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE, GELOGE(RT_FAILED, "[Free][Rt] failed."));
     }
   }
 
   if (device_buffer_ != nullptr) {
-    const auto rt_ret = rtFree(device_buffer_);
+    const auto rt_ret = aclrtFree(device_buffer_);
     GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE, GELOGE(RT_FAILED, "[Free][Rt] failed."));
   }
 
@@ -98,8 +98,8 @@ StreamResource::~StreamResource() noexcept {
 }
 
 Status StreamResource::Init() {
-  const auto rt_ret = rtMalloc(&device_buffer_, kFuzzDeviceBufferSize, RT_MEMORY_HBM, GE_MODULE_NAME_U16);
-  GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE, GELOGE(RT_FAILED, "[Malloc][Rt] failed."));
+  const auto rt_ret = aclrtMalloc(&device_buffer_, kFuzzDeviceBufferSize, ACL_MEM_TYPE_HIGH_BAND_WIDTH);
+  GE_IF_BOOL_EXEC(rt_ret != ACL_SUCCESS, GELOGE(RT_FAILED, "[Malloc][Rt] failed."));
   return SUCCESS;
 }
 
@@ -189,14 +189,14 @@ uint8_t *StreamResource::MallocMemory(const std::string &purpose, const size_t s
 uint8_t *StreamResource::MallocWeight(const std::string &purpose, const size_t size) {
   GELOGD("To Malloc weight, size = %zu", size);
   uint8_t *buffer = nullptr;
-  const auto ret = rtMalloc(PtrToPtr<uint8_t *, void *>(&buffer), size, RT_MEMORY_HBM, GE_MODULE_NAME_U16);
-  if (ret != RT_ERROR_NONE) {
+  const auto ret = aclrtMalloc(PtrToPtr<uint8_t *, void *>(&buffer), size, ACL_MEM_TYPE_HIGH_BAND_WIDTH);
+  if (ret != ACL_SUCCESS) {
     GELOGE(RT_FAILED, "[RtMalloc][Memory] failed, size = %zu, ret = %d", size, ret);
-    REPORT_INNER_ERR_MSG("E19999", "rtMalloc failed, size = %zu, ret = %d.", size, ret);
+    REPORT_INNER_ERR_MSG("E19999", "aclrtMalloc failed, size = %zu, ret = %d.", size, ret);
     return nullptr;
   }
 
-  GE_PRINT_DYNAMIC_MEMORY(rtMalloc, purpose.c_str(), size);
+  GE_PRINT_DYNAMIC_MEMORY(aclrtMalloc, purpose.c_str(), size);
   weight_list_.emplace_back(buffer);
   return buffer;
 }

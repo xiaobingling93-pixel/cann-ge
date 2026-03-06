@@ -162,9 +162,9 @@ Status FileConstantUtils::CopyOneWeightFromFileWithFilehandler(const void *const
 
     GELOGI("copy %zu bytes to memory, path = %s.", copy_len_once, file_path.c_str());
     void *const cur_dev_ptr = reinterpret_cast<void *>(PtrToValue(curr_dev_ptr) + used_memory);
-    const rtError_t rts_error =
-      rtMemcpy(cur_dev_ptr, left_size - used_memory, &compress_nodes[0U], copy_len_once, RT_MEMCPY_HOST_TO_DEVICE);
-    if (rts_error != RT_ERROR_NONE) {
+    const aclError rts_error =
+      aclrtMemcpy(cur_dev_ptr, left_size - used_memory, &compress_nodes[0U], copy_len_once, ACL_MEMCPY_HOST_TO_DEVICE);
+    if (rts_error != ACL_SUCCESS) {
       GELOGE(GRAPH_FAILED, "copy failed, result code = %d.", rts_error);
       REPORT_INNER_ERR_MSG("E19999", "copy failed, result code = %d.", rts_error);
       ret = RT_ERROR_TO_GE_STATUS(rts_error);

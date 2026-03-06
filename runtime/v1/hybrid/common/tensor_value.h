@@ -96,8 +96,8 @@ class TensorValue {
   template<typename T>
   Status CopyScalarValueToHost(T &value) const {
     GE_CHECK_GE(this->GetSize(), sizeof(value));
-    GE_CHK_RT_RET(rtMemcpy(PtrToPtr<T, void>(&value), sizeof(value), this->GetData(), sizeof(value),
-                           RT_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(PtrToPtr<T, void>(&value), sizeof(value), this->GetData(), sizeof(value),
+        ACL_MEMCPY_DEVICE_TO_HOST));
     return SUCCESS;
   }
 

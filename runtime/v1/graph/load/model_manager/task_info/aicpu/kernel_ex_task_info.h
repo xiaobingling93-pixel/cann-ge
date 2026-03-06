@@ -96,7 +96,7 @@ class KernelExTaskInfo : public TaskInfo {
   std::vector<uint64_t> io_addr_mem_types_;
   int32_t deploy_type_flag_{0};
   uint32_t qos_level_flag_{0U};
-  tagRtMemcpyKind memcpy_kind_{RT_MEMCPY_HOST_TO_DEVICE};
+  aclrtMemcpyKind memcpy_kind_{ACL_MEMCPY_HOST_TO_DEVICE};
   rtMemType_t mem_type_{RT_MEMORY_HBM};
   bool is_blocking_aicpu_op_{false};
   std::vector<void *> ext_args_;

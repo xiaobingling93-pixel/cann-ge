@@ -13,6 +13,7 @@
 #include "common/opskernel/ops_kernel_info_store.h"
 #include "graph/ge_local_context.h"
 #include "depends/mmpa/src/mmpa_stub.h"
+#include "stub/gert_runtime_stub.h"
 #include "depends/runtime/src/runtime_stub.h"
 
 #include "macro_utils/dt_public_scope.h"
@@ -28,6 +29,11 @@ int32_t g_unload_called_count = 0;
 class MockMemcpy : public RuntimeStub {
  public:
   MOCK_METHOD5(rtMemcpy, int32_t(void * , uint64_t, const void *, uint64_t, rtMemcpyKind_t));
+};
+
+class AclMockMemcpy : public AclRuntimeStub {
+ public:
+  MOCK_METHOD5(aclrtMemcpy, int32_t(void *, size_t, const void *, size_t, aclrtMemcpyKind));
 };
 
 class HcclOpsKernelInfoStore : public OpsKernelInfoStore {
@@ -67,8 +73,25 @@ class UtestHcclTaskInfo : public testing::Test {
  protected:
   void SetUp() {
     g_unload_called_count = 0;
+    auto acl_mock_memcpy = [](void *dst, size_t dest_max, const void *src, size_t count, aclrtMemcpyKind kind) -> int {
+      std::cout << "dst: " << dst << std::endl;
+      if (count == 0) {
+        return -1;
+      }
+      if (dst == nullptr || src == nullptr) {
+        return -1;
+      }
+      if (dst != nullptr && src != nullptr) {
+        memcpy_s(dst, dest_max, src, count);
+      }
+      return RT_ERROR_NONE;
+    };
+    auto acl_runtime_stub = std::make_shared<AclMockMemcpy>();
+    AclRuntimeStub::SetInstance(acl_runtime_stub);
+    EXPECT_CALL(*acl_runtime_stub, aclrtMemcpy).WillRepeatedly(testing::Invoke(acl_mock_memcpy));
   }
   void TearDown() {
+    AclRuntimeStub::Reset();
   }
 };
 
@@ -540,6 +563,7 @@ TEST_F(UtestHcclTaskInfo, test_hccl_task_dump_output) {
 }
 
 TEST_F(UtestHcclTaskInfo, Calculate_Update_Args) {
+  dlog_setlevel(-1, 0, 1);
   auto mock_memcpy = [](void *dst, uint64_t dest_max, const void *src, uint64_t count, rtMemcpyKind_t kind) -> int {
     std::cout << "dst: " << dst << std::endl;
     if (count == 0) {
@@ -556,6 +580,23 @@ TEST_F(UtestHcclTaskInfo, Calculate_Update_Args) {
   auto runtime_stub = std::make_shared<MockMemcpy>();
   RuntimeStub::SetInstance(runtime_stub);
   EXPECT_CALL(*runtime_stub, rtMemcpy).WillRepeatedly(testing::Invoke(mock_memcpy));
+
+  auto acl_mock_memcpy = [](void *dst, size_t dest_max, const void *src, size_t count, aclrtMemcpyKind kind) -> int {
+    std::cout << "dst: " << dst << std::endl;
+    if (count == 0) {
+      return -1;
+    }
+    if (dst == nullptr || src == nullptr) {
+      return -1;
+    }
+    if (dst != nullptr && src != nullptr) {
+      memcpy_s(dst, dest_max, src, count);
+    }
+    return RT_ERROR_NONE;
+  };
+  auto acl_runtime_stub = std::make_shared<AclMockMemcpy>();
+  AclRuntimeStub::SetInstance(acl_runtime_stub);
+  EXPECT_CALL(*acl_runtime_stub, aclrtMemcpy).WillRepeatedly(testing::Invoke(acl_mock_memcpy));
 
   DavinciModel model(0, nullptr);
   rtStream_t stream = nullptr;
@@ -616,6 +657,8 @@ TEST_F(UtestHcclTaskInfo, Calculate_Update_Args) {
   EXPECT_NE(ret, SUCCESS);
   task_def.clear_kernel_hccl();
   RuntimeStub::SetInstance(nullptr);
+  AclRuntimeStub::SetInstance(nullptr);
+  dlog_setlevel(-1, 3, 0);
 }
 
 TEST_F(UtestHcclTaskInfo, AllToAll_GetCount_Success) {

@@ -2749,7 +2749,7 @@ TEST_F(UtestDavinciModel, LoadWithQueue_ReportStatus_fail) {
   model.active_stream_list_ = {active_stream};
   ge::ExecutionRuntimeUtils::EnableInHeterogeneousExecutor();
   model.need_report_status_ = true;
-  g_runtime_stub_mock = "rtMalloc";
+  AclRuntimeStub::SetErrorResultApiName("aclrtMalloc");
   ModelQueueParam queue_param;
   queue_param.need_check_inputs = true;
   queue_param.need_model_config = true;
@@ -10464,7 +10464,14 @@ TEST_F(UtestDavinciModel, InputBatchCopyH2DEnbledButOneInputWithMergeH2DDisabled
 }
 
 TEST_F(UtestDavinciModel, InputBatchCopyFallbackFailedWithMergeH2DDisabled) {
-  RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  class MockAclRuntime : public ge::AclRuntimeStub {
+   public:
+    aclError aclrtMemcpy(void *dst, size_t dest_max, const void *src, size_t count, aclrtMemcpyKind kind) {
+      return -1;
+    }
+  };
+  auto mock_runtime = std::make_shared<MockAclRuntime>();
+  ge::AclRuntimeStub::SetInstance(mock_runtime);
   RTS_STUB_RETURN_VALUE(rtsMemcpyBatch, rtError_t, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
   const uint64_t input_size = 25600U;
   const uint64_t start_logic_addr = 30902000U;  // random value for test

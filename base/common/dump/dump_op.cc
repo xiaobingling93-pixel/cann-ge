@@ -51,22 +51,22 @@ constexpr uint32_t kOutputBitsMask = 0x02U;
 namespace ge {
 DumpOp::~DumpOp() {
   if (proto_dev_mem_ != nullptr) {
-    (void)rtFree(proto_dev_mem_);
+    (void)aclrtFree(proto_dev_mem_);
     proto_dev_mem_ = nullptr;
   }
 
   if (proto_size_dev_mem_ != nullptr) {
-    (void)rtFree(proto_size_dev_mem_);
+    (void)aclrtFree(proto_size_dev_mem_);
     proto_size_dev_mem_ = nullptr;
   }
 
   if (dev_mem_unload_ !=nullptr) {
-    (void)rtFree(dev_mem_unload_);
+    (void)aclrtFree(dev_mem_unload_);
     dev_mem_unload_ = nullptr;
   }
 
   if (launch_kernel_args_dev_mem_ != nullptr) {
-    GE_CHK_RT(rtFree(launch_kernel_args_dev_mem_));
+    GE_CHK_RT(aclrtFree(launch_kernel_args_dev_mem_));
     launch_kernel_args_dev_mem_ = nullptr;
   }
 }
@@ -268,31 +268,31 @@ void DumpOp::SetDumpInfo(const DumpProperties &dump_properties, const OpDescPtr 
 
 Status DumpOp::ProtoMallocAndMemcpy(const size_t proto_size, const std::string &proto_msg) {
   GE_FREE_RT_LOG(proto_dev_mem_);
-  rtError_t rt_ret = rtMalloc(&proto_dev_mem_, proto_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMalloc]Failed, ret: %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMalloc failed, ret: %d", rt_ret);
+  aclError rt_ret = aclrtMalloc(&proto_dev_mem_, proto_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMalloc]Failed, ret: %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMalloc failed, ret: %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 
-  rt_ret = rtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMemcpy]Failed, ret: %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, ret: %d", rt_ret);
+  rt_ret = aclrtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMemcpy]Failed, ret: %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, ret: %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 
   GE_FREE_RT_LOG(proto_size_dev_mem_);
-  rt_ret = rtMalloc(&proto_size_dev_mem_, sizeof(size_t), RT_MEMORY_HBM, GE_MODULE_NAME_U16);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMalloc]Failed, ret: %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMalloc failed, ret: %d", rt_ret);
+  rt_ret = aclrtMalloc(&proto_size_dev_mem_, sizeof(size_t), ACL_MEM_TYPE_HIGH_BAND_WIDTH);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMalloc]Failed, ret: %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMalloc failed, ret: %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  rt_ret = rtMemcpy(proto_size_dev_mem_, sizeof(size_t), &proto_size, sizeof(size_t), RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMemcpy]Failed, ret %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, ret %d", rt_ret);
+  rt_ret = aclrtMemcpy(proto_size_dev_mem_, sizeof(size_t), &proto_size, sizeof(size_t), ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMemcpy]Failed, ret %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, ret %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   return SUCCESS;
@@ -330,8 +330,8 @@ Status DumpOp::ExecutorDumpOp(bool need_device_args) {
   rtArgsEx_t args_for_launch = {};
   if (need_device_args) {
     GE_ASSERT_TRUE(launch_kernel_args_dev_mem_ == nullptr);
-    GE_CHK_RT_RET(rtMalloc(&launch_kernel_args_dev_mem_, args_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-    GE_CHK_RT_RET(rtMemcpy(launch_kernel_args_dev_mem_, args_size, &args[0U], args_size, RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMalloc(&launch_kernel_args_dev_mem_, args_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+    GE_CHK_RT_RET(aclrtMemcpy(launch_kernel_args_dev_mem_, args_size, &args[0U], args_size, ACL_MEMCPY_HOST_TO_DEVICE));
     args_for_launch.args = launch_kernel_args_dev_mem_;
     args_for_launch.isNoNeedH2DCopy = 1U;
   } else {
@@ -420,16 +420,16 @@ Status DumpOp::UpdateAddrs(const std::vector<uintptr_t> &input_addrs,
     REPORT_INNER_ERR_MSG("E19999", "[Serialize][Protobuf]Failed, proto_size is %zu", proto_size);
     return ACL_ERROR_GE_INTERNAL_ERROR;
   }
-  auto rt_ret = rtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMemcpy]Failed, ret: %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, ret: %d", rt_ret);
+  auto rt_ret = aclrtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMemcpy]Failed, ret: %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, ret: %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  rt_ret = rtMemcpy(proto_size_dev_mem_, sizeof(size_t), &proto_size, sizeof(size_t), RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][rtMemcpy]Failed, ret %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy failed, ret %d", rt_ret);
+  rt_ret = aclrtMemcpy(proto_size_dev_mem_, sizeof(size_t), &proto_size, sizeof(size_t), ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_ERROR_TO_GE_STATUS(rt_ret), "[Call][aclrtMemcpy]Failed, ret %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy failed, ret %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   return SUCCESS;
@@ -560,8 +560,8 @@ Status DumpOp::GenerateFftsDump(const DumpProperties &dump_properties, void *&lo
     GE_FREE_RT_LOG(proto_dev_mem_);
   }
 
-  GE_CHK_RT_RET(rtMalloc(&proto_dev_mem_, proto_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-  GE_CHK_RT_RET(rtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMalloc(&proto_dev_mem_, proto_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+  GE_CHK_RT_RET(aclrtMemcpy(proto_dev_mem_, proto_size, proto_msg.c_str(), proto_size, ACL_MEMCPY_HOST_TO_DEVICE));
 
   load_dump_info = proto_dev_mem_;
   load_dump_len = static_cast<uint32_t>(proto_size);
@@ -601,9 +601,9 @@ Status DumpOp::BuildUnLoadFftsDumpInfo(void *&unload_dump_info, uint32_t &unload
     GE_FREE_RT_LOG(dev_mem_unload_);
   }
 
-  GE_CHK_RT_RET(rtMalloc(&dev_mem_unload_, proto_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-  GE_PRINT_DYNAMIC_MEMORY(rtMalloc, "unload dump information.", proto_size);
-  GE_CHK_RT_RET(rtMemcpy(dev_mem_unload_, proto_size, proto_str.c_str(), proto_size, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMalloc(&dev_mem_unload_, proto_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+  GE_PRINT_DYNAMIC_MEMORY(aclrtMalloc, "unload dump information.", proto_size);
+  GE_CHK_RT_RET(aclrtMemcpy(dev_mem_unload_, proto_size, proto_str.c_str(), proto_size, ACL_MEMCPY_HOST_TO_DEVICE));
 
   unload_dump_info = dev_mem_unload_;
   unload_dump_len = static_cast<uint32_t>(proto_size);

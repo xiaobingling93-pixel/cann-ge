@@ -439,7 +439,7 @@ Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_t
   std::vector<void *> allocated_mem;
   GE_MAKE_GUARD(kernel_launch_release, [&]() {
     for (auto &mem : allocated_mem) {
-      GE_CHK_RT(rtFree(mem));
+      GE_CHK_RT(aclrtFree(mem));
     }
     if (stream != nullptr) {
       GE_CHK_RT(rtStreamDestroy(stream));
@@ -464,11 +464,11 @@ Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_t
 
       const uint64_t kernel_size = sizeof(uint64_t) * (v_aicpu_kernel.size());
       void *aicpu_kernel_addr = nullptr;
-      GE_CHK_RT_RET(rtMalloc(&aicpu_kernel_addr, kernel_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+      GE_CHK_RT_RET(aclrtMalloc(&aicpu_kernel_addr, kernel_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
       allocated_mem.emplace_back(aicpu_kernel_addr);
 
-      GE_CHK_RT_RET(rtMemcpy(aicpu_kernel_addr, kernel_size, v_aicpu_kernel.data(), kernel_size,
-                             RT_MEMCPY_HOST_TO_DEVICE));
+      GE_CHK_RT_RET(aclrtMemcpy(aicpu_kernel_addr, kernel_size, v_aicpu_kernel.data(), kernel_size,
+          ACL_MEMCPY_HOST_TO_DEVICE));
       param_base.fwkKernelBase.fwk_kernel.kernelID = PtrToValue(aicpu_kernel_addr);
       // In the scene of loading once and running many times, the kernel needs to be destroyed many times,
       // and connot be removed from kernel map.
@@ -477,9 +477,9 @@ Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_t
 
   void *device_base = nullptr;
   constexpr size_t op_kernel_size = sizeof(STR_FWK_OP_KERNEL);
-  GE_CHK_RT_RET(rtMalloc(&device_base, op_kernel_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&device_base, op_kernel_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.emplace_back(device_base);
-  GE_CHK_RT_RET(rtMemcpy(device_base, op_kernel_size, &param_base, op_kernel_size, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(device_base, op_kernel_size, &param_base, op_kernel_size, ACL_MEMCPY_HOST_TO_DEVICE));
 
   GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
   KernelRegisterInfo register_info;
@@ -1992,7 +1992,7 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
   std::vector<void *> allocated_mem;
   const std::function<void()> callback = [&stream, &allocated_mem]() {
     for (auto &mem : allocated_mem) {
-      GE_CHK_RT(rtFree(mem));
+      GE_CHK_RT(aclrtFree(mem));
     }
     if (stream != nullptr) {
       GE_CHK_RT(rtStreamDestroy(stream));
@@ -2015,12 +2015,12 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
     void *d_aicpu_data = nullptr;
     void *d_so_name = nullptr;
 
-    GE_CHK_RT_RET(rtMalloc(&d_aicpu_data, aicpu_data_length, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&d_aicpu_data, aicpu_data_length, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
     allocated_mem.push_back(d_aicpu_data);
-    GE_CHK_RT_RET(rtMalloc(&d_so_name, so_name.size(), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&d_so_name, so_name.size(), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
     allocated_mem.push_back(d_so_name);
-    GE_CHK_RT(rtMemcpy(d_aicpu_data, aicpu_data_length, aicpu_data, aicpu_data_length, RT_MEMCPY_HOST_TO_DEVICE));
-    GE_CHK_RT(rtMemcpy(d_so_name, so_name.size(), so_name.c_str(), so_name.size(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT(aclrtMemcpy(d_aicpu_data, aicpu_data_length, aicpu_data, aicpu_data_length, ACL_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT(aclrtMemcpy(d_so_name, so_name.size(), so_name.c_str(), so_name.size(), ACL_MEMCPY_HOST_TO_DEVICE));
 
     CustAicpuSoBuf cust_aicpu_so_buf;
     cust_aicpu_so_buf.kernelSoBuf = PtrToValue(d_aicpu_data);
@@ -2037,9 +2037,9 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
 
   void *args = nullptr;
   const size_t args_size = sizeof(CustAicpuSoBuf) * v_cust_so.size();
-  GE_CHK_RT_RET(rtMalloc(&args, args_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&args, args_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.push_back(args);
-  GE_CHK_RT(rtMemcpy(args, args_size, v_cust_so.data(), args_size, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT(aclrtMemcpy(args, args_size, v_cust_so.data(), args_size, ACL_MEMCPY_HOST_TO_DEVICE));
 
   BatchLoadOpFromBufArgs batch_cust_so;
   batch_cust_so.soNum = static_cast<uint32_t>(v_cust_so.size());
@@ -2211,10 +2211,10 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
   void *d_so_name = nullptr;
   const std::function<void()> callback = [&stream, &d_aicpu_data, &d_so_name]() -> void {
     if (d_aicpu_data != nullptr) {
-      GE_CHK_RT(rtFree(d_aicpu_data));
+      GE_CHK_RT(aclrtFree(d_aicpu_data));
     }
     if (d_so_name != nullptr) {
-      GE_CHK_RT(rtFree(d_so_name));
+      GE_CHK_RT(aclrtFree(d_so_name));
     }
     if (stream != nullptr) {
       GE_CHK_RT(rtStreamDestroy(stream));
@@ -2228,11 +2228,11 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
     const size_t aicpu_data_len = it_so.second.kernel_ptr->GetBinDataSize();
     const std::string &so_name = it_so.first;
     if (kernel_name == kLoadBuiltinSo) {
-      GE_CHK_RT_RET(rtMalloc(&d_aicpu_data, aicpu_data_len, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-      GE_CHK_RT_RET(rtMemcpy(d_aicpu_data, aicpu_data_len, aicpu_data, aicpu_data_len, RT_MEMCPY_HOST_TO_DEVICE));
+      GE_CHK_RT_RET(aclrtMalloc(&d_aicpu_data, aicpu_data_len, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+      GE_CHK_RT_RET(aclrtMemcpy(d_aicpu_data, aicpu_data_len, aicpu_data, aicpu_data_len, ACL_MEMCPY_HOST_TO_DEVICE));
     }
-    GE_CHK_RT_RET(rtMalloc(&d_so_name, so_name.size(), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-    GE_CHK_RT_RET(rtMemcpy(d_so_name, so_name.size(), so_name.c_str(), so_name.size(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMalloc(&d_so_name, so_name.size(), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+    GE_CHK_RT_RET(aclrtMemcpy(d_so_name, so_name.size(), so_name.c_str(), so_name.size(), ACL_MEMCPY_HOST_TO_DEVICE));
 
     LoadSoFromBufArgs aicpu_so_buf;
     ConstructLoadSoFromBufArgs(d_aicpu_data, aicpu_data_len, d_so_name, so_name.length(), aicpu_so_buf);
@@ -2440,34 +2440,35 @@ Status ModelManager::LaunchKernelCheckAicpuOp(const std::vector<std::string> &ai
   const size_t op_nums = aicpu_op_nums + tf_op_nums;
   const std::function<void()> callback = [&allocated_mem]() {
     for (auto &mem : allocated_mem) {
-      GE_CHK_RT(rtFree(mem));
+      GE_CHK_RT(aclrtFree(mem));
     }
   };
   GE_MAKE_GUARD(release, callback);
 
   // malloc sysOpInfoList in SysOpCheckInfo
   void *d_req_op_list = nullptr;
-  GE_CHK_RT_RET(rtMalloc(&d_req_op_list, op_nums * sizeof(SysOpInfo), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&d_req_op_list, op_nums * sizeof(SysOpInfo), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.push_back(d_req_op_list);
 
   // malloc sysOpInfoList in SysOpCheckResp
   void *d_res_op_list = nullptr;
-  GE_CHK_RT_RET(rtMalloc(&d_res_op_list, op_nums * sizeof(SysOpInfo), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&d_res_op_list, op_nums * sizeof(SysOpInfo), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.push_back(d_res_op_list);
 
   // malloc returnCodeList in SysOpCheckResp
   void *d_ret_code_list = nullptr;
-  GE_CHK_RT_RET(rtMalloc(&d_ret_code_list, op_nums * sizeof(ReturnCode), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&d_ret_code_list, op_nums * sizeof(ReturnCode), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.push_back(d_ret_code_list);
 
   for (const auto &op_type : aicpu_optype_list) {
     SysOpInfo op_info;
     // malloc op_type name in SysOpInfo
     void *d_op_type_name = nullptr;
-    GE_CHK_RT_RET(rtMalloc(&d_op_type_name, op_type.length(), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&d_op_type_name, op_type.length(), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
 
     allocated_mem.push_back(d_op_type_name);
-    GE_CHK_RT(rtMemcpy(d_op_type_name, op_type.length(), op_type.c_str(), op_type.length(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT(aclrtMemcpy(d_op_type_name, op_type.length(), op_type.c_str(),
+        op_type.length(), ACL_MEMCPY_HOST_TO_DEVICE));
     op_info.opType = PtrToValue(d_op_type_name);
     op_info.opLen = op_type.length();
     op_info.kernelsType = CPU_KERNEL;
@@ -2478,18 +2479,19 @@ Status ModelManager::LaunchKernelCheckAicpuOp(const std::vector<std::string> &ai
     SysOpInfo op_info;
     // malloc op_type name in SysOpInfo
     void *d_op_type_name = nullptr;
-    GE_CHK_RT_RET(rtMalloc(&d_op_type_name, op_type.length(), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&d_op_type_name, op_type.length(), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
 
     allocated_mem.push_back(d_op_type_name);
-    GE_CHK_RT(rtMemcpy(d_op_type_name, op_type.size(), op_type.c_str(), op_type.size(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT(aclrtMemcpy(d_op_type_name, op_type.size(), op_type.c_str(),
+        op_type.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     op_info.opType = PtrToValue(d_op_type_name);
     op_info.opLen = op_type.size();
     op_info.kernelsType = TF_KERNEL;
     req_aicpu_op_info_list.emplace_back(op_info);
   }
   GELOGI("Need check aicpu op nums from attr:[%zu], real nums:[%zu].", op_nums, req_aicpu_op_info_list.size());
-  GE_CHK_RT(rtMemcpy(d_req_op_list, sizeof(SysOpInfo) * req_aicpu_op_info_list.size(), req_aicpu_op_info_list.data(),
-                     sizeof(SysOpInfo) * req_aicpu_op_info_list.size(), RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT(aclrtMemcpy(d_req_op_list, sizeof(SysOpInfo) * req_aicpu_op_info_list.size(),
+      req_aicpu_op_info_list.data(), sizeof(SysOpInfo) * req_aicpu_op_info_list.size(), ACL_MEMCPY_HOST_TO_DEVICE));
 
   SysOpCheckInfo op_check_info_req{};
   SysOpCheckResp op_check_info_res{};
@@ -2541,20 +2543,20 @@ Status ModelManager::LaunchKernelCheckAicpuOp(const std::vector<std::string> &ai
   if (res_op_nums != 0U) {
     std::vector<ReturnCode> res_ret_code_list(res_op_nums);
     std::vector<SysOpInfo> res_aicpu_op_info_list(res_op_nums);
-    GE_CHK_RT(rtMemcpy(res_ret_code_list.data(), sizeof(ReturnCode) * res_op_nums,
-                       ValueToPtr(op_check_info_res.returnCodeList),
-                       sizeof(ReturnCode) * res_op_nums, RT_MEMCPY_DEVICE_TO_HOST));
-    GE_CHK_RT(rtMemcpy(res_aicpu_op_info_list.data(), sizeof(SysOpInfo) * res_op_nums,
-                       ValueToPtr(op_check_info_res.sysOpInfoList),
-                       sizeof(SysOpInfo) * res_op_nums, RT_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT(aclrtMemcpy(res_ret_code_list.data(), sizeof(ReturnCode) * res_op_nums,
+        ValueToPtr(op_check_info_res.returnCodeList), sizeof(ReturnCode) * res_op_nums,
+        ACL_MEMCPY_DEVICE_TO_HOST));
+    GE_CHK_RT(aclrtMemcpy(res_aicpu_op_info_list.data(), sizeof(SysOpInfo) * res_op_nums,
+        ValueToPtr(op_check_info_res.sysOpInfoList), sizeof(SysOpInfo) * res_op_nums,
+        ACL_MEMCPY_DEVICE_TO_HOST));
     std::string fail_reason;
     for (uint64_t i = 0U; i < res_op_nums; i++) {
       const SysOpInfo &aicpu_info = res_aicpu_op_info_list.at(i);
-      GELOGI("Not support aicpu op type: %" PRIu64 ", kernel_type:%d, opLen:%" PRIu64 ", ret_code:%d", aicpu_info.opType,
-             aicpu_info.kernelsType, aicpu_info.opLen, res_ret_code_list.at(i));
+      GELOGI("Not support aicpu op type: %" PRIu64 ", kernel_type:%d, opLen:%" PRIu64 ", ret_code:%d",
+          aicpu_info.opType, aicpu_info.kernelsType, aicpu_info.opLen, res_ret_code_list.at(i));
       std::vector<char> op_name(kOpNameMaxSize);
-      GE_CHK_RT(rtMemcpy(op_name.data(), kOpNameMaxSize, ValueToPtr(aicpu_info.opType), aicpu_info.opLen,
-                         RT_MEMCPY_DEVICE_TO_HOST));
+      GE_CHK_RT(aclrtMemcpy(op_name.data(), kOpNameMaxSize, ValueToPtr(aicpu_info.opType), aicpu_info.opLen,
+          ACL_MEMCPY_DEVICE_TO_HOST));
       const std::string kernel_type = (aicpu_info.kernelsType == TF_KERNEL) ? "TF_KERNEL" : "CPU_KERNEL";
       fail_reason += "op_type: " + std::string(op_name.data()) + " kernel_type: " + kernel_type +
                      " ret code:" + std::to_string(res_ret_code_list.at(i)) + "<0: op_type, 1: format, 2: datatype>\n";

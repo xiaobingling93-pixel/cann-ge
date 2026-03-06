@@ -85,7 +85,7 @@ bool RtMemAllocator::Free(ge::MemBlock *const addr) {
     DeviceMemoryRecorder::ReduceTotalReserveMemory(static_cast<uint64_t>(size));
     return true;
   }
-  REPORT_INNER_ERR_MSG("E19999", "Call rtFree fail, device_id:%u", device_id_);
+  REPORT_INNER_ERR_MSG("E19999", "Call aclrtFree fail, device_id:%u", device_id_);
   GELOGE(ge::FAILED, "[Call][RtFree] failed, rt_ret:%d, device_id:%u, addr:%p, size:%llu",
          rt_ret, device_id_, addr->GetAddr(), size);
   return false;

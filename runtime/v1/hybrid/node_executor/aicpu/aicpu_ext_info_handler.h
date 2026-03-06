@@ -18,6 +18,8 @@
 #include "graph/ge_tensor.h"
 #include "runtime/mem.h"
 #include "runtime/kernel.h"
+#include "acl/acl_rt.h"
+
 namespace ge {
 namespace hybrid {
 using AicpuShapeAndType = aicpu::FWKAdapter::ShapeAndType;
@@ -74,8 +76,8 @@ class AicpuExtInfoHandler {
   rtMemType_t GetMemType() const {
     return (deploy_type_flag_ == RT_KERNEL_HOST_ONLY) ? RT_MEMORY_HOST_SVM : RT_MEMORY_HBM;
   };
-  tagRtMemcpyKind GetMemcpyKind() const {
-    return (deploy_type_flag_ == RT_KERNEL_HOST_ONLY) ? RT_MEMCPY_HOST_TO_HOST : RT_MEMCPY_HOST_TO_DEVICE;
+  aclrtMemcpyKind GetMemcpyKind() const {
+    return (deploy_type_flag_ == RT_KERNEL_HOST_ONLY) ? ACL_MEMCPY_HOST_TO_HOST : ACL_MEMCPY_HOST_TO_DEVICE;
   };
 
   static uint64_t GenerateKernelId();

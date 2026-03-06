@@ -17,6 +17,7 @@
 #include "common/sgt_slice_type.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "runtime_stub.h"
+#include "stub/gert_runtime_stub.h"
 
 using namespace std;
 
@@ -25,9 +26,12 @@ class UtestDataDumper : public testing::Test {
  protected:
   void SetUp() {
     RTS_STUB_SETUP();
+    auto mock_acl_runtime = std::make_shared<AclRuntimeStub>();
+    ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   }
 
   void TearDown() {
+    ge::AclRuntimeStub::Reset();
     RTS_STUB_TEARDOWN();
   }
 };
@@ -69,6 +73,18 @@ TEST_F(UtestDataDumper, LoadDumpInfo_success) {
 }
 
 TEST_F(UtestDataDumper, ExecuteDumpInfo_failure) {
+  class MockAclRuntime : public ge::AclRuntimeStub {
+   public:
+    aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy) override {
+      return ACL_ERROR_RT_INTERNAL_ERROR;
+    }
+
+    aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind) override {
+      return ACL_ERROR_RT_INTERNAL_ERROR;
+    }
+  };
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   RuntimeParam param;
   DataDumper dumper(&param);
   toolkit::aicpu::dump::OpMappingInfo mapping;

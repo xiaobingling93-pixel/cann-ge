@@ -68,17 +68,17 @@ struct ExtraOpInfo {
   void RecordArgsBefore() {
     if ((args != 0U) && (args_size != 0UL)) {
       uint8_t *host_addr = nullptr;
-      rtError_t rt_ret =
-          rtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), static_cast<uint64_t>(args_size), GE_MODULE_NAME_U16);
-      if (rt_ret != RT_ERROR_NONE) {
+      aclError rt_ret =
+          aclrtMallocHost(PtrToPtr<uint8_t *, void *>(&host_addr), args_size);
+      if (rt_ret != ACL_SUCCESS) {
         GELOGW("[Call][RtMallocHost] failed, size:%zu, ret:0x%X", args_size, rt_ret);
         return;
       }
       GE_MAKE_GUARD_RTMEM(host_addr);
-      rt_ret = rtMemcpy(host_addr, static_cast<uint64_t>(args_size), reinterpret_cast<void *>(args),
-                        static_cast<uint64_t>(args_size), RT_MEMCPY_DEVICE_TO_HOST);
-      if (rt_ret != RT_ERROR_NONE) {
-        GELOGW("[Call][RtMemcpy] failed, size:%zu, ret:0x%X", args_size, rt_ret);
+      rt_ret = aclrtMemcpy(host_addr, static_cast<uint64_t>(args_size), reinterpret_cast<void *>(args),
+          static_cast<uint64_t>(args_size), ACL_MEMCPY_DEVICE_TO_HOST);
+      if (rt_ret != ACL_SUCCESS) {
+        GELOGW("[Call][aclrtMemcpy] failed, size:%zu, ret:0x%X", args_size, rt_ret);
         return;
       }
       std::stringstream ss;

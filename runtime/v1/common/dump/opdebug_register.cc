@@ -22,7 +22,7 @@ std::map<rtStream_t, uint32_t>  OpdebugRegister::stream_ref_count_;
 
 OpDebugTask::~OpDebugTask() {
   if (op_debug_addr_ != nullptr) {
-    GE_CHK_RT(rtFree(op_debug_addr_));
+    GE_CHK_RT(aclrtFree(op_debug_addr_));
     op_debug_addr_ = nullptr;
   }
 }
@@ -58,17 +58,17 @@ void OpdebugRegister::UnregisterDebugForModel(rtModel_t const model_handle) {
   }
 
   if (op_debug_addr_ != nullptr) {
-    rt_ret = rtFree(op_debug_addr_);
-    if (rt_ret != RT_ERROR_NONE) {
-      GELOGW("rtFree failed, ret: 0x%X", rt_ret);
+    auto acl_ret = aclrtFree(op_debug_addr_);
+    if (acl_ret != ACL_SUCCESS) {
+      GELOGW("aclrtFree failed, ret: 0x%X", acl_ret);
     }
     op_debug_addr_ = nullptr;
   }
 
   if (p2p_debug_addr_ != nullptr) {
-    rt_ret = rtFree(p2p_debug_addr_);
-    if (rt_ret != RT_ERROR_NONE) {
-      GELOGW("rtFree failed, ret: 0x%X", rt_ret);
+    auto acl_ret = aclrtFree(p2p_debug_addr_);
+    if (acl_ret != ACL_SUCCESS) {
+      GELOGW("aclrtFree failed, ret: 0x%X", acl_ret);
     }
     p2p_debug_addr_ = nullptr;
   }
@@ -84,8 +84,8 @@ Status OpdebugRegister::CreateOpDebugTaskByStream(rtStream_t const stream, const
   auto &op_debug_task = op_debug_tasks_[stream];
   op_debug_task = MakeUnique<OpDebugTask>();
   GE_CHECK_NOTNULL(op_debug_task);
-  const auto memory_type = rtGetTsMemType(MEM_REQUEST_FEATURE_DEFAULT, kOpDebugMemorySize);
-  GE_CHK_RT_RET(rtMalloc(&op_debug_task->op_debug_addr_, kOpDebugMemorySize, memory_type, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMallocForTaskScheduler(&op_debug_task->op_debug_addr_,
+      kOpDebugMemorySize, ACL_MEM_TYPE_HIGH_BAND_WIDTH, nullptr));
   GE_CHK_RT_RET(rtDebugRegisterForStream(stream, op_debug_mode, op_debug_task->op_debug_addr_,
                                          &op_debug_task->debug_stream_id_, &op_debug_task->debug_task_id_));
   return SUCCESS;
@@ -93,9 +93,9 @@ Status OpdebugRegister::CreateOpDebugTaskByStream(rtStream_t const stream, const
 
 Status OpdebugRegister::MallocP2PDebugMem(const void * const op_debug_addr) {
   const uint64_t debug_addrs_tmp = PtrToValue(op_debug_addr);
-  GE_CHK_RT_RET(rtMalloc(&p2p_debug_addr_, kDebugP2pSize, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
-  GE_CHK_RT_RET(rtMemcpy(p2p_debug_addr_, sizeof(uint64_t), &debug_addrs_tmp, sizeof(uint64_t),
-                         RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMalloc(&p2p_debug_addr_, kDebugP2pSize, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
+  GE_CHK_RT_RET(aclrtMemcpy(p2p_debug_addr_, sizeof(uint64_t), &debug_addrs_tmp, sizeof(uint64_t),
+      ACL_MEMCPY_HOST_TO_DEVICE));
   return SUCCESS;
 }
 
@@ -129,9 +129,9 @@ void OpdebugRegister::UnregisterDebugForStream(rtStream_t const stream) {
   }
 
   if (p2p_debug_addr_ != nullptr) {
-    rt_ret = rtFree(p2p_debug_addr_);
+    rt_ret = aclrtFree(p2p_debug_addr_);
     if (rt_ret != RT_ERROR_NONE) {
-      GELOGW("rtFree failed, ret: 0x%X", rt_ret);
+      GELOGW("aclrtFree failed, ret: 0x%X", rt_ret);
     }
     p2p_debug_addr_ = nullptr;
   }
@@ -139,27 +139,27 @@ void OpdebugRegister::UnregisterDebugForStream(rtStream_t const stream) {
 }
 
 Status OpdebugRegister::MallocMemForOpdebug() {
-  const auto memory_type = rtGetTsMemType(MEM_REQUEST_FEATURE_DEFAULT, kOpDebugMemorySize);
-  GELOGI("memory_type: %u", memory_type);
-  rtError_t rt_ret = rtMalloc(&op_debug_addr_, kOpDebugMemorySize, memory_type, GE_MODULE_NAME_U16);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_FAILED, "[Call][rtMalloc]Failed, ret %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMalloc failed, ret %d", rt_ret);
+  aclError rt_ret = aclrtMallocForTaskScheduler(&op_debug_addr_,
+      kOpDebugMemorySize, ACL_MEM_TYPE_HIGH_BAND_WIDTH, nullptr);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_FAILED, "[Call][aclrtMallocForTaskScheduler]Failed, ret %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMallocForTaskScheduler failed, ret %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 
   const uint64_t debug_addrs_tmp = PtrToValue(op_debug_addr_);
   // For data dump, aicpu needs the pointer to pointer that save the real debug address.
-  rt_ret = rtMalloc(&p2p_debug_addr_, kDebugP2pSize, RT_MEMORY_HBM, GE_MODULE_NAME_U16);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_FAILED, "[Call][rtMalloc]Failed, ret %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMalloc failed, ret %d", rt_ret);
+  rt_ret = aclrtMalloc(&p2p_debug_addr_, kDebugP2pSize, ACL_MEM_TYPE_HIGH_BAND_WIDTH);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_FAILED, "[Call][aclrtMalloc]Failed, ret %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMalloc failed, ret %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  rt_ret = rtMemcpy(p2p_debug_addr_, sizeof(uint64_t), &debug_addrs_tmp, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE);
-  if (rt_ret != RT_ERROR_NONE) {
-    GELOGE(RT_FAILED, "[Call][rtMemcpy]To p2p_addr error %d", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "Call rtMemcpy to p2p_addr error %d", rt_ret);
+  rt_ret = aclrtMemcpy(p2p_debug_addr_, sizeof(uint64_t),
+      &debug_addrs_tmp, sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE);
+  if (rt_ret != ACL_SUCCESS) {
+    GELOGE(RT_FAILED, "[Call][aclrtMemcpy]To p2p_addr error %d", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtMemcpy to p2p_addr error %d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 

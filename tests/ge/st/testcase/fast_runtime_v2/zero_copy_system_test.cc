@@ -239,7 +239,7 @@ TEST_F(ZeroCopyST, ZeroCopy_Disable_WhenOuptutGivenButPlacementNotMatch) {
   ASSERT_EQ(launch_args.begin()->second.size(), 1U);
   auto addresses = (*(launch_args.begin()->second.begin()))->GetLaunchAddresses();
   EXPECT_NE(addresses[2], out_addr);  // 第0和第1个launch地址分别对应两个add输入
-  ASSERT_FALSE(runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().empty());
+  ASSERT_FALSE(runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().empty());
 
   runtime_stub.Clear();
   ASSERT_EQ(model_executor->Execute({i3.value}, inputs.GetTensorList(), inputs.size(), outputs.data(), outputs.size()),
@@ -252,7 +252,7 @@ TEST_F(ZeroCopyST, ZeroCopy_Disable_WhenOuptutGivenButPlacementNotMatch) {
   ASSERT_EQ(launch_args1.begin()->second.size(), 1U);
   addresses = (*(launch_args1.begin()->second.begin()))->GetLaunchAddresses();
   EXPECT_NE(addresses[2], out_addr);  // 第0和第1个launch地址分别对应两个add输入
-  ASSERT_FALSE(runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().empty());
+  ASSERT_FALSE(runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().empty());
 
   ASSERT_EQ(model_executor->UnLoad(), ge::GRAPH_SUCCESS);
   rtStreamDestroy(stream);

@@ -76,7 +76,7 @@ Status RtsKernelTaskBuilder::BuildNpuGetFloatStatusTask(const GetOpDescFunc &get
   task->mode_ = kernel_def.mode();
   task->output_size_ = kernel_def.output_size();
   task->args_size_ = sizeof(uint8_t *);
-  GE_CHK_RT_RET(rtMalloc(&task->args_, task->args_size_, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&task->args_, task->args_size_, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   GE_CHK_STATUS_RET(ModelUtils::GetRtAddress(param.runtime_param, static_cast<uintptr_t>(kernel_def.output_addr()),
                                              task->output_addr_));
   OpDescPtr op_desc = nullptr;
@@ -112,7 +112,7 @@ Status RtsKernelTaskBuilder::BuildNpuGetFloatDebugStatusTask(const GetOpDescFunc
   task->mode_ = kernel_def.mode();
   task->output_size_ = kernel_def.output_size();
   task->args_size_ = sizeof(uint8_t *);
-  GE_CHK_RT_RET(rtMalloc(&task->args_, task->args_size_, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_CHK_RT_RET(aclrtMalloc(&task->args_, task->args_size_, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   GE_CHK_STATUS_RET(ModelUtils::GetRtAddress(param.runtime_param, static_cast<uintptr_t>(kernel_def.output_addr()),
                                              task->output_addr_));
   OpDescPtr op_desc = nullptr;

@@ -222,8 +222,8 @@ Status HybridModelRtV1Executor::Execute(ExecuteArgs &args) {
   // In heterogeneous executor, gloabl_step is updated by markStep task
   if (!ExecutionRuntimeUtils::IsInHeterogeneousExecutor()) {
     if (context_.global_step != nullptr) {
-      GE_CHK_RT_RET(rtMemcpyAsync(context_.global_step, sizeof(uint64_t), &context_.iteration,
-                                  sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE_EX, context_.stream));
+      GE_CHK_RT_RET(aclrtMemcpyAsync(context_.global_step, sizeof(uint64_t), &context_.iteration,
+          sizeof(uint64_t), ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, context_.stream));
     }
   }
 

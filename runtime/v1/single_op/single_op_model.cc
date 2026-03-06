@@ -222,8 +222,8 @@ Status SingleOpModel::MallocWeight(StreamResource &resource) {
       return ACL_ERROR_GE_DEVICE_MEMORY_OPERATE_FAILED;
     }
     GELOGI("To copy weight to device. weight size = %zu.", root_ge_model_->GetWeightSize());
-    GE_CHK_RT_RET(rtMemcpy(weight_base, model_params_.runtime_param.weight_size, root_ge_model_->GetWeightData(),
-                           root_ge_model_->GetWeightSize(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(weight_base, model_params_.runtime_param.weight_size, root_ge_model_->GetWeightData(),
+        root_ge_model_->GetWeightSize(), ACL_MEMCPY_HOST_TO_DEVICE));
     model_params_.runtime_param.weight_base = reinterpret_cast<uintptr_t>(weight_base);
   }
   return SUCCESS;

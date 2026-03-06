@@ -35,7 +35,7 @@ class InternalAllocator : public Allocator {
  public:
   MemBlock *Malloc(size_t size) override;
   void Free(MemBlock *block) override {
-    const auto rt_ret = rtFree(block->GetAddr());
+    const auto rt_ret = aclrtFree(block->GetAddr());
     GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE, GELOGE(RT_FAILED, "[Free][Rt] failed."));
   };
   ~InternalAllocator() override;

@@ -152,7 +152,7 @@ Status CmoAddrTaskInfo::Distribute() {
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
   GE_CHK_RT_RET(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
 
-  GE_CHK_RT_RET(rtMemcpy(host_args_, format_args_size_, args_, format_args_size_, RT_MEMCPY_DEVICE_TO_HOST));
+  GE_CHK_RT_RET(aclrtMemcpy(host_args_, format_args_size_, args_, format_args_size_, ACL_MEMCPY_DEVICE_TO_HOST));
   uintptr_t host_addr = PtrToValue(host_args_);
   for (const auto &iter : format_) {
     if (iter.addr_type == AddrType::CUSTOM_VALUE) {

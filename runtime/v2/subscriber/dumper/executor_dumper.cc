@@ -14,6 +14,7 @@
 #include <aicore/launch_kernel/ai_core_launch_kernel.h>
 #include <tuning_utils.h>
 #include <dlog_pub.h>
+#include "acl/acl_rt.h"
 #include "common/checker.h"
 #include "common/ge_inner_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
@@ -93,10 +94,10 @@ ge::Status CopyH2D(const void *host_addr, const ge::GeTensorDesc &td, const size
       (builtin_tensor_data_size == 0UL) || (builtin_tensor_data_size >= static_cast<uint64_t>(tensor_size));
   GE_ASSERT_TRUE(is_tensor_size_valid, "Built in tensor data size %zu < calc_tensor_size %zu, do nothing.",
                  builtin_tensor_data_size, tensor_size);
-  GE_ASSERT_RT_OK(rtMalloc(&device_addr, tensor_size, RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_ASSERT_RT_OK(aclrtMalloc(&device_addr, tensor_size, ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   allocated_mem.emplace_back(device_addr);
   dump_addrs.emplace_back(reinterpret_cast<uintptr_t>(device_addr));
-  GE_ASSERT_RT_OK(rtMemcpy(device_addr, tensor_size, host_addr, tensor_size, RT_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(device_addr, tensor_size, host_addr, tensor_size, ACL_MEMCPY_HOST_TO_DEVICE));
   return ge::SUCCESS;
 }
 
@@ -777,7 +778,7 @@ ExecutorDumper::~ExecutorDumper() {
   }
 
   if (global_step_addr_ != 0U) {
-    GE_CHK_RT(rtFree(ge::ValueToPtr(static_cast<uint64_t>(global_step_addr_))));
+    GE_CHK_RT(aclrtFree(ge::ValueToPtr(static_cast<uint64_t>(global_step_addr_))));
     global_step_addr_ = 0U;
   }
 }
@@ -935,10 +936,10 @@ ge::Status ExecutorDumper::DoDataDump(NodeDumpUnit &dump_unit, const ge::DumpPro
   std::vector<void *> allocated_output_mem{};
   const auto callback = [&allocated_input_mem, &allocated_output_mem, &dump_unit]() {
     for (auto &mem : allocated_input_mem) {
-      GE_CHK_RT(rtFree(mem));
+      GE_CHK_RT(aclrtFree(mem));
     }
     for (auto &mem : allocated_output_mem) {
-      GE_CHK_RT(rtFree(mem));
+      GE_CHK_RT(aclrtFree(mem));
     }
     dump_unit.Clear();
   };
@@ -1126,12 +1127,13 @@ ge::Status ExecutorDumper::FillDumpInfoByKernel(const Node &node) {
 ge::Status ExecutorDumper::UpdateStepNum() {
   void *step_id = nullptr;
   if (global_step_addr_ == 0U) {
-    GE_CHK_RT_RET(rtMalloc(&step_id, sizeof(uint64_t), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+    GE_CHK_RT_RET(aclrtMalloc(&step_id, sizeof(uint64_t), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
     global_step_addr_ = static_cast<uintptr_t>(ge::PtrToValue(step_id));
   }
   step_id = ge::ValueToPtr(static_cast<uint64_t>(global_step_addr_));
   GELOGI("Update step, addr:%p, iteration_num:%zu", step_id, iteration_num_);
-  GE_ASSERT_RT_OK(rtMemcpy(step_id, sizeof(uint64_t), &iteration_num_, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(step_id, sizeof(uint64_t), &iteration_num_,
+      sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
   return ge::SUCCESS;
 }
 

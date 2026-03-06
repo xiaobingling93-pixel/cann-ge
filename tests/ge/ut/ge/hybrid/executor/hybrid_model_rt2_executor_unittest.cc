@@ -2136,12 +2136,20 @@ TEST_F(UtestHybridRt2Executor, HandleResult_BatchH2dFallbackButFailed_RecycleWhe
   output_tensors[0].SetData(nullptr, 0U);
   RTS_STUB_RETURN_VALUE(rtsMemcpyBatch, rtError_t, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
   RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  class MockAclRuntime: public AclRuntimeStub {
+    aclError aclrtMemcpy(void *dst, size_t dest_max, const void *src, size_t count, aclrtMemcpyKind kind) {
+      return -1;
+    }
+  };
+  MockAclRuntime mock_acl_runtime;
+  AclRuntimeStub::Install(&mock_acl_runtime);
   auto gert_inputs = InputData2GertTensors(inputs);
   ret = executor_rt_v2.ExecuteOnlineModel(gert_inputs, nullptr);
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 0);
   EXPECT_NE(ret, SUCCESS);
 
   RuntimeStub::Reset();
+  AclRuntimeStub::UnInstall(&mock_acl_runtime);
   options["ge.inputBatchCpy"] = "0";
   ge::GetThreadLocalContext().SetSessionOption(options);
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -2215,10 +2223,19 @@ TEST_F(UtestHybridRt2Executor, HandleResult_BatchH2dOneInputFallbackFailed_Recyc
   HybridModelExecutor::ExecuteArgs args;
 
   RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  RTS_STUB_RETURN_VALUE(rtMemcpy, rtError_t, -1);
+  class MockAclRuntime: public AclRuntimeStub {
+    aclError aclrtMemcpy(void *dst, size_t dest_max, const void *src, size_t count, aclrtMemcpyKind kind) {
+      return -1;
+    }
+  };
+  MockAclRuntime mock_acl_runtime;
+  AclRuntimeStub::Install(&mock_acl_runtime);
   ret = executor_rt_v2.Execute(inputs, args);
   EXPECT_NE(ret, SUCCESS);
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 0);
   RuntimeStub::Reset();
+  AclRuntimeStub::UnInstall(&mock_acl_runtime);
   options["ge.inputBatchCpy"] = "0";
   ge::GetThreadLocalContext().SetSessionOption(options);
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -2327,3 +2344,4 @@ TEST_F(UtestHybridRt2Executor, HandleResult_RecycleWhenCopyOutputsError) {
   EXPECT_EQ(ret, INTERNAL_ERROR);
   RuntimeStub::Reset();
 }
+

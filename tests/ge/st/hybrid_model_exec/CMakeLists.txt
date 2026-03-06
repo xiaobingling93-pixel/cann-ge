@@ -16,6 +16,7 @@ target_include_directories(hybrid_model_async_exec_test
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
         ${AIR_CODE_DIR}
         ${AIR_CODE_DIR}/tests/depends/op_stub
+        ${AIR_CODE_DIR}/tests/depends/ascendcl
         )
 
 target_compile_definitions(hybrid_model_async_exec_test PRIVATE

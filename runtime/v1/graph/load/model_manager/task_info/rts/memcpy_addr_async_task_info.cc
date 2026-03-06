@@ -146,8 +146,8 @@ Status MemcpyAddrAsyncTaskInfo::Distribute() {
     GELOGE(RT_FAILED, "[Call][rtMemcpyAsyncWithCfg] failed, size:%" PRIu64 ", ret:%d", dst_max_, rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  GE_CHK_RT_RET(rtMemcpy(host_args_aligned_, args_size_, ValueToPtr(device_args_aligned_), args_size_,
-                         RT_MEMCPY_DEVICE_TO_HOST));
+  GE_CHK_RT_RET(aclrtMemcpy(host_args_aligned_, args_size_, ValueToPtr(device_args_aligned_), args_size_,
+      ACL_MEMCPY_DEVICE_TO_HOST));
 
   uintptr_t host_addr = PtrToValue(host_args_aligned_);
   for (const auto &iter : format_) {

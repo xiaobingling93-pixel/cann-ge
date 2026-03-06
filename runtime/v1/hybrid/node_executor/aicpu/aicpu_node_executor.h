@@ -132,9 +132,9 @@ class AicpuNodeTaskBase : public NodeTask {
   int32_t axis_index_ = -1;
   // for host aicpu or device aicpu
   int32_t deploy_type_flag_ = 0;
-  tagRtMemcpyKind memcpy_kind_{RT_MEMCPY_HOST_TO_DEVICE};
+  aclrtMemcpyKind memcpy_kind_{ACL_MEMCPY_HOST_TO_DEVICE};
   // for 3,4 aicpu callback
-  tagRtMemcpyKind callback_memcpy_kind_{RT_MEMCPY_DEVICE_TO_HOST};
+  aclrtMemcpyKind callback_memcpy_kind_{ACL_MEMCPY_DEVICE_TO_HOST};
   // for qos
   uint32_t qos_level_flag_ = 0U;
   bool need_host_mem_opt_ = false;

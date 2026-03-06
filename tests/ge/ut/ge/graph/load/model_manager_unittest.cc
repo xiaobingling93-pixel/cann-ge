@@ -33,6 +33,7 @@
 #include "graph/utils/graph_utils_ex.h"
 #include "ge/ut/ge/ffts_plus_proto_tools.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "depends/ascendcl/src/ascendcl_stub.h"
 #include "common/dump/dump_manager.h"
 #include "common/share_graph.h"
 #include "base/common/model/external_allocator_manager.h"
@@ -169,8 +170,11 @@ class UtestModelManagerModelManager : public testing::Test {
  protected:
   void SetUp() {
     RTS_STUB_SETUP();
+    auto acl_runtime = std::make_shared<AclRuntimeStub>();
+    ge::AclRuntimeStub::SetInstance(acl_runtime);
   }
   void TearDown() override {
+    ge::AclRuntimeStub::Reset();
     unsetenv("NPU_COLLECT_PATH");
     unsetenv("NPU_COLLECT_PATH_EXE");
     EXPECT_TRUE(ModelManager::GetInstance().model_map_.empty());

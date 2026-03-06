@@ -30,6 +30,7 @@
 #include "runtime/kernel.h"
 #include "register/op_tiling_registry.h"
 #include "adump_pub.h"
+#include "acl/acl_rt.h"
 #include "register/op_tiling/op_tiling_constants.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "graph/load/model_manager/kernel/kernel_register_info_builder.h"
@@ -1653,8 +1654,8 @@ Status KernelTaskInfo::CopyTilingDataIfNeeded() {
     tiling_data_size_ = tiling_data.size();
     tiling_data_addr_ = davinci_model_->MallocDynamicMemory(tiling_data_size_);
     GE_CHECK_NOTNULL(tiling_data_addr_);
-    GE_CHK_RT_RET(rtMemcpy(tiling_data_addr_, tiling_data_size_, tiling_data.data(), tiling_data.size(),
-                           RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(tiling_data_addr_, tiling_data_size_, tiling_data.data(), tiling_data.size(),
+        ACL_MEMCPY_HOST_TO_DEVICE));
     GELOGI("Success to update tiling data to io_addr of %s, addr: %p, size: %zu.", op_desc_->GetNamePtr(),
            tiling_data_addr_, tiling_data.size());
   }
@@ -2050,8 +2051,8 @@ Status KernelTaskInfo::InitAICPUCustomTask(const OpDescPtr &op_desc, const domi:
 
   custom_info_.attr_handle = davinci_model_->MallocDynamicMemory(op_attr_size);
   GE_ASSERT_NOTNULL(custom_info_.attr_handle);
-  GE_CHK_RT_RET(rtMemcpy(custom_info_.attr_handle, op_attr_size, buffer.GetData(), op_attr_size,
-                         RT_MEMCPY_HOST_TO_DEVICE));
+  GE_CHK_RT_RET(aclrtMemcpy(custom_info_.attr_handle, op_attr_size, buffer.GetData(), op_attr_size,
+      ACL_MEMCPY_HOST_TO_DEVICE));
 
   GE_ASSERT_TRUE((io_addrs_.size() * kAddressLen) >= kernel_def.args().size());
   const errno_t sec_ret =
@@ -2379,14 +2380,14 @@ Status KernelTaskInfo::UpdateExtraInfo(const hybrid::AicpuExtInfoHandler &ext_ha
   if (deploy_type_flag_ == static_cast<int32_t>(RT_KERNEL_HOST_ONLY)) {
     aicpu_ext_info_addr_ = davinci_model_->MallocDynamicMemory(ext_handle.GetExtInfoLen(), RT_MEMORY_HOST_SVM);
     GE_ASSERT_NOTNULL(aicpu_ext_info_addr_);
-    GE_CHK_RT_RET(rtMemcpy(aicpu_ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
-                           ext_handle.GetExtInfoLen(), RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(aicpu_ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
+        ext_handle.GetExtInfoLen(), ACL_MEMCPY_HOST_TO_HOST));
     GELOGI("op %s use host mem %p for ext info", op_desc_->GetName().c_str(), aicpu_ext_info_addr_);
   } else {
     aicpu_ext_info_addr_ = davinci_model_->MallocDynamicMemory(ext_handle.GetExtInfoLen());
     GE_ASSERT_NOTNULL(aicpu_ext_info_addr_);
-    GE_CHK_RT_RET(rtMemcpy(aicpu_ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
-                           ext_handle.GetExtInfoLen(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(aicpu_ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
+        ext_handle.GetExtInfoLen(), ACL_MEMCPY_HOST_TO_DEVICE));
     GELOGI("op %s use device mem %p for ext info with flag %d", op_desc_->GetName().c_str(), aicpu_ext_info_addr_,
            deploy_type_flag_);
   }
@@ -2403,8 +2404,8 @@ Status KernelTaskInfo::StoreInputOutputTensor(const std::vector<uint64_t> &input
     // inputDescs
     custom_info_.input_descs = davinci_model_->MallocDynamicMemory(total_desc_size);
     GE_ASSERT_NOTNULL(custom_info_.input_descs);
-    GE_CHK_RT_RET(rtMemcpy(custom_info_.input_descs, total_desc_size, input_descs.data(), total_desc_size,
-                           RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(custom_info_.input_descs, total_desc_size, input_descs.data(), total_desc_size,
+        ACL_MEMCPY_HOST_TO_DEVICE));
 
     // inputAddrs
     GE_ASSERT_TRUE(customized_args_info_.input_addr_offset <= args_size_);
@@ -2418,8 +2419,8 @@ Status KernelTaskInfo::StoreInputOutputTensor(const std::vector<uint64_t> &input
     // outputDescs
     custom_info_.output_descs = davinci_model_->MallocDynamicMemory(total_desc_size);
     GE_ASSERT_NOTNULL(custom_info_.output_descs);
-    GE_CHK_RT_RET(rtMemcpy(custom_info_.output_descs, total_desc_size, output_descs.data(),
-                           sizeof(ccAICPUTensor) * output_size, RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(custom_info_.output_descs, total_desc_size, output_descs.data(),
+        sizeof(ccAICPUTensor) * output_size, ACL_MEMCPY_HOST_TO_DEVICE));
 
     // outputAddrs
     GE_ASSERT_TRUE(customized_args_info_.output_addr_offset <= args_size_);
@@ -2447,8 +2448,8 @@ Status KernelTaskInfo::AssembleKernelNamesAndLaunch() {
       launch_addr_ = davinci_model_->MallocDynamicMemory(total_launch_size, RT_MEMORY_HOST_SVM);
     }
     GE_ASSERT_NOTNULL(launch_addr_);
-    GE_CHK_RT_RET(
-        rtMemcpy(launch_addr_, launch_info.size(), launch_info.c_str(), launch_info.size(), RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(launch_addr_, launch_info.size(), launch_info.c_str(),
+        launch_info.size(), ACL_MEMCPY_HOST_TO_HOST));
     launch_name.soName = PtrToPtr<void, const char>(launch_addr_);
     launch_name.kernelName = PtrAdd(PtrToPtr<void, const char>(launch_addr_), total_launch_size, so_name_.size());
     launch_name.opName =
@@ -2460,9 +2461,9 @@ Status KernelTaskInfo::AssembleKernelNamesAndLaunch() {
     GE_ASSERT_NOTNULL(kernel_name_arg_);
     GELOGI("Using host mem info: kernel_name_arg_ %p, so_name_host_ %p, kernel_name_host_ %p, op_name_host_ %p",
            kernel_name_arg_, launch_name.soName, launch_name.kernelName, launch_name.opName);
-    GE_CHK_RT_RET(rtMemcpy(kernel_name_arg_, sizeof(rtKernelLaunchNames_t),
-                           PtrToPtr<rtKernelLaunchNames_t, void>(&launch_name), sizeof(rtKernelLaunchNames_t),
-                           RT_MEMCPY_HOST_TO_HOST));
+    GE_CHK_RT_RET(aclrtMemcpy(kernel_name_arg_, sizeof(rtKernelLaunchNames_t),
+        PtrToPtr<rtKernelLaunchNames_t, void>(&launch_name), sizeof(rtKernelLaunchNames_t),
+        ACL_MEMCPY_HOST_TO_HOST));
   } else {
     launch_name.soName = so_name_.c_str();
     launch_name.kernelName = kernel_name_.c_str();

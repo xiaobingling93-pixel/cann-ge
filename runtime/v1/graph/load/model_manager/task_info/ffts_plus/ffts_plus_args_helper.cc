@@ -290,10 +290,10 @@ Status FftsPlusArgsHelper::AssembleTilingData() const {
   if (tiling_data_len_ == 0U) {
     return SUCCESS;
   }
-  GE_ASSERT_RT_OK(rtMemcpy(PtrToPtr<uint8_t, void>(tiling_data_dev_),
-                           static_cast<uint64_t>(tiling_data_len_ + kDescBufAlignedBytes),
-                           PtrToPtr<uint8_t, const void>(tiling_data_host_), static_cast<uint64_t>(tiling_data_len_),
-                           RT_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(PtrToPtr<uint8_t, void>(tiling_data_dev_),
+      static_cast<uint64_t>(tiling_data_len_ + kDescBufAlignedBytes),
+      PtrToPtr<uint8_t, const void>(tiling_data_host_), static_cast<uint64_t>(tiling_data_len_),
+      ACL_MEMCPY_HOST_TO_DEVICE));
   GELOGI("Memcpy to tiling addr: %p, len: %zu successfully.", tiling_data_dev_, tiling_data_len_);
   return SUCCESS;
 }

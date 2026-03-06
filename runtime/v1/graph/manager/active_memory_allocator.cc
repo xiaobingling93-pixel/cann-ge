@@ -135,7 +135,7 @@ Status ActiveMemoryAllocator::FreeMemory(const uint32_t device_id) {
       expandable_memory_allocator_.FreeMemory();
     } else {
       for (auto memory : active_memorys_) {
-        (void) rtFree(reinterpret_cast<void *>(memory.active_addr));
+        (void)rtFree(reinterpret_cast<void *>(memory.active_addr));
       }
     }
     active_memorys_.clear();
@@ -246,7 +246,7 @@ void ActiveMemoryAllocator::MallocActiveMemorys(const std::string &purpose, Logi
           active_memory.active_addr, active_memory.used_size, reuse_size);
     }
     active_memorys.emplace_back(active_memory.active_addr, active_memory.used_size);
-    (void) rtMemset(active_memory.active_addr, active_memory.used_size, 0U, active_memory.used_size);
+    (void)aclrtMemset(active_memory.active_addr, active_memory.used_size, 0U, active_memory.used_size);
   }
   if (used_size > peak_size_) {
     peak_size_ = used_size;

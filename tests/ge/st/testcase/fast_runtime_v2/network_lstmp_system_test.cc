@@ -84,7 +84,7 @@ TEST_F(NetworkLstmpST, Lstmp_LoadUseDefaultStream) {
   EXPECT_EQ(model_executor->Load(), ge::GRAPH_SUCCESS);
   EXPECT_EQ(model_executor->UnLoad(), ge::GRAPH_SUCCESS);
 
-  auto &records = stub.GetRtsRuntimeStub().GetRtMemcpyRecords();
+  auto &records = stub.GetAclRuntimeStub().GetRtMemcpyRecords();
   ASSERT_EQ(records.size(), 3);
   for (const auto &rec : records) {
     ASSERT_EQ(rec.copy_type, ge::MemoryCopyType::kRtMemcpyAsync);
@@ -104,7 +104,7 @@ TEST_F(NetworkLstmpST, Lstmp_LoadUseParameterStream) {
   EXPECT_EQ(model_executor->Load(arg), ge::GRAPH_SUCCESS);
   EXPECT_EQ(model_executor->UnLoad(), ge::GRAPH_SUCCESS);
 
-  auto &records = stub.GetRtsRuntimeStub().GetRtMemcpyRecords();
+  auto &records = stub.GetAclRuntimeStub().GetRtMemcpyRecords();
   ASSERT_EQ(records.size(), 3);
   for (const auto &rec : records) {
     ASSERT_EQ(rec.copy_type, ge::MemoryCopyType::kRtMemcpyAsync);

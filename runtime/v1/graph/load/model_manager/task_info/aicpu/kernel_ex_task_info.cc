@@ -9,7 +9,7 @@
  */
 
 #include "graph/load/model_manager/task_info/aicpu/kernel_ex_task_info.h"
-
+#include "acl/acl_rt.h"
 #include "common/checker.h"
 #include "graph/utils/math_util.h"
 #include "graph/load/model_manager/davinci_model.h"
@@ -81,8 +81,8 @@ Status KernelExTaskInfo::InitTaskExtInfo(const std::string &ext_info, const OpDe
   }
   ext_info_addr_ = davinci_model_->MallocDynamicMemory(ext_handle.GetExtInfoLen(), mem_type_);
   GE_ASSERT_NOTNULL(ext_info_addr_);
-  GE_CHK_RT_RET(rtMemcpy(ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
-                         ext_handle.GetExtInfoLen(), memcpy_kind_));
+  GE_CHK_RT_RET(aclrtMemcpy(ext_info_addr_, ext_handle.GetExtInfoLen(), ext_handle.GetExtInfo(),
+      ext_handle.GetExtInfoLen(), memcpy_kind_));
   GELOGD("Op %s use %s mem %p for ext info with flag %d", op_desc->GetName().c_str(),
          mem_type_ == RT_MEMORY_HOST_SVM ? "host" : "device", ext_info_addr_, deploy_type_flag_);
   return SUCCESS;
@@ -131,8 +131,8 @@ Status KernelExTaskInfo::InitInputOutputAddr(const PisToArgs &args, const IowAdd
 }
 
 Status KernelExTaskInfo::AssembleKernelBuffer(const STR_FWK_OP_KERNEL * const fwk_op_kernel) const {
-  GE_CHK_RT_RET(rtMemcpy(kernel_buf_, kernel_buf_size_, PtrToPtr<STR_FWK_OP_KERNEL, void>(fwk_op_kernel),
-                         kernel_buf_size_, memcpy_kind_));
+  GE_CHK_RT_RET(aclrtMemcpy(kernel_buf_, kernel_buf_size_, PtrToPtr<STR_FWK_OP_KERNEL, void>(fwk_op_kernel),
+      kernel_buf_size_, memcpy_kind_));
   GELOGD("Op %s use %s mem %p for kernel_buf with flag %d", op_desc_->GetName().c_str(),
          mem_type_ == RT_MEMORY_HOST_SVM ? "host" : "device", kernel_buf_, deploy_type_flag_);
   return SUCCESS;
@@ -394,8 +394,8 @@ Status KernelExTaskInfo::AssembleWorkSpaceAddr(const domi::KernelExDef &kernel_d
   // 故此处用独立申请的地址，后面修改为persistent workspace
   void *workspace_base_addr = davinci_model_->MallocDynamicMemory(kernel_def.task_info().size(), mem_type_);
   GE_ASSERT_NOTNULL(workspace_base_addr);
-  GE_CHK_RT_RET(rtMemcpy(workspace_base_addr, kernel_def.task_info().size(), kernel_def.task_info().data(),
-                         kernel_def.task_info().size(), memcpy_kind_));
+  GE_CHK_RT_RET(aclrtMemcpy(workspace_base_addr, kernel_def.task_info().size(), kernel_def.task_info().data(),
+      kernel_def.task_info().size(), memcpy_kind_));
   workspace_data_addrs_.emplace_back(workspace_base_addr);
 
   GELOGI("Op %s use %s mem %p for workspace_base_addr with flag %d", op_desc->GetName().c_str(),

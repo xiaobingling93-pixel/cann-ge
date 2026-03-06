@@ -99,8 +99,8 @@ class KernelTaskInfo : public TaskInfo {
     tiling_key = static_cast<uint32_t>(tiling_key_);
     const auto tiling_data_holder = MakeUnique<uint8_t[]>(static_cast<size_t>(tiling_data_size_));
     GE_CHECK_NOTNULL_JUST_RETURN(tiling_data_holder);
-    if (rtMemcpy(tiling_data_holder.get(), static_cast<uint64_t>(tiling_data_size_), tiling_data_addr_,
-                 static_cast<uint64_t>(tiling_data_size_), RT_MEMCPY_DEVICE_TO_HOST) != RT_ERROR_NONE) {
+    if (aclrtMemcpy(tiling_data_holder.get(), static_cast<uint64_t>(tiling_data_size_), tiling_data_addr_,
+        static_cast<uint64_t>(tiling_data_size_), ACL_MEMCPY_DEVICE_TO_HOST) != ACL_SUCCESS) {
       return;
     }
     std::stringstream ss;

@@ -115,8 +115,8 @@ Status DSATaskInfo::InitWorkspace(const OpDescPtr &op_desc, const domi::DSATaskD
 
   // todo: 后面修改成静态图不可刷新场景, 在此拷贝, 采用model; 注意不支持刷新的也需要在此拷贝
   if ((!davinci_model_->IsFeatureBaseRefreshable()) || (!support_refresh_)) {
-    GE_CHK_RT_RET(rtMemcpy(ValueToPtr(hbm_args), dev_size, workspace_io_addrs_.data(),
-                           sizeof(uint64_t) * workspace_io_addrs_.size(), RT_MEMCPY_HOST_TO_DEVICE));
+    GE_CHK_RT_RET(aclrtMemcpy(ValueToPtr(hbm_args), dev_size, workspace_io_addrs_.data(),
+        sizeof(uint64_t) * workspace_io_addrs_.size(), ACL_MEMCPY_HOST_TO_DEVICE));
   }
 
   dev_size = static_cast<uint64_t>(MemSizeAlign(static_cast<size_t>(dev_size),
@@ -381,8 +381,8 @@ void DSATaskInfo::PostDumpProcess(const domi::TaskDef &task_def) {
                                    first_level_address_info, {}, task_type);
   } else {
     // support_refresh_ 为true表示是dsa支持可刷新, 走二级指针dump流程, 仅纯静态图在此拷贝, 其他走args table拷贝
-    (void)rtMemcpy(ValueToPtr(dump_args_), sizeof(uint64_t) * dump_io_addr.size(), dump_io_addr.data(),
-                   sizeof(uint64_t) * dump_io_addr.size(), RT_MEMCPY_HOST_TO_DEVICE);
+    (void)aclrtMemcpy(ValueToPtr(dump_args_), sizeof(uint64_t) * dump_io_addr.size(), dump_io_addr.data(),
+        sizeof(uint64_t) * dump_io_addr.size(), ACL_MEMCPY_HOST_TO_DEVICE);
     // Dump of second-level addresses
     davinci_model_->SaveDumpTask(id, op_desc, static_cast<uintptr_t>(dump_args_), {false, {}}, {}, task_type);
   }

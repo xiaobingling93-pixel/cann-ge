@@ -80,8 +80,8 @@ ge::graphStatus CopyTensorToDevice(KernelContext *context, const size_t copy_ind
   GELOGD("StreamCopyH2D, host addr %p, host tensor size %zu, device addr %p, alloc device size %zu",
          tensor_data->GetAddr(), host_tensor_size, mem_block->GetAddr(), tensor_size);
   if (host_tensor_size > 0U) {
-    GE_ASSERT_RT_OK(rtMemcpyAsync(mem_block->GetAddr(), tensor_size, tensor_data->GetAddr(), host_tensor_size,
-                                  RT_MEMCPY_HOST_TO_DEVICE_EX, stream));
+    GE_ASSERT_RT_OK(aclrtMemcpyAsync(mem_block->GetAddr(), tensor_size, tensor_data->GetAddr(), host_tensor_size,
+        ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stream));
   }
   out_tensor_data->SetPlacement(kOnDeviceHbm);
 

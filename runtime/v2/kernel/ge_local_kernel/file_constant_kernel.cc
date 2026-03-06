@@ -71,9 +71,9 @@ ge::graphStatus CopyWeightFromFileAsync(const void *const curr_dev_ptr, const Fi
     }
     GELOGI("copy %zu bytes to memory.", copy_len_once);
     void *const cur_dev_ptr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(curr_dev_ptr) + used_memory);
-    const rtError_t rts_error = rtMemcpyAsync(cur_dev_ptr, left_size - used_memory, &compress_nodes[0U], copy_len_once,
-                                              RT_MEMCPY_HOST_TO_DEVICE_EX, stream);
-    if (rts_error != RT_ERROR_NONE) {
+    const aclError rts_error = aclrtMemcpyAsync(cur_dev_ptr, left_size - used_memory,
+        &compress_nodes[0U], copy_len_once, ACL_MEMCPY_HOST_TO_BUF_TO_DEVICE, stream);
+    if (rts_error != ACL_SUCCESS) {
       GELOGE(ge::GRAPH_FAILED, "copy failed, result code = %d.", rts_error);
       ret = RT_ERROR_TO_GE_STATUS(rts_error);
       break;

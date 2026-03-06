@@ -136,12 +136,12 @@ ge::Status HostExecutorDumper::DoHostDataDump(NodeDumpUnit &dump_unit, const ge:
   }
 
   void *step_id = nullptr;
-  GE_ASSERT_RT_OK(rtMalloc(&step_id, sizeof(uint64_t), RT_MEMORY_HBM, GE_MODULE_NAME_U16));
+  GE_ASSERT_RT_OK(aclrtMalloc(&step_id, sizeof(uint64_t), ACL_MEM_TYPE_HIGH_BAND_WIDTH));
   const auto callback = [&dump_unit, &step_id]() {
-    GE_CHK_RT(rtFree(step_id));
+    GE_CHK_RT(aclrtFree(step_id));
     dump_unit.Clear();
   };
-  GE_MAKE_GUARD(dump_release, callback);
+  GE_MAKE_GUARD(dump_release, callback); 
 
   // todo single_op and graph have different switch, which will be normalized
   const std::string model_name = extend_info_->model_name;
@@ -185,7 +185,8 @@ ge::Status HostExecutorDumper::DoHostDataDump(NodeDumpUnit &dump_unit, const ge:
   ge::ExceptionDumper exception_dumper;
   SetOpDescInfo(dump_unit, op_desc_dump, op_desc_info, input_addrs, output_addrs);
   auto iteration_num = GetIterationNum();
-  GE_ASSERT_RT_OK(rtMemcpy(step_id, sizeof(uint64_t), &iteration_num, sizeof(uint64_t), RT_MEMCPY_HOST_TO_DEVICE));
+  GE_ASSERT_RT_OK(aclrtMemcpy(step_id, sizeof(uint64_t), &iteration_num,
+      sizeof(uint64_t), ACL_MEMCPY_HOST_TO_DEVICE));
   GELOGD("[Dumper] Is single op %d", static_cast<int32_t>(dump_properties.IsSingleOpNeedDump()));
   const auto &dump_step = dump_properties.GetDumpStep();
   if (!IsInDumpStep(static_cast<int64_t>(iteration_num), dump_step)) {

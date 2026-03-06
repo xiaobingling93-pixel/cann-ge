@@ -1517,7 +1517,7 @@ TEST_F(FmMemoryRefreshTest, fm_memory_refresh_with_inputs_nozerocopy) {
   ConstructInputOutputTensor(inputs, outputs, 2);
   TensorDesc output_desc(Shape({1, 2, 3, 4}));
   EXPECT_EQ(SUCCESS, session.RunGraphWithStreamAsync(graph_id, nullptr, inputs, outputs));
-  EXPECT_NE(runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().size(), 0);
+  EXPECT_NE(runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().size(), 0);
 }
 
 /********************* input output reuse mem in graph st *********************/
@@ -3206,10 +3206,10 @@ TEST_F(FmMemoryRefreshTest, data_input_output_reuse_mem_03) {
   uint64_t data1_addr = PtrToValue(input_data_1.data());
   std::cout << "======data1_addr:" << data1_addr << std::endl;
   std::cout << "======GetRtMemcpyRecords size:"
-    << runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().size() << std::endl;
+    << runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().size() << std::endl;
 
   std::vector<uint64_t>  task_io_addr;
-  for (const auto &args : runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords()) {
+  for (const auto &args : runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords()) {
     std::cout << "=== host args ===" << std::endl;
     uint64_t *host_args_base = (uint64_t *)args.src_address;
     for (size_t i = 0U; i < (args.copy_len / sizeof(uint64_t)); i++) {
@@ -3543,10 +3543,10 @@ TEST_F(FmMemoryRefreshTest, data_input_output_reuse_mem_04) {
   uint64_t data1_addr = PtrToValue(input_data_1.data());
   std::cout << "======data1_addr:" << data1_addr << std::endl;
   std::cout << "======GetRtMemcpyRecords size:"
-    << runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().size() << std::endl;
+    << runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().size() << std::endl;
 
   std::vector<uint64_t>  task_io_addr;
-  for (const auto &args : runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords()) {
+  for (const auto &args : runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords()) {
     uint64_t *host_args_base = (uint64_t *)args.src_address;
     for (size_t i = 0U; i < (args.copy_len / sizeof(uint64_t)); i++) {
       uint64_t io_addr = host_args_base[i];
@@ -4088,7 +4088,6 @@ TEST_F(FmMemoryRefreshTest, data_reuse_ok_when_single_execution) {
 
   runtime_stub.Clear();
 }
-
 
 /**
  * 用例描述：图的IO复用场景， 图的IO地址段不变，多次执行模型，args table正确
