@@ -13,7 +13,6 @@
 
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/op_desc.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 class StreamActiveTaskInfo : public TaskInfo {

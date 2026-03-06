@@ -23,7 +23,6 @@
 #include "graph/manager/graph_var_manager.h"
 #include "runtime/rt.h"
 #include "single_op/task/build_task_utils.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -302,10 +301,11 @@ Status TbeTaskBuilder::SetKernelArgs(TbeOpTask &task, const SingleOpModelParam &
   GE_CHECK_GE(arg_size, offset + task.ffts_addr_num_ * sizeof(uint64_t));
   // add ffts_addr after offset
   if (task.ffts_addr_num_ == 1UL) {
-    void *mode_addr_ptr = nullptr;
-    GE_CHK_RT_RET(aclrtGetHardwareSyncAddr(&mode_addr_ptr));
+    uint64_t mode_addr = 0U;
+    uint32_t model_len = 0U;
+    GE_CHK_RT_RET(rtGetC2cCtrlAddr(&mode_addr, &model_len));
     GE_CHK_RT_RET(
-        rtMemcpy(args.get() + offset, sizeof(uint64_t), &mode_addr_ptr, sizeof(uint64_t), RT_MEMCPY_HOST_TO_HOST));
+        rtMemcpy(args.get() + offset, sizeof(uint64_t), &mode_addr, sizeof(uint64_t), RT_MEMCPY_HOST_TO_HOST));
     offset += sizeof(uint64_t);
   }
 

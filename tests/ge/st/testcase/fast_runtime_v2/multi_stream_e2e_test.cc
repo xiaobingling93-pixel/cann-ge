@@ -196,22 +196,20 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case01_TwoStream_AccessMemCrossStream
         TaskTypeOnStream::rtKernelLaunchWithFlagV2, TaskTypeOnStream::rtEventRecord,
         TaskTypeOnStream::rtStreamWaitEvent, TaskTypeOnStream::rtMemcpyAsync, TaskTypeOnStream::rtStreamWaitEvent};
     auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {TaskTypeOnStream::rtStreamWaitEvent,
                                                                   TaskTypeOnStream::rtKernelLaunchWithFlagV2,
                                                                   TaskTypeOnStream::rtEventRecord, TaskTypeOnStream::rtEventRecord};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
 
     // todo check error log in allocator, if has mem leak or not
     // check add output addr life cycle
@@ -231,8 +229,7 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case01_TwoStream_AccessMemCrossStream
     model_executor.reset(nullptr);
     rtStreamDestroy(stream);
     auto stream_addr = "0x" + std::to_string(reinterpret_cast<uint64_t>(stream));
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // EXPECT_TRUE(runtime_stub.GetSlogStub().FindInfoLogRegex(kPoolShrink, {{1, stream_addr}}) >= 0);
+    EXPECT_TRUE(runtime_stub.GetSlogStub().FindInfoLogRegex(kPoolShrink, {{1, stream_addr}}) >= 0);
   }
   runtime_stub.Clear();
 }
@@ -332,23 +329,21 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case02_TwoStream_ConsumersInAndCrossS
         TaskTypeOnStream::rtKernelLaunchWithFlagV2, TaskTypeOnStream::rtEventRecord,
         TaskTypeOnStream::rtKernelLaunchWithFlagV2, TaskTypeOnStream::rtStreamWaitEvent,
         TaskTypeOnStream::rtMemcpyAsync, TaskTypeOnStream::rtStreamWaitEvent};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // EXPECT_EQ(task_on_stream.size(), expect_task_infos_on_main.size());
-    // for (size_t i = 0U; i < task_on_stream.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream[i], expect_task_infos_on_main[i]);
-    // }
+    auto task_on_stream = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
+    EXPECT_EQ(task_on_stream.size(), expect_task_infos_on_main.size());
+    for (size_t i = 0U; i < task_on_stream.size(); ++i) {
+      EXPECT_EQ(task_on_stream[i], expect_task_infos_on_main[i]);
+    }
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {
         TaskTypeOnStream::rtStreamWaitEvent, TaskTypeOnStream::rtKernelLaunchWithFlagV2,
         TaskTypeOnStream::rtKernelLaunchWithFlagV2,  // atomic clean
         TaskTypeOnStream::rtEventRecord, TaskTypeOnStream::rtEventRecord};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
 
     rtStreamDestroy(stream);
   }
@@ -442,12 +437,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case03_TwoStream_HostMemAccessCrossSt
         TaskTypeOnStream::rtEventRecord,      // shape send
         TaskTypeOnStream::rtStreamWaitEvent,  // netoutput wait
         TaskTypeOnStream::rtMemcpyAsync, TaskTypeOnStream::rtStreamWaitEvent};     // model copy?
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {
@@ -456,12 +450,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case03_TwoStream_HostMemAccessCrossSt
         TaskTypeOnStream::rtStreamWaitEvent,         // wait event 1
         TaskTypeOnStream::rtKernelLaunchWithFlagV2,  // add launch
         TaskTypeOnStream::rtEventRecord, TaskTypeOnStream::rtEventRecord};            // add send
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
 
     // check shape output goes to launch args
     EXPECT_EQ(add_launch_args->GetArgsEx()->hostInputInfoNum, 1);
@@ -559,12 +552,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case04_TwoStream_AccessRefMemCrossStr
         TaskTypeOnStream::rtKernelLaunchWithFlagV2,  // transdata launch
         TaskTypeOnStream::rtStreamWaitEvent,         // netoutput wait
         TaskTypeOnStream::rtMemcpyAsync, TaskTypeOnStream::rtStreamWaitEvent};            // model copy?
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {
@@ -572,12 +564,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case04_TwoStream_AccessRefMemCrossStr
         TaskTypeOnStream::rtKernelLaunchWithFlagV2,  // relu launch
         TaskTypeOnStream::rtEventRecord,  TaskTypeOnStream::rtEventRecord           // relu send
     };
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
 
     // check refdata1 output addr life cycle
     const auto refdata_addr = assign_launch_args->GetLaunchAddresses()[0];
@@ -768,12 +759,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case06_TwoStream_WithStaticSubGraph_o
         TaskTypeOnStream::rtStreamWaitEvent,
         TaskTypeOnStream::rtStreamWaitEvent,         // branch to main stream
     };  // model copy?
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {
@@ -782,12 +772,11 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case06_TwoStream_WithStaticSubGraph_o
         TaskTypeOnStream::rtEventRecord,             // relu send'
         TaskTypeOnStream::rtEventRecord
     };
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
     ASSERT_EQ(model_executor->Execute({i3.value}, inputs.GetTensorList(), inputs.size(), outputs.GetTensorList(),
                                       outputs.size()),
               ge::GRAPH_SUCCESS);
@@ -919,23 +908,21 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case07_TwoStream_WithFirstEventSync_o
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream0 = {
         TaskTypeOnStream::rtEventRecord, TaskTypeOnStream::rtStreamWaitEvent,
         TaskTypeOnStream::rtKernelLaunchWithFlagV2, TaskTypeOnStream::rtStreamWaitEvent};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(stream);
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     auto all_rt_streams = runtime_stub.GetRtsRuntimeStub().GetAllRtStreams();
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {TaskTypeOnStream::rtStreamWaitEvent,
                                                                   TaskTypeOnStream::rtEventRecord, TaskTypeOnStream::rtEventRecord};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
     model_executor.reset(nullptr);
     rtStreamDestroy(stream);
   }
@@ -1011,24 +998,22 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case08_TwoStream_WithLastEventSync_ok
                                                                   TaskTypeOnStream::rtMemcpyAsync,
                                                                   TaskTypeOnStream::rtStreamWaitEvent,
                                                                   TaskTypeOnStream::rtStreamWaitEvent};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[0]);
-    // EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
-    // for (size_t i = 0; i < task_on_stream0.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
-    // }
+    auto task_on_stream0 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[0]);
+    EXPECT_EQ(task_on_stream0.size(), expect_task_infos_on_stream0.size());
+    for (size_t i = 0; i < task_on_stream0.size(); ++i) {
+      EXPECT_EQ(task_on_stream0[i], expect_task_infos_on_stream0[i]);
+    }
 
     // check task on stream 1
     std::vector<TaskTypeOnStream> expect_task_infos_on_stream1 = {TaskTypeOnStream::rtStreamWaitEvent, // wait input
                                                                   TaskTypeOnStream::rtStreamWaitEvent, // wait input
                                                                   TaskTypeOnStream::rtEventRecord,// last send
                                                                   TaskTypeOnStream::rtEventRecord};
-    // rtKernelLaunchWithHandle 接口未切换到 aclrtKernelLaunchV2，待完全切换后再校验
-    // auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
-    // EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
-    // for (size_t i = 0; i < task_on_stream1.size(); ++i) {
-    //   EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
-    // }
+    auto task_on_stream1 = runtime_stub.GetRtsRuntimeStub().GetAllTaskOnStream(all_rt_streams[1]);
+    EXPECT_EQ(task_on_stream1.size(), expect_task_infos_on_stream1.size());
+    for (size_t i = 0; i < task_on_stream1.size(); ++i) {
+      EXPECT_EQ(task_on_stream1[i], expect_task_infos_on_stream1[i]);
+    }
     model_executor.reset(nullptr);
     rtStreamDestroy(stream);
   }

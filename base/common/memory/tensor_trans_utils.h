@@ -16,7 +16,6 @@
 #include "graph/tensor.h"
 #include "graph/ge_tensor.h"
 #include "mem_base.h"
-
 namespace ge {
 
 struct MemcpyBatchParam {

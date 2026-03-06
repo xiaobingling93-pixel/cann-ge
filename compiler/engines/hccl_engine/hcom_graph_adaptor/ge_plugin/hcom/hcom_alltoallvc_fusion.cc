@@ -1077,100 +1077,100 @@ HcclResult HcomAlltoAllVCFusion::RestoreOpsEdges(std::vector<AlltoAllVCNodeInfo>
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomAlltoAllVCFusion::CreateSplitNode(SplitNodeInfo &splitNodInfo, ge::ComputeGraph &graph) {
+HcclResult HcomAlltoAllVCFusion::CreateSplitNode(SplitNodeInfo &splitNodeInfo, ge::ComputeGraph &graph) {
   ge::graphStatus geRet = ge::GRAPH_SUCCESS;
   ge::OpDescPtr splitOpDescPtr = nullptr;
-  EXECEPTION_CATCH((splitOpDescPtr = std::make_shared<ge::OpDesc>(splitNodInfo.nodeName.c_str(), "Split")),
+  EXECEPTION_CATCH((splitOpDescPtr = std::make_shared<ge::OpDesc>(splitNodeInfo.nodeName.c_str(), "Split")),
                    return HCCL_E_INTERNAL);
 
-  geRet = splitOpDescPtr->AddInputDesc("split_dim", splitNodInfo.inputSplitDim);
+  geRet = splitOpDescPtr->AddInputDesc("split_dim", splitNodeInfo.inputSplitDim);
   CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
               HCCL_ERROR("[Create][Split]node[%s] add input: split_dim failed", splitOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  geRet = splitOpDescPtr->AddInputDesc("x", splitNodInfo.inputX);
+  geRet = splitOpDescPtr->AddInputDesc("x", splitNodeInfo.inputX);
   CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
               HCCL_ERROR("[Create][Split]node[%s] add input: x failed", splitOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  for (u32 i = 0; i < splitNodInfo.outputY.size(); i++) {
-    geRet = splitOpDescPtr->AddOutputDesc("y" + std::to_string(i), splitNodInfo.outputY[i]);
+  for (u32 i = 0; i < splitNodeInfo.outputY.size(); i++) {
+    geRet = splitOpDescPtr->AddOutputDesc("y" + std::to_string(i), splitNodeInfo.outputY[i]);
     CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
                 HCCL_ERROR("[Create][Split]node[%s] add output failed", splitOpDescPtr->GetName().c_str()),
                 HCCL_E_INTERNAL);
   }
 
-  bool bErr = ge::AttrUtils::SetInt(splitOpDescPtr, "num_split", splitNodInfo.numSplit);
+  bool bErr = ge::AttrUtils::SetInt(splitOpDescPtr, "num_split", splitNodeInfo.numSplit);
   CHK_PRT_RET(!bErr,
               HCCL_ERROR("[Create][Split]node[%s] set attr: num_split failed", splitOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
   std::string dynamicOutputName = "y";
-  bErr = ge::AttrUtils::SetInt(splitOpDescPtr, DYNAMIC_OUTPUT_TD_NUM(dynamicOutputName), splitNodInfo.numSplit);
+  bErr = ge::AttrUtils::SetInt(splitOpDescPtr, DYNAMIC_OUTPUT_TD_NUM(dynamicOutputName), splitNodeInfo.numSplit);
   CHK_PRT_RET(!bErr,
               HCCL_ERROR("[Create][Split]node[%s] set attr: dynamicOutput[%s] failed",
                          splitOpDescPtr->GetName().c_str(), dynamicOutputName.c_str()),
               HCCL_E_INTERNAL);
 
-  splitNodInfo.splitNodePtr = graph.AddNode(splitOpDescPtr);
-  CHK_PRT_RET(!splitNodInfo.splitNodePtr,
+  splitNodeInfo.splitNodePtr = graph.AddNode(splitOpDescPtr);
+  CHK_PRT_RET(!splitNodeInfo.splitNodePtr,
               HCCL_ERROR("[Create][Split]graph[%s] add node[%s] failed", graph.GetName().c_str(),
                          splitOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  CHK_RET(SetUnknownShape(splitNodInfo.splitNodePtr, graph));
+  CHK_RET(SetUnknownShape(splitNodeInfo.splitNodePtr, graph));
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomAlltoAllVCFusion::CreateSplitVNode(SplitVNodeInfo &splitvNodInfo, ge::ComputeGraph &graph) {
+HcclResult HcomAlltoAllVCFusion::CreateSplitVNode(SplitVNodeInfo &splitvNodeInfo, ge::ComputeGraph &graph) {
   ge::graphStatus geRet = ge::GRAPH_SUCCESS;
   ge::OpDescPtr splitVOpDescPtr = nullptr;
-  EXECEPTION_CATCH((splitVOpDescPtr = std::make_shared<ge::OpDesc>(splitvNodInfo.nodeName.c_str(), "SplitV")),
+  EXECEPTION_CATCH((splitVOpDescPtr = std::make_shared<ge::OpDesc>(splitvNodeInfo.nodeName.c_str(), "SplitV")),
                    return HCCL_E_INTERNAL);
 
-  geRet = splitVOpDescPtr->AddInputDesc("x", splitvNodInfo.inputX);
+  geRet = splitVOpDescPtr->AddInputDesc("x", splitvNodeInfo.inputX);
   CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
               HCCL_ERROR("[Create][SplitV]node[%s] add input: x failed", splitVOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  geRet = splitVOpDescPtr->AddInputDesc("size_splits", splitvNodInfo.inputSizeSplit);
+  geRet = splitVOpDescPtr->AddInputDesc("size_splits", splitvNodeInfo.inputSizeSplit);
   CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
               HCCL_ERROR("[Create][SplitV]node[%s] add input: size_splits failed", splitVOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  geRet = splitVOpDescPtr->AddInputDesc("split_dim", splitvNodInfo.inputSplitDim);
+  geRet = splitVOpDescPtr->AddInputDesc("split_dim", splitvNodeInfo.inputSplitDim);
   CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
               HCCL_ERROR("[Create][SplitV]node[%s] add input: split_dim failed", splitVOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
 
-  for (u32 i = 0; i < splitvNodInfo.outputY.size(); i++) {
-    geRet = splitVOpDescPtr->AddOutputDesc("y" + std::to_string(i), splitvNodInfo.outputY[i]);
+  for (u32 i = 0; i < splitvNodeInfo.outputY.size(); i++) {
+    geRet = splitVOpDescPtr->AddOutputDesc("y" + std::to_string(i), splitvNodeInfo.outputY[i]);
     CHK_PRT_RET((geRet != ge::GRAPH_SUCCESS),
                 HCCL_ERROR("[Create][SplitV]node[%s] add output failed", splitVOpDescPtr->GetName().c_str()),
                 HCCL_E_INTERNAL);
   }
 
-  CHK_PRT_RET(splitvNodInfo.numSplit > SPLITV_NUMSPLIT_MAX,
+  CHK_PRT_RET(splitvNodeInfo.numSplit > SPLITV_NUMSPLIT_MAX,
               HCCL_ERROR("[Create][SplitV]node[%s] num_split[%d] is not support, 61 is the maximum of num_split",
-                         splitVOpDescPtr->GetName().c_str(), splitvNodInfo.numSplit),
+                         splitVOpDescPtr->GetName().c_str(), splitvNodeInfo.numSplit),
               HCCL_E_NOT_SUPPORT);
 
-  bool bErr = ge::AttrUtils::SetInt(splitVOpDescPtr, "num_split", splitvNodInfo.numSplit);
+  bool bErr = ge::AttrUtils::SetInt(splitVOpDescPtr, "num_split", splitvNodeInfo.numSplit);
   CHK_PRT_RET(!bErr,
               HCCL_ERROR("[Create][SplitV]node[%s] set attr: num_split failed", splitVOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
   std::string dynamicOutputName = "y";
-  bErr = ge::AttrUtils::SetInt(splitVOpDescPtr, DYNAMIC_OUTPUT_TD_NUM(dynamicOutputName), splitvNodInfo.numSplit);
+  bErr = ge::AttrUtils::SetInt(splitVOpDescPtr, DYNAMIC_OUTPUT_TD_NUM(dynamicOutputName), splitvNodeInfo.numSplit);
   CHK_PRT_RET(!bErr,
               HCCL_ERROR("[Create][SplitV]node[%s] set attr: dynamicOutput[%s] failed",
                          splitVOpDescPtr->GetName().c_str(), dynamicOutputName.c_str()),
               HCCL_E_INTERNAL);
 
-  splitvNodInfo.splitvNodePtr = graph.AddNode(splitVOpDescPtr);
-  CHK_PRT_RET(!splitvNodInfo.splitvNodePtr,
+  splitvNodeInfo.splitvNodePtr = graph.AddNode(splitVOpDescPtr);
+  CHK_PRT_RET(!splitvNodeInfo.splitvNodePtr,
               HCCL_ERROR("[Create][SplitV]graph[%s] add node[%s] failed", graph.GetName().c_str(),
                          splitVOpDescPtr->GetName().c_str()),
               HCCL_E_INTERNAL);
-  CHK_RET(SetUnknownShape(splitvNodInfo.splitvNodePtr, graph));
+  CHK_RET(SetUnknownShape(splitvNodeInfo.splitvNodePtr, graph));
   return HCCL_SUCCESS;
 }
 

@@ -27,7 +27,6 @@
 #include "base/err_mgr.h"
 #include "graph/ge_local_context.h"
 #include "mmpa/mmpa_api.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 template <typename QUEUE>
@@ -168,8 +167,8 @@ class TaskWorkerImpl : public TaskWorker {
   }
 
  private:
-  void GetCurrentCtx(aclrtContext &ctx) const {
-    auto ret = aclrtGetCurrentContext(&ctx);
+  void GetCurrentCtx(rtContext_t &ctx) const {
+    auto ret = rtCtxGetCurrent(&ctx);
     if ((ret == RT_ERROR_NONE) && (ctx != nullptr)) {
       return;
     }
@@ -183,7 +182,7 @@ class TaskWorkerImpl : public TaskWorker {
 
   bool StartThreads() {
     size_t index = 0;
-    aclrtContext ctx = nullptr;
+    rtContext_t ctx = nullptr;
     GetCurrentCtx(ctx);
     GE_ASSERT_NOTNULL(ctx);
     const error_message::ErrorManagerContext &error_context = error_message::GetErrMgrContext();
@@ -195,8 +194,8 @@ class TaskWorkerImpl : public TaskWorker {
         break;
       }
       if (!thread->Start([this, &thread, ctx, ge_context, error_context]() {
-            auto rtErr = aclrtSetCurrentContext(ctx);
-            if (rtErr != ACL_SUCCESS) {
+            auto rtErr = rtCtxSetCurrent(ctx);
+            if (rtErr != RT_ERROR_NONE) {
               GELOGW("Failed to set current context, ret %d", rtErr);
               REPORT_INNER_ERR_MSG("E19999", "Set context failed, ret %d", rtErr);
             }

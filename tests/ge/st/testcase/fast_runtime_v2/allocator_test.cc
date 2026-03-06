@@ -202,16 +202,7 @@ TEST_F(Runtime2AllocatorSystemTest, test_allocate_mem_block_try_recycle_then_mal
     }
 
   };
-
-  struct FakeAclRuntime : AclRuntimeStubImpl {
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free, size_t *total) {
-      *free = 60UL * 1024UL * 1024UL * 1024UL;
-      *total = 60UL * 1024UL * 1024UL * 1024UL;
-      return ACL_SUCCESS;
-    }
-  };
-
-  GertRuntimeStub stub(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()), true, std::unique_ptr<AclRuntimeStubImpl>(new FakeAclRuntime()));
+  GertRuntimeStub stub(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()));
   memory::CachingMemAllocator allocator(0, RT_MEMORY_HBM);
   memory::CachingMemAllocator allocator1(0, RT_MEMORY_HBM);
   allocator1.SetStream((void *)1);
@@ -256,15 +247,7 @@ TEST_F(Runtime2AllocatorSystemTest, test_set_memory_pool_threshold) {
       return RT_ERROR_NONE;
     }
   };
-
-  struct FakeAclRuntime : AclRuntimeStubImpl {
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free, size_t *total) override {
-      *free = 60UL * 1024UL * 1024UL * 1024UL;
-      *total = 60UL * 1024UL * 1024UL * 1024UL;
-      return RT_ERROR_NONE;
-    }
-  };
-  GertRuntimeStub fakeRuntime(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()), true, std::unique_ptr<AclRuntimeStubImpl>(new FakeAclRuntime()));
+  GertRuntimeStub fakeRuntime(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()));
   ScalableConfig default_cfg;
   constexpr const char *kOptionDisableMemoryPoolThreshold = "ge.experiment.memory_pool_threshold";
   const auto back_options = ge::GetThreadLocalContext().GetAllGlobalOptions();
@@ -343,15 +326,7 @@ TEST_F(Runtime2AllocatorSystemTest, ExternalAllocator_NodeoutputAndWorkspaceUseS
     }
   };
 
-  struct FakeAclRuntime : AclRuntimeStubImpl {
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free, size_t *total) override {
-      *free = 60UL * 1024UL * 1024UL * 1024UL;
-      *total = 60UL * 1024UL * 1024UL * 1024UL;
-      return RT_ERROR_NONE;
-    }
-  };
-
-  GertRuntimeStub fakeRuntime(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()), true, std::unique_ptr<AclRuntimeStubImpl>(new FakeAclRuntime()));
+  GertRuntimeStub fakeRuntime(std::unique_ptr<RuntimeStubImpl>(new FakeRuntime()));
   fakeRuntime.GetSlogStub().SetLevel(DLOG_INFO);
   fakeRuntime.GetSlogStub().Clear();
   auto graph1 = ShareGraph::BuildTwoAddNodeGraph();

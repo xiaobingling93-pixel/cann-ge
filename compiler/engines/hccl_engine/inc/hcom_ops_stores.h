@@ -11,6 +11,9 @@
 #ifndef HCOM_OPS_STORES_H
 #define HCOM_OPS_STORES_H
 
+#include <string>
+#include <map>
+#include <memory>
 #include "common/opskernel/ops_kernel_info_store.h"
 #include "common/optimizer/graph_optimizer.h"
 
@@ -27,7 +30,7 @@ extern "C" {
  * @param options Input parameter. Options must contain rank table path, deploy mode, rank id, pod name.
  * @return ge::SUCCESS success; others：fail.
  */
-ge::Status Initialize(const std::map<string, string> &options);
+ge::Status Initialize(const std::map<std::string, std::string> &options);
 
 /**
  * @brief Finalize HCOM operators plugin.
@@ -41,14 +44,14 @@ ge::Status Finalize();
  *
  * @param opKernInfos A map identifying the information store of HCOM operators.
  */
-void GetOpsKernelInfoStores(std::map<string, OpsKernelInfoStorePtr> &opKernInfos);
+void GetOpsKernelInfoStores(std::map<std::string, OpsKernelInfoStorePtr> &opKernInfos);
 
 /**
  * @brief Get the graph optimizer of HCOM operators.
  *
  * @param graphOptimizers A map identifying the graph optimizer of HCOM operators.
  */
-void GetGraphOptimizerObjs(std::map<string, GraphOptimizerPtr> &graphOptimizers);
+void GetGraphOptimizerObjs(std::map<std::string, GraphOptimizerPtr> &graphOptimizers);
 
 #ifdef __cplusplus
 }

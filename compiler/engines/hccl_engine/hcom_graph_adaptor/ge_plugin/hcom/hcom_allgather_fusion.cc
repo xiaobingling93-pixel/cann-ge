@@ -499,8 +499,8 @@ HcclResult HcomAllGatherFusion::AddAllGatherNode(ge::ComputeGraph &graph, std::v
   CHK_PRT_RET(!allgatherNodePtr,
               HCCL_ERROR("[Add][AllGather]create AllGather node[%s] failed", fusedOp->GetName().c_str()),
               HCCL_E_INTERNAL);
-  ge::NodeUtils::AppendInputAnchor(allgatherNodePtr, ((int32_t)nodeInfos.size()));
-  ge::NodeUtils::AppendOutputAnchor(allgatherNodePtr, ((int32_t)nodeInfos.size()) * ((int32_t)nodeInfos[0].rankSize));
+  ge::NodeUtils::AppendInputAnchor(allgatherNodePtr, (static_cast<int32_t>(nodeInfos.size())));
+  ge::NodeUtils::AppendOutputAnchor(allgatherNodePtr, (static_cast<int32_t>(nodeInfos.size()) * static_cast<int32_t>(nodeInfos[0].rankSize)));
   for (uint32_t idx = 0; idx < nodeInfos.size(); idx++) {
     ge::GeTensorDescPtr allgatherNodeInputPtr = allgatherNodePtr->GetOpDesc()->MutableInputDesc(idx);
     CHK_SMART_PTR_NULL(allgatherNodeInputPtr);

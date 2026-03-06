@@ -19,7 +19,6 @@
 #include "graph/manager/mem_manager.h"
 #include "common/math/math_util.h"
 #include "graph_metadef/common/ge_common/util.h"
- #include "acl/acl_rt.h"
 
 namespace {
 constexpr size_t kAlignedSize = 512U;
@@ -93,9 +92,9 @@ Status RdmaPoolAllocator::InitMemory(const size_t mem_size) {
   const std::string purpose = "Memory for rdma pool";
   const std::lock_guard<std::recursive_mutex> lock(mutex_);
   const int32_t dev_id = static_cast<int32_t>(device_id);
-  GE_CHK_RT_RET(aclrtSetDevice(dev_id));
+  GE_CHK_RT_RET(rtSetDevice(dev_id));
   // DeviceReset before memory finished!
-  GE_MAKE_GUARD(not_used_var, [&dev_id]() { GE_CHK_RT(aclrtResetDevice(dev_id)); });
+  GE_MAKE_GUARD(not_used_var, [&dev_id]() { GE_CHK_RT(rtDeviceReset(dev_id)); });
 
   GE_CHECK_NOTNULL(memory_allocator_);
   rdma_base_addr_ = memory_allocator_->MallocMemory(purpose, mem_size, device_id);

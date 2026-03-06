@@ -42,10 +42,10 @@ Status SessionManager::Finalize() {
   return SUCCESS;
 }
 
-Status SessionManager::SetRtContext(SessionId session_id, aclrtContext rt_context) const {
+Status SessionManager::SetRtContext(SessionId session_id, rtContext_t rt_context) const {
   GELOGI("set rt_context RT_CTX_NORMAL_MODE, device id:%u.", GetContext().DeviceId());
-  GE_CHK_STATUS_RET(aclrtCreateContext(&rt_context, static_cast<int32_t>(GetContext().DeviceId())));
- 	GE_CHK_RT_RET(aclrtSetCurrentContext(rt_context));
+  GE_CHK_STATUS_RET(rtCtxCreate(&rt_context, RT_CTX_NORMAL_MODE, static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtCtxSetCurrent(rt_context));
   RtContextUtil::GetInstance().AddRtContext(session_id, rt_context);
   return SUCCESS;
 }
@@ -86,7 +86,7 @@ Status SessionManager::CreateSession(const std::map<std::string, std::string> &o
   session_id = next_session_id;
 
   // create a context
-  ret = SetRtContext(session_id, aclrtContext());
+  ret = SetRtContext(session_id, rtContext_t());
 
   return ret;
 }

@@ -125,6 +125,7 @@ whl_uninstall_package() {
         fi
     else
         export PYTHONPATH="${_module_apth}"
+        export PIP_BREAK_SYSTEM_PACKAGES=1  # 强制卸载系统包
         pip3 uninstall -y "${_module}" > /dev/null 2>&1
         local ret=$?
         if [ $ret -ne 0 ]; then

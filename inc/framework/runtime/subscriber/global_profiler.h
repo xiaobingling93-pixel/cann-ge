@@ -24,7 +24,6 @@
 #include "aprof_pub.h"
 #include "common/checker.h"
 #include "graph/gnode.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 constexpr uint32_t kTensorInfoBytes = 44UL;
@@ -202,7 +201,7 @@ class VISIBILITY_EXPORT GlobalProfilingWrapper {
                                      const std::pair<uint32_t, uint32_t> graph_id_and_model_id, const bool is_aging,
                                      const size_t model_name = 0UL);
   static ge::Status ProfileStepTrace(const uint64_t step_id, const uint32_t model_id, const uint16_t tag_id,
-                                     const aclrtStream stream);
+                                     const rtStream_t stream);
   static void BuildSingleProfTensorInfo(const uint32_t tid, const ge::TaskDescInfo &task_desc_info, const size_t index,
                                         const uint32_t tensor_num, MsprofAdditionalInfo &tensor_info);
 

@@ -33,7 +33,6 @@
 #include "register/op_tiling/op_tiling_constants.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "graph/load/model_manager/kernel/kernel_register_info_builder.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -555,8 +554,8 @@ Status KernelTaskInfo::InitKernelByContext(const domi::TaskDef &task_def, const 
 
 void KernelTaskInfo::UpdateTaskId() {
   if (davinci_model_ != nullptr) {
-    GE_CHK_RT_EXEC(aclrtGetThreadLastTaskId(&task_id_), return);
-    GE_CHK_RT_EXEC(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
+    GE_CHK_RT_EXEC(rtsGetThreadLastTaskId(&task_id_), return);
+    GE_CHK_RT_EXEC(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
     GELOGD("UpdateTaskId:UpdateTaskId [%u], stream id [%u]:", task_id_, stream_id_);
   }
 }
@@ -622,19 +621,19 @@ Status KernelTaskInfo::Distribute() {
   const bool is_built_tiling_device = (kernel_type_ == ccKernelType::AI_CPU)
       && (task_type_ == ModelTaskType::MODEL_TASK_PREPROCESS_KERNEL);
   if (is_built_tiling_device) {
-    // Use the 5th and 6th bits of dump_flag_ indicate the value of topic_type.
-    // xxxxxxxx xxxxxxxx xxxxxxxx xx00xxxx: DEVICE_ONLY
-    // xxxxxxxx xxxxxxxx xxxxxxxx xx01xxxx: DEVICE_FIRST
-    // xxxxxxxx xxxxxxxx xxxxxxxx xx10xxxx: HOST_ONLY
-    // xxxxxxxx xxxxxxxx xxxxxxxx xx11xxxx: HOST_FIRST
-    dump_flag_ = dump_flag_ | static_cast<uint32_t>(deploy_type_flag_);
-    // Use the 9th-11th bits of dump_flag_ indicate the value of qos. 12th indicate qos on/off
-    // xxxxxxxx xxxxxxxx xxxx0000 xxxxxxxx: qos off
-    // xxxxxxxx xxxxxxxx xxxx1000 xxxxxxxx: qos on, level=0(min level)
-    // xxxxxxxx xxxxxxxx xxxx1111 xxxxxxxx: qos on, level=7(max level)
-    dump_flag_ = dump_flag_ | qos_level_flag_;
-    GELOGI("distribute task info kernel_type: %d, flag: %u", static_cast<int32_t>(kernel_type_), dump_flag_);
-    GE_RETURN_IF_ERROR(AssembleKernelNamesAndLaunch());
+    // Use the 5th and 6th bits of dump_flag_ indicate the value of topic_type.	
+    // xxxxxxxx xxxxxxxx xxxxxxxx xx00xxxx: DEVICE_ONLY	
+    // xxxxxxxx xxxxxxxx xxxxxxxx xx01xxxx: DEVICE_FIRST	
+    // xxxxxxxx xxxxxxxx xxxxxxxx xx10xxxx: HOST_ONLY	
+    // xxxxxxxx xxxxxxxx xxxxxxxx xx11xxxx: HOST_FIRST	
+    dump_flag_ = dump_flag_ | static_cast<uint32_t>(deploy_type_flag_);	
+    // Use the 9th-11th bits of dump_flag_ indicate the value of qos. 12th indicate qos on/off	
+    // xxxxxxxx xxxxxxxx xxxx0000 xxxxxxxx: qos off	
+    // xxxxxxxx xxxxxxxx xxxx1000 xxxxxxxx: qos on, level=0(min level)	
+    // xxxxxxxx xxxxxxxx xxxx1111 xxxxxxxx: qos on, level=7(max level)	
+    dump_flag_ = dump_flag_ | qos_level_flag_;	
+    GELOGI("distribute task info kernel_type: %d, flag: %u", static_cast<int32_t>(kernel_type_), dump_flag_);	
+    GE_RETURN_IF_ERROR(AssembleKernelNamesAndLaunch());	
   } else {
     GE_ASSERT_SUCCESS(DistributeTask());
   }
@@ -696,7 +695,7 @@ void KernelTaskInfo::PostProcess(const domi::TaskDef &task_def) {
 
 Status KernelTaskInfo::CheckDeviceSupportBlockingAicpuOpProcess(bool &is_support) const {
   int32_t device_id = 0;
-  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
+  GE_CHK_RT_RET(rtGetDevice(&device_id));
 
   int32_t val = 0;
   GE_CHK_RT_RET(rtGetDeviceCapability(device_id, FEATURE_TYPE_BLOCKING_OPERATOR, RT_MODULE_TYPE_AICPU, &val));
@@ -749,7 +748,7 @@ Status KernelTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
     return SUCCESS;
   }
   GELOGD("Distribute wait task begin");
-  aclrtEvent rt_event = nullptr;
+  rtEvent_t rt_event = nullptr;
   if (davinci_model_->GetEventByStream(stream_, rt_event) != SUCCESS) {
     REPORT_INNER_ERR_MSG("E19999", "Call GetEventByStream failed");
     GELOGE(FAILED, "[Call][GetEventByStream] Call GetEventByStream failed");
@@ -759,7 +758,7 @@ Status KernelTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
   uint32_t timeout = 0xffffffff;
   (void)AttrUtils::GetInt(op_desc_, ATTR_NAME_BLOCKING_OP_TIMEOUT, timeout);
   GE_CHK_RT_RET(rtStreamWaitEventWithTimeout(stream_, rt_event, timeout));
-  GE_CHK_RT_RET(aclrtResetEvent(rt_event, stream_));
+  GE_CHK_RT_RET(rtEventReset(rt_event, stream_));
 
   return SUCCESS;
 }
@@ -1360,9 +1359,10 @@ Status KernelTaskInfo::AssembleIoByArgsFormat() {
         break;
       }
       case AddrType::FFTS_ADDR: {
-        void* mode_addr_ptr = nullptr;
-        GE_CHK_RT_RET(aclrtGetHardwareSyncAddr(&mode_addr_ptr));
-        AppendIoAddr(reinterpret_cast<uint64_t>(mode_addr_ptr), kAbsoluteMemType);
+        uint64_t mode_addr = 0U;
+        uint32_t len = 0U;
+        GE_CHK_RT_RET(rtGetC2cCtrlAddr(&mode_addr, &len));
+        AppendIoAddr(mode_addr, kAbsoluteMemType);
         break;
       }
       case (AddrType::EVENT_ADDR): {
@@ -1596,8 +1596,8 @@ Status KernelTaskInfo::UpdateHostArgs(const std::vector<uint64_t> &active_mem_ba
 }
 
 Status KernelTaskInfo::Release() {
-  aclrtContext ctx = nullptr;
-  GE_CHK_RT(aclrtGetCurrentContext(&ctx));
+  rtContext_t ctx = nullptr;
+  GE_CHK_RT(rtCtxGetCurrent(&ctx));
 
   args_ = nullptr;
   kernel_name_arg_ = nullptr;

@@ -343,10 +343,10 @@ Status ExpandableActiveMemoryAllocator::MallocVirtualMemory(const size_t memory_
   if (virtual_active_addr_ == nullptr) {
     size_t free_mem = 0U;
     size_t total_mem_size = 0U;
-    GE_ASSERT_RT_OK(aclrtGetMemInfo(ACL_HBM_MEM, &free_mem, &total_mem_size));
+    GE_ASSERT_RT_OK(rtMemGetInfoEx(RT_MEMORYINFO_HBM, &free_mem, &total_mem_size));
     if (total_mem_size == 0U) {
-      aclrtMemAttr mem_info_type = memory_type_ == RT_MEMORY_HBM ? ACL_DDR_MEM : ACL_HBM_MEM_P2P_HUGE;
-      GE_ASSERT_RT_OK(aclrtGetMemInfo(mem_info_type, &free_mem, &total_mem_size));
+      rtMemInfoType_t mem_info_type = memory_type_ == RT_MEMORY_HBM ? RT_MEMORYINFO_DDR : RT_MEMORYINFO_DDR_P2P_HUGE;
+      GE_ASSERT_RT_OK(rtMemGetInfoEx(mem_info_type, &free_mem, &total_mem_size));
     }
     (void) free_mem;
     GE_ASSERT_TRUE(memory_size <= total_mem_size, "memory_size: %zu, total_mem_size: %zu", memory_size, total_mem_size);

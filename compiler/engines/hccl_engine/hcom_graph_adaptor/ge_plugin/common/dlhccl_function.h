@@ -18,7 +18,7 @@
 #include "hccl/hcom.h"
 #include "hcom_log.h"
 
-typedef void *aclrtStream;
+using aclrtStream = void *;
 
 class DlHcclFunction {
  public:

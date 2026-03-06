@@ -22,7 +22,6 @@
 #include "hybrid/executor/hybrid_model_rt_v1_executor.h"
 #include "hybrid/executor/hybrid_model_pipeline_executor.h"
 #include "hybrid/executor/hybrid_model_rt_v2_executor.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {

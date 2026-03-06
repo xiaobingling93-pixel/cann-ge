@@ -26,7 +26,6 @@
 #include "graph/utils/graph_utils.h"
 #include "framework/common/runtime_tensor_desc.h"
 #include "base/err_msg.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -1153,8 +1152,7 @@ Status ModelUtils::GetRtAddress(const RuntimeParam &param, const uintptr_t logic
 ///
 Status ModelUtils::SetDevice(const uint32_t device_id) {
   GE_ASSERT_TRUE(device_id != kInvalidDeviceId);
-  GE_ASSERT_RT_OK(aclrtSetDevice(static_cast<int32_t>(device_id)),
-      "Call aclrtSetDevice failed, device_id:%u", device_id);
+  GE_ASSERT_RT_OK(rtSetDevice(static_cast<int32_t>(device_id)), "Call rtSetDevice failed, device_id:%u", device_id);
   return SUCCESS;
 }
 
@@ -1164,10 +1162,10 @@ Status ModelUtils::SetDevice(const uint32_t device_id) {
 /// @return Status
 ///
 Status ModelUtils::ResetDevice(const uint32_t device_id) {
-  const rtError_t rt_ret = aclrtResetDevice(static_cast<int32_t>(device_id));
-  if (rt_ret != ACL_SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Call aclrtResetDevice failed, device_id:%u, ret:%d", device_id, rt_ret);
-    GELOGE(RT_FAILED, "[Call][aclrtResetDevice] failed, device_id:%u, ret:%d", device_id, rt_ret);
+  const rtError_t rt_ret = rtDeviceReset(static_cast<int32_t>(device_id));
+  if (rt_ret != RT_ERROR_NONE) {
+    REPORT_INNER_ERR_MSG("E19999", "Call rtSetDevice failed, device_id:%u, ret:%d", device_id, rt_ret);
+    GELOGE(RT_FAILED, "[Call][RtSetDevice] failed, device_id:%u, ret:%d", device_id, rt_ret);
     return RT_FAILED;
   }
   return SUCCESS;

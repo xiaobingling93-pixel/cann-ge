@@ -389,7 +389,6 @@ target_link_libraries(davinci_executor
     adump_headers
     mmpa_headers
     hccl_headers
-    acl_rt
     $<$<TARGET_EXISTS:datagw_headers>:datagw_headers>
     -Wl,--no-as-needed
     graph_base
@@ -490,7 +489,6 @@ target_link_libraries(hybrid_executor
     -Wl,--no-as-needed
     graph
     register
-    acl_rt
     opp_registry
     ge_common
     ge_common_base

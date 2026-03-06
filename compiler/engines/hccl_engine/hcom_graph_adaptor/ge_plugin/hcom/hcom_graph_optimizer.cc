@@ -952,7 +952,7 @@ HcclResult HcomGraphOptimizer::SetHcomOpParallelLabel(ge::Node &node, std::strin
   }
 
   ge::graphStatus geRet = ge::NodeUtils::SetNodeParallelGroup(node, groupLabel.c_str());
-  CHK_PRT_RET(geRet,
+  CHK_PRT_RET(geRet != ge::GRAPH_SUCCESS,
               HCCL_ERROR("[Set][OpParallelLabel]errNo[0x%016llx] node[%s] op[%s] set para label[%s] failed",
                          HCCL_ERROR_CODE(HCCL_E_INTERNAL), opDesc->GetName().c_str(), opDesc->GetType().c_str(),
                          groupLabel.c_str()),
@@ -1005,7 +1005,7 @@ HcclResult HcomGraphOptimizer::GetCountFromOpDesc(const ge::OpDescPtr &op, const
                                HCOM_ERROR_CODE(HCCL_E_PARA), rankSize),
                     HCCL_E_PARA);
         u64 shapeSize = 0;
-        if ((u64)op->GetInputDescPtr(i)->GetShape().IsScalar()) {
+        if (op->GetInputDescPtr(i)->GetShape().IsScalar()) {
           shapeSize = 1;
         } else {
           shapeSize = (u64)op->GetInputDescPtr(i)->GetShape().GetShapeSize();
@@ -1029,12 +1029,12 @@ HcclResult HcomGraphOptimizer::GetCountFromOpDesc(const ge::OpDescPtr &op, const
                                ", input index : %llu",
                                HCOM_ERROR_CODE(HCCL_E_PARA), sCollectiveType.c_str(), i),
                     HCCL_E_PARA);
-        CHK_PRT_RET(((u64)inputSize > INVALID_U64 - alignSize),
+        CHK_PRT_RET((static_cast<u64>(inputSize) > INVALID_U64 - alignSize),
                     HCCL_ERROR("[Get][Count]op[%s] input"
                                "size[%llu] is overflow.",
-                               sCollectiveType.c_str(), (u64)inputSize),
+                               sCollectiveType.c_str(), static_cast<u64>(inputSize)),
                     HCCL_E_PARA);
-        blockSize = ((u64)inputSize + alignSize - 1) / alignSize * alignSize;
+        blockSize = (static_cast<u64>(inputSize) + alignSize - 1) / alignSize * alignSize;
       }
       totalSize = totalSize + blockSize;
     }
@@ -1093,7 +1093,7 @@ HcclResult HcomGraphOptimizer::SetOpOutputMemSize(ge::Node &node, const std::str
     ge::TensorUtils::SetSize(outputTensor, memSize);
 
     // 更新output Tensor
-    if (op->UpdateOutputDesc(i, outputTensor)) {
+    if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
       HCCL_ERROR(
           "[Set][OpOutputMemSize]In get output mem size, update output desc error,"
           "Format[%d], dataType[%d], outputSize[%lld], index[%u]",

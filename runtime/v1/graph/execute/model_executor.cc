@@ -22,8 +22,6 @@
 #include "graph/load/model_manager/model_utils.h"
 #include "hybrid/common/npu_memory_allocator.h"
 #include "graph/utils/tensor_adapter.h"
-#include "acl/acl_rt.h"
-
 namespace ge {
 namespace {
 constexpr uint8_t kNeverLoaded = 0U;
@@ -109,12 +107,13 @@ Status ModelExecutor::Finalize() {
 }
 
 Status ModelExecutor::GetDeviceMemorySize(size_t &free_mem, size_t &total_mem_size) {
-  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
-  GE_CHK_RT_RET(aclrtGetMemInfo(ACL_HBM_MEM, &free_mem, &total_mem_size));
+  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtMemGetInfoEx(RT_MEMORYINFO_HBM, &free_mem, &total_mem_size));
   if (total_mem_size == 0U) {
-    GE_CHK_RT_RET(aclrtGetMemInfo(ACL_DDR_MEM, &free_mem, &total_mem_size));
+    GE_CHK_RT_RET(rtMemGetInfoEx(RT_MEMORYINFO_DDR, &free_mem, &total_mem_size));
   }
-  GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
+
   return SUCCESS;
 }
 
@@ -151,14 +150,14 @@ Status ModelExecutor::LoadGraph(const GeRootModelPtr &ge_root_model, const Graph
 ///
 Status ModelExecutor::UnloadGraph(const GeRootModelPtr &ge_root_model, const uint32_t graph_id) {
   GE_CHECK_NOTNULL(ge_root_model);
-  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
   RemoveGraphNode(graph_id);
   const Status ret = UnloadModel(ge_root_model, graph_id);
   if (ret != SUCCESS) {
     GELOGW("[GraphExecutor] unload model failed, graph_id=%u.", graph_id);
   }
 
-  GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
   return ret;
 }
 
@@ -179,7 +178,7 @@ Status ModelExecutor::UnloadPneModel(const uint32_t model_id, const uint64_t ses
   const auto model = ModelManager::GetInstance().GetModel(model_id);
   if ((model != nullptr) && (model->GetAsyncMode())) {
     GELOGI("Unload model, async mode, start to synchronize stream before unload model, modelId[%u]", model_id);
-    (void)aclrtSynchronizeStream(model->GetModelExecuteStream());
+    (void)rtStreamSynchronize(model->GetModelExecuteStream());
     GELOGI("Unload model, async mode, synchronize stream finished.");
   }
   if (ModelManager::GetInstance().DestroyAicpuKernel(session_id, model_id, 0U) != SUCCESS) {
@@ -422,9 +421,9 @@ Status ModelExecutor::MallocByDiffAllocator(const uint64_t session_id,
     auto session_allocator = SessionMemAllocator<FixedBaseExpandableAllocator>::Instance().
         GetMemAllocator(session_id, GetContext().DeviceId(), rt_mem_type);
     GE_ASSERT_NOTNULL(session_allocator);
-    GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+    GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
     const auto mem_block = session_allocator->Malloc(fixed_feature_mem->GetSize());
-    GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+    GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
     if ((mem_block != nullptr) && (mem_block->GetAddr() != nullptr)) {
       (void)ge_root_model->MutableFixedFeatureMemory().insert(
           {rt_mem_type, {rt_mem_type, mem_block->GetAddr(), fixed_feature_mem->GetSize(), false, true, true,
@@ -441,10 +440,10 @@ Status ModelExecutor::MallocByDiffAllocator(const uint64_t session_id,
 
   const std::string purpose = MemTypeUtils::ToString(rt_mem_type) + " fixed feature base";
   auto &mem_instance = MemManager::Instance().MemInstance(rt_mem_type);
-  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
   addr = mem_instance.MallocMemory(purpose,
                                    fixed_feature_mem->GetSize(), GetContext().DeviceId());
-  GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
   GE_ASSERT_NOTNULL(addr, "malloc %zu bytes failed using inner allocator", fixed_feature_mem->GetSize());
   GELOGI("malloc fixed_feature_memory success, type: %s, addr: %p, size: %zu",
          MemTypeUtils::ToString(rt_mem_type).c_str(), addr, fixed_feature_mem->GetSize());
@@ -470,9 +469,9 @@ Status ModelExecutor::FreeFixedFeatureMemoryIfNeed(const GeRootModelPtr &ge_root
       }
     } else {
       auto &mem_instance = MemManager::Instance().MemInstance(iter->second.type);
-      GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+      GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
       GE_ASSERT_SUCCESS(mem_instance.FreeMemory(iter->second.addr, GetContext().DeviceId()));
-      GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+      GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
       GELOGI("free fixed_feature_memory by inner allocator success, %s", iter->second.ToString().c_str());
     }
     iter = all_fixed_mems.erase(iter);
@@ -600,7 +599,7 @@ bool ModelExecutor::ReleaseModel(const GeRootModelPtr &ge_root_model, const Grap
            graph_id, model_id, davinci_model->GetAllStreamNum(), davinci_model->GetEventList().size());
 
     if (davinci_model->GetAsyncMode()) {
-      (void)aclrtSynchronizeStream(davinci_model->GetModelExecuteStream());
+      (void)rtStreamSynchronize(davinci_model->GetModelExecuteStream());
       GELOGI("Unload model, async mode, synchronize stream finished.");
     }
 
@@ -844,13 +843,13 @@ Status ModelExecutor::CheckAndReleaseStream(const GeRootModelPtr &ge_root_model,
   }
 
   uint32_t free_stream_num = 0U;
-  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
   GE_CHK_RT_RET(rtGetAvailStreamNum(RT_NORMAL_STREAM, &free_stream_num));
 
   if (required_stream_num <= free_stream_num) {
     GELOGI("Graph id[%u] no need to unload other models, required stream num[%u], free stream num[%u]",
            graph_node->GetGraphId(), required_stream_num, free_stream_num);
-    GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+    GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
     return SUCCESS;
   }
 
@@ -875,12 +874,12 @@ Status ModelExecutor::CheckAndReleaseStream(const GeRootModelPtr &ge_root_model,
 
     GE_CHK_RT_RET(rtGetAvailStreamNum(RT_NORMAL_STREAM, &free_stream_num));
     if (required_stream_num <= free_stream_num) {
-      GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+      GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
       return SUCCESS;
     }
   }
 
-  GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
   GELOGE(FAILED,
          "Graph id[%u] check and release stream failed, required total stream num[%u], required hccl follow stream "
          "num[%u], free stream num[%u]",
@@ -915,13 +914,13 @@ Status ModelExecutor::CheckAndReleaseEvent(const GeRootModelPtr &ge_root_model, 
   }
 
   uint32_t free_event_num = 0U;
-  GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
-  GE_CHK_RT_RET(aclrtGetEventAvailNum(&free_event_num));
+  GE_CHK_RT_RET(rtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtGetAvailEventNum(&free_event_num));
 
   if (required_event_num <= free_event_num) {
     GELOGI("Graph id[%u] no need to unload other models, required event nums[%u], free event nums[%u]",
            graph_node->GetGraphId(), required_event_num, free_event_num);
-    GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+    GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
     return SUCCESS;
   }
 
@@ -944,14 +943,14 @@ Status ModelExecutor::CheckAndReleaseEvent(const GeRootModelPtr &ge_root_model, 
     it.second->SetLoadCount(it.second->GetLoadRecord());
     it.second->SetLoadRecord(kNeverLoaded);
 
-    GE_CHK_RT_RET(aclrtGetEventAvailNum(&free_event_num));
+    GE_CHK_RT_RET(rtGetAvailEventNum(&free_event_num));
     if (required_event_num <= free_event_num) {
-      GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+      GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
       return SUCCESS;
     }
   }
 
-  GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
+  GE_CHK_RT_RET(rtDeviceReset(static_cast<int32_t>(GetContext().DeviceId())));
   GELOGE(FAILED, "Graph id[%u] check and release event failed, required event nums[%u], free event nums[%u]",
          graph_node->GetGraphId(), required_event_num, free_event_num);
 

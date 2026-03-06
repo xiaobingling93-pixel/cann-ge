@@ -15,7 +15,6 @@
 #include "graph/utils/attr_utils.h"
 #include "rt_error_codes.h"
 #include "base/err_msg.h"
-#include "acl/acl_rt.h"
 
 namespace {
 void GetOpOriginName(const ge::OpDescPtr &op_desc, std::string &origin_op_name) {
@@ -184,7 +183,7 @@ void ErrorTrackingCallback(rtExceptionInfo *const exception_data) {
 }
 
 uint32_t RegErrorTrackingCallBack() {
-  GE_CHK_RT_RET(aclrtSetExceptionInfoCallback(&ErrorTrackingCallback));
+  GE_CHK_RT_RET(rtRegTaskFailCallbackByModule("GeErrorTracking", &ErrorTrackingCallback));
   return 0;
 }
 }

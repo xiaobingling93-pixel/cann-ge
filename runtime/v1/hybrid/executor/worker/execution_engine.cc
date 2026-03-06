@@ -17,7 +17,6 @@
 #include "graph/ge_context.h"
 #include "rt_error_codes.h"
 #include "common/dump/dump_manager.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -193,15 +192,15 @@ Status NodeDoneCallback::DumpDynamicNode() {
   auto timeout = (!stream_synchronize_timeout.empty())
                      ? static_cast<int32_t>(std::strtol(stream_synchronize_timeout.c_str(), nullptr, 10))
                      : kDefaultTimeOut;
-  const auto rt_ret = aclrtSynchronizeStreamWithTimeout(stream, timeout);
+  const auto rt_ret = rtStreamSynchronizeWithTimeout(stream, timeout);
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
-    GELOGE(rt_ret, "[Invoke][aclrtSynchronizeStreamWithTimeout] failed, ret:%d.", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "aclrtSynchronizeStreamWithTimeout failed, ret:%d.", rt_ret);
+    GELOGE(rt_ret, "[Invoke][rtStreamSynchronizeWithTimeout] failed, ret:%d.", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, ret:%d.", rt_ret);
     return FAILED;
   }
-  if (rt_ret != ACL_SUCCESS) {
-    GELOGE(RT_FAILED, "[Call][aclrtSynchronizeStreamWithTimeout] failed, ret = %d.", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "call aclrtSynchronizeStreamWithTimeout failed, ret = %d.", rt_ret);
+  if (rt_ret != RT_ERROR_NONE) {
+    GELOGE(RT_FAILED, "[Call][RtStreamSynchronize] failed, ret = %d.", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "call rtStreamSynchronize failed, ret = %d.", rt_ret);
     return static_cast<uint32_t>(rt_ret);
   }
   return SUCCESS;

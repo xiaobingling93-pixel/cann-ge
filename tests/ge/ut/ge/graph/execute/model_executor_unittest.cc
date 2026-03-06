@@ -407,7 +407,7 @@ TEST_F(UtestModelExecutorTest, test_check_and_release_event_success) {
         shared_ptr<domi::ModelTaskDef> model_task_def = std::make_shared<domi::ModelTaskDef>();
         ge_model->SetModelTaskDef(model_task_def);
 
-        (void)aclrtGetEventAvailNum(&event_num_dev_avail);
+        (void)rtGetAvailEventNum(&event_num_dev_avail);
         EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_EVENT_NUM, event_num_dev_avail + 1));
         EXPECT_EQ(model_executor.LoadGraph(ge_root_model, graph_node), SUCCESS);
         break;
@@ -430,7 +430,7 @@ TEST_F(UtestModelExecutorTest, test_check_and_release_event_success) {
         shared_ptr<domi::ModelTaskDef> model_task_def = std::make_shared<domi::ModelTaskDef>();
         ge_model->SetModelTaskDef(model_task_def);
 
-        (void)aclrtGetEventAvailNum(&event_num_dev_avail);
+        (void)rtGetAvailEventNum(&event_num_dev_avail);
         EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_EVENT_NUM, event_num_dev_avail - 2)); // 释放1个，kfc占用2个event， block占用1个event
         EXPECT_EQ(model_executor.LoadGraph(ge_root_model, graph_node), SUCCESS);
         EXPECT_EQ(model_executor.UnloadGraph(ge_root_model, graph_id), SUCCESS);

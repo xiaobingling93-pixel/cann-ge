@@ -539,8 +539,8 @@ class BuiltinSubscribersST : public bg::BgTest {
                                       reinterpret_cast<Tensor **>(outputs.GetAddrList()), outputs.size()),
               ge::GRAPH_SUCCESS);
 
-    // Adx::OperatorInfoV2 info;
-    // EXPECT_TRUE(ge::DumpStub::GetInstance().GetOpInfo(0, 1, 0, info));  // deviceId 0, streamId 1, taskId 0
+    Adx::OperatorInfoV2 info;
+    EXPECT_TRUE(ge::DumpStub::GetInstance().GetOpInfo(0, 1, 0, info));  // deviceId 0, streamId 1, taskId 0
 
     //  check turn off dumper
     ge::diagnoseSwitch::DisableDumper();

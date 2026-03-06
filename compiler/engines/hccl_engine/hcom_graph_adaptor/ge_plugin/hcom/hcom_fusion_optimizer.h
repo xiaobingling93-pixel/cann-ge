@@ -12,6 +12,7 @@
 #define HCOM_FUSION_OPTIMIZER_H
 
 #include <string>
+#include <map>
 #include "common/optimizer/graph_optimizer.h"
 #include "common/optimizer/graph_optimizer_types.h"
 #include "graph/compute_graph.h"
@@ -21,13 +22,13 @@
 #include "op_hcom_comm.h"
 
 namespace hccl {
-const string HCCL_FUSION_OPTIMIZER_NAME = "hccl_alltoallvc_fusion_optimizer";
+const std::string HCCL_FUSION_OPTIMIZER_NAME = "hccl_alltoallvc_fusion_optimizer";
 
 class HcomFusionOptimizer : public ge::GraphOptimizer {
  public:
   HcomFusionOptimizer();
   ~HcomFusionOptimizer() override;
-  virtual ge::Status Initialize(const map<std::string, std::string> &options,
+  virtual ge::Status Initialize(const std::map<std::string, std::string> &options,
                                 ge::OptimizeUtility *const optimizeUtility) override;
   // close graphOptimizer
   ge::Status Finalize() override;

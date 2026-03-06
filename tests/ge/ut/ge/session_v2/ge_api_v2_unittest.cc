@@ -2010,19 +2010,13 @@ namespace {
       return 1; // failed
     }
   };
-  class AbnormalAclStub : public AclRuntimeStub {
-  public:
-    aclError aclrtCreateContext(aclrtContext *context, int32_t deviceId) override {
-      return 1; // failed
-    }
-  };
 } // namespace
   /**
    * 若session创建失败，确保session manager没有残留的未成功创建的session
    */
 TEST_F(UtestGeApiV2, CreateSessionFailed) {
-  auto acl_stub = std::make_shared<AbnormalAclStub>();
-  AclRuntimeStub::Install(acl_stub.get());
+  auto rts_stub = std::make_shared<AbnormalRtsStub>();
+  RuntimeStub::Install(rts_stub.get());
 
   GEFinalizeV2();
   std::map<AscendString, AscendString> options;
@@ -2037,7 +2031,7 @@ TEST_F(UtestGeApiV2, CreateSessionFailed) {
   EXPECT_NE(sess1.AddGraph(2, tmp_graph, {}), SUCCESS);
   EXPECT_EQ(SessionUtils::NumSessions(), 0);
 
-  AclRuntimeStub::UnInstall(acl_stub.get());
+  RuntimeStub::UnInstall(rts_stub.get());
 }
 
 #define EXPECT_STR_EQ(x, y) EXPECT_EQ(std::string(x.GetString()), std::string(y))

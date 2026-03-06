@@ -14,7 +14,6 @@
 #include "runtime/rt.h"
 #include "single_op/single_op_model.h"
 #include "framework/runtime/device_memory_recorder.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -45,8 +44,8 @@ MemBlock *InternalAllocator::Malloc(size_t size) {
   if (!memory_list_.empty()) {
     uint8_t *const current_buffer = reinterpret_cast<uint8_t *>(memory_list_.back()->GetAddr());
     memory_list_.pop_back();
-    if (aclrtSynchronizeStream(stream_) != RT_ERROR_NONE) {
-      GELOGW("Failed to invoke aclrtSynchronizeStream");
+    if (rtStreamSynchronize(stream_) != RT_ERROR_NONE) {
+      GELOGW("Failed to invoke rtStreamSynchronize");
     }
     (void)rtFree(current_buffer);
   }
@@ -118,7 +117,7 @@ Status StreamResource::DeleteOperator(const uint64_t key) {
   if (it != op_map_.end()) {
     // need to stream sync before erase
     GELOGI("static op %" PRIu64 " need to be deleted, start to sync stream %p", key, stream_);
-    GE_CHK_RT_RET(aclrtSynchronizeStream(stream_));
+    GE_CHK_RT_RET(rtStreamSynchronize(stream_));
     (void)op_map_.erase(it);
     GELOGI("static op %" PRIu64 " delete success", key);
   }
@@ -131,7 +130,7 @@ Status StreamResource::DeleteDynamicOperator(const uint64_t key) {
   if (it != dynamic_op_map_.end()) {
     // need to stream sync before erase
     GELOGI("dynamic op %" PRIu64 " need to be deleted, start to sync stream %p", key, stream_);
-    GE_CHK_RT_RET(aclrtSynchronizeStream(stream_));
+    GE_CHK_RT_RET(rtStreamSynchronize(stream_));
     (void)dynamic_op_map_.erase(it);
     GELOGI("dynamic op %" PRIu64 " delete success", key);
   }
@@ -164,7 +163,7 @@ uint8_t *StreamResource::DoMallocMemory(const std::string &purpose, const size_t
 }
 
 Status StreamResource::InitOverflowMemory() {
-  const auto ret = aclrtCtxGetFloatOverflowAddr(&overflow_addr_);
+  const auto ret = rtCtxGetOverflowAddr(&overflow_addr_);
   GE_CHK_RT_RET(ret);
   return SUCCESS;
 }

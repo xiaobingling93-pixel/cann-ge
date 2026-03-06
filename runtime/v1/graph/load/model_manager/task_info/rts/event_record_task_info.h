@@ -13,7 +13,6 @@
 
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/op_desc.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 class EventRecordTaskInfo : public TaskInfo {
@@ -29,7 +28,7 @@ class EventRecordTaskInfo : public TaskInfo {
   Status Distribute() override;
 
  private:
-  aclrtEvent event_{nullptr};
+  rtEvent_t event_{nullptr};
   uint32_t op_index_{0U};
   OpDescPtr op_desc_{nullptr};
   DavinciModel *davinci_model_{nullptr};

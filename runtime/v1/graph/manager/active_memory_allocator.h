@@ -31,7 +31,6 @@
 #include "common/util/mem_utils.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "common/checker.h"
-#include "acl/acl_rt.h"
 
 // 提高日志级别判断性能
 #define HP_LOGD(fmt, ...)                                                                                       \

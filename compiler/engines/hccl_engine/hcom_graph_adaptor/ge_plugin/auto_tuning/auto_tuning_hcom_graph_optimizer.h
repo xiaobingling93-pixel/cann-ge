@@ -11,6 +11,8 @@
 #ifndef AUTO_TUNING_HCOM_GRAPH_OPTIMIZER_H
 #define AUTO_TUNING_HCOM_GRAPH_OPTIMIZER_H
 
+#include <string>
+#include <map>
 #include "hcom_graph_optimizer.h"
 #include "common/optimizer/graph_optimizer.h"
 #include "common/optimizer/graph_optimizer_types.h"
@@ -24,7 +26,7 @@ class AutoTuningHcomGraphOptimizer : public HcomGraphOptimizer {
  public:
   AutoTuningHcomGraphOptimizer();
   ~AutoTuningHcomGraphOptimizer() override;
-  ge::Status Initialize(const map<std::string, std::string> &options,
+  ge::Status Initialize(const std::map<std::string, std::string> &options,
                         ge::OptimizeUtility *const optimizeUtility) override;
   // optimize original graph, using in graph preparation stage
   ge::Status OptimizeOriginalGraph(ge::ComputeGraph &graph) override;

@@ -40,7 +40,7 @@ class AutoTuningHcomAllReduceFusion : public HcomAllReduceFusion {
  protected:
   HcclResult FuseOps(ge::ComputeGraph &graph, FusionSection &fusionSection) override;
   HcclResult GetGradSplitStrategy(const std::string &modelName, const std::string &sGroup,
-                                  const FusionSection &fusionSection, u32 &segmentNum,
+                                  const std::vector<ge::NodePtr> &fusionOps, u32 &segmentNum,
                                   std::vector<u32> &segmentIndex) override;
 
  private:

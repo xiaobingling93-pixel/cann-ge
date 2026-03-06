@@ -14,7 +14,7 @@
 #include <queue>
 #include <mutex>
 
-#include "acl/acl_rt.h"
+#include "runtime/base.h"
 #include "exe_graph/runtime/tensor.h"
 #include "ge/ge_api_types.h"
 
@@ -23,7 +23,6 @@
 #include "compile_context.h"
 #include "graph/utils/tensor_adapter.h"
 #include "graph/utils/type_utils.h"
-#include "runtime/base.h"
 
 namespace ge {
 struct UserGraphExecution {
@@ -84,13 +83,13 @@ class JitExecutor {
   JitExecutor(GraphManager &graph_manager, UserGraphExecutionQueue &task_queue, ExecutionOrder &order,
               CompileContext &compile_context, CompiledModelCache &cmc, std::mutex &mutex);
   Status CompileAndLoad(const std::vector<gert::Tensor> &inputs, GuardedExecutionPoint *gep, uint32_t &instance_id,
-      const aclrtStream stream, const std::map<AscendString, AscendString> &load_options, uint64_t session_id);
+      const rtStream_t stream, const std::map<AscendString, AscendString> &load_options, uint64_t session_id);
   Status Compile(const std::vector<ge::Tensor> &inputs, GuardedExecutionPoint *gep, uint64_t session_id);
-  Status ProcessAndExecuteGraphAsync(UserGraphExecution &task, aclrtStream const stream,
+  Status ProcessAndExecuteGraphAsync(UserGraphExecution &task, rtStream_t const stream,
                                      const std::vector<gert::Tensor> &inputs,
                                      std::vector<gert::Tensor> &outputs, ExecutionPoint *ep,
                                      bool need_malloc_output = false);
-  Status ExecuteFirstPoint(UserGraphExecution &task, aclrtStream const stream,
+  Status ExecuteFirstPoint(UserGraphExecution &task, rtStream_t const stream,
                            std::vector<gert::Tensor> &outputs, std::vector<GeTensor> &ge_tensors,
                            ExecutionPoint *&ep, bool need_malloc_output);
   Status TryExecuteWithoutProcess(UserGraphExecution &task);
@@ -104,7 +103,7 @@ class JitExecutor {
   CompiledModelCache &cmc_;
   std::mutex &mutex_;
   std::map<const GuardedExecutionPoint *, uint32_t> geps_to_inner_ge_graph_id_;
-  aclrtStream stream_{nullptr};
+  rtStream_t stream_{nullptr};
   std::shared_ptr<ge::Allocator> device_allocator_;
   int32_t device_id_{-1};
   std::vector<uint32_t> compiled_ge_graph_id_;

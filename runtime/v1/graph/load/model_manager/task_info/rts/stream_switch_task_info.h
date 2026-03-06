@@ -13,7 +13,6 @@
 
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/op_desc.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 class StreamSwitchTaskInfo : public TaskInfo {
@@ -41,11 +40,11 @@ class StreamSwitchTaskInfo : public TaskInfo {
   Status InitInputValueAndType(const OpDescPtr &op_desc, const IowAddrs &iow_addrs);
 
   void *input_ptr_{nullptr};
-  aclrtCondition cond_{ACL_RT_EQUAL};
+  rtCondition_t cond_{RT_EQUAL};
   void *value_ptr_{nullptr};
   rtStream_t true_stream_{nullptr};
   uint32_t true_stream_id_{0U};
-  aclrtCompareDataType data_type_{ACL_RT_SWITCH_INT32};
+  rtSwitchDataType_t data_type_{RT_SWITCH_INT32};
   uint32_t op_index_{0U};
   OpDescPtr op_desc_{nullptr};
   DavinciModel *davinci_model_{nullptr};

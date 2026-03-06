@@ -13,7 +13,6 @@
 #include "ge_common/debug/log.h"
 #include "runtime/rt.h"
 #include "graph/manager/mem_manager.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -33,7 +32,7 @@ void *MemoryBlockManager::Malloc(const std::string &purpose, const size_t size) 
   GE_ASSERT(rtMemset(ptr, block_size, 0U, block_size) == RT_ERROR_NONE);
   mem_blocks_.emplace_back(RtMemBlock{ptr, block_size, aligned_size});
   int32_t device_id = 0;
-  (void)aclrtGetDevice(&device_id);
+  (void) rtGetDevice(&device_id);
   GE_PRINT_DYNAMIC_MEMORY(rtMalloc, ge::ToMallocMemInfo(purpose, ptr, device_id, GE_MODULE_NAME_U16).c_str(),
                           block_size);
   GELOGI("malloc memory success, ptr: %p, size: %zu, aligned size: %zu, block_size: %zu, memory type: %u",

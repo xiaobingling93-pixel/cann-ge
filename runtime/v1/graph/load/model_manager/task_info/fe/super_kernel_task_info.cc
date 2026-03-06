@@ -29,7 +29,6 @@
 #include "runtime/kernel.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "graph/load/model_manager/kernel/kernel_register_info_builder.h"
-#include "acl/acl_rt.h"
 
 namespace {
 const std::string kLocalMemorySize = "local_memory_size";
@@ -193,7 +192,7 @@ Status SuperKernelV2TaskInfo::Distribute() {
   args_ex_.isNoNeedH2DCopy = 1U;
   cfg_.dumpflag = dump_flag_;
   cfg_.localMemorySize = local_memory_size_;
-
+  
   LaunchKernelParam launch_kernel_param;
   launch_kernel_param.args = args_;
   launch_kernel_param.args_size = args_size_;
@@ -233,8 +232,8 @@ Status SuperKernelV2TaskInfo::GetTaskArgsRefreshInfos(std::vector<TaskArgsRefres
 }
 
 Status SuperKernelV2TaskInfo::Release() {
-  aclrtContext ctx = nullptr;
-  GE_CHK_RT(aclrtGetCurrentContext(&ctx));
+  rtContext_t ctx = nullptr;
+  GE_CHK_RT(rtCtxGetCurrent(&ctx));
   args_ = nullptr;
 
   return SUCCESS;
@@ -806,10 +805,11 @@ Status SuperKernelV2TaskInfo::AssembleIoByArgsFormat() {
           break;
         }
         case AddrType::FFTS_ADDR: {
-          void *mode_addr_ptr = nullptr;
-          GE_CHK_RT_RET(aclrtGetHardwareSyncAddr(&mode_addr_ptr));
+          uint64_t mode_addr = 0U;
+          uint32_t len = 0U;
+          GE_CHK_RT_RET(rtGetC2cCtrlAddr(&mode_addr, &len));
           l0_dump_list_.push_back(std::numeric_limits<uint64_t>::max()); // 占位
-          AppendIoAddr(reinterpret_cast<uint64_t>(mode_addr_ptr), kAbsoluteMemType);
+          AppendIoAddr(mode_addr, kAbsoluteMemType);
           break;
         }
         case AddrType::PLACEHOLDER: {
@@ -995,8 +995,8 @@ Status SuperKernelV2TaskInfo::InitKernel(const domi::TaskDef &task_def, const Pi
 
 void SuperKernelV2TaskInfo::UpdateTaskId() {
   if (davinci_model_ != nullptr) {
-    GE_CHK_RT_EXEC(aclrtGetThreadLastTaskId(&task_id_), return);
-    GE_CHK_RT_EXEC(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
+    GE_CHK_RT_EXEC(rtsGetThreadLastTaskId(&task_id_), return);
+    GE_CHK_RT_EXEC(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
     GELOGD("UpdateTaskId:UpdateTaskId [%u], stream id [%u]:", task_id_, stream_id_);
   }
 }

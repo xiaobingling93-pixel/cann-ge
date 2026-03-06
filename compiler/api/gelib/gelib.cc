@@ -30,11 +30,11 @@
 #include "host_cpu_engine/host_cpu_engine.h"
 #include "engines/manager/opskernel_manager/ops_kernel_builder_manager.h"
 #include "register/core_num_utils.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
 const int32_t kDecimal = 10;
+const int32_t kSocVersionLen = 50;
 const int32_t kDefaultDeviceIdForTrain = 0;
 const int32_t kDefaultDeviceIdForInfer = -1;
 const char *const kGlobalOptionFpCeilingModeDefault = "2";
@@ -121,8 +121,8 @@ Status GELib::Initialize(const std::map<std::string, std::string> &options) {
       GE_ASSERT_SUCCESS(ge::ConvertToInt32(wait_iter->second.c_str(), wait_timeout), "convert [%s] to int failed.",
                         wait_iter->second.c_str());
       if (wait_timeout >= 0) {
-        GE_CHK_RT_RET(aclrtSetOpWaitTimeout(static_cast<uint32_t>(wait_timeout)));
-        GELOGI("Succeeded in setting aclrtSetOpWaitTimeout[%s] to runtime.", wait_iter->second.c_str());
+        GE_CHK_RT_RET(rtSetOpWaitTimeOut(static_cast<uint32_t>(wait_timeout)));
+        GELOGI("Succeeded in setting rtSetOpWaitTimeOut[%s] to runtime.", wait_iter->second.c_str());
       }
     }
   }
@@ -134,8 +134,8 @@ Status GELib::Initialize(const std::map<std::string, std::string> &options) {
       GE_ASSERT_SUCCESS(ge::ConvertToInt32(op_execute_timeout.c_str(), execute_timeout), "convert [%s] to int failed.",
                         op_execute_timeout.c_str());
       if (execute_timeout >= 0) {
-        GE_CHK_RT_RET(aclrtSetOpWaitTimeout(static_cast<uint32_t>(execute_timeout)));
-        GELOGI("Succeeded in setting aclrtSetOpWaitTimeout[%s] to runtime.", exe_iter->second.c_str());
+        GE_CHK_RT_RET(rtSetOpExecuteTimeOut(static_cast<uint32_t>(execute_timeout)));
+        GELOGI("Succeeded in setting rtSetOpExecuteTimeOut[%s] to runtime.", exe_iter->second.c_str());
       }
     }
   }
@@ -292,7 +292,7 @@ Status GELib::SystemInitialize(const std::map<std::string, std::string> &options
   if (is_train_mode_ || (device_id_ != kDefaultDeviceIdForInfer)) {
     mode = is_train_mode_ ? "Training" : "Online infer";
     GetContext().SetCtxDeviceId(static_cast<uint32_t>(device_id_));
-    GE_CHK_STATUS_RET(aclrtSetDevice(device_id_));
+    GE_CHK_STATUS_RET(rtSetDevice(device_id_));
   }
 
   is_system_inited = true;
@@ -309,7 +309,7 @@ Status GELib::SystemFinalize() {
   std::string mode = "Infer";
   if (is_train_mode_ || (device_id_ != kDefaultDeviceIdForInfer)) {
     mode = is_train_mode_ ? "Training" : "Online infer";
-    GE_CHK_RT(aclrtResetDevice(device_id_));
+    GE_CHK_RT(rtDeviceReset(device_id_));
   }
 
   is_system_inited = false;
@@ -323,13 +323,14 @@ Status GELib::SetRTSocVersion(std::map<std::string, std::string> &new_options) c
     GE_CHK_RT_RET(rtSetSocVersion(it->second.c_str()));
     GELOGI("Succeeded in setting SOC_VERSION[%s] to runtime.", it->second.c_str());
   } else {
-    const char *version = aclrtGetSocName();
-    GE_IF_BOOL_EXEC(version == nullptr,
+    char version[kSocVersionLen] = {0};
+    rtError_t rt_ret = rtGetSocVersion(version, kSocVersionLen);
+    GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE,
         REPORT_INNER_ERR_MSG("E19999", "rtGetSocVersion failed.");
-        GELOGE(FAILED, "[Get][SocVersion]rtGetSocVersion failed");
+        GELOGE(rt_ret, "[Get][SocVersion]rtGetSocVersion failed");
         return FAILED;)
     GELOGI("Succeeded in getting SOC_VERSION[%s] from runtime.", version);
-    new_options.insert(std::make_pair(ge::SOC_VERSION, std::string(version)));
+    new_options.insert(std::make_pair(ge::SOC_VERSION, version));
   }
   return SUCCESS;
 }

@@ -65,14 +65,14 @@ Status GraphExecutionContext::GetStatus() const {
   return this->status;
 }
 
-Status GraphExecutionContext::Synchronize(const aclrtStream rt_stream) {
+Status GraphExecutionContext::Synchronize(const rtStream_t rt_stream) {
   std::string stream_synchronize_timeout;
   (void)ge::GetContext().GetOption(OPTION_EXEC_STREAM_SYNC_TIMEOUT, stream_synchronize_timeout);
   auto timeout = (!stream_synchronize_timeout.empty())
                      ? static_cast<int32_t>(std::strtol(stream_synchronize_timeout.c_str(), nullptr, 10))
                      : kDefaultTimeOut;
-  const auto rt_ret = aclrtSynchronizeStreamWithTimeout(rt_stream, timeout);
-  if (rt_ret == ACL_SUCCESS) {
+  const auto rt_ret = rtStreamSynchronizeWithTimeout(rt_stream, timeout);
+  if (rt_ret == RT_ERROR_NONE) {
     return SUCCESS;
   }
 
@@ -88,13 +88,13 @@ Status GraphExecutionContext::Synchronize(const aclrtStream rt_stream) {
   }
 
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
-    GELOGE(rt_ret, "[Invoke][aclrtSynchronizeStreamWithTimeout] failed, ret:%d.", rt_ret);
-    REPORT_INNER_ERR_MSG("E19999", "aclrtSynchronizeStreamWithTimeout failed, ret:%d.", rt_ret);
+    GELOGE(rt_ret, "[Invoke][rtStreamSynchronizeWithTimeout] failed, ret:%d.", rt_ret);
+    REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, ret:%d.", rt_ret);
     return FAILED;
   }
 
-  GELOGE(RT_FAILED, "[Invoke][aclrtSynchronizeStreamWithTimeout] failed, ret = %d", rt_ret);
-  REPORT_INNER_ERR_MSG("E19999", "invoke aclrtSynchronizeStreamWithTimeout failed, ret = %d", rt_ret);
+  GELOGE(RT_FAILED, "[Invoke][rtStreamSynchronizeWithTimeout] failed, ret = %d", rt_ret);
+  REPORT_INNER_ERR_MSG("E19999", "invoke rtStreamSynchronizeWithTimeout failed, ret = %d", rt_ret);
   return RT_FAILED;
 }
 

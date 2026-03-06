@@ -72,7 +72,7 @@ HcclResult HcomBroadcastFusion::FuseOps(ge::ComputeGraph &graph, FusionSection &
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomBroadcastFusion::GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionOps) {
+HcclResult HcomBroadcastFusion::GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionInfos) {
   for (auto nodePtr : graph.GetDirectNode()) {
     if (!nodePtr) {
       HCCL_WARNING("HcomBroadcastFusion: null node exists.");
@@ -84,7 +84,7 @@ HcclResult HcomBroadcastFusion::GetFusionOps(ge::ComputeGraph &graph, FusionInfo
       continue;
     }
     if (opDescPtr->GetType() == HCCL_KERNEL_OP_TYPE_BROADCAST) {
-      CHK_RET(GetFusionOpInfo(nodePtr, fusionOps));
+      CHK_RET(GetFusionOpInfo(nodePtr, fusionInfos));
     }
   }
   return HCCL_SUCCESS;
@@ -173,7 +173,7 @@ HcclResult HcomBroadcastFusion::GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfo
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][FusionOpInfo]node[%s] get fusion config failed", nodePtr->GetName().c_str()), ret);
   CHK_PRT_RET(
-      !fusionOption.fusionAttr,
+      fusionOption.fusionAttr == 0,
       HCCL_INFO("node[%s] with attr fusion[%lld], no fusion", nodePtr->GetName().c_str(), fusionOption.fusionAttr),
       HCCL_SUCCESS);
 

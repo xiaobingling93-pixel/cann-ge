@@ -76,7 +76,7 @@ HcclResult InitGroup() {
     u32 curRank = 0;
     CHK_RET(HcomGetRankId(HCCL_WORLD_GROUP, &curRank));
     if (!HcomFindGroup(groupName.c_str()) && find(ranks.begin(), ranks.end(), curRank) != ranks.end()) {
-      if (!strncmp(groupName.c_str(), HCCL_WORLD_GROUP, sizeof(HCCL_WORLD_GROUP))) {
+      if (strncmp(groupName.c_str(), HCCL_WORLD_GROUP, sizeof(HCCL_WORLD_GROUP)) == 0) {
         HCCL_WARNING("[HcomOpsKernelInfoStore][InitHcom]cur groupname is HCCL_WORLD_GROUP.");
         continue;
       }

@@ -1435,6 +1435,7 @@ TEST_F(UtestHybridRt2Executor, TfExecuteDynamicShapeWithBatchH2dDeviceId0) {
 
 TEST_F(UtestHybridRt2Executor, TfExecuteDynamicShapeWithBatchH2dDeviceId1) {
   RTS_STUB_RETURN_VALUE(rtsMemcpyBatch, rtError_t, RT_ERROR_NONE);
+  RuntimeStub::GetInstance()->cur_device_id = 1;
   int32_t cur_rtGetDevice_is_mock_new_way = GetMockRtGetDeviceWay();
   SetMockRtGetDeviceWay(1);
 
@@ -1482,6 +1483,7 @@ TEST_F(UtestHybridRt2Executor, TfExecuteDynamicShapeWithBatchH2dDeviceId1) {
   EXPECT_EQ(ret, SUCCESS);
 
   EXPECT_EQ(RuntimeStub::GetInstance()->input_mem_copy_batch_count_, 2);
+  EXPECT_EQ(RuntimeStub::GetInstance()->batch_memcpy_device_id, 1);
 
   RuntimeStub::Reset();
   // ge::AttrUtils::SetBool(graph, "need_set_stream_core_limits", false);

@@ -700,10 +700,16 @@ HcclResult HcomAllToAllKernel(HcomOpLaunchArgs &launchArgs, HcomOpInputStruct *i
 HcclResult HcomLaunchAllToAllKernel(const HcomOpInputStruct *inputStruct, std::vector<void *> &inputAddrs,
                                     std::vector<void *> &outputAddrs) {
   HcomOpLaunchArgs launchArgs = inputStruct->launchArgs;
+  u32 rankSize = 0;
+  CHK_RET(HcomGetRankSize(launchArgs.opAttr.group, &rankSize));
+  uint64_t sendCount = (rankSize != 0) ? (inputStruct->sendCount / rankSize) : inputStruct->sendCount;
+  uint64_t recvCount = (rankSize != 0) ? (inputStruct->recvCount / rankSize) : inputStruct->recvCount;
+  HCCL_INFO("HcomLaunchAllToAllKernel: rankSize[%u], sendCount[%llu], recvCount[%llu], input sendCount[%llu], input recvCount[%llu]",
+    rankSize, sendCount, recvCount, inputStruct->sendCount, inputStruct->recvCount);
   HcclComm hcclComm = inputStruct->hcclComm;
   CHK_RET(HcomSetAivCoreLimit(launchArgs.opAttr.group, launchArgs.opAttr.aivCoreLimit));
-  CHK_RET(HcceAlltoAll(inputAddrs[0], inputStruct->sendCount, launchArgs.opAttr.dataType, outputAddrs[0],
-                       inputStruct->recvCount, launchArgs.opAttr.dataType, hcclComm, launchArgs.stream));
+  CHK_RET(HcceAlltoAll(inputAddrs[0], sendCount, launchArgs.opAttr.dataType, outputAddrs[0],
+                       recvCount, launchArgs.opAttr.dataType, hcclComm, launchArgs.stream));
   return HCCL_SUCCESS;
 }
 
@@ -989,7 +995,7 @@ ge::graphStatus PrepareHcomKernel(gert::KernelContext *context) {
   }
 
   // 获取通信域资源，
-  if (HcomCreateCommCCLbuffer(launchArgs.opAttr.group)) {
+  if (HcomCreateCommCCLbuffer(launchArgs.opAttr.group) != HCCL_SUCCESS) {
     HCCL_ERROR("LaunchHcomKernel: create ccl buffer failed. group:%s", launchArgs.opAttr.group);
     return ge::GRAPH_FAILED;
   }
@@ -1149,7 +1155,7 @@ ge::graphStatus HcomGetRecvBeforeKernel(HcomOpLaunchArgs &args, std::vector<int6
 #endif
   // 获取通信域资源
   HcclComm commHandle = nullptr;
-  if (HcomGetCommHandleByGroup(args.opAttr.group, &commHandle)) {
+  if (HcomGetCommHandleByGroup(args.opAttr.group, &commHandle) != HCCL_SUCCESS) {
     HCCL_ERROR("LaunchHcomKernel: get hcom comm handle failed. group:%s", args.opAttr.group);
     return ge::GRAPH_FAILED;
   }
@@ -1298,11 +1304,11 @@ ge::graphStatus LaunchRecvKernel(gert::KernelContext *context) {
 
   // 获取通信域资源
   HcclComm commHandle = nullptr;
-  if (HcomGetCommHandleByGroup(launchArgs.opAttr.group, &commHandle)) {
+  if (HcomGetCommHandleByGroup(launchArgs.opAttr.group, &commHandle) != HCCL_SUCCESS) {
     HCCL_ERROR("LaunchRecvKernel: get hcom comm handle failed. group:%s", launchArgs.opAttr.group);
     return ge::GRAPH_FAILED;
   }
-  if (HcomCreateCommCCLbuffer(launchArgs.opAttr.group)) {
+  if (HcomCreateCommCCLbuffer(launchArgs.opAttr.group) != HCCL_SUCCESS) {
     HCCL_ERROR("LaunchRecvKernel: create ccl buffer failed. group:%s", launchArgs.opAttr.group);
     return ge::GRAPH_FAILED;
   }

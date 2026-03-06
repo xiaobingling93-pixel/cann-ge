@@ -451,7 +451,6 @@ target_link_libraries(ge_compiler
         aihac_autofusion
         register
         opp_registry
-        acl_rt
         c_sec
         error_manager
         unified_dlog

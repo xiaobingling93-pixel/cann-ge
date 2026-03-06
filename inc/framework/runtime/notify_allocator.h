@@ -12,7 +12,7 @@
 #define AIR_CXX_RUNTIME_NOTIFY_ALLOCATOR_H
 
 #include <cstdlib>
-#include "acl/acl_rt.h"
+#include "runtime/event.h"
 #include "common/ge_visibility.h"
 #include "framework/common/ge_inner_error_codes.h"
 #include "exe_graph/runtime/continuous_vector.h"
@@ -21,15 +21,15 @@ namespace gert {
 class VISIBILITY_EXPORT NotifyAllocator {
  public:
   static constexpr size_t kMaxNotifyNum = 1024U;
-  explicit NotifyAllocator() : notifies_holder_(ContinuousVector::Create<aclrtNotify>(kMaxNotifyNum)) {}
+  explicit NotifyAllocator() : notifies_holder_(ContinuousVector::Create<rtNotify_t>(kMaxNotifyNum)) {}
   NotifyAllocator(const NotifyAllocator &) = delete;
   NotifyAllocator &operator=(const NotifyAllocator &) = delete;
   ~NotifyAllocator() noexcept;
 
-  TypedContinuousVector<aclrtNotify> *AcquireNotifies(const int32_t device_id, const size_t notify_num) const;
+  TypedContinuousVector<rtNotify_t> *AcquireNotifies(const int32_t device_id, const size_t notify_num) const;
 
  private:
-  TypedContinuousVector<aclrtNotify> *Notifies() const;
+  TypedContinuousVector<rtNotify_t> *Notifies() const;
 
  private:
   std::unique_ptr<uint8_t[]> notifies_holder_;

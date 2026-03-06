@@ -9,7 +9,7 @@
  */
 
 #include "graph/load/model_manager/task_info/rts/label_set_task_info.h"
-#include "acl/acl_rt.h"
+
 #include "graph/load/model_manager/davinci_model.h"
 
 namespace ge {
@@ -42,7 +42,7 @@ Status LabelSetTaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *const
     return INTERNAL_ERROR;
   }
 
-  const std::vector<aclrtLabel> &label_list = davinci_model->GetLabelList();
+  const std::vector<rtLabel_t> &label_list = davinci_model->GetLabelList();
   if (label_index >= label_list.size()) {
     REPORT_INNER_ERR_MSG("E19999", "lable_index:%u >= label_list.size():%zu in model, op:%s(%s), "
                        "check invalid", label_index, label_list.size(),
@@ -60,10 +60,10 @@ Status LabelSetTaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *const
 
 Status LabelSetTaskInfo::Distribute() {
   GELOGI("LabelSetTaskInfo Distribute Start.");
-  const auto rt_ret = aclrtSetLabel(label_, stream_);
-  if (rt_ret != ACL_SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Call aclrtSetLabel failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][aclrtSetLabel] failed, ret:%d", rt_ret);
+  const rtError_t rt_ret = rtLabelSet(label_, stream_);
+  if (rt_ret != RT_ERROR_NONE) {
+    REPORT_INNER_ERR_MSG("E19999", "Call rtLabelSet failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][RtLabelSet] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   is_support_redistribute_ = true;

@@ -28,7 +28,6 @@
 #include "common/host_resource_center/host_resource_center.h"
 #include "graph/utils/graph_dump_utils.h"
 #include "common/opskernel/ops_kernel_info_types.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 // Number of stream resources used in dynamic graphs.
@@ -457,7 +456,7 @@ ge::graphStatus ReserveReusableStreamResource(const ModelDesc &model_desc,
   GE_ASSERT_NOTNULL(events, "Failed to reserve events, num %zu", model_desc.GetReusableEventNum());
 
   int32_t device_id = 0;
-  GE_CHK_RT_RET(aclrtGetDevice(&device_id));
+  GE_CHK_RT_RET(rtGetDevice(&device_id));
   auto notifies = notify_allocator->AcquireNotifies(device_id, model_desc.GetReusableNotifyNum());
   GE_ASSERT_NOTNULL(notifies, "Failed to reserve notifies, num %zu", model_desc.GetReusableNotifyNum());
   return ge::GRAPH_SUCCESS;

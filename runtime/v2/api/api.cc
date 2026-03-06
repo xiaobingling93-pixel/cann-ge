@@ -24,7 +24,6 @@
 #include "runtime/mem.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/load/model_manager/model_manager.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 namespace {
@@ -221,10 +220,10 @@ std::unique_ptr<ge::Allocator> AllocatorFactory::Create(const std::string &graph
   int32_t device_id = 0;
   switch (placement) {
     case kOnDeviceHbm:
-      (void)aclrtGetDevice(&device_id);
+      (void) rtGetDevice(&device_id);
       return memory::CachingMemAllocator::GetAllocator(graph_name, device_id, RT_MEMORY_HBM);
     case kOnDeviceP2p:
-      (void)aclrtGetDevice(&device_id);
+      (void) rtGetDevice(&device_id);
       return memory::CachingMemAllocator::GetAllocator(graph_name, device_id, RT_MEMORY_P2P_DDR);
     case kOnHost:
     case kFollowing:

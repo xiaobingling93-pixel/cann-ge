@@ -30,4 +30,3 @@ target_link_libraries(ascendcl_stub
 )
 
 stub_module(ascendcl ascendcl_stub)
-stub_module(acl_rt ascendcl_stub)

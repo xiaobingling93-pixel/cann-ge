@@ -15,11 +15,9 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/tensor_adapter.h"
 #include "runtime/rt.h"
-#include "acl/acl_rt.h"
 #include "formats/utils/formats_trans_utils.h"
 #include "graph/utils/type_utils.h"
 #include "rt_error_codes.h"
-
 namespace ge {
 namespace {
 constexpr size_t kValAlignment = 64U;
@@ -213,7 +211,7 @@ Status TensorTransUtils::TransHostGertTensorsToDevice(Allocator *allocator,
     std::vector<MemBlock *> &inputs_memblocks, bool enable_input_batch_cpy) {
   MemcpyBatchParam memcpy_batch_param;
   int32_t device_id = -1;
-  (void)aclrtGetDevice(&device_id);
+  (void)rtGetDevice(&device_id);
   memcpy_batch_param.device_id = device_id;
   size_t attr_idx = 0;
   GE_ASSERT_TRUE(dst_tensors.empty(), "dst_tensors is not empty");

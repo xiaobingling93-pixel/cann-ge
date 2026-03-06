@@ -17,7 +17,6 @@
 #include "common/profiling_definitions.h"
 #include "base/err_msg.h"
 #include "base/err_mgr.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -446,7 +445,7 @@ Status SubgraphExecutor::InitCallback(NodeState *const node_state, std::function
 
 Status SubgraphExecutor::PrepareForExecution(const GraphExecutionContext *const ctx, NodeState &node_state) const {
   const auto &task = node_state.GetKernelTask(); // checked not null outside
-  GE_CHK_RT_RET(aclrtSetCurrentContext(ctx->rt_context));
+  GE_CHK_RT_RET(rtCtxSetCurrent(ctx->rt_context));
   auto &node_item = node_state.GetNodeItem();
   if (node_item.IsNoOp()) {
     GELOGD("[%s] Skipping tiling and selectbin for op with empty outputs.", node_state.GetName().c_str());

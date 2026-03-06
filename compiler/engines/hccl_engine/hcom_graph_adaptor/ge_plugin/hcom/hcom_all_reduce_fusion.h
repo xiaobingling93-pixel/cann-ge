@@ -32,8 +32,8 @@ class HcomAllReduceFusion : public OpFusionBase {
   virtual HcclResult GetGradSplitStrategy(const std::string &modelName, const std::string &sGroup,
                                           const FusionSection &fusionSection, u32 &segmentNum,
                                           std::vector<u32> &segmentIndex);
-  HcclResult GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionOps);
-  HcclResult GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfos &fusionOps);
+  HcclResult GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionInfos);
+  HcclResult GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfos &fusionInfos);
   HcclResult GetFusionOption(const ge::NodePtr &nodePtr, FusionOption &fusionOption);
   HcclResult GetFusionStrategy(const ge::ComputeGraph &graph, const FusionSection &fusionSection, u32 &segmentNum,
                                std::vector<u32> &segmentIndex);

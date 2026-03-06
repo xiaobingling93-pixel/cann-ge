@@ -8,6 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#ifndef ADAPTER_DLHCCLFUNC_H
+#define ADAPTER_DLHCCLFUNC_H
+
 #include "dlhccl_function.h"
 #include "hccl/hccl_types.h"
 #include "hccl/hcom.h"
@@ -59,3 +62,5 @@ HcclResult HcceGetandClearOverFlowTasks(const char *group, hccl::HcclDumpInfo **
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
+
+#endif  // ADAPTER_DLHCCL_FUNCTION_H

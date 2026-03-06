@@ -26,7 +26,6 @@
 #include "framework/common/runtime_tensor_desc.h"
 #include "runtime/rt.h"
 #include "runtime/rts/rts_device.h"
-#include "acl/acl_rt.h"
 
 namespace {
 constexpr uint32_t kAicpuLoadFlag = 1U;
@@ -138,7 +137,7 @@ Status DataDumper::SaveOpDebugId(const uint32_t task_id, const uint32_t stream_i
   int32_t bit_width;
   int32_t device_id = 0;
 
-  GE_CHK_RT(aclrtGetDevice(&device_id));
+  GE_CHK_RT(rtGetDevice(&device_id));
   GE_RETURN_WITH_LOG_IF_TRUE(device_id < 0, "Check device_id %d failed", device_id);
 
   GE_CHK_RT(rtsDeviceGetCapability(device_id, RT_FEATURE_SYSTEM_TASKID_BIT_WIDTH, &bit_width));

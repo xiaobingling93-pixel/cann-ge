@@ -132,7 +132,6 @@
 #include "graph/passes/format_optimize/dim1_transpose_to_squeeze_pass.h"
 #include "graph/optimize/autofuse/autofuse_optimize.h"
 #include "graph/passes/standard_optimize/tensor_move_delete_pass.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -990,7 +989,7 @@ Status GraphManager::OptimizeSubGraphWithMultiThreads(ComputeGraphPtr compute_gr
   GELOGD("OptimizeSubGraphWithMultiThreads Process op_compile_strategy:%s", op_compile_strategy.c_str());
   int32_t device_id = kInvalidDeviceId;
   // 离线场景不会SetDevice，所以离线场景GetDevice会报错，可以通过device id是否是-1判断是在线or离线。在线场景需要给子线程SetDevice
-  (void)aclrtGetDevice(&device_id);
+  (void)rtGetDevice(&device_id);
   for (const auto &subgraph : root_subgraph_list) {
     GE_CHECK_NOTNULL(subgraph);
     if (!op_compile_strategy.empty()) {
@@ -3517,11 +3516,11 @@ Status GraphManager::ProcessSubGraphWithMultiThreads(GraphManager *graph_manager
 
   {
     if (device_id != kInvalidDeviceId) {
-      GE_CHK_RT_RET(aclrtSetDevice(device_id));
+      GE_CHK_RT_RET(rtSetDevice(device_id));
     }
     GE_MAKE_GUARD(reset_device, [device_id]() {
       if (device_id != kInvalidDeviceId) {
-        GE_CHK_RT(aclrtResetDevice(device_id));
+        GE_CHK_RT(rtDeviceReset(device_id));
       }
     });
     graph_manager->UpdateLocalOmgContext(root_graph_id);

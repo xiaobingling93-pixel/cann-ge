@@ -297,7 +297,7 @@ HcclResult HcomAllReduceFusion::GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfo
               HCCL_ERROR("[Get][FusionOpInfo]node[%s] get node unknown shape info failed.", nodePtr->GetName().c_str()),
               ret);
   CHK_PRT_RET(
-      !fusionOption.fusionAttr,
+      fusionOption.fusionAttr == 0,
       HCCL_INFO("node[%s] with attr fusion[%lld], no fusion", nodePtr->GetName().c_str(), fusionOption.fusionAttr),
       HCCL_SUCCESS);
 

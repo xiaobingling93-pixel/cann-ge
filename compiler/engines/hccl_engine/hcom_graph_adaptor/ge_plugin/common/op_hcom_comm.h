@@ -92,11 +92,11 @@ inline std::string GetReduceOpEnumStr(HcclReduceOp reduceOp) {
   }
 }
 
-typedef enum {
+using DeterministicEnableLevel = enum {
   DETERMINISTIC_DISABLE = 0,  // 不支持确定性
   DETERMINISTIC_ENABLE,       // 支持确定性，不支持规约保序
   DETERMINISTIC_STRICT        // 支持确定性以及规约保序
-} DeterministicEnableLevel;
+};
 
 // 全局工作空间类型
 enum class GlobalWorkSpaceType {

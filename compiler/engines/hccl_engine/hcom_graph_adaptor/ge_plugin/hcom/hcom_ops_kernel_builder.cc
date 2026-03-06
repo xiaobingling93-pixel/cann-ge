@@ -462,11 +462,19 @@ HcclResult HcomOpsKernelBuilder::HcomCalcOpRunningParam(ge::Node &node) {
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomOpsKernelBuilder::JudgeIsAivMode(ge::Node &node, std::string sGroup, std::string sCollectiveType,
+HcclResult HcomOpsKernelBuilder::JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType,
                                                 bool &ifAiv) {
   auto const opDescPtr = node.GetOpDesc();
   int64_t hcomComm = 0;
+  std::string sGroup;
+  // 获取通信域标识符
   CHK_RET(GetCommFromOpDesc(opDescPtr, hcomComm, sGroup));
+  // 获取通信域名称
+  if (sGroup.empty()) {
+    HCCL_INFO("[%s] group is empty, try to get from op desc.", __func__);
+    CHK_RET(HcomOpUtils::GetGroupFromOpDesc(opDescPtr, sGroup));
+  }
+  HCCL_INFO("[%s] hcomComm[%d], group[%s]", __func__, hcomComm, sGroup.c_str());
 
   u32 rankSize = 0;
   CHK_RET(HcomGetRankSize(sGroup.c_str(), &rankSize));
@@ -526,13 +534,13 @@ HcclResult HcomOpsKernelBuilder::SetAttachedStreamInfoList(ge::Node &node, const
   std::string superKernel{};
   DevType devType = HcomGetDeviceType();
   if (devType != DevType::DEV_TYPE_910_95) {
-    CHK_PRT(JudgeIsAivMode(node, group, node.GetOpDesc()->GetType(), ifAiv));
-    HCCL_INFO("%s JudgeIsAivMode ifAiv[%d] should not set attach stream info", __func__, ifAiv);
+    CHK_PRT(JudgeIsAivMode(node, node.GetOpDesc()->GetType(), ifAiv));
+    HCCL_INFO("[%s] ifAiv[%d] should %s set attached stream info", __func__, ifAiv, ifAiv ? "" : "not");
   } else {
     // 950按照原先流程
     auto const opDesc = node.GetOpDesc();
     CHK_RET(GetSuperKernelFromDesc(opDesc, superKernel));
-    HCCL_INFO("%s SPK, superkernel is %s", __func__, superKernel.c_str());
+    HCCL_INFO("[%s] SPK, superkernel is %s", __func__, superKernel.c_str());
   }
   // AIV 模式不设置从流信息
   if (!ifAiv && superKernel == "") {
@@ -882,7 +890,7 @@ HcclResult HcomOpsKernelBuilder::GetCountFromOpDesc(const ge::OpDescPtr &op, con
                     HCCL_E_PARA);
 
         u64 shapeSize = 0;
-        if ((u64)op->GetInputDescPtr(i)->GetShape().IsScalar()) {
+        if (op->GetInputDescPtr(i)->GetShape().IsScalar()) {
           shapeSize = 1;
         } else {
           shapeSize = (u64)op->GetInputDescPtr(i)->GetShape().GetShapeSize();
@@ -909,12 +917,12 @@ HcclResult HcomOpsKernelBuilder::GetCountFromOpDesc(const ge::OpDescPtr &op, con
         if (inputSize == -1) {
           blockSize = 0;
         } else {
-          CHK_PRT_RET(((u64)inputSize > INVALID_U64 - alignSize),
+          CHK_PRT_RET((static_cast<u64>(inputSize) > INVALID_U64 - alignSize),
                       HCCL_ERROR("op[%s] input size[%llu] is "
                                  "overflow.",
-                                 sCollectiveType.c_str(), (u64)inputSize),
+                                 sCollectiveType.c_str(), static_cast<u64>(inputSize)),
                       HCCL_E_PARA);
-          blockSize = ((u64)inputSize + alignSize - 1) / alignSize * alignSize;
+          blockSize = (static_cast<u64>(inputSize) + alignSize - 1) / alignSize * alignSize;
         }
       }
       totalSize = totalSize + blockSize;

@@ -12,6 +12,7 @@
 #define HCOM_GRADIENT_SPLIT_TUNE_H
 
 #include <string>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {

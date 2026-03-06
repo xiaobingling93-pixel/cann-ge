@@ -205,7 +205,7 @@ ge::Status AutoTuningHcomGraphOptimizer::OptimizeOriginalGraph(ge::ComputeGraph 
       ret != HCCL_SUCCESS,
       HCCL_ERROR("[Optimize][Graph]graph[%s]: fuse HcomAllReduce op failed. ret[%d]", graph.GetName().c_str(), ret),
       ge::INTERNAL_ERROR);
-  if (recordInfos.size()) {
+  if (recordInfos.size() != 0) {
     std::string gradientInfosFile = workPath_ + "gradient_summary.csv";
     std::ofstream fileStream(gradientInfosFile.c_str(), std::ios::out | std::ios::app | std::ios::binary);
     if (fileStream.is_open()) {
@@ -350,7 +350,7 @@ HcclResult AutoTuningHcomGraphOptimizer::SetOpOutputMemSize(ge::Node &node, cons
     ge::TensorUtils::SetSize(outputTensor, memSize);
 
     // 更新output Tensor
-    if (op->UpdateOutputDesc(i, outputTensor)) {
+    if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
       HCCL_ERROR(
           "[Calc][OutputMemSize]In get output mem size, update output desc error,"
           "Format[%d], dataType[%d], outputSize[%lld], index[%u]",

@@ -18,22 +18,22 @@ namespace gert {
 EventAllocator::~EventAllocator() {
   const auto events = Events();
   for (size_t i = 0U; i < events->GetSize(); ++i) {
-    (void)aclrtDestroyEvent(events->MutableData()[i]);
+    (void)rtEventDestroy(events->MutableData()[i]);
   }
 }
 
-TypedContinuousVector<aclrtEvent> *EventAllocator::AcquireEvents(const size_t event_num) const {
+TypedContinuousVector<rtEvent_t> *EventAllocator::AcquireEvents(const size_t event_num) const {
   auto events = Events();
   for (size_t i = events->GetSize(); i < event_num; ++i) {
-    aclrtEvent event = nullptr;
-    GE_ASSERT_RT_OK(aclrtCreateEventExWithFlag(&event, default_flag_));
+    rtEvent_t event = nullptr;
+    GE_ASSERT_RT_OK(rtEventCreateExWithFlag(&event, default_flag_));
     events->MutableData()[i] = event;
     GE_ASSERT_SUCCESS(events->SetSize(i + 1U));
   }
   return events;
 }
 
-TypedContinuousVector<aclrtEvent> *EventAllocator::Events() const {
-  return reinterpret_cast<TypedContinuousVector<aclrtEvent> *>(events_holder_.get());
+TypedContinuousVector<rtEvent_t> *EventAllocator::Events() const {
+  return reinterpret_cast<TypedContinuousVector<rtEvent_t> *>(events_holder_.get());
 }
 }  // namespace gert

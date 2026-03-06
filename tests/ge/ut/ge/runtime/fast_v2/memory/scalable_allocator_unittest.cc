@@ -41,14 +41,6 @@ class MockRuntime : public ge::RuntimeStub {
     return RT_ERROR_NONE;
   }
 };
-class MockAclRuntime : public ge::AclRuntimeStub {
-public:
-  aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) override {
-    *free_size = 64UL * 1024UL * 1024UL;
-    *total = PAGE_MEM_SIZE_THRESHOLD_DEFAULT[1U];
-    return ACL_SUCCESS;
-  }
-};
 class MockRtsCachingMemAllocator : public gert::memory::RtsCachingMemAllocator {
    public:
     MockRtsCachingMemAllocator(const uint32_t device_id, const rtMemType_t memory_type)
@@ -90,13 +82,10 @@ struct ScaleAllocatorTest : public testing::Test {
       memory::RtsCachingMemAllocator::GetAllocator(0, RT_MEMORY_HBM)->Recycle();
       memory::RtsCachingMemAllocator::device_id_to_allocators_.clear();
       auto mock_runtime = std::make_shared<MockRuntime>();
-      auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
       ge::RuntimeStub::SetInstance(mock_runtime);
-      ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
       caching_allocator.reset(new memory::CachingMemAllocator{0, RT_MEMORY_HBM});
       //allocator.reset(new ScalableAllocator{caching_allocator->span_allocator_, caching_allocator->rts_mem_allocator_});
       ge::RuntimeStub::Reset();
-      ge::AclRuntimeStub::Reset();
     }
   }
   void TearDown() {
@@ -840,42 +829,41 @@ TEST_F(ScaleAllocatorTest, FetchSplitedSpan_CheckMemBlockSize_OK) {
 }
 
 TEST_F(ScaleAllocatorTest, ScalableConfig_Less32G) {
-  class MockAclRuntime : public ge::AclRuntimeStub {
-  public:
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) override {
-      *free_size = 64UL * 1024UL * 1024UL;
+  class MockRuntime : public ge::RuntimeStub {
+   public:
+    rtError_t rtMemGetInfoEx(rtMemInfoType_t memInfoType, size_t *free, size_t *total) override {
+      *free = 64UL * 1024UL * 1024UL;
       *total = PAGE_MEM_SIZE_THRESHOLD_DEFAULT[0U];
-      return ACL_SUCCESS;
+      return RT_ERROR_NONE;
     }
   };
-  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
-  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
+  auto mock_runtime = std::make_shared<MockRuntime>();
+  ge::RuntimeStub::SetInstance(mock_runtime);
   const ScalableConfig &cfg = ScalableConfig();
   auto page_mem_size_total_threshold =
       static_cast<size_t>(floor(static_cast<float64_t>(PAGE_MEM_SIZE_THRESHOLD_DEFAULT[0U]) * kMaxMemorySizeRatio));
   ASSERT_EQ(cfg.page_mem_size_total_threshold, page_mem_size_total_threshold);
   ASSERT_EQ(cfg.uncacheable_size_threshold, SPAN_UNCACHEABLE_MEM_SIZE_DEFAULT[0U]);
-  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(ScaleAllocatorTest, ScalableConfig_Greater32G_Less64G) {
-  class MockAclRuntime : public ge::AclRuntimeStub {
-  public:
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) override {
-      *free_size = 64UL * 1024UL * 1024UL;
+  class MockRuntime : public ge::RuntimeStub {
+   public:
+    rtError_t rtMemGetInfoEx(rtMemInfoType_t memInfoType, size_t *free, size_t *total) override {
+      *free = 64UL * 1024UL * 1024UL;
       *total = PAGE_MEM_SIZE_THRESHOLD_DEFAULT[1U];
-      return ACL_SUCCESS;
+      return RT_ERROR_NONE;
     }
   };
 
-  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
-  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
+  auto mock_runtime = std::make_shared<MockRuntime>();
+  ge::RuntimeStub::SetInstance(mock_runtime);
   const ScalableConfig &cfg = ScalableConfig();
   auto page_mem_size_total_threshold =
     static_cast<size_t>(floor(static_cast<float64_t>(PAGE_MEM_SIZE_THRESHOLD_DEFAULT[1U]) * kMaxMemorySizeRatio));
   ASSERT_EQ(cfg.page_mem_size_total_threshold, page_mem_size_total_threshold);
   ASSERT_EQ(cfg.uncacheable_size_threshold, SPAN_UNCACHEABLE_MEM_SIZE_DEFAULT[1U]);
-  ge::AclRuntimeStub::Reset();
+  ge::RuntimeStub::Reset();
 }
 
 TEST_F(ScaleAllocatorTest, ffts_allocator_split_memory_reuse) {
@@ -911,19 +899,9 @@ TEST_F(ScaleAllocatorTest, alloc_total_exceed_thresold) {
       return RT_ERROR_NONE;
     }
   };
-  class MockAclRuntime : public ge::AclRuntimeStub {
-  public:
-    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) override {
-      *free_size = 64UL * 1024UL * 1024UL;
-      *total = PAGE_MEM_SIZE_THRESHOLD_DEFAULT[1U];
-      return ACL_SUCCESS;
-    }
-  };
 
   auto mock_runtime = std::make_shared<MockRuntime>();
-  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   ge::RuntimeStub::SetInstance(mock_runtime);
-  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   auto alloc_size = PAGE_MEM_SIZE_THRESHOLD_DEFAULT[1U]/2;
   auto span1 = caching_allocator->GetScalableAllocator()->Alloc(*caching_allocator, 1024U);
   span1->Free();
@@ -933,7 +911,6 @@ TEST_F(ScaleAllocatorTest, alloc_total_exceed_thresold) {
   ASSERT_TRUE(span2 == nullptr);
   span1->Free();
   ge::RuntimeStub::Reset();
-  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(ScaleAllocatorTest, alloc_manager_create_allocator_success) {

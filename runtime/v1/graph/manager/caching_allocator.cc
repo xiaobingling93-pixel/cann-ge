@@ -19,7 +19,6 @@
 #include "common/debug/log.h"
 #include "common/math/math_util.h"
 #include "graph_metadef/common/ge_common/util.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -411,7 +410,7 @@ void CachingAllocator::TryFreeBlocks() {
 Status CachingAllocator::FreeBlocksAfterSynchronize(rtStream_t const stream) {
   GELOGW("Stream synchronize and try free blocks! stream: %p.", stream);
   const std::lock_guard<std::recursive_mutex> lock(mutex_);
-  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
+  GE_CHK_RT_RET(rtStreamSynchronize(stream));
   (void)FreeCachedBlocks();
   PrintStatics(GeLogLevel::kEvent);
   return SUCCESS;

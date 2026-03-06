@@ -19,7 +19,6 @@
 #include "graph/load/model_manager/davinci_model.h"
 #include "subscriber/subscriber_utils.h"
 #include "engine/aicore/launch_kernel/ai_core_launch_kernel.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 namespace {

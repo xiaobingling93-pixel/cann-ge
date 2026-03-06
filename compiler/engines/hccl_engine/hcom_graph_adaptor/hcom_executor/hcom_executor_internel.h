@@ -48,7 +48,7 @@ constexpr s32 MAX_ENQUEUE_SIZE = 4;            // 单次最大的入栈数量
 constexpr int32_t HCCL_STREAM_PRIORITY_HIGH = 0;
 
 #define HCOM_EXECUTOR_ERR_BREAK(result, exeLog, callback, setFlag) \
-  if (result) {                                                    \
+  if (static_cast<u32>(result) != 0) {                             \
     exeLog;                                                        \
     callback(result);                                              \
     setFlag;                                                       \

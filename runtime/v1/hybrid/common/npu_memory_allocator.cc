@@ -17,7 +17,6 @@
 #include "graph/manager/mem_manager.h"
 #include "runtime/rt.h"
 #include "hybrid/common/npu_memory_allocator.h"
-#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -92,10 +91,10 @@ void NpuMemoryAllocator::FreeCachedMem() {
 
 NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator() {
   int32_t device_id = 0;
-  const auto rt_result = aclrtGetDevice(&device_id);
-  if (rt_result != ACL_SUCCESS) {
-    GELOGE(RT_FAILED, "[Get][aclrtGetDevice] Failed, result:%d.", rt_result);
-    REPORT_INNER_ERR_MSG("E19999", "aclrtGetDevice failed, result:%d.", rt_result);
+  const auto rt_result = rtGetDevice(&device_id);
+  if (rt_result != RT_ERROR_NONE) {
+    GELOGE(RT_FAILED, "[Get][Device] Failed, result:%d.", rt_result);
+    REPORT_INNER_ERR_MSG("E19999", "rtGetDevice failed, result:%d.", rt_result);
     return nullptr;
   }
 
@@ -119,10 +118,10 @@ NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator() {
 
 NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const rtStream_t stream) {
   int32_t device_id = 0;
-  const auto rt_result = aclrtGetDevice(&device_id);
-  if (rt_result != ACL_SUCCESS) {
-    GELOGE(RT_FAILED, "[Get][aclrtGetDevice] Failed, result:%d.", rt_result);
-    REPORT_INNER_ERR_MSG("E19999", "aclrtGetDevice failed, result:%d.", rt_result);
+  const auto rt_result = rtGetDevice(&device_id);
+  if (rt_result != RT_ERROR_NONE) {
+    GELOGE(RT_FAILED, "[Get][Device] Failed, result:%d.", rt_result);
+    REPORT_INNER_ERR_MSG("E19999", "rtGetDevice failed, result:%d.", rt_result);
     return nullptr;
   }
 

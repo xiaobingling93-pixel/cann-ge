@@ -36,6 +36,7 @@ using namespace std;
 
 namespace hccl {
 constexpr s32 ALIGNMENT = 32;
+constexpr s32 MAX_BLOCK_DIM = 48;
 
 HcomOpsKernelInfoStore::HcomOpsKernelInfoStore() : workSpaceMemInfo_(), initCrackMem_(false) {}
 
@@ -613,7 +614,7 @@ HcclResult HcomOpsKernelInfoStore::CleanIntervalMemoryOpKernel(const ge::GETaskI
     CHK_RET(GetCountFromTaskInfo(hcclInfo, count));
     CHK_RET(GetDataTypeFromTaskInfo(task, dataType));
     CHK_RET(GetReduceTypeFromTaskInfo(hcclInfo, reduceType));
-    CHK_RET(HcomSelectAlg(comm, group.c_str(), count, nullptr, dataType, reduceType, opType, 48, ifAiv, algName));
+    CHK_RET(HcomSelectAlg(comm, group.c_str(), count, nullptr, dataType, reduceType, opType, MAX_BLOCK_DIM, ifAiv, algName));
 
     if (crackNum == 0 || (crackNum == 1 && ifAiv)) {
       HCCL_WARNING("[CleanIntervalMemoryOpKernel]The number of tensors to be cleared is 0.");

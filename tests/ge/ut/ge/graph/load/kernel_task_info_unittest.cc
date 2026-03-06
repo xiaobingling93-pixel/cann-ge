@@ -22,7 +22,6 @@
 #include "graph/load/model_manager/task_info/hccl/hccl_util.h"
 #include "graph/load/model_manager/task_info/fe/fusion_task_info.h"
 #include "depends/runtime/src/runtime_stub.h"
-#include "depends/ascendcl/src/ascendcl_stub.h"
 #include "ge/ut/ge/ffts_plus_proto_tools.h"
 #include "framework/common/types.h"
 #include "graph/manager/graph_var_manager.h"
@@ -1577,9 +1576,6 @@ TEST_F(UtestKernelTaskInfo, blocking_aicpu_op) {
   const auto operator_info = std::make_shared<Operator>(OpDescUtils::CreateOperatorFromOpDesc(op_desc));
   davinci_model.operator_list_[op_desc->GetId()] = operator_info;
 
-  rtStream_t stream = (rtStream_t)op_desc->GetStreamId();
-  davinci_model.stream_2_event_[stream] = (rtEvent_t)2;
-
   KernelTaskInfo kernel_task_info;
   kernel_task_info.op_desc_ = op_desc;
   kernel_task_info.davinci_model_ = &davinci_model;
@@ -1591,7 +1587,6 @@ TEST_F(UtestKernelTaskInfo, blocking_aicpu_op) {
   kernel_task_info.op_desc_ = op_desc;
   EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
   EXPECT_EQ(kernel_task_info.Distribute(), SUCCESS);
-  davinci_model.stream_2_event_.clear();
   kernel_task_info.Release();
 }
 
@@ -1665,26 +1660,37 @@ TEST_F(UtestKernelTaskInfo, blocking_aicpu_op_fail_02) {
   kernel_task_info.op_desc_ = op_desc;
   kernel_task_info.operator_ = operator_info;
   kernel_task_info.func_handle_ = (void *)0x12000;
+  RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
+  RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_SUPPORT + 1);
+  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_task_info.Distribute(), FAILED);
 
   EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
   RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
-  class MockAclRuntime : public ge::AclRuntimeStub {
-    aclError aclrtStreamWaitEventWithTimeout(aclrtStream stream, aclrtEvent event, int32_t timeout) {
-      return -1;
-    }
-  };
-  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
-  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   EXPECT_EQ(kernel_task_info.Distribute(), FAILED);
   kernel_task_info.Release();
-  ge::AclRuntimeStub::Reset();
+
+  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
+  RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_task_info.Distribute(), FAILED);
+  kernel_task_info.Release();
 
   RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
   RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);
   EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
   RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
   RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);
-
   domi::GetContext().is_online_model = true;
   EXPECT_EQ(kernel_task_info.Distribute(), SUCCESS);
   EXPECT_TRUE(kernel_task_info.IsSupportReDistribute());

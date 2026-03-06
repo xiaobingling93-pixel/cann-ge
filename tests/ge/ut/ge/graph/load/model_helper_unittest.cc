@@ -966,19 +966,13 @@ TEST_F(UtestModelHelper, GetHardwareInfo_no_device) {
 
 TEST_F(UtestModelHelper, GetHardwareInfo_no_device_get_count_from_rts_failed) {
   dlog_setlevel(0, 0, 0);
-  class MockAclRuntimeStub: public AclRuntimeStub {
-    aclError aclrtGetDeviceInfo(uint32_t deviceId, aclrtDevAttr attr, int64_t *value) override{
-      return -1;
-    }
-  };
-  MockAclRuntimeStub mock_acl_runtime_stub;
-  AclRuntimeStub::Install(&mock_acl_runtime_stub);
+  RTS_STUB_RETURN_VALUE(rtGetDeviceInfo, rtError_t, -1);
   std::map<std::string, std::string> options;
   options[SOC_VERSION] = "Ascend910";
   ModelHelper model_helper;
   EXPECT_NE(model_helper.GetHardwareInfo(options), SUCCESS);
   dlog_setlevel(0, 3, 0);
-  AclRuntimeStub::UnInstall(&mock_acl_runtime_stub);
+  RTS_STUB_RETURN_VALUE(rtGetDeviceInfo, rtError_t, RT_ERROR_NONE);
 }
 
 TEST_F(UtestModelHelper, GetHardwareInfo_device0) {

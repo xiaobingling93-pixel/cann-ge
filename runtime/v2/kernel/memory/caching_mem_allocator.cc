@@ -21,7 +21,6 @@
 #include "utils/utils.h"
 #include "multi_stream_mem_block_helper.h"
 #include "graph/load/model_manager/model_utils.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 namespace memory {
@@ -123,10 +122,10 @@ std::unique_ptr<CachingMemAllocator> CachingMemAllocator::GetAllocator(const std
 
 std::unique_ptr<CachingMemAllocator> CachingMemAllocator::GetAllocator() {
   int32_t device_id = 0;
-  const auto rt_result = aclrtGetDevice(&device_id);
-  if (rt_result != ACL_SUCCESS) {
-    GELOGE(ge::RT_FAILED, "[Get][aclrtGetDevice] Failed, result:%d.", rt_result);
-    REPORT_INNER_ERR_MSG("E19999", "aclrtGetDevice failed, result:%d.", rt_result);
+  const auto rt_result = rtGetDevice(&device_id);
+  if (rt_result != RT_ERROR_NONE) {
+    GELOGE(ge::RT_FAILED, "[Get][Device] Failed, result:%d.", rt_result);
+    REPORT_INNER_ERR_MSG("E19999", "rtGetDevice failed, result:%d.", rt_result);
     return nullptr;
   }
   return GetAllocator(device_id);

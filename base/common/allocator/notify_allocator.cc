@@ -19,25 +19,24 @@ namespace gert {
 NotifyAllocator::~NotifyAllocator() noexcept {
   auto notifies = Notifies();
   for (size_t i = 0U; i < notifies->GetSize(); ++i) {
-    (void)aclrtDestroyNotify(notifies->MutableData()[i]);
+    (void)rtNotifyDestroy(notifies->MutableData()[i]);
   }
 }
 
-TypedContinuousVector<aclrtNotify> *NotifyAllocator::AcquireNotifies(const int32_t device_id,
+TypedContinuousVector<rtNotify_t> *NotifyAllocator::AcquireNotifies(const int32_t device_id,
                                                                     const size_t notify_num) const {
-  (void)device_id;
   GE_ASSERT_TRUE(notify_num < kMaxNotifyNum);
   auto notifies = Notifies();
   for (size_t i = notifies->GetSize(); i < notify_num; ++i) {
-    aclrtNotify notify = nullptr;
-    GE_ASSERT_RT_OK(aclrtCreateNotify(&notify, 0U));
+    rtNotify_t notify = nullptr;
+    GE_ASSERT_RT_OK(rtNotifyCreate(device_id, &notify));
     notifies->MutableData()[i] = notify;
     GE_ASSERT_SUCCESS(notifies->SetSize(i + 1U));
   }
   return notifies;
 }
 
-TypedContinuousVector<aclrtNotify> *NotifyAllocator::Notifies() const {
-  return reinterpret_cast<TypedContinuousVector<aclrtNotify> *>(notifies_holder_.get());
+TypedContinuousVector<rtNotify_t> *NotifyAllocator::Notifies() const {
+  return reinterpret_cast<TypedContinuousVector<rtNotify_t> *>(notifies_holder_.get());
 }
 }  // namespace gert

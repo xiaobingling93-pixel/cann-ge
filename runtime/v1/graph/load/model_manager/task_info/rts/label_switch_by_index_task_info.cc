@@ -9,7 +9,7 @@
  */
 
 #include "graph/load/model_manager/task_info/rts/label_switch_by_index_task_info.h"
-#include "acl/acl_rt.h"
+
 #include "common/checker.h"
 #include "graph/load/model_manager/davinci_model.h"
 #include "graph/load/model_manager/model_utils.h"
@@ -18,9 +18,6 @@ namespace ge {
 constexpr size_t kLabelSwitchIndexNum = 1U;
 
 LabelSwitchByIndexTaskInfo::~LabelSwitchByIndexTaskInfo() {
-  if (args_ != nullptr) {
-    (void)aclrtDestroyLabelList(args_);
-  }
   args_ = nullptr;
   index_value_ = nullptr;
 }
@@ -30,7 +27,6 @@ Status LabelSwitchByIndexTaskInfo::Init(const domi::TaskDef &task_def, DavinciMo
                                         const IowAddrs &iow_addrs) {
   GELOGI("LabelSwitchByIndexTaskInfo Init Start.");
   (void)args;
-  (void)persistent_workspace;
   GE_CHECK_NOTNULL(davinci_model);
   GE_CHK_STATUS_RET_NOLOG(SetStream(task_def.stream_id(), davinci_model->GetStreamList()));
 
@@ -76,7 +72,19 @@ Status LabelSwitchByIndexTaskInfo::Init(const domi::TaskDef &task_def, DavinciMo
     label_used[idx] = label_list[static_cast<size_t>(label_id)];
   }
 
-  GE_ASSERT_RT_OK(aclrtCreateLabelList(label_used.data(), label_used.size(), &args_));
+   // persistent_workspace内存申请适配好后删除
+  const auto memory_type = rtGetTsMemType(MEM_REQUEST_FEATURE_DEFAULT, static_cast<uint32_t>(args_size_));
+  GELOGI("memory_type: %u", memory_type);
+  GE_ASSERT_TRUE(!ge::MulOverflow(branch_max_, sizeof(rtLabelDevInfo), args_size_));
+  args_ = davinci_model->MallocDynamicMemory(static_cast<size_t>(args_size_), memory_type);
+  GE_ASSERT_NOTNULL(args_);
+
+  const ArgsPlacement pls = (memory_type == RT_MEMORY_TS) ?
+      ArgsPlacement::kArgsPlacementTs : ArgsPlacement::kArgsPlacementHbm;
+  auto args_addr = (ValueToPtr(persistent_workspace[static_cast<uint32_t>(pls)].dev_addr) == nullptr) ?
+      args_ : ValueToPtr(persistent_workspace[static_cast<uint32_t>(pls)].dev_addr);
+  GE_CHK_RT_RET(rtLabelListCpy(label_used.data(), static_cast<uint32_t>(label_used.size()), args_addr, args_size_));
+
   GELOGI("LabelSwitchByIndexTaskInfo %s Init success, branch max: %u, logic stream id: %u, stream: %p.",
     op_desc->GetNamePtr(), task_def.stream_id(), stream_);
   return SUCCESS;
@@ -94,16 +102,16 @@ Status LabelSwitchByIndexTaskInfo::Distribute() {
   GELOGI("LabelSwitchByIndexTaskInfo Distribute Start, branch max: %u", branch_max_);
   GE_CHECK_NOTNULL(args_);
   GE_CHECK_NOTNULL(index_value_);
-  if (branch_max_ == 0U) {
-    REPORT_INNER_ERR_MSG("E19999", "branch_max_:%u is 0, check invalid", branch_max_);
-    GELOGE(PARAM_INVALID, "[Check][Param] branch max:%u invalid.", branch_max_);
+  if ((branch_max_ == 0U) || (args_size_ == 0U)) {
+    REPORT_INNER_ERR_MSG("E19999", "branch_max_:%u or args_size_:%u is 0, check invalid", branch_max_, args_size_);
+    GELOGE(PARAM_INVALID, "[Check][Param] branch max:%u, args size:%u invalid.", branch_max_, args_size_);
     return PARAM_INVALID;
   }
 
-  const auto rt_ret = aclrtSwitchLabelByIndex(index_value_, branch_max_, args_, stream_);
-  if (rt_ret != ACL_SUCCESS) {
-    REPORT_INNER_ERR_MSG("E19999", "Call aclrtSwitchLabelByIndex failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][aclrtSwitchLabelByIndex] failed, ret:%d", rt_ret);
+  const rtError_t rt_ret = rtLabelSwitchByIndex(index_value_, branch_max_, args_, stream_);
+  if (rt_ret != RT_ERROR_NONE) {
+    REPORT_INNER_ERR_MSG("E19999", "Call rtLabelSwitchByIndex failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][RtLabelSwitchByIndex] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   is_support_redistribute_ = true;
@@ -135,6 +143,16 @@ Status LabelSwitchByIndexTaskInfo::ParseTaskRunParam(const domi::TaskDef &task_d
   task_run_param.parsed_input_addrs.push_back({input_data_addrs[0U], mem_types[0U], false, {0}});
   index_value_ = ValueToPtr(input_data_addrs[0U]);
   GELOGD("parse task param, input_data_addrs %llu, mem_types %llu", input_data_addrs[0U], mem_types[0U]);
+
+  const auto label_max = label_switch.label_max();
+  const auto memory_type = rtGetTsMemType(MEM_REQUEST_FEATURE_DEFAULT, static_cast<uint32_t>(args_size_));
+
+  GE_ASSERT_TRUE(!ge::MulOverflow(label_max, sizeof(rtLabelDevInfo), args_size_));
+
+  const ArgsPlacement pls = (memory_type == RT_MEMORY_TS) ?
+      ArgsPlacement::kArgsPlacementTs : ArgsPlacement::kArgsPlacementHbm;
+  task_run_param.persistent_workspace_descs.push_back({static_cast<int64_t>(args_size_), pls});
+
   return SUCCESS;
 }
 

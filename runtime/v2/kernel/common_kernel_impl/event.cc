@@ -18,7 +18,6 @@
 #include "kernel/memory/multi_stream_l2_allocator.h"
 #include "core/debug/kernel_tracing.h"
 #include "core/executor/multi_thread_topological/executor/schedule/producer/producers/kernel_tags/critical_section_config.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -50,7 +49,7 @@ REGISTER_KERNEL(CreateGertEvents).RunFunc(CreateGertEvents);
  * @param context
  * @return
  */
-using DoFuncType = ge::graphStatus(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+using DoFuncType = ge::graphStatus(KernelContext *context, GertEvent &event, rtEvent_t rt_event, rtStream_t stream,
                                    memory::MultiStreamL2Allocator *allocator);
 template <DoFuncType DoFunc>
 ge::graphStatus DoEvents(KernelContext *context) {
@@ -58,7 +57,7 @@ ge::graphStatus DoEvents(KernelContext *context) {
       context->GetInputPointer<TypedContinuousVector<int64_t>>(static_cast<size_t>(SendEventsInput::kLogicEventIds));
   auto events = context->MutableInputPointer<std::vector<GertEvent>>(static_cast<size_t>(SendEventsInput::kAllEvents));
   auto rt_events =
-      context->GetInputPointer<TypedContinuousVector<aclrtEvent>>(static_cast<size_t>(SendEventsInput::kAllRtEvents));
+      context->GetInputPointer<TypedContinuousVector<rtEvent_t>>(static_cast<size_t>(SendEventsInput::kAllRtEvents));
   auto allocator =
       context->MutableInputPointer<memory::MultiStreamL2Allocator>(static_cast<size_t>(SendEventsInput::kAllocator));
   if (SECUREC_UNLIKELY((events == nullptr) || (event_ids == nullptr) || (rt_events == nullptr) ||
@@ -88,16 +87,16 @@ ge::graphStatus DoEvents(KernelContext *context) {
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus CallRtsSendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus CallRtsSendEvent(KernelContext *context, GertEvent &event, rtEvent_t rt_event, rtStream_t stream,
                                  memory::MultiStreamL2Allocator *) {
-  GE_ASSERT_RT_OK(aclrtRecordEvent(rt_event, stream));
+  GE_ASSERT_RT_OK(rtEventRecord(rt_event, stream));
   KERNEL_TRACE("Sent event %" PRId64 " RT event %p from stream %" PRId64, event.logic_id, rt_event,
                event.compile_time_event_info.logic_src_stream);
   return ge::GRAPH_SUCCESS;
 }
 REGISTER_KERNEL(LastSendEvents).RunFunc(DoEvents<CallRtsSendEvent>).ConcurrentCriticalSectionKey(kKernelUseMemory);
 
-ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, rtEvent_t rt_event, rtStream_t stream,
                           memory::MultiStreamL2Allocator *allocator) {
   auto blocks = allocator->GetClearLocalRecycleBlocks(event.compile_time_event_info.logic_dst_stream);
   for (auto iter = blocks.Begin(); iter != blocks.End(); blocks.Next(iter)) {
@@ -123,14 +122,14 @@ ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, aclrtEvent r
 }
 REGISTER_KERNEL(SendEvents).RunFunc(DoEvents<SendEvent>).ConcurrentCriticalSectionKey(kKernelUseMemory);
 
-ge::graphStatus CallRtsWaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus CallRtsWaitEvent(KernelContext *context, GertEvent &event, rtEvent_t rt_event, rtStream_t stream,
                                  memory::MultiStreamL2Allocator *) {
-  GE_ASSERT_RT_OK(aclrtStreamWaitEvent(stream, rt_event));
+  GE_ASSERT_RT_OK(rtStreamWaitEvent(stream, rt_event));
   KERNEL_TRACE("Waited event %" PRId64 " RT event %p at stream %" PRId64, event.logic_id, rt_event,
                event.compile_time_event_info.logic_dst_stream);
   return ge::GRAPH_SUCCESS;
 }
-ge::graphStatus WaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus WaitEvent(KernelContext *context, GertEvent &event, rtEvent_t rt_event, rtStream_t stream,
                           memory::MultiStreamL2Allocator *allocator) {
   GE_ASSERT_GRAPH_SUCCESS(CallRtsWaitEvent(context, event, rt_event, stream, nullptr));
 

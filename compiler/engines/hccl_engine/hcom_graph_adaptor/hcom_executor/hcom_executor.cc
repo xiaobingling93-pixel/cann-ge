@@ -109,7 +109,7 @@ HcclResult HcomExecutor::InitGroup() {
     u32 curRank = 0;
     CHK_RET(HcomGetRankId(HCCL_WORLD_GROUP, &curRank));
     if (!HcomFindGroup(groupName.c_str()) && find(ranks.begin(), ranks.end(), curRank) != ranks.end()) {
-      if (!strncmp(groupName.c_str(), HCCL_WORLD_GROUP, sizeof(HCCL_WORLD_GROUP))) {
+      if (strncmp(groupName.c_str(), HCCL_WORLD_GROUP, sizeof(HCCL_WORLD_GROUP)) == 0) {
         HCCL_WARNING("[HcomOpsKernelInfoStore][InitHcom]cur groupname is HCCL_WORLD_GROUP.");
         continue;
       }
@@ -794,7 +794,7 @@ void HcomExecutor::GatherMemCopyThread(void *baseAddr, u64 offset, std::vector<u
 
   void *addr = nullptr;
   u64 length = 0;
-  auto destMax = [&]() -> u64 { return tmpMemSize < offset ? 0 : tmpMemSize - offset; };
+  auto destMax = [tmpMemSize, offset]() -> u64 { return tmpMemSize < offset ? 0 : tmpMemSize - offset; };
 
   for (u32 index = 0; index < count; index++) {
     addr = reinterpret_cast<void *>(addrInfo[beginIndex + NUM_TWO * index]);

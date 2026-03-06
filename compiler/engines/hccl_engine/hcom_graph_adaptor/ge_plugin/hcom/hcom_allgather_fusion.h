@@ -58,8 +58,8 @@ class HcomAllGatherFusion : public OpFusionBase {
   HcclResult Run(ge::ComputeGraph &graph) override;
 
  private:
-  HcclResult GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionOps);
-  HcclResult GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfos &fusionOps);
+  HcclResult GetFusionOps(ge::ComputeGraph &graph, FusionInfos &fusionInfos);
+  HcclResult GetFusionOpInfo(ge::NodePtr &nodePtr, FusionInfos &fusionInfos);
   HcclResult GetFusionOption(const ge::NodePtr &nodePtr, FusionOption &fusionOption);
   HcclResult GenerateFusionLabel(const FusionOption &fusionOption, std::string &fusionLabel);
   HcclResult FuseOps(ge::ComputeGraph &graph, FusionSection &fusionSection);

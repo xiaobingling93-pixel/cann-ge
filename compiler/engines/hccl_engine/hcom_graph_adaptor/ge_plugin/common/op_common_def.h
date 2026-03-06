@@ -11,8 +11,10 @@
 #ifndef OP_COMMON_DEF_H
 #define OP_COMMON_DEF_H
 
+#include <string>
+
 namespace hccl {
-const string HCCL_OPS_ENGIN = "DNN_HCCL";
+const std::string HCCL_OPS_ENGIN = "DNN_HCCL";
 const s32 COMPUTE_COST_NUM = 1000;  // 算子占用的计算资源大小
 }  // namespace hccl
 

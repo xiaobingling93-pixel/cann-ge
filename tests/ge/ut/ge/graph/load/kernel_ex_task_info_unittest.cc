@@ -654,16 +654,38 @@ TEST_F(UtestKernelExTaskInfo, blocking_aicpu_op_fail_02) {
   kernel_ex_task_info.op_desc_ = op_desc;
   DavinciModel davinci_model(0, nullptr);
   kernel_ex_task_info.davinci_model_ = &davinci_model;
+  kernel_ex_task_info.func_handle_ = (void *)0x12000;
+  RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
+  RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_SUPPORT + 1);
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), FAILED);
+
+  RTS_STUB_RETURN_VALUE(rtGetDevice, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.Distribute(), FAILED);
+
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), SUCCESS);
+  RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.Distribute(), FAILED);
+  kernel_ex_task_info.Release();
+
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), SUCCESS);
+  RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
+  EXPECT_EQ(kernel_ex_task_info.Distribute(), FAILED);
+  kernel_ex_task_info.Release();
 
   RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
   RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);
   EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), SUCCESS);
   RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
   RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);
-
-  kernel_ex_task_info.op_desc_ = op_desc;
-  kernel_ex_task_info.davinci_model_ = &davinci_model;
-  kernel_ex_task_info.func_handle_ = (void *)0x12000;
   EXPECT_EQ(kernel_ex_task_info.Distribute(), SUCCESS);
   kernel_ex_task_info.Release();
 }

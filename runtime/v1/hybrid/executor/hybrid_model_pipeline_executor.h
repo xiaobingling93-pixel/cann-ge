@@ -23,7 +23,7 @@ namespace hybrid {
 
 struct PipeExecutionConfig {
   uint32_t device_id;
-  aclrtContext rt_context;
+  rtContext_t rt_context;
   int32_t num_executors;
   int32_t num_stages;
   int64_t iteration_end;

@@ -12,13 +12,14 @@
 #define HCOM_GRAPH_OPTIMIZER_H
 
 #include <string>
+#include <map>
+#include <vector>
 #include "common/optimizer/graph_optimizer.h"
 #include "common/optimizer/graph_optimizer_types.h"
 #include "graph/compute_graph.h"
 #include "hccl/hccl_types.h"
 #include "hccl/base.h"
 #include "hccl/hcom.h"
-#include <unordered_set>
 
 namespace hccl {
 const string HCCL_GRAPH_OPTIMIZER_NAME = "hccl_graph_optimizer";

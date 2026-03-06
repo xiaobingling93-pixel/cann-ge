@@ -16,7 +16,6 @@
 #include "kernel/known_subgraph/davinci_model_kernel.h"
 #include "runtime/stream.h"
 #include "exe_graph/runtime/gert_tensor_data.h"
-#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -35,7 +34,7 @@ std::vector<std::string> PrintModelCreate(const KernelContext * context) {
   ss << ", rt stream num: " << rt_streams.size() << ", list: [";
   for (const auto &stream : rt_streams) {
     int32_t rt_stream_id = kInvalidStream;
-    (void)aclrtStreamGetId(stream, &rt_stream_id);
+    (void)rtGetStreamId(stream, &rt_stream_id);
     ss << rt_stream_id << ", ";
   }
   ss << "]";

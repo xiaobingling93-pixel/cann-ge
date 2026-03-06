@@ -38,6 +38,7 @@ class LabelSwitchByIndexTaskInfo : public TaskInfo {
   void *index_value_{nullptr};    // switch index input.
   uint32_t branch_max_{0U};       // max branch count.
   void *args_{nullptr};           // label info memory.
+  uint32_t args_size_{0U};        // label info length.
 };
 }  // namespace ge
 #endif  // GE_GRAPH_LOAD_MODEL_MANAGER_TASK_INFO_LABEL_SWITCH_BY_INDEX_TASK_INFO_H_
