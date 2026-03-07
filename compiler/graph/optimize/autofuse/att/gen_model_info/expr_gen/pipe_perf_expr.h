@@ -52,6 +52,15 @@ private:
                          const std::map<PipeType, Expr> &node_perf, const std::map<PipeType, Expr> &node_tail_perf,
                          std::map<PipeType, Expr> &pipe_costs) const;
 
+  // 获取节点性能（内部方法，包含VectorFunc特殊处理）
+  ge::Status GetNodePerfInternal(const NodeInfo &node, std::map<PipeType, Expr> &node_perf,
+                                  std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) const;
+  // 添加节点性能到pipe_costs
+  ge::Status AddNodePerfToPipeCost(const NodeInfo &node, const Expr &exe_var,
+                                   const std::map<PipeType, Expr> &node_perf,
+                                   std::map<PipeType, Expr> &pipe_costs,
+                                   std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
+
   Perf UpdateTilingScheduleConfigTable(const NodeInfo &node, bool tail_shape, PerfOutputInfo &perf_res) const;
   ge::Status UpdatePipeHead(std::map<PipeType, Expr> &pipe_costs, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
   TuningSpacePtr tuning_space_;

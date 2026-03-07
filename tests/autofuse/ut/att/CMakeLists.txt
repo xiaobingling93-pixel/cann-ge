@@ -28,6 +28,7 @@ file(GLOB SOURCES
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/expr_gen/*.cpp
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/parser/*.cpp
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/pass/*.cpp
+        ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/utils/*.cpp
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/*.cpp
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/gen_model_info/equivalent_graph_recongnizer/*.cpp
         ${TOP_DIR}/tests/autofuse/ut/att/testcase/ascir/*.cpp

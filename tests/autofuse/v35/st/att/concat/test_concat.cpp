@@ -30,35 +30,6 @@ using namespace ge::ascir_op;
 namespace ascir {
 using namespace ge;
 }
-namespace {
-std::string kRunTilingFuncMain = R"(
-#include <iostream>
-#include "Concat_tiling_data.h"
-using namespace optiling;
-
-void PrintResult(graph_ndTilingData& tilingData) {
-  std::cout << "====================================================" << std::endl;
-  auto tiling_key = tilingData.get_graph0_tiling_key();
-  std::cout << "get_tiling_key"<< " = " << tiling_key << std::endl;
-  std::cout << "====================================================" << std::endl;
-}
-
-int main() {
-  graph_ndTilingData tilingData;
-  tilingData.set_block_dim(64);
-  tilingData.set_ub_size(245760);
-  tilingData.graph0_result0_g0_tiling_data.set_ND(1024);
-  tilingData.graph0_result1_g0_tiling_data.set_S0(1024);
-  if (GetTiling(tilingData)) {
-    PrintResult(tilingData);
-  } else {
-    std::cout << "addlayernorm tiling func execute failed." << std::endl;
-    return -1;
-  }
-  return 0;
-}
-)";
-}
 
 std::string kRunTilingFuncMainTwoGroup = R"RAW(
 #include <iostream>
@@ -234,12 +205,27 @@ Status BuildVectorFunctionSubgraph(ge::AscGraph &subgraph) {
   return ge::SUCCESS;
 }
 
-Status BuildConcatGroupAscendGraphS0WithVectorFunc(ge::AscGraph &graph) {
+// 内联函数：添加VectorFunc子图（Lambda版本）
+static auto AddVectorFuncSubgraphLambda = [](ge::AscGraph &graph, const char_t *node_name, auto loop_axis_ptr) -> Status {
+  ge::AscGraph subgraph(node_name);
+  GE_ASSERT_SUCCESS(BuildVectorFunctionSubgraph(subgraph));
+  graph.AddSubGraph(subgraph);
+  auto node = graph.FindNode(node_name);
+  GE_ASSERT_NOTNULL(node);
+  node->attr.sched.axis = {loop_axis_ptr->id};
+  node->attr.sched.loop_axis = loop_axis_ptr->id;
+  ge::AttrUtils::SetStr(node->GetOpDescBarePtr(), "sub_graph_name", node_name);
+  return ge::SUCCESS;
+};
+
+// Concat测试：构建VectorFunc图（BlockSplit先于TileSplit）
+static Status BuildVectorFuncGraphS0(ge::AscGraph &graph) {
   auto S0 = ge::Symbol("S0");
   auto z0 = graph.CreateAxis("z0", S0);
   auto [z0B, z0b] = graph.BlockSplit(z0.id);
   auto [z0bT, z0bt] = graph.TileSplit(z0b->id);
   auto data1 = graph.CreateContiguousData("input1", DT_FLOAT, {z0});
+
   LOOP(*z0B) {
     LOOP(*z0bT) {
       auto load1 = Load("load1", data1).TQue(Position::kPositionVecIn, 1, 1);
@@ -254,24 +240,18 @@ Status BuildConcatGroupAscendGraphS0WithVectorFunc(ge::AscGraph &graph) {
       auto output1 = Output("output1", store1);
     }
   }
-  constexpr char_t vector_func_node_name[] = "vector_func";
-  ge::AscGraph subgraph(vector_func_node_name);
-  GE_ASSERT_SUCCESS(BuildVectorFunctionSubgraph(subgraph));
-  graph.AddSubGraph(subgraph);
-  auto node = graph.FindNode(vector_func_node_name);
-  GE_ASSERT_NOTNULL(node);
-  node->attr.sched.axis = {z0bT->id};
-  node->attr.sched.loop_axis = z0bT->id;
-  ge::AttrUtils::SetStr(node->GetOpDescBarePtr(), "sub_graph_name", vector_func_node_name);
+  GE_ASSERT_SUCCESS(AddVectorFuncSubgraphLambda(graph, "vector_func", z0bT));
   return ge::SUCCESS;
 }
 
-Status BuildConcatGroupAscendGraphS0WithVectorFuncV1(ge::AscGraph &graph) {
+// Concat测试：构建VectorFunc图（TileSplit先于BlockSplit）
+static Status BuildVectorFuncGraphS0V1(ge::AscGraph &graph) {
   auto S0 = ge::Symbol("S0");
   auto z0 = graph.CreateAxis("z0", S0);
   auto [z0T, z0t] = graph.TileSplit(z0.id);
   auto [z0TB, z0Tb] = graph.BlockSplit(z0T->id);
   auto data1 = graph.CreateContiguousData("input1", DT_FLOAT, {z0});
+
   LOOP(*z0TB) {
     LOOP(*z0Tb) {
       auto load1 = Load("load1", data1).TQue(Position::kPositionVecIn, 1, 1);
@@ -286,16 +266,16 @@ Status BuildConcatGroupAscendGraphS0WithVectorFuncV1(ge::AscGraph &graph) {
       auto output1 = Output("output1", store1);
     }
   }
-  constexpr char_t vector_func_node_name[] = "vector_func";
-  ge::AscGraph subgraph(vector_func_node_name);
-  GE_ASSERT_SUCCESS(BuildVectorFunctionSubgraph(subgraph));
-  graph.AddSubGraph(subgraph);
-  auto node = graph.FindNode(vector_func_node_name);
-  GE_ASSERT_NOTNULL(node);
-  node->attr.sched.axis = {z0TB->id};
-  node->attr.sched.loop_axis = z0TB->id;
-  ge::AttrUtils::SetStr(node->GetOpDescBarePtr(), "sub_graph_name", vector_func_node_name);
+  GE_ASSERT_SUCCESS(AddVectorFuncSubgraphLambda(graph, "vector_func", z0TB));
   return ge::SUCCESS;
+}
+
+Status BuildConcatGroupAscendGraphS0WithVectorFunc(ge::AscGraph &graph) {
+  return BuildVectorFuncGraphS0(graph);
+}
+
+Status BuildConcatGroupAscendGraphS0WithVectorFuncV1(ge::AscGraph &graph) {
+  return BuildVectorFuncGraphS0V1(graph);
 }
 
 // 辅助函数：设置GM属性

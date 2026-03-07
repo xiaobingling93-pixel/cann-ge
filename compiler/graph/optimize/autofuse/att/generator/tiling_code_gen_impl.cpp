@@ -315,11 +315,25 @@ inline bool UpdateCurPerfAndBlockByGroup(std::pair<uint32_t, double> group_block
    return ge::SUCCESS;
  }
 
+ // 检查变量名是否以指定后缀结尾
  bool CheckPerf(const std::string suffix, const std::string &var_name) {
    if (var_name.length() < suffix.length()) {
      return false;
    }
    return var_name.substr(var_name.length() - suffix.length()) == suffix;
+ }
+
+ // 查找变量被替换后的表达式
+ std::string FindReplacedExpr(const std::string &variable_name,
+                                const std::vector<std::pair<Expr, Expr>> &variable_tenary_op) {
+   // 默认使用原始变量名
+   for (const auto &var_pair : variable_tenary_op) {
+     // variable_tenary_op 中 pair.first 是原始表达式，pair.second 是替换后的表达式
+     if (Str(var_pair.first) == variable_name) {
+       return Str(var_pair.second);
+     }
+   }
+   return variable_name;
  }
 
  inline std::string GenCallUpdateBetterTiling(bool is_uniq_group) {
@@ -1513,18 +1527,32 @@ static TilingOption tiling_option_default{};
    std::string annotations;
    auto variable_names = args_manager.GetContainerNames();
    auto variable_tenary_op = args_manager.GetTenaryOpReplaceVars();
+
    if (config_.do_variable_replace && !variable_names.empty()) {
      annotations += " Tensor used for tiling case " + tiling_id + " is:\n";
      for (const auto &pair : variable_names) {
        annotations += "  " + Str(pair.first) + ":" + pair.second + "\n";
      }
    }
-   if (!variable_tenary_op.empty()) {
+   // 输出性能相关变量（包括 _perf 和 _exe_time 结尾的变量）
+   const auto &tenary_ops = args_manager.GetTenaryOps();
+   if (!tenary_ops.empty()) {
     annotations += " Exe time & Perf time used for tiling case " + tiling_id + " is:\n";
-    for (const auto &pair : variable_tenary_op) {
-      std::string variable_name = Str(pair.first);
-      if (CheckPerf("_perf", variable_name) || CheckPerf("_exe_time", variable_name)) {
-        annotations += "  " + variable_name + ":" + Str(pair.second) + "\n";
+    // 遍历 tenary_ops，找出所有以 _perf 或 _exe_time 结尾的变量
+    for (const auto &op : tenary_ops) {
+      std::string variable_name = Str(op.first);
+      // 只输出以 _perf 或 _exe_time 结尾的性能相关变量
+      if (CheckPerf("_perf", variable_name)) {
+        std::string display_name = variable_name;
+        std::string desc = op.second.GetDescription();
+        if (!desc.empty()) {
+          display_name = desc;  // 使用描述（包含形状信息）
+        }
+        std::string replaced_expr = FindReplacedExpr(variable_name, variable_tenary_op);
+        annotations += "  " + display_name + ":" + replaced_expr + "\n";
+      } else if (CheckPerf("_exe_time", variable_name)) {
+        std::string replaced_expr = FindReplacedExpr(variable_name, variable_tenary_op);
+        annotations += "  " + variable_name + ":" + replaced_expr + "\n";
       }
     }
    }

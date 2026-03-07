@@ -113,6 +113,14 @@ void TenaryOp::SetVariable(const Expr &expr) {
   variable_ = expr;
 }
 
+void TenaryOp::SetDescription(const std::string &desc) {
+  description_ = desc;
+}
+
+std::string TenaryOp::GetDescription() const {
+  return description_;
+}
+
 Expr TenaryOp::GetVariable() const {
   return variable_;
 }
@@ -167,7 +175,9 @@ std::vector<Expr> TenaryOp::GetRelatedVars() const {
 }
 
 TenaryOp TenaryOp::DeepCopy() const {
-  return TenaryOp(variable_, tenary_op_->DeepCopy(), related_vars_);
+  TenaryOp copy(variable_, tenary_op_->DeepCopy(), related_vars_);
+  copy.description_ = description_;  // 复制描述信息
+  return copy;
 }
 
 std::shared_ptr<IfCase> TenaryOp::DeepCopyIfCase() const {
