@@ -83,7 +83,7 @@ namespace att {
  
  inline const std::string &GetGeLogDefine(const int64_t log_level) {
    // event log is special, it will be enabled when event enable is true
-   const bool is_enable1 = IsEventEnable();
+   const bool is_enable1 = IsProfilingEnabled();
    // other log is enabled when log level is enabled and log level is not event
    const bool is_enable2 = IsLogLevelEnable(log_level);
    const auto iter = kGeLogLevelMap.find(log_level);
@@ -97,11 +97,12 @@ namespace att {
  void GenLogDefine(ge::CodePrinter &print) {
    const auto &slog_extend = AddSlogExtend();
    const auto &extend_define = slog_extend.empty() ? "\n" : slog_extend + "\n";
-   std::string debug_log_define = std::string("#define OP_LOGD(name, fmt, ...)").append(GetGeLogDefine(DLOG_DEBUG));
-   std::string info_log_define = std::string("#define OP_LOGI(name, fmt, ...)").append(GetGeLogDefine(DLOG_INFO));
-   std::string warn_log_define = std::string("#define OP_LOGW(name, fmt, ...)").append(GetGeLogDefine(DLOG_WARN));
-   std::string err_log_define = std::string("#define OP_LOGE(name, fmt, ...)").append(GetGeLogDefine(DLOG_ERROR));
-   std::string event_log_define = std::string("#define OP_EVENT(name, fmt, ...)").append(GetGeLogDefine(DLOG_INFO));
+   const bool profiling_enabled = IsProfilingEnabled();
+   std::string debug_log_define = std::string("#define OP_LOGD(name, fmt, ...)").append(profiling_enabled ? "" : GetGeLogDefine(DLOG_DEBUG));
+   std::string info_log_define = std::string("#define OP_LOGI(name, fmt, ...)").append(profiling_enabled ? "" : GetGeLogDefine(DLOG_INFO));
+   std::string warn_log_define = std::string("#define OP_LOGW(name, fmt, ...)").append(profiling_enabled ? "" : GetGeLogDefine(DLOG_WARN));
+   std::string err_log_define = std::string("#define OP_LOGE(name, fmt, ...)").append(profiling_enabled ? "" : GetGeLogDefine(DLOG_ERROR));
+   std::string event_log_define = std::string("#define OP_EVENT(name, fmt, ...)").append(profiling_enabled ? GetGeLogDefine(DLOG_INFO) : "");
    print.AddLine(extend_define);
    print.AddLine(debug_log_define);
    print.AddLine(info_log_define);
@@ -119,7 +120,7 @@ namespace att {
    }
    return output;
  }
- 
+
  std::string GenConsExprPrint(const ArgsManager &args_manager,
                                  const std::string &group_prefix,
                                  const int32_t log_level) {
@@ -512,9 +513,10 @@ struct ScoreTilingCase {
  }
  
  ge::Status TilingCodeGenImpl::GenDurationCommonCode() {
-   const auto duration_common_code = DurationGenCommonCode();
-   if (!duration_common_code.empty()) {
-     tiling_head_.AddLine(duration_common_code);
+   const auto duration_head_code = DurationGenHeadCode();
+   if (!duration_head_code.empty()) {
+     tiling_head_.AddLine(duration_head_code);
+     tiling_func_.AddLine(DurationGenDefineCode());
    }
    return ge::SUCCESS;
  }
@@ -1812,17 +1814,9 @@ static TilingOption tiling_option_default{};
    return ge::SUCCESS;
  }
 
- ge::Status TilingCodeGenImpl::GenSaveCaseNumInfo(uint32_t case_num) {
-   if (IsProfilingEnabled()) {
-     tiling_func_.AddLine("    SaveCaseNumInfo(" + std::to_string(case_num) + ");");
-   }
-   return ge::SUCCESS;
- }
- 
  ge::Status TilingCodeGenImpl::GenerateInputParamsAndTiling(){
    tiling_func_.AddLine("  } else {");
    tiling_func_.AddLine("    OP_LOGD(OP_NAME, \"Calculating the tiling data for tilingCaseId %u.\", tilingCaseId);");
-   GE_ASSERT_SUCCESS(GenSaveCaseNumInfo(1), "Gen SaveCaseNumInfo failed.");
    tiling_func_.AddLine("    TilingCaseImplPtr tilingCaseImplPtr = GetTilingImplPtr(tilingCaseId, corenum);");
    GE_ASSERT_SUCCESS(CheckImplPtr("    "), "Generate implptr check failed!");
    if (is_uniq_group_) {
@@ -1928,9 +1922,10 @@ void TilingCodeGenImpl::GenCalcScoreVarsDefine() {
       break;
     }
   }
-  return ret;
-}
 )");
+   GenDurationEndCode(TilingFuncDurationType::TILING_FUNC_DURATION_DOTILING, "    ");
+   tiling_func_.AddLine("  return ret;");
+   tiling_func_.AddLine("}");
 }
 
 ge::Status TilingCodeGenImpl::GenAllSameScoreTilingCases(
@@ -2005,7 +2000,6 @@ ge::Status TilingCodeGenImpl::GenGroupCacheLookupCode() {
 
 ge::Status TilingCodeGenImpl::GenTemplateIterationLogic() {
   tiling_func_.AddLine("    OP_LOGI(OP_NAME, \"The user didn't specify tilingCaseId, iterate all templates.\");");
-  GE_ASSERT_SUCCESS(GenSaveCaseNumInfo(tiling_model_info_.size()), "Gen SaveCaseNumInfo failed.");
   // 1.对所有model info内的切分轴按照字符顺序进行排序
   std::map<std::string, std::vector<std::string>> graph_name_to_arg_list;
   for (const auto &i : tiling_model_info_) {
@@ -2057,9 +2051,6 @@ ge::Status TilingCodeGenImpl::GenGetTilingbyCaseId() {
 ge::Status TilingCodeGenImpl::GenPGODefaultTiling() {
   tiling_func_.AddLine("    TilingDataCopy tmp_tiling;");
   tiling_func_.AddLine("    size_t malloc_size = 0;");
-  
-  GE_ASSERT_SUCCESS(GenSaveCaseNumInfo(tiling_model_info_.size()), "Gen SaveCaseNumInfo failed.");
-  
   for (const auto &model_info : tiling_model_info_) {
       tiling_func_.AddLine("    malloc_size = Max(malloc_size, sizeof(TilingCase" + model_info.sub_case_tag +
                           std::to_string(model_info.tiling_case_id) + "Impl));");
@@ -2309,6 +2300,8 @@ ge::Status TilingCodeGenImpl::GenGetTilingKey() {
    const ge::char_t *cache_str = (with_reuse_info_) ? ", GroupLevelCache *cache = nullptr" : "";
    GenCalcScoreVarsDefine();
    tiling_func_.AddLine("bool GetTilingKey(" + params + cache_str + ") {");
+   GE_ASSERT_SUCCESS(GenDurationBeginCode(TilingFuncDurationType::TILING_FUNC_DURATION_DOTILING, "    "),
+                       "Generate begin code!");
    tiling_func_.AddLine("  bool ret = false;");
    tiling_func_.AddLine("  bool sub_case_flag = false;");
    tiling_func_.AddLine("  double obj = -1;");
@@ -3585,13 +3578,9 @@ ge::Status TilingCodeGenImpl::GenPGOGetScheduleResult(const size_t asc_graph_id,
      tiling_func_.AddLine("bool PGOSearchTilingKey(std::vector<AutofuseTilingDataPerf>& tiling_data_list, " + config_.tiling_data_type_name + " &tiling_data, " +
                           " int32_t tilingCaseId, AutofuseTilingData* tilingData," + GenLaunchLikeInputOutputDef() +
                           "void* stream, uint32_t workspaceSize, double& best_perf, std::vector<uint32_t*> block_dim_vec={}) {");
-     GE_ASSERT_SUCCESS(GenDurationBeginCode(TilingFuncDurationType::TILING_FUNC_DURATION_TOTAL, "  "),
-                       "Generate begin code!");
      GE_ASSERT_SUCCESS(GenGetTilingForAllInitLines(true));
      GenPGOGetAllSchedulesResults(asc_graph_id, asc_graph_map);
      tiling_func_.AddLine("  OP_LOGI(OP_NAME, \"End PGOSearchTilingKey in AscGraph.\");");
-     GE_ASSERT_SUCCESS(GenDurationEndCode(TilingFuncDurationType::TILING_FUNC_DURATION_TOTAL, "  "),
-                       "Generate end code!");
      GE_ASSERT_SUCCESS(GenDurationPrintCode("  "), "Generate print code failed.");
      GE_ASSERT_SUCCESS(GenDurationClearCode("  "), "Generate clear code failed.");
      tiling_func_.AddLine("  return true;");
@@ -3616,12 +3605,8 @@ ge::Status TilingCodeGenImpl::GenPGOGetScheduleResult(const size_t asc_graph_id,
       tiling_func_.AddLine(GenPGOByCoreNumScheduleResultFuncTypeDefine());
       tiling_func_.AddLine(GenScheduleResultFuncsDefine(asc_graph_map, "PGOByCoreNum"));
       tiling_func_.AddLine("bool PGOByCoreNumSearchTilingKey(std::vector<AutofuseTilingData>& tiling_data_list, AutofuseTilingData tiling_data) {");
-      GE_ASSERT_SUCCESS(GenDurationBeginCode(TilingFuncDurationType::TILING_FUNC_DURATION_TOTAL, "  "), "Generate begin code!");
-
       GenPGOByCoreNumGetAllSchedulesResults(asc_graph_id, asc_graph_map);
-
       tiling_func_.AddLine("  OP_LOGI(OP_NAME, \"End PGOSearchTilingKey in AscGraph.\");");
-      GE_ASSERT_SUCCESS(GenDurationEndCode(TilingFuncDurationType::TILING_FUNC_DURATION_TOTAL, "  "), "Generate end code!");
       GE_ASSERT_SUCCESS(GenDurationPrintCode("  "), "Generate print code failed.");
       GE_ASSERT_SUCCESS(GenDurationClearCode("  "), "Generate clear code failed.");
       tiling_func_.AddLine("  return true;");

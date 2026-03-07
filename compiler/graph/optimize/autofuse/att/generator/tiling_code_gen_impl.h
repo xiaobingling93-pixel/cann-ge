@@ -199,8 +199,6 @@ class TilingCodeGenImpl {
   virtual ge::Status GenGetTilingKey();
   virtual ge::Status GenPGOSearchTilingKey();
   virtual ge::Status ValidateSingleResultAndGroup();
-  // 保存模板数
-  ge::Status GenSaveCaseNumInfo(uint32_t case_num);
   // 根据caseid生成选择逻辑
   virtual ge::Status GenGetTilingbyCaseId();
   virtual ge::Status GenPGODefaultTiling();

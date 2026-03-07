@@ -257,7 +257,6 @@ TEST_F(TestAutoFuse, casev2)
   std::map<std::string, std::string> options;
   options.emplace(kTilingDataTypeName, "NpuKernel0TilingData");
   options.emplace(kOutputFilePath, kDefaultFilePath);
-  options.emplace(kDurationLevelName, "1");
   options.emplace(kGenConfigType, "HighPerf");
   std::map<std::string, std::string> tiling_funcs;
   std::string op_name = "OpTest4";

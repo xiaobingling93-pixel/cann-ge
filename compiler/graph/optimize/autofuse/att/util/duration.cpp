@@ -93,12 +93,12 @@ DurationDef kg_tiling_func_duration_def[static_cast<uint32_t>(
   {"TILING_FUNC_DURATION_DOTILING", 1U}
 };
 
-std::string DurationGenCommonCode() {
+std::string DurationGenHeadCode() {
   if (kg_duration_level == 0U) {
     return "";
   }
   std::string code =
-    "namespace {\n" \
+    "namespace duration_utils {\n" \
     "enum DurationType {\n";
   int32_t duration_num = 0;
   for (uint32_t index = 0U; index < static_cast<uint32_t>(
@@ -120,57 +120,17 @@ std::string DurationGenCommonCode() {
     "  std::string name;\n" \
     "};\n" \
     "\n";
+  code += "extern DurationDef g_duration_def[TILING_FUNC_DURATION_MAX];\n";
   code +=
-    "DurationDef g_duration_def[TILING_FUNC_DURATION_MAX] = {\n";
-  for (uint32_t index = 0U; index < static_cast<uint32_t>(
-    TilingFuncDurationType::TILING_FUNC_DURATION_MAX); index++) {
-    if (kg_duration_level > kg_tiling_func_duration_def[index].level) {
-        code += ("  {\"" + kg_tiling_func_duration_def[index].name + "\"},\n");
-    }
-  }
-  code +=
-    "};\n" \
-    "\n" \
     "class Duration {\n" \
     " public:\n" \
-    "  Duration(const std::string &name): name_(name) {}\n" \
-    "\n" \
-    "  void Begin() {\n" \
-    "    call_start_ = Now();\n" \
-    "  }\n" \
-    "\n" \
-    "  void End() {\n" \
-    "    auto now = Now();\n" \
-    "    uint64_t duration = now - call_start_;\n" \
-    "    total_count_++;\n" \
-    "    total_time_ += duration;\n" \
-    "    if (duration > max_time_) max_time_ = duration;\n" \
-    "    if (duration < min_time_) min_time_ = duration;\n" \
-    "  }\n" \
-    "\n" \
-    "  void Print() {\n" \
-    "    if (total_count_ == 0ULL) return;\n" \
-    "    OP_EVENT(OP_NAME, \"Duration record: name[%s], total_count[%lu], total_time[%lu], " \
-    "max_time[%lu], min_time[%lu], average_time[%lu].\",\n" \
-    "      name_.c_str(), total_count_, total_time_, max_time_, min_time_,\n" \
-    "      static_cast<uint64_t>(total_time_ / total_count_));\n" \
-    "  } \n" \
-    "\n" \
-    "  void Clear() {\n" \
-    "    total_count_ = 0ULL;\n" \
-    "    total_time_ = 0ULL;\n" \
-    "    max_time_ = 0ULL;\n" \
-    "    min_time_ = UINT64_MAX;\n" \
-    "    call_start_ = 0ULL;\n" \
-    "  }\n" \
-    "\n" \
+    "  Duration(const std::string &name);\n" \
+    "  void Begin();\n"
+    "  void End();\n"
+    "  void Print();\n"
+    "  void Clear();\n"
     "private:\n" \
-    "  uint64_t Now() {\n" \
-    "    auto now = std::chrono::high_resolution_clock::now();\n" \
-    "    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());\n" \
-    "    return static_cast<uint64_t>(nanoseconds.count());\n" \
-    "  }\n" \
-    "\n" \
+    "  uint64_t Now();\n"
     "  std::string name_;\n" \
     "  uint64_t total_count_ = 0ULL;\n" \
     "  uint64_t total_time_ = 0ULL;\n" \
@@ -183,153 +143,163 @@ std::string DurationGenCommonCode() {
     "  std::unique_ptr<Duration> stat;\n" \
     "};\n" \
     "\n" \
-    "constexpr size_t CASE_ID_LENGTH = 20;\n" \
-    "struct IterInfo {\n" \
-    "  std::array<char, CASE_ID_LENGTH> case_id;\n" \
-    "  int iter_count;\n" \
-    "};\n" \
-    "\n" \
     "class DurationManager {\n" \
     "public:\n" \
-    "  static DurationManager &GetInstance() {\n" \
-    "    static DurationManager ins;\n" \
-    "    return ins;\n" \
-    "  }\n" \
-    "\n" \
-    "  DurationManager() {\n" \
-    "    for (uint32_t index = 0U; index < static_cast<uint32_t>(TILING_FUNC_DURATION_MAX); index++) {\n" \
-    "      AddDuration(index, g_duration_def[index].name);\n" \
-    "    }\n" \
-    "  }\n" \
-    "  \n" \
-    "  void AddDuration(const uint32_t type, const std::string &name) {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    duration_infos_[type].stat = std::unique_ptr<Duration>(new(std::nothrow) Duration(name));\n" \
-    "    if (duration_infos_[type].stat == nullptr) {\n" \
-    "      OP_LOGW(OP_NAME, \"Create Duration failed.\");\n" \
-    "    }\n" \
-    "  }\n" \
-    "\n" \
-    "  void AddIterInfo(const char* case_id, uint32_t iter_count) {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    IterInfo info;\n" \
-    "    size_t len = Min(strlen(case_id), CASE_ID_LENGTH);\n" \
-    "    std::copy(case_id, case_id + len, info.case_id.begin());\n" \
-    "    if (len < CASE_ID_LENGTH) {\n" \
-    "      info.case_id[len] = '\\0';\n" \
-    "    }\n" \
-    "    info.iter_count = iter_count;\n" \
-    "    iter_infos_.push_back(info);\n" \
-    "  }\n" \
-    "\n" \
-    "  void AddCaseNumInfo(uint32_t num) {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    case_num_ += num;\n" \
-    "  }\n" \
-    "\n" \
-    "  void Begin(const DurationType type) {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    const auto &stat = duration_infos_[type].stat;\n" \
-    "    if (stat == nullptr) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    stat->Begin();\n" \
-    "  }\n" \
-    "\n" \
-    "  void End(const DurationType type) {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    const auto &stat = duration_infos_[type].stat;\n" \
-    "    if (stat == nullptr) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    stat->End();\n" \
-    "  }\n" \
-    "  void Print() {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    for (int32_t index = 0; index < static_cast<int32_t>(DurationType::TILING_FUNC_DURATION_MAX); index++) {\n" \
-    "      const auto &stat = duration_infos_[index].stat;\n" \
-    "      if (stat != nullptr) {\n" \
-    "        stat->Print();\n" \
-    "      }\n" \
-    "    }\n" \
-    "    OP_EVENT(OP_NAME, \"Case num is %u.\", case_num_);\n" \
-    "    for (const auto& info : iter_infos_) {\n" \
-    "      OP_EVENT(OP_NAME, \"%s\'s iter is %u.\", info.case_id.data(), info.iter_count);\n" \
-    "    }\n" \
-    "  }\n" \
-    "  void Clear() {\n" \
-    "    if (!duration_open_now_) {\n" \
-    "      return;\n" \
-    "    }\n" \
-    "    for (int32_t index = 0; index < static_cast<int32_t>(DurationType::TILING_FUNC_DURATION_MAX); index++) {\n" \
-    "      const auto &stat = duration_infos_[index].stat;\n" \
-    "      if (stat != nullptr) {\n" \
-    "        stat->Clear();\n" \
-    "      }\n" \
-    "    }\n" \
-    "    iter_infos_.clear();\n" \
-    "    case_num_ = 0;\n" \
-    "  }\n" \
+    "  static DurationManager &GetInstance();\n" \
+    "  void AddDuration(const uint32_t type, const std::string &name);\n" \
+    "  void Begin(const DurationType type);\n" \
+    "  void End(const DurationType type);\n" \
+    "  void Print();\n" \
+    "  void Clear();\n" \
     "private:\n";
-
+    code += "  DurationManager();\n";
     code += "  bool duration_open_now_ = true;\n";
     code +=
     "  DurationInfo duration_infos_[TILING_FUNC_DURATION_MAX];\n" \
-    "  std::vector<IterInfo> iter_infos_;\n" \
-    "  uint32_t case_num_{0};\n" \
-    "};\n" \
-    "\n" \
-    "static inline void DurationBegin(const DurationType type) {\n" \
-    "  DurationManager::GetInstance().Begin(type);\n" \
-    "}\n" \
-    "\n" \
-    "static inline void DurationEnd(const DurationType type) {\n" \
-    "  DurationManager::GetInstance().End(type);\n" \
-    "}\n" \
-    "\n" \
-    "static inline void SaveIterInfo(const char* case_id, uint32_t iter_count) {\n" \
-    "  DurationManager::GetInstance().AddIterInfo(case_id, iter_count);\n" \
-    "}\n" \
-    "static inline void SaveCaseNumInfo(uint32_t num) {\n" \
-    "  DurationManager::GetInstance().AddCaseNumInfo(num);\n" \
-    "}\n" \
-    "\n" \
+    "};\n";
+    code += "static inline void DurationBegin(const DurationType type) {\n";
+    code += "  DurationManager::GetInstance().Begin(type);\n";
+    code += "}\n\n";
+    code += "static inline void DurationEnd(const DurationType type) {\n";
+    code += "  DurationManager::GetInstance().End(type);\n";
+    code += "}\n\n";
+    code +=
     "class DurationGuard {\n" \
     "public:\n" \
-    "  DurationGuard(const DurationType type) : type_(type)\n" \
-    "  {\n" \
-    "    DurationBegin(type);\n" \
-    "  }\n" \
-    "\n" \
-    "  ~DurationGuard() {\n" \
-    "    DurationEnd(type_);\n" \
-    "  }\n" \
+    "  DurationGuard(const DurationType type);\n" \
+    "  ~DurationGuard();\n" \
     "private:\n" \
     "  DurationType type_;\n" \
     "};\n" \
     "\n" \
     "#define DURATION_GUARD(type) DurationGuard g_duration##__COUNTER__(type);\n" \
-    "} // namespace\n";
+    "} // namespace duration_utils\n";
   return code;
 }
+
+std::string DurationGenDefineCode() {
+ 	   if (kg_duration_level == 0U) {
+ 	     return "";
+ 	   }
+ 	   std::string code = "namespace duration_utils {\n";
+ 	   code +=
+ 	     "DurationDef g_duration_def[TILING_FUNC_DURATION_MAX] = {\n";
+ 	   for (uint32_t index = 0U; index < static_cast<uint32_t>(
+ 	     TilingFuncDurationType::TILING_FUNC_DURATION_MAX); index++) {
+ 	     if (kg_duration_level > kg_tiling_func_duration_def[index].level) {
+ 	       code += ("  {\"" + kg_tiling_func_duration_def[index].name + "\"},\n");
+ 	     }
+ 	     }
+ 	   code +=
+ 	     "};\n" \
+ 	     "\n";
+ 	   code += "Duration::Duration(const std::string &name) : name_(name) {}\n\n";
+ 	   code += "void Duration::Begin() {\n";
+ 	   code += "  call_start_ = Now();\n";
+ 	   code += "}\n\n";
+ 	   code += "void Duration::End() {\n";
+ 	   code += "  auto now = Now();\n";
+ 	   code += "  uint64_t duration = now - call_start_;\n";
+ 	   code += "  call_start_ = now;\n";
+ 	   code += "  total_count_++;\n";
+ 	   code += "  total_time_ += duration;\n";
+ 	   code += "  if (duration > max_time_) max_time_ = duration;\n";
+ 	   code += "  if (duration < min_time_) min_time_ = duration;\n";
+ 	   code += "}\n\n";
+ 	   code += "void Duration::Print() {\n";
+ 	   code += "  if (total_count_ == 0ULL) return;\n";
+ 	   code += "  OP_EVENT(OP_NAME, \"Duration record: name[%s], total_count[%lu], total_time[%lu], max_time[%lu], min_time[%lu], average_time[%lu].\",\n";
+ 	   code += "    name_.c_str(), total_count_, total_time_, max_time_, min_time_,\n";
+ 	   code += "    static_cast<uint64_t>(total_time_ / total_count_));\n";
+ 	   code += "}\n\n";
+ 	   code += "void Duration::Clear() {\n";
+ 	   code += "  total_count_ = 0ULL;\n";
+ 	   code += "  total_time_ = 0ULL;\n";
+ 	   code += "  max_time_ = 0ULL;\n";
+ 	   code += "  min_time_ = UINT64_MAX;\n";
+ 	   code += "  call_start_ = 0ULL;\n";
+ 	   code += "}\n\n";
+ 	   code += "uint64_t Duration::Now() {\n";
+ 	   code += "  auto now = std::chrono::high_resolution_clock::now();\n";
+ 	   code += "  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());\n";
+ 	   code += "  return static_cast<uint64_t>(nanoseconds.count());\n";
+ 	   code += "}\n\n";
+ 	   code += "// 3. DurationManager的成员函数实现\n";
+ 	   code += "DurationManager &DurationManager::GetInstance() {\n";
+ 	   code += "  static DurationManager ins;\n";
+ 	   code += "  return ins;\n";
+ 	   code += "}\n\n";
+ 	   code += "DurationManager::DurationManager() {\n";
+ 	   code += "  for (uint32_t index = 0U; index < static_cast<uint32_t>(TILING_FUNC_DURATION_MAX); index++) {\n";
+ 	   code += "    AddDuration(index, g_duration_def[index].name);\n";
+ 	   code += "  }\n";
+ 	   code += "}\n\n";
+ 	   code += "void DurationManager::AddDuration(const uint32_t type, const std::string &name) {\n";
+ 	   code += "  if (!duration_open_now_) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  duration_infos_[type].stat = std::unique_ptr<Duration>(new(std::nothrow) Duration(name));\n";
+ 	   code += "  if (duration_infos_[type].stat == nullptr) {\n";
+ 	   code += "    OP_LOGW(OP_NAME, \"Create Duration failed.\");\n";
+ 	   code += "  }\n";
+ 	   code += "}\n\n";
+ 	   code += "void DurationManager::Begin(const DurationType type) {\n";
+ 	   code += "  if (!duration_open_now_) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  const auto &stat = duration_infos_[type].stat;\n";
+ 	   code += "  if (stat == nullptr) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  stat->Begin();\n";
+ 	   code += "}\n\n";
+ 	   code += "void DurationManager::End(const DurationType type) {\n";
+ 	   code += "  if (!duration_open_now_) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  const auto &stat = duration_infos_[type].stat;\n";
+ 	   code += "  if (stat == nullptr) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  stat->End();\n";
+ 	   code += "}\n\n";
+ 	   code += "void DurationManager::Print() {\n";
+ 	   code += "  if (!duration_open_now_) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  for (int32_t index = 0; index < static_cast<int32_t>(DurationType::TILING_FUNC_DURATION_MAX); index++) {\n";
+ 	   code += "    const auto &stat = duration_infos_[index].stat;\n";
+ 	   code += "    if (stat != nullptr) {\n";
+ 	   code += "      stat->Print();\n";
+ 	   code += "    }\n";
+ 	   code += "  }\n";
+ 	   code += "}\n\n";
+ 	   code += "void DurationManager::Clear() {\n";
+ 	   code += "  if (!duration_open_now_) {\n";
+ 	   code += "    return;\n";
+ 	   code += "  }\n";
+ 	   code += "  for (int32_t index = 0; index < static_cast<int32_t>(DurationType::TILING_FUNC_DURATION_MAX); index++) {\n";
+ 	   code += "    const auto &stat = duration_infos_[index].stat;\n";
+ 	   code += "    if (stat != nullptr) {\n";
+ 	   code += "      stat->Clear();\n";
+ 	   code += "    }\n";
+ 	   code += "  }\n";
+ 	   code += "}\n\n";
+ 	   code += "DurationGuard::DurationGuard(const DurationType type) : type_(type) {\n";
+ 	   code += "  DurationBegin(type);\n";
+ 	   code += "}\n\n";
+ 	   code += "DurationGuard::~DurationGuard() {\n";
+ 	   code += "  DurationEnd(type_);\n";
+ 	   code += "}\n";
+ 	   code += "} // namespace duration_utils\n";
+ 	   return code;
+ 	 }
 
 std::string DurationPrintGenCode() {
   if (kg_duration_level == 0U) {
     return "";
   }
-  std::string code = "DurationManager::GetInstance().Print();";
+  std::string code = "duration_utils::DurationManager::GetInstance().Print();";
   return code;
 }
 
@@ -337,7 +307,7 @@ std::string DurationClearGenCode() {
   if (kg_duration_level == 0U) {
     return "";
   }
-  std::string code = "DurationManager::GetInstance().Clear();";
+  std::string code = "duration_utils::DurationManager::GetInstance().Clear();";
   return code;
 }
 
@@ -345,7 +315,7 @@ std::string DurationBeginGenCode(const TilingFuncDurationType type) {
   if (kg_duration_level <= kg_tiling_func_duration_def[static_cast<int32_t>(type)].level) {
     return "";
   }
-  return std::string("DurationBegin(") + kg_tiling_func_duration_def[static_cast<int32_t>(
+  return std::string("duration_utils::DurationBegin(duration_utils::") + kg_tiling_func_duration_def[static_cast<int32_t>(
     type)].name + ");";
 }
 
@@ -353,7 +323,7 @@ std::string DurationEndGenCode(const TilingFuncDurationType type) {
   if (kg_duration_level <= kg_tiling_func_duration_def[static_cast<int32_t>(type)].level) {
     return "";
   }
-  return std::string("DurationEnd(") + kg_tiling_func_duration_def[static_cast<int32_t>(
+  return std::string("duration_utils::DurationEnd(duration_utils::") + kg_tiling_func_duration_def[static_cast<int32_t>(
     type)].name + ");";
 }
 
