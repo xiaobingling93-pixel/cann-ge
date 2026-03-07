@@ -2,8 +2,8 @@
 
 ## 功能描述
 
-本样例为自定义算子AddCustom的自定义pass样例，**此用例针对用户可以获取到自定义算子原型头的情况**
-本例中的pass实现：对于存在一个输入为 0 的AddCustom,进行删除操作。
+本样例为自定义算子AddCustom的自定义pass样例，**此用例针对用户可以获取到自定义算子原型的情况**
+本例中的pass实现：对于存在一个输入为 0 的AddCustom，进行删除操作。
 提供在线推理与atc工具离线编译模型两种方式演示框架如何调用自定义pass完成图优化。
 本样例使用eager style api和融合接口实现。
 
@@ -32,8 +32,8 @@
 
 ## 准备工作
 
-1. [创建自定义算子工程，并进行算子工程编译](https://www.hiascend.com/document/detail/zh/canncommercial/83RC1/opdevg/Ascendcopdevg/atlas_ascendc_10_0101.html)
-2. 编译成功后将 AddCuston/build_out/autogen 路径下的算子原型定义复制到当前工程下的proto目录下
+1. 创建自定义算子工程：编写自定义算子的自定义 pass 的前提是用户已创建自定义算子工程，可参考[自定义算子入图](https://www.hiascend.com/document/detail/zh/Pytorch/730/modthirdparty/torchairuseguide/torchair_00055.html)。在此阶段，用户需要完成：自定义算子实现、自定义算子包编译与部署、自定义算子适配开发。
+2. 获取算子原型：编译成功后将自定义算子工程中 build_out/autogen 路径下的自定义算子原型定义复制到当前工程的 proto 目录下。本样例中 proto 目录下已添加 AddCustom 自定义算子的原型，用户可按需替换或增加。
 
 ## 程序编译
 
@@ -48,7 +48,7 @@
      `${ASCEND_PATH}`为CANN软件包安装目录下的cann路径。请替换相关软件包的实际安装路径，例如`${INSTALL_PATH}/cann`。
 
 2. 根据实际情况修改**gen_es_api/CMakeLists**文件：
-    - 修改自定义算子原型文件路径：add_library(custom_op_proto SHARED .../op_proto/your_proto_name.cc)
+    - 修改自定义算子原型文件路径：add_library(custom_op_proto SHARED .../proto/your_proto_name.cc)
 
 3. 根据实际情况修改**CMakeLists.txt**文件中的如下信息。
 

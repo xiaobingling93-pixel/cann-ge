@@ -20,11 +20,13 @@ from torchair.ge import Tensor
 from torch_npu.op_plugin.meta._meta_registrations import m
 
 
+# 实现Meta推导函数
 @impl(m, "npu_add_custom")
 def npu_add_custom_meta(x, y):
     return torch.empty_like(x + y)
 
 
+# 实现Converter
 @register_fx_node_ge_converter(torch.ops.npu.npu_add_custom.default)
 def convert_npu_add_custom(x: Tensor, y: Tensor, z: Tensor = None, meta_outputs: Any = None):
     return torchair.ge.custom_op(

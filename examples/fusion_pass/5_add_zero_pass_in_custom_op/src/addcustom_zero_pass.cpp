@@ -24,16 +24,18 @@ using namespace ge;
 using namespace fusion;
 
 /*
-|o>-----------------------------------
-           0
-           |
-|o>  a  Identity
-|o>    \ /              a      b
-|o> AddCustom  b   ==>   \    /
-|o>      \    /         AddCustom
-|o>     AddCustom
-|o>-----------------------------------
-说明：本例识别上图中左边的Add+0结构并通过图修改接口删除该结构
+|o>--------------------------------------------------------------------------------------
+                                                        0
+                                                        |
+           0                                        Identity
+           |                                           |
+|o>  a  Identity                                a  TensorMove           a     b
+|o>    \ /              a      b                 \   /          ==>      \   /
+|o> AddCustom  b   ==>   \    /                AddCustom   b           AddCustom
+|o>      \    /         AddCustom                    \    /
+|o>     AddCustom                                  AddCustom
+|o>----------------------------------------------------------------------------------------
+说明：考虑到不同版本torchair存在差异，为使该pass在不同版本下都能执行，本例定义了两个pattern,二者的替换结构相同。
 */
 
 class AddCustomZeroPass : public PatternFusionPass {
@@ -41,16 +43,29 @@ class AddCustomZeroPass : public PatternFusionPass {
   std::vector<PatternUniqPtr> Patterns() override {
     std::cout << "Define pattern for AddCustomZeroPass" << std::endl;
     std::vector<PatternUniqPtr> patterns;
-    auto graph_builder = es::EsGraphBuilder("pattern");
-    auto a = graph_builder.CreateInput(0);
-    auto b = graph_builder.CreateInput(1);
-    auto c = es::Const(graph_builder);
-	auto d = es::Identity(c);
-    auto add1 = es::AddCustom(a, d);
-    auto add2 = es::AddCustom(add1, b);
-    auto graph = graph_builder.BuildAndReset({add2});
-    auto pattern = std::make_unique<Pattern>(std::move(*graph));
-    patterns.emplace_back(std::move(pattern));
+
+    auto graph_builder0 = es::EsGraphBuilder("pattern0");
+    auto a0 = graph_builder0.CreateInput(0);
+    auto b0 = graph_builder0.CreateInput(1);
+    auto c0 = es::Const(graph_builder0);
+    auto d0 = es::Identity(c0);
+    auto add0 = es::AddCustom(a0, d0);
+    auto add1 = es::AddCustom(add0, b0);
+    auto graph0 = graph_builder0.BuildAndReset({add1});
+    auto pattern0 = std::make_unique<Pattern>(std::move(*graph0));
+    patterns.emplace_back(std::move(pattern0));
+
+    auto graph_builder1 = es::EsGraphBuilder("pattern1");
+    auto a1 = graph_builder1.CreateInput(0);
+    auto b1 = graph_builder1.CreateInput(1);
+    auto c1 = es::Const(graph_builder1);
+    auto d1 = es::TensorMove(es::Identity(c1));
+    auto add2 = es::AddCustom(a1, d1);
+    auto add3 = es::AddCustom(add2, b1);
+    auto graph1 = graph_builder1.BuildAndReset({add3});
+    auto pattern1 = std::make_unique<Pattern>(std::move(*graph1));
+    patterns.emplace_back(std::move(pattern1));
+
     return patterns;
   }
 
@@ -85,7 +100,7 @@ class AddCustomZeroPass : public PatternFusionPass {
     return replacement_graph_builder.BuildAndReset({add});
   }
 
-  private:
+ private:
   bool IsTensorValueEqualToZero(const Tensor &tensor) {
     auto tensor_dtype = tensor.GetTensorDesc().GetDataType();
     switch (tensor_dtype) {
@@ -104,7 +119,7 @@ class AddCustomZeroPass : public PatternFusionPass {
           return true;
         }
         return false;
-	  case DT_FLOAT16:
+      case DT_FLOAT16:
         if (std::fabs(*reinterpret_cast<const float *>(tensor.GetData())) < 1e-3) {
           return true;
         }
