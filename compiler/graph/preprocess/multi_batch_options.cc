@@ -21,7 +21,7 @@
 #include "framework/common/types.h"
 #include "graph/compute_graph.h"
 #include "graph/utils/graph_utils.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/op_type_utils.h"
 #include "common/checker.h"
 

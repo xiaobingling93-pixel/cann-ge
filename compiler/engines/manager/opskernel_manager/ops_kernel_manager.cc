@@ -12,7 +12,7 @@
 
 #include "api/gelib/gelib.h"
 #include "proto/optimizer_priority.pb.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "common/compile_profiling/ge_trace_wrapper.h"
 #include "graph/ge_context.h"
 #include "graph/types.h"

@@ -11,7 +11,7 @@
 #include "bg_infer_shape_range.h"
 #include "securec.h"
 #include "common/checker.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/math_util.h"
 #include "framework/common/debug/ge_log.h"
 #include "exe_graph/lowering/value_holder.h"

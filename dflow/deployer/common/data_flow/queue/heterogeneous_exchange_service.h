@@ -18,7 +18,7 @@
 #include <atomic>
 #include "runtime/rt.h"
 #include "runtime/rt_mem_queue.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "framework/common/runtime_tensor_desc.h"
 #include "dflow/base/deploy/exchange_service.h"
 

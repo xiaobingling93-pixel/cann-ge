@@ -10,7 +10,7 @@
 
 #include "stub/converter_stub.h"
 #include "graph/node.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 
 namespace gert {
 ConverterStub::~ConverterStub() {

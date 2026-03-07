@@ -14,12 +14,12 @@
 #include <set>
 
 #include "framework/common/debug/log.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "framework/common/types.h"
 #include "framework/common/util.h"
 #include "framework/common/debug/ge_log.h"
 #include "framework/common/ge_inner_error_codes.h"
-#include "common/b_cast.h"
+#include "common/b_cast/b_cast.h"
 #include "graph/utils/type_utils.h"
 #include "host_kernels/kernel_factory.h"
 

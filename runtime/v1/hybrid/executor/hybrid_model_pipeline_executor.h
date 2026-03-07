@@ -12,7 +12,7 @@
 #define GE_HYBRID_EXECUTOR_HYBRID_MODEL_PIPELINE_EXECUTOR_H_
 
 #include "common/blocking_queue.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "hybrid/executor/hybrid_execution_context.h"
 #include "hybrid/executor/rt_callback_manager.h"
 #include "hybrid/executor/subgraph_executor.h"

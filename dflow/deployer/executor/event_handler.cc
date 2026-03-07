@@ -15,7 +15,7 @@
 #include "executor/executor_context.h"
 #include "common/utils/rts_api_utils.h"
 #include "mmpa/mmpa_api.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "cpu_tasks.h"
 
 namespace ge {

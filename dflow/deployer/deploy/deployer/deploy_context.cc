@@ -11,7 +11,7 @@
 #include "deploy/deployer/deploy_context.h"
 #include <string>
 #include "common/compile_profiling/ge_call_wrapper.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "nlohmann/json.hpp"
 #include "graph_metadef/graph/debug/ge_util.h"
 #include "framework/common/debug/ge_log.h"

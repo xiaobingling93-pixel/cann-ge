@@ -13,7 +13,7 @@
 #include <stack>
 #include <unordered_set>
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/type_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "formats/utils/formats_trans_utils.h"

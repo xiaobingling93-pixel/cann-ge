@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 #include "common/checker.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/op_desc_utils.h"

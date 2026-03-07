@@ -88,6 +88,10 @@ TEST(FileCount, CheckFileCount) {
 
   std::string dir5(std::string(TOP_DIR).append("/api/python"));
   EXPECT_NO_THROW(CountFilesAndDirs(dir5, max_cnt));
+
+  std::string dir6(std::string(TOP_DIR).append("/base/common"));
+  EXPECT_NO_THROW(CountFilesAndDirs(dir6, max_cnt));
+
   std::cout << "max_cnt is " << max_cnt << std::endl;
 }
 }  // namespace SC

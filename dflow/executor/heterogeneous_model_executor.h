@@ -12,7 +12,7 @@
 #define EXECUTOR_GRAPH_LOAD_MODEL_MANAGER_DEPLOY_HETEROGENEOUS_MODEL_EXECUTOR_H_
 
 #include <thread>
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/blocking_queue.h"
 #include "ge/ge_data_flow_api.h"
 #include "dflow/base/deploy/exchange_service.h"

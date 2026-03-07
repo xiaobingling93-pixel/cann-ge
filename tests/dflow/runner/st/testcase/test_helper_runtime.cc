@@ -32,7 +32,7 @@
 #include "executor/cpu_sched_event_dispatcher.h"
 #include "common/config/json_parser.h"
 #include "common/config/config_parser.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "hybrid/node_executor/node_executor.h"
 #include "common/mem_grp/memory_group_manager.h"
 #include "common/data_flow/queue/heterogeneous_exchange_service.h"

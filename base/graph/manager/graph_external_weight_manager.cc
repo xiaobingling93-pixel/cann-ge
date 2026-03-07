@@ -12,7 +12,7 @@
 #include <fstream>
 #include "framework/common/util.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "mmpa/mmpa_api.h"
 #include "common/checker.h"
 #include "common/util/mem_utils.h"

@@ -15,7 +15,7 @@
 #include "hybrid/model/hybrid_model.h"
 #include "hybrid/executor/node_state.h"
 #include "hybrid/executor/subgraph_executor.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 namespace hybrid {

@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 #include "framework/common/debug/ge_log.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/passes/pass_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "common/checker.h"

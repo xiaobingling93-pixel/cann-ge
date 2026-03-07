@@ -18,7 +18,7 @@
 #include "formats/utils/formats_trans_utils.h"
 #include "framework/common/helper/model_helper.h"
 #include "common/math/math_util.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "api/aclgrph/option_utils.h"
 #include "common/compile_profiling/ge_trace_wrapper.h"
 #include "common/context/local_context.h"

@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 
 #include "base/err_msg.h"
 

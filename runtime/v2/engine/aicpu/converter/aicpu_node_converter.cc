@@ -24,7 +24,7 @@
 #include "engine/aicpu/graph_builder/bg_ext_info.h"
 #include "graph/utils/node_utils.h"
 #include "graph_builder/converter_checker.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "register/kernel_registry.h"
 #include "graph_builder/bg_rt_session.h"
 #include "engine/aicpu/kernel/aicpu_resource_manager.h"

@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils.h"

@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "framework/common/debug/log.h"
 #include "framework/common/fmk_error_codes.h"
 #include "base/err_msg.h"

@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <vector>
-#include "common/platform_info_util.h"
+#include "common/platform_info_util/platform_info_util.h"
 #include "depends/runtime/src/runtime_stub.h"
 
 #include <ge_common/ge_api_error_codes.h>

@@ -15,7 +15,7 @@
 #include "framework/common/debug/ge_log.h"
 #include "framework/common/types.h"
 #include "logical_stream_allocator.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "common/sgt_slice_type.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/ge_context.h"

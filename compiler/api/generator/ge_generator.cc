@@ -16,7 +16,7 @@
 
 #include "analyzer/analyzer.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "graph_metadef/common/plugin/plugin_manager.h"
 #include "common/model/ge_model.h"
 #include "common/op_so_store/op_so_store_utils.h"

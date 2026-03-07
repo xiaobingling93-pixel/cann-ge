@@ -25,7 +25,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/ge_local_context.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "hybrid/executor/worker/shape_inference_engine.h"
 #include "graph/runtime_inference_context.h"
 #include "graph/manager/graph_var_manager.h"

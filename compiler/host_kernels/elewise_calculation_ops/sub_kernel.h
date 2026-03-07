@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "host_kernels/kernel.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 
 namespace ge {
 class SubKernel : public Kernel {

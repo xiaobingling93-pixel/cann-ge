@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <fstream>
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "graph/ge_local_context.h"
 #include "graph/ge_context.h"
 

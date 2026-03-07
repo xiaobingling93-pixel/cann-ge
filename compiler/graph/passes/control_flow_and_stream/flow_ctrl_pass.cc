@@ -16,7 +16,7 @@
 
 #include "framework/common/debug/ge_log.h"
 #include "graph/debug/ge_attr_define.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "graph/manager/graph_var_manager.h"
 #include "graph/passes/pass_utils.h"

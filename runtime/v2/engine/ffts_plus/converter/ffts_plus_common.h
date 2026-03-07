@@ -11,7 +11,7 @@
 #ifndef AIR_CXX_RUNTIME_V2_ENGINE_FFTS_PLUS_FFTS_PLUS_COMMON_H_
 #define AIR_CXX_RUNTIME_V2_ENGINE_FFTS_PLUS_FFTS_PLUS_COMMON_H_
 #include "common/checker.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "framework/common/ge_types.h"

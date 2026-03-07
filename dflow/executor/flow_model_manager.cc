@@ -11,7 +11,7 @@
 #include "flow_model_manager.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "graph/ge_global_options.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "dflow/base/model/flow_model_om_loader.h"
 
 namespace ge {

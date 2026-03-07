@@ -19,7 +19,7 @@
 #include "ge_local_context.h"
 #include "node_utils.h"
 #include "op_type_utils.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "framework/common/util.h"
 
 namespace ge {

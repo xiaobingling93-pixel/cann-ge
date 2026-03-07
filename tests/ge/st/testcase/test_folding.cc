@@ -27,7 +27,7 @@
 
 #include "ge_graph_dsl/graph_dsl.h"
 #include "ge_graph_dsl/assert/graph_assert.h"
-#include "base/common/fp16_t.h"
+#include "base/common/fp16_t/fp16_t.h"
 #include "host_kernels/kernel.h"
 #include "host_kernels/kernel_factory.h"
 

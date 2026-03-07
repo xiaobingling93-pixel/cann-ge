@@ -14,7 +14,7 @@
 #include <set>
 #include "common/checker.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "common/memory/external_weight_desc_impl.h"
 #include "ge/ge_api_error_codes.h"
 #include "ge/ge_api_types.h"

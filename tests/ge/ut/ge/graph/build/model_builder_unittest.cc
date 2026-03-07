@@ -33,7 +33,7 @@
 #include "graph/passes/pass_manager.h"
 #include "api/aclgrph/option_utils.h"
 #include "common/context/local_context.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "formats/utils/formats_trans_utils.h"
 #include "../passes/graph_builder_utils.h"
 #include "register/custom_pass_helper.h"

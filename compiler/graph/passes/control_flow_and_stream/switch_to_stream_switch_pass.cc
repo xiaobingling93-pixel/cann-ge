@@ -12,7 +12,7 @@
 #include <stack>
 #include "common/plugin/ge_make_unique_util.h"
 #include "ge/ge_api_types.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/ge_context.h"
 #include "graph/utils/type_utils.h"
 #include "runtime/rt.h"

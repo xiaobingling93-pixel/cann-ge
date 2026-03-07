@@ -26,7 +26,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "dflow/base/deploy/deploy_planner.h"
 #include "common/checker.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/helper/model_parser_base.h"
 #include "framework/common/helper/model_helper.h"
 #include "toolchain/prof_api.h"

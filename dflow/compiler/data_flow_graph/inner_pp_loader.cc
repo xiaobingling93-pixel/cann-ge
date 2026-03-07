@@ -11,7 +11,7 @@
 #include "dflow/compiler/data_flow_graph/inner_pp_loader.h"
 #include "dflow/compiler/data_flow_graph/compile_config_json.h"
 #include "dflow/base/model/model_relation.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "dflow/base/model/flow_model_om_loader.h"
 #include "dflow/flow_graph/data_flow_attr_define.h"

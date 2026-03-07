@@ -16,7 +16,7 @@
 #include "es_c_graph_builder.h"
 #include "esb_funcs.h"
 #include "c_types.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "graph/operator_factory.h"
 #include "compliant_node_builder.h"
 

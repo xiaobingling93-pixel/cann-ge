@@ -13,7 +13,7 @@
 #include <sstream>
 #include <securec.h>
 #include "common/checker.h"
-#include "common/const_place_holder_utils.h"
+#include "common/const_place_holder_utils/const_place_holder_utils.h"
 #include "graph/node.h"
 #include "graph/def_types.h"
 #include "exe_graph/lowering/frame_selector.h"

@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "common/blocking_queue.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "hybrid/executor/subgraph_context.h"
 #include "hybrid/executor/node_state.h"
 #include "hybrid/executor/hybrid_execution_context.h"

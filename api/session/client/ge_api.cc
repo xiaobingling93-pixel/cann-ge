@@ -48,7 +48,7 @@
 #include "session/session_utils.h"
 #include "common/checker.h"
 #include "framework/runtime/subscriber/global_profiler.h"
-#include "common/option_supportion_checker.h"
+#include "common/option_supportion_checker/option_supportion_checker.h"
 #include "base/err_msg.h"
 #include "base/err_mgr.h"
 #include "common/memory/tensor_trans_utils.h"

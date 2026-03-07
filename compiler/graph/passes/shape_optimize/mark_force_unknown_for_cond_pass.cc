@@ -11,7 +11,7 @@
 #include "graph/passes/shape_optimize/mark_force_unknown_for_cond_pass.h"
 
 #include "graph/utils/node_utils.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 
 namespace ge {
 namespace {

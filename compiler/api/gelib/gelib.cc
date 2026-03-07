@@ -18,7 +18,7 @@
 #include "common/compile_profiling/ge_trace_wrapper.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "platform/platform_info.h"
-#include "common/platform_info_util.h"
+#include "common/platform_info_util/platform_info_util.h"
 #include "ge/ge_api_types.h"
 #include "framework/omg/ge_init.h"
 #include "framework/common/helper/model_helper.h"

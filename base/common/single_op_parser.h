@@ -20,7 +20,7 @@
 #include "graph/types.h"
 #include "graph/ge_attr_value.h"
 #include "graph/op_desc.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 
 namespace ge {
 struct SingleOpTensorDesc {

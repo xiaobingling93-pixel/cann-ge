@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "framework/common/types.h"
-#include "common/b_cast.h"
+#include "common/b_cast/b_cast.h"
 #include "host_kernels/kernel_utils.h"
 #include "host_kernels/kernel_factory.h"
 

@@ -11,7 +11,7 @@
 #include "graph/passes/control_flow_and_stream/next_iteration_pass.h"
 
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/node_utils.h"
 
 

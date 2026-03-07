@@ -16,7 +16,7 @@
 #include "framework/common/debug/log.h"
 #include "common/math/math_util.h"
 #include "framework/common/op/ge_op_utils.h"
-#include "common/b_cast.h"
+#include "common/b_cast/b_cast.h"
 #include "graph/utils/type_utils.h"
 #include "host_kernels/kernel_factory.h"
 

@@ -13,7 +13,7 @@
 
 #include <thread>
 #include <functional>
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "ge/ge_data_flow_api.h"
 #include "dflow/base/deploy/exchange_service.h"
 #include "graph/ge_tensor.h"

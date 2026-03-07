@@ -24,7 +24,7 @@
 #include "graph/compute_graph.h"
 #include "graph/model.h"
 #include "proto/task.pb.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/preload/model/pre_model_utils.h"
 
 namespace ge {

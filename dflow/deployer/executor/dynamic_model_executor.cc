@@ -32,7 +32,7 @@
 #include "acl/acl_mdl.h"
 #include "acl/acl_rt.h"
 #include "acl/acl_base.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "common/helper/model_parser_base.h"
 #include "graph/ge_tensor.h"
 #include "framework/runtime/gert_api.h"
