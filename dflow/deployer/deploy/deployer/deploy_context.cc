@@ -564,8 +564,6 @@ Status DeployContext::DoLoadSubmodels(const DeployState &deploy_state,
   // assemble load model
   auto root_model_id = deploy_state.GetRootModelId();
   deployer::ExecutorRequest_BatchLoadModelMessage load_model_desc;
-  GE_CHK_STATUS_RET_NOLOG(SetRankTableInfo(deploy_state, key.device_id, key.device_type,
-                                           key.rank_id, load_model_desc));
   SetVarMemoryInfo(key.device_id, deploy_state.GetSessionId(), load_model_desc);
   SetOptions(deploy_state, load_model_desc);
   GE_CHK_STATUS_RET_NOLOG(SetModelInfo(deploy_state, key, load_model_desc));
@@ -739,33 +737,6 @@ void DeployContext::SetModelQueuesAttrs(const std::string &model_name,
     GEEVENT("[IO info] model info = [name:%s], output info = [index:%zu], queue info = [%s], is_invoked = [%d].",
             model_name.c_str(), i, output_queue.DebugString().c_str(), is_invoked);
   }
-}
-
-Status DeployContext::SetRankTableInfo(const DeployState &deploy_state,
-                                       int32_t device_id,
-                                       int32_t device_type,
-                                       const std::string &rank_id,
-                                       deployer::ExecutorRequest_BatchLoadModelMessage &request) {
-  if (!deploy_state.GetHcomRoleTable().empty()) {
-    request.set_role_table(deploy_state.GetHcomRoleTable());
-  }
-  if (!deploy_state.GetHcomRankTable().empty()) {
-    request.set_rank_table(deploy_state.GetHcomRankTable());
-    request.set_rank_id(rank_id);
-    const auto &it = deploy_state.local_comm_groups_.find(std::make_pair(device_id, device_type));
-    if (it == deploy_state.local_comm_groups_.cend()) {
-      return SUCCESS;
-    }
-
-    for (const auto &group : it->second) {
-      auto comm_group = request.add_comm_groups();
-      comm_group->set_group_name(group.group_name);
-      comm_group->mutable_group_rank_list()->Add(group.group_rank_list.begin(), group.group_rank_list.end());
-      GELOGI("Add group success, rank_id = %s, group_name = %s, rank_list = %s",
-             rank_id.c_str(), group.group_name.c_str(), ToString(group.group_rank_list).c_str());
-    }
-  }
-  return SUCCESS;
 }
 
 void DeployContext::SetVarMemoryInfo(int32_t device_id,

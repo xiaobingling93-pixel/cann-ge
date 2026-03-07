@@ -144,7 +144,6 @@ TEST_F(DeployerServiceImplTest, LoadModel_Failed) {
     auto &body = *request.mutable_update_deploy_plan_request();
     body.set_device_id(0);
     body.set_root_model_id(1);
-    body.set_hcom_rank_table("rank_table");
     auto options = body.mutable_options();
     options->mutable_global_options()->insert({"TestGlobalOption", "TestGlobalOptionValue"});
     options->mutable_session_options()->insert({"TestSessionOption", "TestSessionOptionValue"});

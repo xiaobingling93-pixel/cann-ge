@@ -617,16 +617,10 @@ TEST_F(DeployContextTest, TestBatchPreLoadLocalUdf) {
 TEST_F(DeployContextTest, TestLoadModelInParallel) {
   Configurations::GetInstance().information_.node_config.ipaddr = "192.168.1.101";
   DeployContext context;
-  std::string rank_table_json =
-      "{\"collective_id\":\"192.168.1.1:111-123\",\"master_ip\":\"10.2.3.4\",\"master_port\":\"111\",\"node_list\":[{"
-      "\"node_addr\":\"192.168.1.101\",\"ranks\":[{\"device_id\":\"0\",\"port\":\"1966\",\"rank_id\":\"2\"},{\"device_"
-      "id\":\"1\",\"port\":\"1777\",\"rank_id\":\"1\"}]},{\"node_addr\":\"192.168.1.100\",\"ranks\":[{\"device_id\":"
-      "\"0\",\"port\":\"1888\",\"rank_id\":\"0\"}]}]}";
   {
     deployer::UpdateDeployPlanRequest req;
     req.set_device_id(0);
     req.set_root_model_id(1);
-    req.set_hcom_rank_table(rank_table_json);
     auto submodel_desc = req.add_submodel_descs();
     submodel_desc->set_model_path("model.om");
     submodel_desc->set_is_dynamic(false);
@@ -641,7 +635,6 @@ TEST_F(DeployContextTest, TestLoadModelInParallel) {
     deployer::UpdateDeployPlanRequest req;
     req.set_device_id(1);
     req.set_root_model_id(1);
-    req.set_hcom_rank_table(rank_table_json);
     auto submodel_desc = req.add_submodel_descs();
     submodel_desc->set_model_path("model.om");
     submodel_desc->set_is_dynamic(false);

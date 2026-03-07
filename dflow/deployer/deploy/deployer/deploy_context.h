@@ -170,16 +170,10 @@ class DeployContext {
   Status UnloadSubmodelsFromExecutor(const ExecutorManager::ExecutorKey &executor_key, uint32_t root_model_id);
   Status PrepareExecutors(const DeployState &deploy_state);
 
-  static Status SetRankTableInfo(const DeployState &deploy_state,
-                                 int32_t device_id,
-                                 int32_t device_type,
-                                 const std::string &rank_id,
-                                 deployer::ExecutorRequest_BatchLoadModelMessage &request);
-
   void SetVarMemoryInfo(int32_t device_id,
                         uint64_t session_id,
                         deployer::ExecutorRequest_BatchLoadModelMessage &request);
-  Status BuildModelEventTable(const deployer::SubmodelDesc &submodel_desc, std::string &event_table) const;
+
   Status SetModelInfo(const DeployState &deploy_state,
                       const ExecutorManager::ExecutorKey &key,
                       deployer::ExecutorRequest_BatchLoadModelMessage &request);
@@ -233,7 +227,6 @@ class DeployContext {
   int32_t deployer_pid_ = -1;
   std::string base_dir_;
   std::string client_base_dir_;
-  std::map<int32_t, bool> has_hcom_rank_table_;
 
   // key: root_model_id
   std::map<uint32_t, std::set<ExecutorManager::ExecutorKey>> submodel_devices_;

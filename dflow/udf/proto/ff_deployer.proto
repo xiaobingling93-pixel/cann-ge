@@ -62,7 +62,6 @@ message ExecutorRequest {
     int32 load_mode = 17;
     int32 execute_times = 18;
     repeated int32 input_fusion_offsets = 19;
-    string model_event_table = 20;
     int32 phy_device_id = 21;
     bool is_dynamic_proxy_controlled = 22;
     ModelQueuesAttrs model_queues_attrs = 23;
