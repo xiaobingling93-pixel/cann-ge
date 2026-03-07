@@ -973,19 +973,19 @@ build_st() {
     "backend")
       build_backend || { echo "run backend st failed."; exit 1; }
       ;;
-    "autofuse_framework")
-      build_st_att || { echo "failed to build and run att st."; exit 1; }
+    "ascendc_api")
       build_test_ascir_st || { echo "run ascir st failed."; exit 1; }
-      build_st_autofuse || { echo "run autofuse st failed."; exit 1; }
       build_st_codegen || { echo "run codegen st failed."; exit 1; }
-      build_st_common || { echo "run common st failed."; exit 1; }
-      build_st_optimize || { echo "run optimize st failed."; exit 1; }
-      build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
-      py_module_st || { echo "run py module st failed."; exit 1; }
-      ;;
-    "autofuse_ascendc_api")
       codegen_e2e_st || { echo "test build e2e st code generator failed."; exit 1; }
       build_backend || { echo "run backend st failed."; exit 1; }
+      build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
+      ;;
+    "framework")
+      build_st_att || { echo "failed to build and run att st."; exit 1; }
+      build_st_autofuse || { echo "run autofuse st failed."; exit 1; }
+      build_st_common || { echo "run common st failed."; exit 1; }
+      build_st_optimize || { echo "run optimize st failed."; exit 1; }
+      py_module_st || { echo "run py module st failed."; exit 1; }
       ;;
     "all")
       build_st_att || { echo "failed to build and run att st."; exit 1; }
