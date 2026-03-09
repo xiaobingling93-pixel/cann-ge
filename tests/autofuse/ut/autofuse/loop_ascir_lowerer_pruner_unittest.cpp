@@ -496,7 +496,7 @@ ununsed nodes: []
   EXPECT_EQ(ReadableComputeGraph(cg, false), R"(ComputeGraph(graph)
 tmp0 = ge.Data(data0, [])
 tmp1 = ge.ReduceSumD(ReduceSumD_0, [tmp0])
-tmp2 = ge.AscBackend(autofuse_pointwise_1_Abs_Abs, [tmp1])
+tmp2 = ge.AscBackend(autofuse_pointwise_1_2Abs, [tmp1])
 tmp3 = ge.NetOutput(NetOutput, [tmp2])
 ununsed nodes: []
 )");
@@ -672,15 +672,21 @@ TEST_F(LoopAscIrLowerPrunerUT, SimpleConcatIgnoreLifting) {
   for (; j < concatN; j++) {
     readable_lifting += "tmp" + to_string(j) + " = ge.Data(data" + to_string(j) + ", [])\n";
   }
-  readable_lifting += "tmp" + to_string(j++) + " = ge.AscBackend(autofuse_pointwise_0_Abs_Abs, [tmp0])\n";
+  readable_lifting += "tmp" + to_string(j++) + " = ge.AscBackend(autofuse_pointwise_0_2Abs, [tmp0])\n";
   string concatStr = "tmp" + to_string(j++) + " = ge.AscBackend(autofuse_concat_1_ConcatD, [tmp1";
   for (int k = 2; k <= concatN; k++) {
     concatStr += ", tmp" + to_string(k);
   }
   concatStr += "])\n";
   readable_lifting += concatStr;
-  readable_lifting += "tmp" + to_string(j++) + " = ge.AscBackend(autofuse_pointwise_2_Abs_Abs, [tmp" + to_string(j - 1) + "])\n";
-  readable_lifting += "tmp" + to_string(j++) + " = ge.NetOutput(NetOutput, [tmp" + to_string(j - 1) + "])\n";
+  int current_j = j;
+  int pre_j = j - 1;
+  j++;
+  readable_lifting += "tmp" + to_string(current_j) + " = ge.AscBackend(autofuse_pointwise_2_2Abs, [tmp" + to_string(pre_j) + "])\n";
+  current_j = j;
+  pre_j = j - 1;
+  j++;
+  readable_lifting += "tmp" + to_string(current_j) + " = ge.NetOutput(NetOutput, [tmp" + to_string(pre_j) + "])\n";
   readable_lifting += "ununsed nodes: []\n";
   EXPECT_EQ(ReadableComputeGraph(cg, false), readable_lifting);
 }
@@ -886,7 +892,7 @@ TEST_F(LoopAscIrLowerPrunerUT, SimpleLoweringName) {
   ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
   EXPECT_EQ(ReadableComputeGraph(cg, false), R"(ComputeGraph(graph)
 tmp0 = ge.Data(x, [])
-tmp1 = ge.AscBackend(autofuse_reduce_0_Abs_Abs_ReduceSumD, [tmp0])
+tmp1 = ge.AscBackend(autofuse_reduce_0_2Abs_ReduceSumD, [tmp0])
 tmp2 = ge.Abs(Abs_3, [tmp1])
 tmp3 = ge.Squeeze(Squeeze_4, [tmp2])
 tmp4 = ge.NetOutput(NetOutput, [tmp3])

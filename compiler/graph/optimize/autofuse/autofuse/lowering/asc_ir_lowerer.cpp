@@ -259,6 +259,14 @@ graphStatus AscIrLowerer::DfxForAscBackendOp(const ComputeGraphPtr &graph) const
       continue;
     }
     GE_ASSERT_NOTNULL(node->GetOpDesc());
+    std::string autofuse_origin_node_name = node->GetOpDesc()->GetName();
+    std::string autofuse_simplified_node_name = FuseNodeNameFormatter::SimplifyProcess(autofuse_origin_node_name);
+    if (autofuse_simplified_node_name.size() > AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len) {
+      // 判断超长截断
+      autofuse_simplified_node_name = autofuse_simplified_node_name.substr(0, AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len);
+    }
+    node->GetOpDesc()->SetName(autofuse_simplified_node_name);
+    GELOGD("Simplified node name is %s", autofuse_simplified_node_name.c_str());
     auto fuse_attrs = node->GetOpDesc()->GetAttrsGroup<AutoFuseAttrs>();
     if (fuse_attrs == nullptr) {
       continue;
