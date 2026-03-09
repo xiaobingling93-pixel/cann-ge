@@ -123,8 +123,16 @@ RunCfg CollectRunConfig(const ge::NodePtr &node, const LowerInput &lower_input, 
   run_cfg.tiling_input_launch_arg = launch_arg[static_cast<size_t>(AllocLaunchArgOutputs::kRtArg)];
   (void)ge::AttrUtils::GetBool(op_desc, ge::ATTR_NAME_DYNAMIC_TILING_DEPEND_OP, sta_tiling_depend);
   if (op_desc->HasAttr(kStaticToDynamicSoftSyncOp) || sta_tiling_depend) {
-    const auto platform_info = bg::AppendCoreTypeToPlatform(
-        node, lower_input.global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+    auto platform_info_vec = bg::AppendCoreTypeToPlatform(node, lower_input.global_data);
+    if (platform_info_vec.empty()) {
+      GELOGE(ge::INTERNAL_ERROR, "platform_info_vec is empty! Node: %s.", node->GetName().c_str());
+      return run_cfg;
+    }
+    const auto platform_info = platform_info_vec[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+    if (platform_info == nullptr) {
+      GELOGE(ge::INTERNAL_ERROR, "platform_info is nullptr! Node: %s.", node->GetName().c_str());
+      return run_cfg;
+    }
     auto tiling_ret = bg::Tiling(
         node, lower_input.input_shapes, output_shapes,
         {platform_info, *(lower_input.global_data), launch_arg[static_cast<size_t>(AllocLaunchArgOutputs::kRtArg)]});
@@ -798,8 +806,16 @@ static std::vector<bg::DevMemValueHolderPtr> LoweringWithHandleProc(const ge::No
                                                              std::vector<bg::ValueHolderPtr> &output_shapes) {
   // 2. tiling
   std::vector<bg::DevMemValueHolderPtr> output_addrs;
-  auto platform_info = bg::AppendCoreTypeToPlatform(
-      node, lower_input.global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  auto platform_info_vec = bg::AppendCoreTypeToPlatform(node, lower_input.global_data);
+  if (platform_info_vec.empty()) {
+    GELOGE(ge::INTERNAL_ERROR, "platform_info_vec is empty! Node: %s.", node->GetName().c_str());
+    return {};
+  }
+  auto platform_info = platform_info_vec[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  if (platform_info == nullptr) {
+    GELOGE(ge::INTERNAL_ERROR, "platform_info is nullptr! Node: %s.", node->GetName().c_str());
+    return {};
+  }
   if (!NodeSupportRollback(node)) {
     proc_arg.tiling_ret = bg::Tiling(node, lower_input.input_shapes, output_shapes,
                                      {platform_info, *(lower_input.global_data),
@@ -983,8 +999,16 @@ static std::vector<bg::DevMemValueHolderPtr> LoweringWithFlagProc(const ge::Node
                                                            std::vector<bg::ValueHolderPtr> &output_shapes) {
   // 2. tiling
   std::vector<bg::DevMemValueHolderPtr> output_addrs;
-  auto platform_info = bg::AppendCoreTypeToPlatform(
-      node, lower_input.global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  auto platform_info_vec = bg::AppendCoreTypeToPlatform(node, lower_input.global_data);
+  if (platform_info_vec.empty()) {
+    GELOGE(ge::INTERNAL_ERROR, "platform_info_vec is empty! Node: %s.", node->GetName().c_str());
+    return {};
+  }
+  auto platform_info = platform_info_vec[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  if (platform_info == nullptr) {
+    GELOGE(ge::INTERNAL_ERROR, "platform_info is nullptr! Node: %s.", node->GetName().c_str());
+    return {};
+  }
   if (!NodeSupportRollback(node)) {
     proc_arg.tiling_ret = WithFlagTilingProc(node, lower_input, output_shapes, platform_info, proc_arg);
     output_addrs = AicoreProcWithFlag(node, lower_input, output_shapes, proc_arg);
@@ -1098,6 +1122,10 @@ LowerResult LoweringStaticAicoreNode(const ge::NodePtr &node, const LowerInput &
   auto shapebuffer_addr = bg::ValueHolder::CreateConst(&tensor_data, sizeof(gert::GertTensorData *));
 
   RunCfg run_cfg = CollectRunConfig(node, lower_input, task_def, output_shapes, launch_arg);
+  if (run_cfg.block_dim == nullptr || run_cfg.schedule_mode == nullptr || 
+    run_cfg.local_mem_size == nullptr || run_cfg.workspaces_size == nullptr) {
+    return {HyperStatus::ErrorStatus(static_cast<const char *>("CollectRunConfig failed, invalid run_cfg.")), {}, {}, {}};
+  }
   auto workspaces_size = run_cfg.workspaces_size;
   auto workspaces_addr = bg::AllocAiCoreWorkspaceMem(node, kOnDeviceHbm, workspaces_size, *(lower_input.global_data));
 
