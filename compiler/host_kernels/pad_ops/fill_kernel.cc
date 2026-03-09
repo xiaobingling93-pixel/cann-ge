@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "framework/common/ge_inner_error_codes.h"
 #include "framework/common/op/ge_op_utils.h"
 #include "framework/common/debug/ge_log.h"

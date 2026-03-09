@@ -12,8 +12,8 @@
 #define GE_HYBRID_EXECUTOR_HYBRID_MODEL_RT2_EXECUTOR_H_
 
 #include "common/blocking_queue.h"
-#include "common/file_constant_utils.h"
-#include "common/thread_pool.h"
+#include "common/file_constant_utils/file_constant_utils.h"
+#include "common/thread_pool/thread_pool.h"
 #include "exe_graph/lowering/lowering_global_data.h"
 #include "framework/runtime/model_v2_executor.h"
 #include "framework/runtime/rt_session.h"

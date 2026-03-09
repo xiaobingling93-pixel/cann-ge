@@ -19,7 +19,7 @@
 #include "kernel/tensor_attr.h"
 #include "common/checker.h"
 #include "exe_graph/runtime/extended_kernel_context.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "exe_graph/runtime/runtime_attrs.h"
 #include "exe_graph/runtime/gert_mem_allocator.h"
 #include "kernel/kernel_log.h"

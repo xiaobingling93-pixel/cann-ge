@@ -142,11 +142,6 @@ message ModelQueueIndices {
   repeated int32 output_queue_indices = 2;
 }
 
-message HcomCommGroup {
-  string group_name = 1;
-  repeated uint32 group_rank_list = 2;
-}
-
 message InputAlignAttrs {
   uint32 align_max_cache_num = 1;
   int32 align_timeout = 2;
@@ -276,14 +271,9 @@ message UpdateDeployPlanRequest {
   int32 device_id = 1;
   uint64 session_id = 2;
   uint32 root_model_id = 3;
-  string hcom_rank_table = 5;
   repeated SubmodelDesc submodel_descs = 6;
-  repeated HcomCommGroup comm_groups = 8;
-  string hcom_role_table = 9;
-  string cluster_spec = 10;
   uint32 graph_id = 11;
   int32 device_type = 12;
-  string event_table = 13;
   Options options = 14;
   ModelMemSize model_mem_size = 15;
 }
@@ -389,15 +379,9 @@ message ExecutorRequest {
   message BatchLoadModelMessage {
     VarManagerInfo var_manager_info = 1;
     repeated FileConstantDesc file_constant_descs = 2;
-    string rank_table = 3;
-    string rank_id = 4;
     repeated LoadModelRequest models = 5;
-    repeated HcomCommGroup comm_groups = 6;
     uint32 root_model_id = 7;
-    string role_table = 8;
-    string cluster_spec = 9;
     uint32 graph_id = 10;
-    string event_table = 11;
     Options options = 12;
   }
 

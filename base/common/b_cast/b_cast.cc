@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/b_cast.h"
+#include "common/b_cast/b_cast.h"
 
 #include <vector>
 

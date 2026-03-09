@@ -1765,7 +1765,6 @@ TEST_F(TestGenAddLayerNormalModelInfo, case0)
   std::map<std::string, std::string> options;
   options["output_file_path"] = "./";
   options["gen_extra_info"] = "1";
-  options["duration_level"] = "1";
   options["solver_type"] = "HighPerf";
   EXPECT_EQ(GenTilingImpl("AddLayerNorm", graphs, options), true);
 
@@ -1821,7 +1820,6 @@ TEST_F(TestGenAddLayerNormalModelInfo, case_axes_reorder)
   std::map<std::string, std::string> options;
   options["output_file_path"] = "./";
   options["gen_extra_info"] = "1";
-  options["duration_level"] = "1";
   options["solver_type"] = "AxesReorder";
   EXPECT_EQ(GenTilingImpl("AddLayerNorm", graphs, options), true);
 
@@ -2859,7 +2857,6 @@ TEST_F(TestGenAddLayerNormalModelInfo, case_axes_reorder_by_env)
   std::map<std::string, std::string> options;
   options["output_file_path"] = "./";
   options["gen_extra_info"] = "1";
-  options["duration_level"] = "1";
   options["solver_type"] = "AxesReorder";
   EXPECT_EQ(GenTilingImpl("AddLayerNorm", graphs, options), true);
 

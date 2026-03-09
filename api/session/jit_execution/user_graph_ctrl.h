@@ -24,7 +24,7 @@
 #include "exe_points/execution_order.h"
 #include "cache/compiled_model_cache.h"
 #include "jit_executor.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 namespace {

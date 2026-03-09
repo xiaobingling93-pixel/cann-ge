@@ -12,7 +12,7 @@
 #define GE_COMMON_MATH_HIF8_T_H_
 
 #include <cstdint>
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 
 namespace ge {
 using hif8_t = class HiF8 final {

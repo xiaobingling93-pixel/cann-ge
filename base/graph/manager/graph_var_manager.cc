@@ -11,7 +11,7 @@
 #include "graph/manager/graph_var_manager.h"
 
 #include "framework/common/types.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/tuning_utils.h"
 #include "graph/utils/attr_utils.h"
@@ -20,7 +20,7 @@
 #include "graph/ge_context.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "common/math/math_util.h"
-#include "common/const_place_holder_utils.h"
+#include "common/const_place_holder_utils/const_place_holder_utils.h"
 #include "runtime/dev.h"
 #include "common/checker.h"
 #include "formats/utils/formats_trans_utils.h"

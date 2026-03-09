@@ -22,7 +22,7 @@
 #include "register/op_tiling_registry.h"
 #include "register/op_tiling/op_tiling_constants.h"
 #include "graph_builder/bg_compatible_utils.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "common/ge_inner_attrs.h"
 #include "bg_platform.h"
 #include "runtime/subscriber/global_tracer.h"

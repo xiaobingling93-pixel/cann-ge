@@ -15,7 +15,7 @@
 #include "common/compile_profiling/ge_call_wrapper.h"
 #include "framework/runtime/subscriber/global_profiler.h"
 #include "rt_error_codes.h"
-#include "common/option_supportion_checker.h"
+#include "common/option_supportion_checker/option_supportion_checker.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "acl/acl.h"
 namespace ge {

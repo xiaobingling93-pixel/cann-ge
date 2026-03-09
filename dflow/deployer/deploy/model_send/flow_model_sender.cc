@@ -11,13 +11,13 @@
 #include "deploy/model_send/flow_model_sender.h"
 #include <fstream>
 #include <algorithm>
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "graph/manager/graph_var_manager.h"
 #include "graph/ge_context.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/tensor_utils.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "framework/common/types.h"
 #include "securec.h"
 #include "deploy/deployer/deployer_proxy.h"

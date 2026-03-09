@@ -1772,12 +1772,6 @@ inline std::string GenRun(bool open_dt=false) {
   general_solver += "        }\n";
   general_solver += "        iter++;\n";
   general_solver += "    }\n";
-  if (IsProfilingEnabled()) {
-    general_solver += "    if (iter > solver_config_.iterations) {\n";
-    general_solver += "      iter = solver_config_.iterations;\n";
-    general_solver += "    }\n";
-    general_solver += "    SaveIterInfo(case_id_.c_str(), iter);\n";
-  }
   general_solver += "    result_->GetResult(solution_num, solutions);\n";
   general_solver += "    return solution_num > 0;\n";
   general_solver += "}\n";

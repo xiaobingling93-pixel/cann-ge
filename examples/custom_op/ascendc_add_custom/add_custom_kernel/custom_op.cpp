@@ -66,7 +66,7 @@ public:
     void *y_addr = const_cast<void*>(input_y->GetAddr());
     // 启动核函数执行加法计算
     aclrtStream stream = ctx->GetStream();
-    // 调用封装函数（无歧义）
+    // 调用封装函数
     launch_add_custom(
             static_cast<uint8_t*>(x_addr),
             static_cast<uint8_t*>(y_addr),
@@ -83,11 +83,11 @@ public:
  * 注册AscendC自定义加法算子
  * 配置输入输出类型、形状推导函数、数据类型推导规则
  */
-
 REG_OP(AddCustom)
-.INPUT(x, TensorType({DT_BOOL, DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING, DT_COMPLEX32}))
-.INPUT(y, TensorType({DT_BOOL, DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING, DT_COMPLEX32}))
-.OUTPUT(z, TensorType({DT_BOOL, DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING, DT_COMPLEX32}))
+.INPUT(x, "T")
+.INPUT(y, "T")
+.OUTPUT(z, "T")
+.DATATYPE(T, TensorType({DT_BOOL, DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING, DT_COMPLEX32}))
 .OP_END_FACTORY_REG(AddCustom);
 
 /**
@@ -128,14 +128,6 @@ graphStatus InferShapeForAdd(gert::InferShapeContext *context) {
   return GRAPH_SUCCESS;
 }
 
-
-graphStatus InferDataTypeForAdd(gert::InferDataTypeContext* context)
-{
-  auto inputDataType = context->GetInputDataType(0);
-  context->SetOutputDataType(0, inputDataType);
-  return GRAPH_SUCCESS;
-}
-
-IMPL_OP(AddCustom).InferShape(InferShapeForAdd).InferDataType(InferDataTypeForAdd);
+IMPL_OP(AddCustom).InferShape(InferShapeForAdd);
 
 REG_AUTO_MAPPING_OP(AddCustom);

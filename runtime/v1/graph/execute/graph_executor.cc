@@ -15,7 +15,7 @@
 #include "graph/load/model_manager/model_utils.h"
 #include "graph/load/model_manager/model_manager.h"
 #include "common/profiling/profiling_manager.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/memory/tensor_trans_utils.h"
 
 namespace {

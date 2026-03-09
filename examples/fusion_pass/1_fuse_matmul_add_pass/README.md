@@ -34,7 +34,7 @@
 
 ## 程序编译<a name="section6645633456813"></a>
 
-假设CANN软件包的安装目录为INSTALL_PATH, 例如`/home/HwHiAiUser/Ascend/`。
+假设CANN软件包的安装目录为INSTALL_PATH，例如`/home/HwHiAiUser/Ascend/`。
 
 1. 配置环境变量。
 

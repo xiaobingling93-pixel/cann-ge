@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 
 namespace ge {
 /// @ingroup fp16_t global filed

@@ -14,7 +14,7 @@
 
 #include "formats/formats.h"
 #include "formats/utils/formats_trans_utils.h"
-#include "common/datatype_transfer.h"
+#include "common/datatype_transfer/datatype_transfer.h"
 #include "common/checker.h"
 #include "graph/ge_context.h"
 #include "graph/graph.h"

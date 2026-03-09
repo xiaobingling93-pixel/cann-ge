@@ -23,7 +23,7 @@
 #include "hybrid/executor/callback_manager.h"
 #include "graph/utils/object_pool.h"
 #include "graph/load/model_manager/task_info/task_info.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "framework/runtime/mem_allocator.h"
 #include "common/checker.h"
 #include "ge/ge_allocator.h"

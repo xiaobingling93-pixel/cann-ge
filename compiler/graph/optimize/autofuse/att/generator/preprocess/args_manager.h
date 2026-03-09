@@ -178,6 +178,10 @@ public:
    */
   std::map<Expr, std::vector<Expr>, ExprCmp> GetTenaryOpRelatedVars() const;
   /**
+   * @brief 获取 TenaryOp 映射（用于获取描述信息）
+   */
+  const std::map<Expr, TenaryOp, ExprCmp>& GetTenaryOps() const;
+  /**
   * @brief 获取多核头开销
    */
   Expr GetHeadCost() const;

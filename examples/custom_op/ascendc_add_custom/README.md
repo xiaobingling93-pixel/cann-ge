@@ -1,10 +1,10 @@
 # README
 
-# torch注册自定义算子直调样例
+# torch注册AscendC自定义算子入GE图样例
 
 ## 概述
 
-本样例展示了如何使用PyTorch的torch.library机制注册自定义算子，并通过`<<<>>>`内核调用符调用核函数，以简单的Add算子为例，实现两个向量的逐元素相加。
+本样例展示了如何注册AscendC自定义算子，并通过`<<<>>>`内核调用符调用核函数，以简单的Add算子为例，在交付件`custom_op.cpp`中的继承`EagerExecuteOp`，实现`Execute`入GE图，通过`torchair`调用实现两个向量的逐元素相加，支持PyTorch图模式编译以提升计算效率。
 
 ## 算子描述
 
@@ -73,8 +73,7 @@
   ```
 - GE入图
   1、算子执行类（AddCustom）：继承EagerExecuteOp，实现Execute方法，完成输入输出 Tensor 的获取、内存申请、核函数启动等核心逻辑。
-  2、形状推导函数（InferShapeForAdd）：实现 PyTorch 风格的广播语义，推导输出 Tensor 的形状。
-  3、数据类型推导函数（InferDataTypeForAdd）：指定输出数据类型与第一个输入保持一致。
+  2、形状推导函数（InferShape）：实现 PyTorch 风格的广播语义，推导输出 Tensor 的形状。
 
   算子注册：通过宏定义完成算子的输入输出类型配置、形状 / 数据类型推导绑定、自动映射注册。
 
@@ -100,7 +99,7 @@
 
 - 配置环境变量
 
-  请根据当前环境上CANN开发套件包的[安装方式](../../../../docs/quick_start.md#prepare&install)，选择对应配置环境变量的命令。
+  安装 CANN 软件，进入昇腾官网：[https://www.hiascend.com/document](https://www.hiascend.com/document)，选择“CANN 软件安装”，进行 CANN 软件包安装，软件包安装完成后，需设置环境变量才能生效，请用户根据 set_env.sh 的实际路径执行如下命令。
    - 默认路径，root用户安装CANN软件包
 
      ```bash

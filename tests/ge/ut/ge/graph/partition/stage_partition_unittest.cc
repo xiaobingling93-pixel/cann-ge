@@ -23,7 +23,7 @@
 #include "framework/common/types.h"
 #include "utils/graph_utils.h"
 #include "graph/debug/ge_attr_define.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include <gmock/gmock.h>
 #include "ge_graph_dsl/graph_dsl.h"
 #include "graph/utils/tensor_utils.h"

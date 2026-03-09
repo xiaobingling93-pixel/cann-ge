@@ -14,7 +14,7 @@
 #include "graph/ge_context.h"
 #include "dflow/base/deploy/deploy_planner.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/compile_profiling/ge_call_wrapper.h"
 #include "deploy/deployer/deploy_context.h"
 #include "deploy/resource/resource_manager.h"

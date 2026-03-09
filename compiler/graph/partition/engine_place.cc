@@ -14,7 +14,7 @@
 #include "framework/common/op/ge_op_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "base/err_msg.h"
 #include "base/err_mgr.h"
 #include "api/gelib/gelib.h"

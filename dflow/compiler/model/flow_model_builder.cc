@@ -28,7 +28,7 @@
 #include "api/aclgrph/option_utils.h"
 #include "dflow/flow_graph/data_flow_attr_define.h"
 #include "dflow/base/deploy/deploy_planner.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 // need ge add interface
 #include "graph/passes/pass_manager.h"

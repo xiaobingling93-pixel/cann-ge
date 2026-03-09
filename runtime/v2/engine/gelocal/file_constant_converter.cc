@@ -16,7 +16,7 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph_metadef/graph/utils/file_utils.h"
 #include "common/checker.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "graph_builder/bg_memory.h"
 #include "graph_builder/bg_rt_session.h"
 #include "lowering/frame_selector.h"

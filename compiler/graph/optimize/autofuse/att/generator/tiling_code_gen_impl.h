@@ -67,6 +67,9 @@ class TilingCodeGenImpl {
     schedule_result_group_nums_ = group_nums;
   }
 
+  // 获取当前ScheduleResult的Group个数，用于并发性能优化
+  uint32_t GetGroupNumForCurrentScheduleResult(const std::pair<size_t, size_t> &schedule_result_key) const;
+
  protected:
   // 用于判断求解器是否有效
   ge::Status CheckImplPtr(const std::string &indent);
@@ -192,15 +195,14 @@ class TilingCodeGenImpl {
   virtual ge::Status GenUpdateBetterTiling();
   // 根据目标表达式和ub占用率选择更好的模板
   virtual ge::Status GenSelectBetterTilingBasedOnObjAndUbRatio();
-  // 寻找最优模板
-  virtual ge::Status GenFindPerfBetterTilingbyCaseId();
+  // 寻找最优模板，enable_group_parallel_optimize 表示是否启用 Group 并发性能优化，group_num 表示当前 ScheduleResult 包含的 Group 数量
+  virtual ge::Status GenFindPerfBetterTilingbyCaseId(bool enable_group_parallel_optimize = false,
+                                                     bool add_core_num_param = false, uint32_t group_num = 1);
   virtual ge::Status GenSearchAllTilingbyCaseId();
   // 多模板情况下算法的模板选择逻辑
   virtual ge::Status GenGetTilingKey();
   virtual ge::Status GenPGOSearchTilingKey();
   virtual ge::Status ValidateSingleResultAndGroup();
-  // 保存模板数
-  ge::Status GenSaveCaseNumInfo(uint32_t case_num);
   // 根据caseid生成选择逻辑
   virtual ge::Status GenGetTilingbyCaseId();
   virtual ge::Status GenPGODefaultTiling();
@@ -310,7 +312,16 @@ class TilingCodeGenImpl {
   ge::Status GenDurationCommonCode();
   ge::Status GenDurationPrintCode(const std::string &indent);
   ge::Status GenDurationClearCode(const std::string &indent);
-  
+
+  // 辅助函数：生成FindPerfBetterTilingbyCaseId的子部分
+  static std::string GenPerformanceAdjustmentCode(bool enable_group_parallel_optimize, bool add_core_num_param,
+                                                  uint32_t group_num, bool is_uniq_group);
+  static std::string GenLogOutputCodeWithUb(const bool is_uniq_group);
+  ge::Status GenFindPerfBetterTilingbyCaseIdWithUb(bool enable_group_parallel_optimize, bool add_core_num_param,
+                                                   uint32_t group_num, bool is_uniq_group);
+  ge::Status GenFindPerfBetterTilingbyCaseIdWithoutUb(bool enable_group_parallel_optimize, bool add_core_num_param,
+                                                         uint32_t group_num);
+
   // -----------------------以下函数生成tilingdata------------------------
   ge::Status GenProtectedVars();
   ge::Status GenBaseTilingData(std::map<std::string, std::string> &type_name_to_definition);

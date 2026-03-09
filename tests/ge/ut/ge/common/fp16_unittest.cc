@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 
 namespace ge {
 namespace formats {

@@ -113,14 +113,6 @@ class ExecutorContext {
 
   Status SyncSharedVarManager(const deployer::ExecutorRequest &request) const;
 
-  Status DeployCommGroup(const std::vector<HcomCommGroup> &comm_groups) const;
-
-  Status DeployRankTable(const std::string &rank_table,
-                         const std::string &rank_id,
-                         const std::string &role_table);
-
-  static Status DestroyRankTable();
-
   Status ParseModel(const deployer::ExecutorRequest_LoadModelRequest &request);
 
   static Status AttachQueues(const deployer::ExecutorRequest_LoadModelRequest &request);
@@ -154,13 +146,6 @@ class ExecutorContext {
   std::mutex mu_;
   std::map<uint32_t, std::map<uint32_t, std::unique_ptr<ModelHandle>>> model_handles_;
   std::map<uint32_t, std::map<uint32_t, PneModelPtr>> models_;
-  std::string rank_table_;
-  std::string rank_id_;
-  std::string cluster_spec_;
-  std::string role_table_;
-  std::string event_table_;
-  uint8_t *var_mem_base_ = nullptr;
-  uint64_t var_mem_size_ = 0U;
   std::string base_dir_;
 };
 }  // namespace ge

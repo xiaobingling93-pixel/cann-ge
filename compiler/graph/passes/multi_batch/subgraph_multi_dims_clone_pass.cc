@@ -21,7 +21,7 @@
 #include "graph/utils/type_utils.h"
 #include "graph/utils/op_type_utils.h"
 #include "register/op_registry.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "api/aclgrph/option_utils.h"
 
 namespace ge {

@@ -170,7 +170,9 @@ enum class TilingFuncDurationType {
 extern DurationDef kg_tiling_func_duration_def[static_cast<uint32_t>(
   TilingFuncDurationType::TILING_FUNC_DURATION_MAX)];
 
-std::string DurationGenCommonCode();
+std::string DurationGenHeadCode();
+
+std::string DurationGenDefineCode();
 
 std::string DurationPrintGenCode();
 

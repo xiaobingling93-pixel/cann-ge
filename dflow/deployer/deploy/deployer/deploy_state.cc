@@ -94,15 +94,6 @@ void DeployState::AddFlowRoutePlanToDeploy(const int32_t node_id,
   flow_route_plans_to_deploy_.emplace_back(std::make_pair(node_id, flow_route_plan));
 }
 
-void DeployState::AddLocalCommGroup(int32_t device_id, int32_t device_type,
-                                    const deployer::HcomCommGroup &comm_group) {
-  HcomCommGroup group = {};
-  group.group_name = comm_group.group_name();
-  std::vector<uint32_t> group_rank_list(comm_group.group_rank_list().begin(), comm_group.group_rank_list().end());
-  group.group_rank_list = std::move(group_rank_list);
-  local_comm_groups_[std::make_pair(device_id, device_type)].emplace_back(group);
-}
-
 void DeployState::UpdateClientRank(const ExecutorManager::ExecutorKey &key) {
   auto it = local_submodel_descs_.find(key);
   if (it != local_submodel_descs_.end() && it->first.rank_id.empty() && !key.rank_id.empty()) {
@@ -152,22 +143,6 @@ uint32_t DeployState::GetSubmodelId(const std::string &submodel_name) const {
   } else {
     return it->second;
   }
-}
-
-const std::string &DeployState::GetHcomRankTable() const {
-  return hcom_rank_table_;
-}
-
-void DeployState::SetHcomRankTable(const std::string &hcom_rank_table) {
-  hcom_rank_table_ = hcom_rank_table;
-}
-
-const std::string &DeployState::GetHcomRoleTable() const {
-  return hcom_role_table_;
-}
-
-void DeployState::SetHcomRoleTable(const std::string &hcom_role_table) {
-  hcom_role_table_ = hcom_role_table;
 }
 
 void DeployState::SetOptions(const deployer::Options &options) {

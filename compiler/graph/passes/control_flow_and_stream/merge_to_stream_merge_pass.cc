@@ -12,7 +12,7 @@
 #include "graph/utils/op_desc_utils_ex.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "ge/ge_api_types.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 
 namespace ge {
 Status MergeToStreamMergePass::Run(ComputeGraphPtr graph) {

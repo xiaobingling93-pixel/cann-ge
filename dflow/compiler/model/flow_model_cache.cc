@@ -16,7 +16,7 @@
 #include <sys/file.h>
 #include "mmpa/mmpa_api.h"
 #include "common/debug/log.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "common/helper/file_saver.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/ge_error_codes.h"
@@ -28,7 +28,7 @@
 #include "dflow/inc/data_flow/model/flow_model_helper.h"
 #include "graph/manager/graph_external_weight_manager.h"
 #include "common/compile_profiling/ge_trace_wrapper.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 namespace {

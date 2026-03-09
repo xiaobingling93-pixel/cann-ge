@@ -66,10 +66,13 @@ public:
   TenaryOp DeepCopy() const;
   std::shared_ptr<IfCase> DeepCopyIfCase() const;
   void SetVariable(const Expr &expr);
+  void SetDescription(const std::string &desc);
+  std::string GetDescription() const;
   void UpdateRelatedVars(const std::vector<std::pair<Expr, Expr>> &replace_vars);
   void Replace(const std::vector<std::pair<Expr, Expr>> &replace_vars);
 private:
   Expr variable_;
+  std::string description_;  // 描述信息（包含形状），用于注释显示
   std::shared_ptr<IfCase> tenary_op_;
   std::vector<Expr> related_vars_;
 };

@@ -20,7 +20,7 @@
 #include "exe_graph/lowering/exe_graph_attrs.h"
 #include "exe_graph/lowering/frame_selector.h"
 #include "common/types.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "pass/offline_optimizer.h"
 #include "static_compiled_graph_converter.h"
 #include "placement/placed_lowering_result.h"

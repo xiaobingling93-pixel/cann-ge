@@ -36,7 +36,7 @@
 #include "common/model/external_allocator_manager.h"
 #include "graph/manager/active_memory_allocator.h"
 #include "graph/load/graph_loader.h"
-#include "common/platform_info_util.h"
+#include "common/platform_info_util/platform_info_util.h"
 #include <api/gelib/gelib.h>
 #include "common/memory/tensor_trans_utils.h"
 #include "register/core_num_utils.h"

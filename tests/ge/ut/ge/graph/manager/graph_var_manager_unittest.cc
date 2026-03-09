@@ -13,7 +13,7 @@
 
 #include "macro_utils/dt_public_scope.h"
 #include "graph/manager/graph_var_manager.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "graph/manager/mem_manager.h"
 #include "graph/ge_context.h"
 #include "graph/ge_local_context.h"

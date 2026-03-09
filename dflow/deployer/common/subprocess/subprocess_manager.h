@@ -18,7 +18,7 @@
 #include <functional>
 #include "ge/ge_api_error_codes.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 constexpr uint32_t kAbnormalTypeNode = 1U;

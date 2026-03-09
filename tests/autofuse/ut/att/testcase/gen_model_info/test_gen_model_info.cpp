@@ -37,7 +37,6 @@ ge::Status CreateFaAscGraphWithAllModelInfos(const ge::char_t *tiling_data_name,
     options.emplace(kTilingDataTypeName, tiling_data_name);
   }
   options.emplace(kOutputFilePath, kDefaultFilePath);
-  options.emplace(kDurationLevelName, "1");
   options.emplace(kGenConfigType, "HighPerf");
 
   std::vector<ascir::ScheduledResult> schedule_results1;

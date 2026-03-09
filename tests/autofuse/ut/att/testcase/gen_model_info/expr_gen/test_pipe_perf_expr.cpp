@@ -48,6 +48,77 @@ Status BuildEqAscendGraphND(ge::AscGraph &graph) {
   att::GraphConstructUtils::UpdateGraphVectorizedStride(graph);
   return ge::SUCCESS;
 }
+
+// 构建VectorFunc子图
+static Status BuildVectorFuncSubgraph(ge::AscGraph &subgraph) {
+  auto ND = ge::Symbol("ND");
+  auto nd = subgraph.CreateAxis("nd", ND);
+  auto [ndB, ndb] = subgraph.BlockSplit(nd.id);
+  auto [ndbT, ndbt] = subgraph.TileSplit(ndb->id);
+  auto data1 = subgraph.CreateContiguousData("input1", DT_FLOAT, {*ndbt});
+  auto load1 = Load("load1", data1);
+  auto abs1 = Abs("abs1", load1);
+  auto sub1 = Sub("sub1", abs1, abs1);
+  auto store1 = Store("store1", sub1);
+  auto output1 = Output("output1", store1);
+  return ge::SUCCESS;
+}
+
+// 公共函数：创建S0轴
+static ge::Axis CreateS0Axis(ge::AscGraph &graph) {
+  auto S0 = ge::Symbol("S0");
+  return graph.CreateAxis("z0", S0);
+}
+
+// PipePerfExpr测试：添加VectorFunc节点到主图
+static Status AddVectorFuncToMainGraph(ge::AscGraph &graph) {
+  auto z0 = CreateS0Axis(graph);
+  auto [z0B, z0b] = graph.BlockSplit(z0.id);
+  auto [z0bT, z0bt] = graph.TileSplit(z0b->id);
+  auto data1 = graph.CreateContiguousData("input1", DT_FLOAT, {z0});
+
+  LOOP(*z0B) {
+    LOOP(*z0bT) {
+      auto load1 = Load("load1", data1).TQue(Position::kPositionVecIn, 1, 1);
+      auto vector_func1 = ascir_op::VectorFunc("vector_func");
+      vector_func1.SetAttr("sub_graph_name", "vector_func");
+      vector_func1.InstanceOutputy(1);
+      vector_func1.x = {load1};
+      *vector_func1.y[0].axis = {z0bT->id, z0bt->id};
+      *(vector_func1.y[0].repeats) = {z0bT->size, z0bt->size};
+      *(vector_func1.y[0].strides) = {z0bt->size, ge::Symbol(1)};
+      *vector_func1.y[0].vectorized_axis = {z0bt->id};
+      auto store1 = Store("store1", vector_func1.y[0]);
+      GE_ASSERT_SUCCESS(att::GraphConstructUtils::UpdateOutputTensorAxes({*z0B, *z0bT, *z0bt}, {load1, store1}, 1));
+      auto output1 = Output("output1", store1);
+    }
+  }
+  return ge::SUCCESS;
+}
+
+// 为VectorFunc测试构建图
+static Status BuildVectorFuncTestGraph(ge::AscGraph &graph) {
+  GE_ASSERT_SUCCESS(AddVectorFuncToMainGraph(graph));
+
+  // 添加VectorFunc子图
+  auto S0 = ge::Symbol("S0");
+  auto z0 = graph.CreateAxis("z0", S0);
+  auto [z0B, z0b] = graph.BlockSplit(z0.id);
+  auto [z0bT, z0bt] = graph.TileSplit(z0b->id);
+
+  constexpr char_t vector_func_node_name[] = "vector_func";
+  AscGraph subgraph(vector_func_node_name);
+  GE_ASSERT_SUCCESS(BuildVectorFuncSubgraph(subgraph));
+  graph.AddSubGraph(subgraph);
+  auto node = graph.FindNode(vector_func_node_name);
+  GE_ASSERT_NOTNULL(node);
+  node->attr.sched.axis = {z0bT->id};
+  node->attr.sched.loop_axis = z0bT->id;
+  ge::AttrUtils::SetStr(node->GetOpDescBarePtr(), "sub_graph_name", vector_func_node_name);
+
+  att::GraphConstructUtils::UpdateGraphVectorizedStride(graph);
+  return ge::SUCCESS;
+}
 }
 }
 }
@@ -118,8 +189,28 @@ TEST_F(TestPipePerfExpr, case_get_perf_for_loop)
   const auto &pipe_vec_cost = std::string(pipe_costs[PipeType::AIV_VEC].Serialize().get());
   // 外抛for循环
   // dma==1时：
-  const auto &iter = pipe_vec_cost.find("((1.245 * eq_compare_node * eq_exe_time * z0t_size) + 37.3699989318848)");
+  // 表达式变量名：eq_Eq_compare_node（节点名_节点类型）
+  // 注释描述：eq_Eq_in[z0t_size,2,10],[z0t_size,2,10]_out[z0t_size,2,10]_compare_node
+  const auto &iter = pipe_vec_cost.find("((1.245 * eq_Eq_compare_node * eq_exe_time * z0t_size) + 37.3699989318848)");
   EXPECT_TRUE(iter != std::string::npos);
+
+  // 验证描述信息是否被正确设置
+  bool found_eq_desc = false;
+  for (const auto &pair : exe_times) {
+    std::string var_name = Str(pair.first);
+    std::string desc = pair.second.GetDescription();
+    if (!desc.empty()) {
+      std::cout << "var_name=" << var_name << ", desc=" << desc << std::endl;
+      if (var_name.find("compare_node") != std::string::npos) {
+        found_eq_desc = true;
+        // 验证描述包含形状信息
+        EXPECT_TRUE(desc.find("in[") != std::string::npos || desc.find("out[") != std::string::npos)
+            << "Description should contain shape info: " << desc;
+      }
+    }
+  }
+  EXPECT_TRUE(found_eq_desc) << "Should find Eq node with description";
+
   for (const auto &pipe_cost : pipe_costs) {
     std::cout << "pipe_cost.first: " << static_cast<int32_t>(pipe_cost.first)
               << ", pipe_cost.second: " << pipe_cost.second << std::endl;
@@ -417,5 +508,39 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHeadTenaryOp) {
   EXPECT_TRUE(iter2 != tenary_ops.end());
   EXPECT_EQ(iter2->second.GetTenaryOpStr(),
             "TenaryOp((2 * z0t_size) < 25000, ((15.8900003433228 * block_dim) + 882.090026855469), ((32.7200012207031 * block_dim) + 1575.03002929688))");
+}
+
+// 测试VectorFunc性能注释生成
+TEST_F(TestPipePerfExpr, TestVectorFuncPerfAnnotation) {
+  ge::AscGraph graph("vf_graph");
+  ASSERT_EQ(ge::ascir::cg::BuildVectorFuncTestGraph(graph), ge::SUCCESS);
+
+  TuningSpacePtr ts = std::make_shared<TuningSpace>();
+  ASSERT_NE(ts, nullptr);
+  att::AscendGraphParser ascend_graph_parser(ts);
+  EXPECT_EQ(ascend_graph_parser.GraphParser(graph), ge::SUCCESS);
+  EXPECT_EQ(ArgListManager::GetInstance().LoadArgList(ts), ge::SUCCESS);
+
+  PipePerfExpr pipe_perf(ts);
+  std::map<PipeType, Expr> pipe_costs;
+  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  Expr head_cost;
+  EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, tenary_ops, head_cost), ge::SUCCESS);
+
+  // 验证tenary_ops中包含VectorFunc性能变量
+  bool found_vector_func_perf = false;
+  for (const auto &entry : tenary_ops) {
+    const std::string &desc = entry.second.GetDescription();
+    if (desc.find("vector_func_VectorFunc") != std::string::npos) {
+      found_vector_func_perf = true;
+      EXPECT_TRUE(desc.find("VectorFunc") != std::string::npos) << "Description should contain node type 'VectorFunc'";
+      break;
+    }
+  }
+  EXPECT_TRUE(found_vector_func_perf) << "VectorFunc performance variable not found in tenary_ops";
+
+  // 验证pipe_costs包含AIV_VEC类型性能
+  auto iter = pipe_costs.find(PipeType::AIV_VEC);
+  EXPECT_TRUE(iter != pipe_costs.end()) << "pipe_costs should contain AIV_VEC performance";
 }
 }

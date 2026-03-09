@@ -22,11 +22,6 @@ struct ModelDeployResource {
   std::map<std::string, int64_t> resource_list;
 };
 
-struct HcomCommGroup {
-  std::string group_name;
-  std::vector<uint32_t> group_rank_list;
-};
-
 struct ModelCompileResource {
   std::string host_resource_type;
   std::map<std::string, std::string> logic_dev_id_to_res_type;

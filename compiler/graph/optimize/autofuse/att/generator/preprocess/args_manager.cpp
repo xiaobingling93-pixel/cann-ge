@@ -655,6 +655,10 @@ std::map<Expr, std::vector<Expr>, ExprCmp> ArgsManager::GetTenaryOpRelatedVars()
   return ConcursiveRelatedVars(tenary_op_);
 }
 
+const std::map<Expr, TenaryOp, ExprCmp>& ArgsManager::GetTenaryOps() const {
+  return tenary_op_;
+}
+
 const ModelInfo &ArgsManager::GetModelInfo() const {
   return model_info_;
 }

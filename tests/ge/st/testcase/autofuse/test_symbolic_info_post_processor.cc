@@ -30,7 +30,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/op_desc_utils_ex.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "mmpa/mmpa_api.h"
 #include "graph/node.h"
 #include "graph/optimize/symbolic/symbolic_kernel_factory.h"

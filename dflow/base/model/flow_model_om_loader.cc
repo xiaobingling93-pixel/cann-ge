@@ -12,8 +12,8 @@
 #include <regex>
 #include "framework/common/helper/model_helper.h"
 #include "common/util/mem_utils.h"
-#include "common/file_constant_utils.h"
-#include "common/thread_pool.h"
+#include "common/file_constant_utils/file_constant_utils.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/math/math_util.h"
 #include "model_deploy_resource.h"
 #include "model_relation.h"

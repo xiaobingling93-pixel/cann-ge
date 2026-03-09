@@ -16,7 +16,7 @@
 
 #include "common/debug/log.h"
 #include "common/debug/memory_dumper.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "common/ge_inner_error_codes.h"
 #include "common/types.h"
 #include "graph/debug/ge_attr_define.h"

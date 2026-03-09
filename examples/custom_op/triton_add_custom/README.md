@@ -3,17 +3,9 @@
 # 1. 自定义算子编译工程
 
 ## 1.1 前置步骤
-
-1. 安装 CANN 软件，进入昇腾官网：[https://www.hiascend.com/document](https://www.hiascend.com/document)，选择“CANN 软件安装”，进行 CANN 软件包安装，软件包安装完成后，需设置环境变量才能生效，请用户根据 set\_env.sh 的实际路径执行如下命令。
-
-   ```bash
-   source ${HOME}/Ascend/ascend-toolkit/set_env.sh
-   ```
-
-   注：如果用户未指定安装路径，则软件会安装到默认路径下，默认安装路径如下。root 用户：`/usr/local/Ascend`​，非 root 用户：`${HOME}/Ascend`，\${HOME}为当前用户目录。 上述环境变量配置只在当前窗口生效，用户可以按需将以上命令写入环境变量配置文件（如.bashrc 文件）。
-2. 安装 Pytorch 及 torch\_npu：可参照：[https://www.hiascend.com/document/detail/zh/Pytorch/730/configandinstg/instg/docs/zh/installation_guide/installation_description.md](https://www.hiascend.com/document/detail/zh/Pytorch/730/configandinstg/instg/docs/zh/installation_guide/installation_description.md)，进行 Pytorch 及 torch\_npu 的安装
-3. 安装 Triton-Ascend，进入 Triton-Ascend 的官网安装链接，按照指导进行 Triton-Ascend 的软件安装：[https://gitcode.com/Ascend/triton-ascend/blob/main/docs/sources/getting-started/installation.md](https://gitcode.com/Ascend/triton-ascend/blob/main/docs/sources/getting-started/installation.md)
-4. 安装 TensorFlow 以及对应的框架插件包，可点击如下链接按需进行操作
+1. 安装 CANN 软件，通过[安装指导](../../../docs/build.md#2-安装软件包)正确安装toolkit和ops包, 并正确配置环境变量
+2. 安装 Triton-Ascend，进入 [Triton-Ascend 的官网](https://gitcode.com/Ascend/triton-ascend/blob/main/docs/zh/installation_guide.md)，按照指导进行 Triton-Ascend 以及其所需依赖的安装。在您安装完毕后，强烈建议您运行此[链接](https://gitcode.com/Ascend/triton-ascend/blob/main/docs/zh/quick_start.md)对应的 Triton-Ascend 的[入门用例](https://gitcode.com/Ascend/triton-ascend/blob/main/docs/zh/quick_start.md)，以确保您环境安装正确。
+3. 安装 TensorFlow 以及对应的框架插件包，可点击如下链接按需进行操作
 
    1. TensorFlow 1.15：[开源框架 TensorFlow 1.15](https://www.hiascend.com/document/detail/zh/TensorFlowCommunity/850/migration/tfmigr1/tfmigr1_000008.html)，[框架插件包](https://www.hiascend.com/document/detail/zh/TensorFlowCommunity/850/migration/tfmigr1/tfmigr1_000009.html)
    2. TensorFlow 2.6.5：[开源框架 TensorFlow 2.6.5](https://www.hiascend.com/document/detail/zh/TensorFlowCommunity/850/migration/tfmigr2/tfmigr2_000007.html)，[框架插件包](https://www.hiascend.com/document/detail/zh/TensorFlowCommunity/850/migration/tfmigr2/tfmigr2_000008.html)
@@ -23,7 +15,6 @@
 1. 生成算子 kernel 的 npubin 文件，以 AddCustom 算子为例，其 kernel 的实现见：`custom_op/triton_add_custom/add_custom_kernel/add_custom_kernel.py`，执行该文件以生成 npubin
 
    ```bash
-   cd your_path/custom_op/add_custom_kernel
    python3 add_custom_kernel.py
    ```
 
@@ -84,3 +75,5 @@ custom_op
         ├── add_custom_triton_tf.cc   // Triton 算子入 TF 交付件
         └── build_tf.sh               // 编译入 TF 图的 so 的脚本
 ```
+# 2. 特性约束
+该特性依赖triton-ascend对应的支持范围，您可查看此[链接](https://gitcode.com/Ascend/triton-ascend#%E7%A1%AC%E4%BB%B6%E6%94%AF%E6%8C%81)来获取您当前产品的支持情况

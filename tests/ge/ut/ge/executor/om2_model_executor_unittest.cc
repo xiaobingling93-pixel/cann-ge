@@ -24,6 +24,7 @@
 #include "graph/utils/file_utils.h"
 #include "mmpa/mmpa_api.h"
 #include "graph_metadef/depends/checker/tensor_check_utils.h"
+#include "ge/ge_error_codes.h"
 
 namespace ge {
 namespace {
@@ -418,5 +419,54 @@ TEST_F(Om2ModelExecutorUt, get_user_designate_shape_order_ok) {
   std::vector<std::string> user_designate_shape_order;
   EXPECT_EQ(executor.GetUserDesignateShapeOrder(user_designate_shape_order), SUCCESS);
   EXPECT_TRUE(user_designate_shape_order.empty());
+}
+
+TEST_F(Om2ModelExecutorUt, IsOm2Model_Ok_FromDataMultiSceneTest) {
+  // invalid model data
+  bool is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(nullptr, 10, is_support), ACL_ERROR_GE_PARAM_INVALID);
+
+  // data size is too small
+  const uint8_t data[] = {0x50, 0x4B};
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(data, 2, is_support), ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID);
+
+  // valid magic
+  const uint8_t valid_data[] = {0x50, 0x4B, 0x03, 0x04};
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(valid_data, 4, is_support), SUCCESS);
+  EXPECT_TRUE(is_support);
+
+  // invalid magic
+  constexpr uint8_t invalid_data[] = {0x00, 0x00, 0x00, 0x00};
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(invalid_data, 4, is_support), SUCCESS);
+  EXPECT_FALSE(is_support);
+}
+
+TEST_F(Om2ModelExecutorUt, IsOm2Model_Ok_FromFileMultiScene) {
+  // file is not exist
+  bool is_support = false;
+  EXPECT_EQ(gert::IsOm2Model("/non/existent/file.om2", is_support), ACL_ERROR_GE_EXEC_MODEL_PATH_INVALID);
+
+  // file size too small
+  const std::string test_file = PathUtils::Join({test_work_dir_, "small_file.om2"});
+  WriteBinaryFile(test_file, {0x50, 0x4B});
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(test_file.c_str(), is_support), ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID);
+
+  // valid_magic
+  PrepareOm2File();
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(om2_file_path_.c_str(), is_support), SUCCESS);
+  EXPECT_TRUE(is_support);
+
+  // invalid_magic
+  const std::string test_file_invalid = PathUtils::Join({test_work_dir_, "invalid_magic.om2"});
+  WriteBinaryFile(test_file, {0x00, 0x00, 0x00, 0x00});
+  
+  is_support = false;
+  EXPECT_EQ(gert::IsOm2Model(test_file.c_str(), is_support), SUCCESS);
+  EXPECT_FALSE(is_support);
 }
 }  // namespace ge

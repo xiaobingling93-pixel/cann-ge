@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include <sys/file.h>
 #include <iomanip>
 #include <fstream>
@@ -18,7 +18,7 @@
 #include "common/plugin/ge_make_unique_util.h"
 #include "common/math/math_util.h"
 #include "common/checker.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "graph/compute_graph.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/ge_context.h"

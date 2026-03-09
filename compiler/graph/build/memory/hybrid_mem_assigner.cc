@@ -16,7 +16,7 @@
 #include "graph/build/memory/max_block_mem_assigner.h"
 #include "graph/build/memory/mem_inplace.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/checker.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/ge_context.h"

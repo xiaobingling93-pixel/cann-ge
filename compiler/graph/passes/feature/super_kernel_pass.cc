@@ -16,7 +16,7 @@
 #include "framework/common/debug/log.h"
 #include "framework/common/debug/ge_log.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/graph.h"
 #include "graph/node.h"
 #include "graph/utils/graph_utils.h"

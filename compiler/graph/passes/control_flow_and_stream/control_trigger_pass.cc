@@ -11,7 +11,7 @@
 #include "graph/passes/control_flow_and_stream/control_trigger_pass.h"
 #include <stack>
 #include "common/plugin/ge_make_unique_util.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/utils/type_utils.h"
 
 namespace ge {

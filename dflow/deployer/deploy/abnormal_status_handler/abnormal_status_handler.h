@@ -11,7 +11,7 @@
 #ifndef AIR_RUNTIME_HETEROGENEOUS_DEPLOY_ABNORMAL_STATUS_HANDLER_H_
 #define AIR_RUNTIME_HETEROGENEOUS_DEPLOY_ABNORMAL_STATUS_HANDLER_H_
 
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/config/device_debug_config.h"
 #include "dflow/base/deploy/model_deployer.h"
 #include "dflow/base/deploy/deploy_planner.h"

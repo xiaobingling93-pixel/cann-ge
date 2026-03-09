@@ -9,7 +9,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "base/err_mgr.h"
 
 namespace ge {

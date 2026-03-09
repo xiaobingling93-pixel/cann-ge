@@ -10,7 +10,7 @@
 
 #ifndef GE_HYBRID_EXECUTOR_HYBRID_MODEL_EXECUTOR_H_
 #define GE_HYBRID_EXECUTOR_HYBRID_MODEL_EXECUTOR_H_
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "graph/load/model_manager/data_inputer.h"
 #include "hybrid/executor/hybrid_execution_context.h"
 #include "hybrid/executor/callback_manager.h"

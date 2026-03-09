@@ -32,7 +32,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/type_utils.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "graph/utils/op_type_utils.h"
 
 using domi::AippOpParams;

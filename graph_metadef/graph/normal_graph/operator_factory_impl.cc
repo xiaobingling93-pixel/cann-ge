@@ -433,7 +433,7 @@ void OperatorFactoryImpl::RegisterIsInferShapeV2RegisteredFunc(
   }
 }
 
-IsInferFormatV2RegisteredFunc OperatorFactoryImpl::GetIsInferShapeV2RegisteredFunc() {
+IsInferShapeV2RegisteredFunc OperatorFactoryImpl::GetIsInferShapeV2RegisteredFunc() {
   return is_infer_shape_v2_registered_func_;
 }
 

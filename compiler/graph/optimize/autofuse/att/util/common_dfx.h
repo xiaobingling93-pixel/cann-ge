@@ -33,6 +33,15 @@ inline bool IsLogPrintStdout() {
  return (stdout_flag == 1) ? true : false;
 }
 
+static int32_t cached_level = []() {
+  const char *env_level = getenv("ASCEND_GLOBAL_LOG_LEVEL");
+  return (env_level != nullptr) ? atoi(env_level) : DLOG_ERROR;  // DLOG_ERROR = 0x3
+}();
+
+static inline bool CheckCachedLogLevel(int32_t log_level) {
+  return cached_level <= log_level;
+}
+
 inline uint64_t GetTid() {
    return static_cast<uint64_t>(syscall(__NR_gettid));
 }
@@ -68,19 +77,25 @@ inline std::vector<char> CreateErrorMsg(const char *format, ...) {
     GE_ONLY_LOGE(ERROR_CODE, "%s", msg.empty() ? "" : msg.data()); \
   } while (false)
 
-#define GELOGW(fmt, ...)                                                                          \
-  do {                                                                                            \
-    dlog_warn(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+#define GELOGW(fmt, ...)                                                                            \
+  do {                                                                                              \
+    if (CheckCachedLogLevel(DLOG_WARN)) {                                                           \
+      dlog_warn(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+    }                                                                                               \
   } while (false)
 
-#define GELOGI(fmt, ...)                                                                          \
-  do {                                                                                            \
-    dlog_info(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+#define GELOGI(fmt, ...)                                                                            \
+  do {                                                                                              \
+    if (CheckCachedLogLevel(DLOG_INFO)) {                                                          \
+      dlog_info(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+    }                                                                                               \
   } while (false)
 
-#define GELOGD(fmt, ...)                                                                           \
-  do {                                                                                             \
-    dlog_debug(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+#define GELOGD(fmt, ...)                                                                             \
+  do {                                                                                               \
+    if (CheckCachedLogLevel(DLOG_DEBUG)) {                                                           \
+      dlog_debug(GE_MODULE_NAME, "%" PRIu64 " %s:" fmt, GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__); \
+    }                                                                                                \
   } while (false)
 
 #define GEEVENT(fmt, ...)                                                                                        \

@@ -16,7 +16,7 @@
 #include <sys/file.h>
 #include "mmpa/mmpa_api.h"
 #include "common/debug/log.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "common/helper/file_saver.h"
 #include "common/helper/model_parser_base.h"
 #include "common/compile_profiling/ge_call_wrapper.h"
@@ -28,9 +28,9 @@
 #include "graph/build/memory/var_mem_assign_util.h"
 #include "graph_metadef/graph/utils/file_utils.h"
 #include "graph/manager/graph_external_weight_manager.h"
-#include "common/file_constant_utils.h"
+#include "common/file_constant_utils/file_constant_utils.h"
 #include "common/compile_profiling/ge_trace_wrapper.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 namespace {

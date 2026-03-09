@@ -99,6 +99,12 @@ prepare_test_env() {
   export WORKSPACE_BASE_DIR=${BASEPATH}/dflow/pydflow
   export ASCEND_INSTALL_PATH=${ASCEND_INSTALL_PATH}
 
+  if command -v ccache &> /dev/null; then
+    export CC="ccache gcc"
+    export CXX="ccache g++"
+    echo "ccache detected and enabled"
+  fi
+
   cd ${PYDFLOW_TEST_PATH}/stub
   python3 setup.py build_ext --build-temp=${PYDFLOW_TEST_PATH}/build_stub --build-lib=${PYDFLOW_TEST_PATH}/build_stub
   find ${PYDFLOW_TEST_PATH}/build_stub -name dflow_wrapper*.so | xargs -i cp -rf {} ${PYDFLOW_SRC_PATH}/python/dataflow/dflow_wrapper.so

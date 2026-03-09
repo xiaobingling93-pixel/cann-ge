@@ -8,14 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/datatype_transfer.h"
+#include "common/datatype_transfer/datatype_transfer.h"
 #include "base/err_msg.h"
 #include <cstdint>
 #include <map>
 #include <utility>
 
 #include "formats/utils/formats_trans_utils.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "common/math/hif8_t.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "framework/common/debug/ge_log.h"

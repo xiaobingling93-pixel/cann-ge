@@ -18,7 +18,7 @@
 #
 # 注意：
 #   本示例仅支持:
-#     - A5(d806): 使用 rank_table/a5/rank_table_2p.json (v2.0)
+#     - A5(d806): 当前示例不支持此形态
 #     - A2(d802): 使用 rank_table/a2/rank_table_2p.json (v1.0)
 #   其他硬件平台暂不支持。
 
@@ -39,8 +39,8 @@ Usage: $0 [OPTIONS]
 
 注意:
   本示例仅支持:
-    A5(d806) -> rank_table/a5/rank_table_2p.json (v2.0)
     A2(d802) -> rank_table/a2/rank_table_2p.json (v1.0)
+    A5(d806) -> 不支持此形态（脚本会报错退出）
   其他硬件平台暂不支持
 EOF
     exit 0
@@ -49,7 +49,7 @@ EOF
 select_rank_table_by_platform() {
   local curr_dir="$1"
   if ! command -v lspci >/dev/null 2>&1; then
-    echo "[Error] 未找到 lspci 命令，无法识别硬件平台。仅支持 A5(d806)/A2(d802)" >&2
+    echo "[Error] 未找到 lspci 命令，无法识别硬件平台。仅支持 A2(d802)，A5(d806)不支持此形态" >&2
     return 1
   fi
 
@@ -58,18 +58,19 @@ select_rank_table_by_platform() {
   local pci_output=""
   pci_output="$(lspci 2>/dev/null || true)"
   if [[ -z "${pci_output}" ]]; then
-    echo "[Error] 无法获取 lspci 输出，无法识别硬件平台。仅支持 A5(d806)/A2(d802)" >&2
+    echo "[Error] 无法获取 lspci 输出，无法识别硬件平台。仅支持 A2(d802)，A5(d806)不支持此形态" >&2
     return 1
   fi
 
   if grep -qi "d806" <<<"${pci_output}"; then
-    platform="A5(d806)"
-    rank_table_file="${curr_dir}/rank_table/a5/rank_table_2p.json"
+    echo "[Error] 检测到 A5(d806)，当前示例不支持此形态。" >&2
+    echo "[Hint] 请切换到 A2(d802) 环境运行。" >&2
+    return 1
   elif grep -qi "d802" <<<"${pci_output}"; then
     platform="A2(d802)"
     rank_table_file="${curr_dir}/rank_table/a2/rank_table_2p.json"
   else
-    echo "[Error] 当前硬件暂不支持。仅支持 A5(d806) 和 A2(d802)" >&2
+    echo "[Error] 当前硬件暂不支持。仅支持 A2(d802)。" >&2
     return 1
   fi
 
@@ -249,6 +250,16 @@ case "${TARGET}" in
     echo "[Info] 开始准备并编译目标: sample_and_run (Multi-Device EP)"
     echo "[Info] 将根据硬件平台自动选择 rank_table"
 
+    # 提前做平台检测，避免不支持平台上浪费编译时间
+    CURR_DIR=$(pwd)
+    if ! select_rank_table_by_platform "${CURR_DIR}"; then
+      exit 1
+    fi
+    if ! read_device_ids_from_rank_table; then
+      echo "[Error] 无法从 rank_table 中读取 rank_id 0/1 对应的 device_id" >&2
+      exit 1
+    fi
+
     # 先编译 sample
     bash "$0" -t sample
 
@@ -269,15 +280,6 @@ case "${TARGET}" in
     source "$SETENV_FILE"
     set -e
 
-    # 根据硬件平台选择rank table
-    CURR_DIR=$(pwd)
-    if ! select_rank_table_by_platform "${CURR_DIR}"; then
-      exit 1
-    fi
-    if ! read_device_ids_from_rank_table; then
-      echo "[Error] 无法从 rank_table 中读取 rank_id 0/1 对应的 device_id" >&2
-      exit 1
-    fi
     echo "[Info] 开始运行 sample_and_run..."
 
     # 在第一个设备上运行 (RANK_ID=0)

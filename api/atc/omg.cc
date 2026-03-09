@@ -31,7 +31,7 @@
 #include "framework/omg/parser/weights_parser.h"
 #include "parser/common/pre_checker.h"
 #include "parser/common/convert/pb2json.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "graph/utils/op_type_utils.h"
 #include "graph_metadef/common/ge_common/util.h"
 

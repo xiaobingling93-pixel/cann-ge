@@ -2352,7 +2352,6 @@ TEST_F(STestGenConcat, case_axes_reorder)
   std::map<std::string, std::string> options;
   options["output_file_path"] = "./";
   options["gen_extra_info"] = "1";
-  options["duration_level"] = "1";
   options["solver_type"] = "AxesReorder";
   EXPECT_EQ(GenTilingImpl("Concat", graphs, options), true);
   AddHeaderGuardToFile("autofuse_tiling_func_common.h", "__AUTOFUSE_TILING_FUNC_COMMON_H__");
@@ -3567,4 +3566,78 @@ TEST_F(STestGenConcat, static_shape_cache_support)
   CompileAndRunTilingTest();
   EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Static shape cache test"), true);
   EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("./info.log", "Second call success"), true);
+}
+
+// 用例描述：验证多group场景下enable_group_parallel_optimize=true时的代码生成
+// 用例期望结果：
+// 1. 生成的FindPerfBetterTilingbyCaseId函数包含core_num参数
+// 2. 生成的GetTilingCaseScoreFunc函数包含core_num参数
+// 3. 函数调用链正确传递corenum参数
+// 4. 包含group_num常量和性能调整代码
+TEST_F(STestGenConcat, multi_group_with_enable_group_parallel_optimize)
+{
+  // 构建图
+  ascir::ScheduleGroup schedule_group1;
+  ascir::ScheduleGroup schedule_group2;
+  ascir::ScheduledResult schedule_result1;
+  std::vector<ascir::ScheduledResult> schedule_results;
+
+  const std::string kFirstGraphName = "graph_nd";
+  ascir::AscGraph graph_nd(kFirstGraphName.c_str());
+  ascir::AscGraph graph_s0("graph_s0");
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphND(graph_nd), ge::SUCCESS);
+  ASSERT_EQ(ge::ascir::cg::BuildConcatGroupAscendGraphND(graph_s0), ge::SUCCESS);
+
+  // 使用辅助函数构建schedule_group
+  BuildSingleGraphToScheduleGroup(graph_nd, schedule_group1, 0U);
+  BuildSingleGraphToScheduleGroup(graph_s0, schedule_group2, 1U);
+
+  // 组装schedule_result
+  schedule_result1.schedule_groups.emplace_back(schedule_group1);
+  schedule_result1.schedule_groups.emplace_back(schedule_group2);
+  // 关键：设置enable_group_parallel=true
+  schedule_result1.enable_group_parallel = true;
+  schedule_results.emplace_back(schedule_result1);
+
+  // 配置options
+  std::map<std::string, std::string> options;
+  std::string op_name = "Concat";
+  options.emplace(kGenConfigType, "AxesReorder");
+  ascir::FusedScheduledResult fused_scheduled_result;
+  fused_scheduled_result.node_idx_to_scheduled_results.emplace_back(schedule_results);
+
+  // 使用辅助函数生成tiling函数和数据
+  GenerateTilingFunctionAndWriteToFile(op_name, fused_scheduled_result, options);
+  GenerateTilingDataAndHeader(op_name, kFirstGraphName, fused_scheduled_result, options);
+
+  // 准备测试环境和编译
+  PrepareTestEnvironmentFiles(kConcatTilingTestHead);
+
+  std::ofstream oss;
+  oss.open("tiling_func_main_concat.cpp", std::ios::out);
+  oss << kRunTilingFuncMainSameND;
+  oss.close();
+  CompileGeneratedTilingCode();
+
+  // 验证生成的代码包含正确的参数传递
+  // 1. FindPerfBetterTilingbyCaseId函数签名包含core_num参数
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "bool FindPerfBetterTilingbyCaseId"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              ", uint32_t core_num) {"), true);
+  // 2. GetTilingCaseScoreFunc函数签名包含core_num参数
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "bool GetTilingCaseScoreFunc"), true);
+  // 3. GetTilingKey函数获取corenum并传递给GetTilingCaseScoreFunc
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "uint32_t corenum = tiling_data.get_block_dim()"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              ", corenum);"), true);
+  // 4. GetTilingCaseScoreFunc调用FindPerfBetterTilingbyCaseId时传递core_num
+  // 注意：由于代码格式可能不同，这里只检查core_num参数被传递
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              ", core_num);"), true);
+
+  auto ret = std::system("./tiling_func_main_concat > ./info.log");
+  EXPECT_EQ(ret, 0);
 }

@@ -19,7 +19,7 @@
 #include "graph/compute_graph.h"
 #include "dflow/inc/data_flow/model/flow_model.h"
 #include "proto/dflow.pb.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 namespace ge {
 constexpr uint32_t kDataFlowGraphThreadPoolSize = 8U;

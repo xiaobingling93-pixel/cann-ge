@@ -228,6 +228,7 @@ file(GLOB SOURCES
     ${ATT_DIR}/gen_model_info/parser/*.cpp
     ${ATT_DIR}/gen_model_info/pass/*.cpp
     ${ATT_DIR}/gen_model_info/reuse_group_utils/*.cpp
+    ${ATT_DIR}/gen_model_info/utils/*.cpp
     ${ATT_DIR}/gen_model_info/*.cpp
     ${ATT_DIR}/gen_model_info/axes_priority_reg/*.cpp
     ${ATT_DIR}/gen_model_info/api_tiling_gen/*.cpp

@@ -18,7 +18,7 @@
 #include "dflow/inc/data_flow/model/pne_model.h"
 #include "common/data_flow/event/proxy_event_manager.h"
 #include "mmpa/mmpa_api.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "graph_metadef/common/ge_common/util.h"
 
 namespace ge {

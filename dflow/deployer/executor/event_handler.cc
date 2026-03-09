@@ -15,7 +15,7 @@
 #include "executor/executor_context.h"
 #include "common/utils/rts_api_utils.h"
 #include "mmpa/mmpa_api.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "cpu_tasks.h"
 
 namespace ge {
@@ -35,10 +35,6 @@ Status EventHandler::Initialize() {
 }
 
 void EventHandler::Finalize() {
-  if (rank_table_deployed_) {
-    (void) context_->DestroyRankTable();
-    rank_table_deployed_ = false;
-  }
   context_->Finalize();
   context_.reset();
 }
@@ -175,27 +171,12 @@ Status EventHandler::BatchParseAndLoadModels(const deployer::ExecutorRequest_Bat
 Status EventHandler::BatchLoadModels(deployer::ExecutorRequest &request) {
   auto &message = request.batch_load_model_message();
   GEEVENT("[Batch][LoadModel] begin, model size = %d.", message.models_size());
-  if ((!rank_table_deployed_) && (!message.rank_table().empty())) {
-    context_->DeployRankTable(message.rank_table(), message.rank_id(), message.role_table());
-    rank_table_deployed_ = true;
-  }
-
   context_->UpdateOptions(message.options());
   if (!once_inited_) {
     GE_CHK_STATUS(context_->SetOpTimeout(), "Failed to set op timeout");
     GE_CHK_STATUS(context_->SetDeviceSatMode(), "Failed to set device sat mode");
     once_inited_ = true;
   }
-
-  std::vector<HcomCommGroup> comm_groups;
-  for (auto &comm_group : message.comm_groups()) {
-    HcomCommGroup group = {};
-    group.group_name = comm_group.group_name();
-    group.group_rank_list = std::move(std::vector<uint32_t>(comm_group.group_rank_list().begin(),
-                                                            comm_group.group_rank_list().end()));
-    comm_groups.emplace_back(group);
-  }
-  GE_CHK_STATUS_RET_NOLOG(context_->DeployCommGroup(comm_groups));
 
   GE_CHK_STATUS_RET(BatchParseAndLoadModels(message), "Failed to parse and load models");
   GEEVENT("[Batch][LoadModel] success, model size = %d.", message.models_size());

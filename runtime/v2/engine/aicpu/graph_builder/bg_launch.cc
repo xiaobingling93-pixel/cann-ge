@@ -13,7 +13,7 @@
 #include "framework/common/taskdown_common.h"
 #include "register/kernel_registry.h"
 #include "common/debug/ge_log.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "graph/load/model_manager/model_manager.h"
 #include "graph_builder/bg_memory.h"
 #include "graph_builder/value_holder_generator.h"

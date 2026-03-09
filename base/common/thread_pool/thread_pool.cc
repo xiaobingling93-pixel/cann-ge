@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 
 #include <atomic>
 #include <functional>

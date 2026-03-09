@@ -85,11 +85,8 @@ private:
 class AclErrorLogManager {
 public:
     static std::string FormatStr(const char_t *const fmt, ...);
-#if !defined(ENABLE_DVPP_INTERFACE) || defined(RUN_TEST)
     static void ReportInputError(const char *errorCode, const std::vector<const char *> &key = {},
         const std::vector<const char *> &val = {});
-#else
-#endif
     static void ReportInputErrorWithChar(const char_t *const errorCode, const char_t *const argNames[],
         const char_t *const argVals[], const size_t size);
     static void ReportInnerError(const char_t *const fmt, ...);

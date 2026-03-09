@@ -10,7 +10,7 @@
 
 #include "framework/common/op/ge_op_utils.h"
 
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "graph/anchor.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/tensor_utils.h"

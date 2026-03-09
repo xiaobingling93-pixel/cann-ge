@@ -540,7 +540,6 @@ TEST_F(TestBrcBuf, case_01) {
   std::map<std::string, std::string> options;
   options["output_file_path"] = "./";
   options["gen_extra_info"] = "1";
-  options["duration_level"] = "1";
   options["solver_type"] = "AxesReorder";
   EXPECT_EQ(GenTilingImpl("BrcBuf", graphs, options), true);
   AddHeaderGuardToFile("autofuse_tiling_func_common.h", "__AUTOFUSE_TILING_FUNC_COMMON_H__");

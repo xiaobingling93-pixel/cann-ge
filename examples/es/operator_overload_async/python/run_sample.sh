@@ -161,7 +161,7 @@ case "${TARGET}" in
     pip install --force-reinstall --upgrade --target ./${BUILD_DIR}/whl_package  "./${BUILD_DIR}/output/whl/es_all-1.0.0-py3-none-any.whl"
     export LD_LIBRARY_PATH="$PWD/${BUILD_DIR}/output/lib64:$LD_LIBRARY_PATH"
     if dump_and_run_python_graph; then
-      echo "[Success] sample 执行成功, pbtxt dump 已生成在当前目录。该文件以 ge_onnx_ 开头，可以在 netron 中打开显示"
+      echo "[Success] sample 执行成功，pbtxt dump 已生成在当前目录。该文件以 ge_onnx_ 开头，可以在 netron 中打开显示"
     else
       echo "[Error] sample 执行失败，请检查上述错误信息" >&2
       exit 1

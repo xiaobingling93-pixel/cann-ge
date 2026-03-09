@@ -71,17 +71,9 @@ class DeployState {
   DeployState::FlowRoutePlans &MutableFlowRoutePlansToDeploy();
   void AddLocalSubmodelDesc(int32_t device_id, int32_t device_type, const deployer::SubmodelDesc &submodel_desc);
 
-  void AddLocalCommGroup(int32_t device_id, int32_t device_type, const deployer::HcomCommGroup &comm_group);
-
   const std::set<int32_t> &GetDeployedNodeIds() const;
 
   uint32_t GetSubmodelId(const std::string &submodel_name) const;
-
-  const std::string &GetHcomRankTable() const;
-  void SetHcomRankTable(const std::string &hcom_rank_table);
-
-  const std::string &GetHcomRoleTable() const;
-  void SetHcomRoleTable(const std::string &hcom_role_table);
 
   uint64_t GetSessionId() const;
   void SetSessionId(uint64_t session_id);
@@ -121,10 +113,7 @@ class DeployState {
   std::map<ExecutorManager::ExecutorKey, std::vector<deployer::SubmodelDesc>> local_submodel_descs_;
   std::pair<int32_t, std::unique_ptr<HeterogeneousExchangeDeployer>> node_exchange_deployer_pair_;
   std::set<int32_t> deployed_node_ids_;
-  std::string hcom_rank_table_;
-  std::string hcom_role_table_;
   mutable std::map<std::string, uint32_t> submodel_ids_;
-  std::map<std::pair<int32_t, int32_t>, std::vector<HcomCommGroup>> local_comm_groups_;
   std::map<std::string, std::string> global_options_;
   std::map<std::string, std::string> session_options_;
   std::map<std::string, std::string> graph_options_;

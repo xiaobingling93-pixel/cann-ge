@@ -32,16 +32,11 @@ Status FlowModelReceiver::UpdateDeployPlan(const deployer::UpdateDeployPlanReque
   deploy_state.SetRootModelId(root_model_id);
   deploy_state.SetGraphId(graph_id);
   deploy_state.SetSessionId(request.session_id());
-  deploy_state.SetHcomRankTable(request.hcom_rank_table());
-  deploy_state.SetHcomRoleTable(request.hcom_role_table());
   deploy_state.SetOptions(request.options());
   GE_CHECK_LE(request.submodel_descs_size(), kMaxSubmodelDescSize);
   GE_CHECK_GE(request.device_id(), 0);
   for (auto &submodel_desc : request.submodel_descs()) {
     deploy_state.AddLocalSubmodelDesc(request.device_id(), request.device_type(), submodel_desc);
-  }
-  for (const auto &group : request.comm_groups()) {
-    deploy_state.AddLocalCommGroup(request.device_id(), request.device_type(), group);
   }
   GELOGI("DeployPlan updated, session_id = %lu, root_model_id = %u", request.session_id(), root_model_id);
   return SUCCESS;

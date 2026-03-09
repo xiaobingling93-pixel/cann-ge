@@ -20,7 +20,8 @@ file(GLOB_RECURSE ATT_SRCS CONFIGURE_DEPENDS
         "${CODE_ROOT_DIR}/att/generator/*.cpp"
         "${CODE_ROOT_DIR}/att/dtree/*.cpp"
         "${CODE_ROOT_DIR}/att/util/*.cpp"
-        "${CODE_ROOT_DIR}/att/gen_model_info/*.cpp")
+        "${CODE_ROOT_DIR}/att/gen_model_info/*.cpp"
+        "${CODE_ROOT_DIR}/att/gen_model_info/utils/*.cpp")
 
 target_sources(aihac_codegen PRIVATE
     ${CODE_ROOT_DIR}/att/gen_tiling_impl.cpp

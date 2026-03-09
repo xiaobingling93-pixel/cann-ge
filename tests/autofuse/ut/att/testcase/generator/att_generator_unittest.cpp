@@ -19,7 +19,6 @@
 #include "tiling_code_gen_impl.h"
 #undef private
 #undef protected
-#include "args_manager.h"
 #include "generator_utils/tilingdata_gen_utils.h"
 
 #include <symengine/symengine_rcp.h>
@@ -307,7 +306,7 @@ TEST(GeneratorUT, TilingCodeGenImplPGO) {
     return true;
   }
   virtual double GetPerf(TilingData &tiling_data) { return 0.0; }
-  virtual std::string GetScheduleName() { return ""; }
+  virtual const char* GetScheduleName() { return ""; }
   virtual void TilingSummary(TilingData &tiling_data) = 0;
   virtual bool ExecutePGOSolver(TilingData &tiling_data, std::vector<AutofuseTilingDataPerf>& tiling_data_list, AutofuseTilingData* autofuse_tiling_data, void* stream, std::unordered_map<int64_t, uint64_t> &workspace_map, std::vector<uint32_t*> block_dim_vec={}) {
     return false;

@@ -45,11 +45,8 @@ class RuntimeMock : public RuntimeStub {
 
 void InitBatchLoadDynamicModelMessage(const std::vector<QueueAttrs> &input_queues,
                                       const std::vector<QueueAttrs> &output_queues,
-                                      const int32_t rank_id,
                                       deployer::ExecutorRequest &request) {
   auto batch_load_model_messgae = request.mutable_batch_load_model_message();
-  batch_load_model_messgae->set_rank_table("rank_table_test");
-  batch_load_model_messgae->set_rank_id(std::to_string(rank_id));
   deployer::ExecutorRequest_LoadModelRequest model_request;
   for (auto &in_queue : input_queues) {
     auto *queue_def = model_request.mutable_model_queues_attrs()->add_input_queues_attrs();
@@ -261,12 +258,6 @@ TEST_F(EventHandlerTest, TestEventHandler) {
   uint32_t submodel_id = 1;
 
   auto batch_load_model_request = request.mutable_batch_load_model_message();
-  batch_load_model_request->set_rank_table("rank_table");
-  batch_load_model_request->set_rank_id("0");
-  auto new_group = batch_load_model_request->add_comm_groups();
-  std::vector<uint32_t> group_rank_list = {0, 1, 2, 3};
-  new_group->set_group_name("sub_group");
-  new_group->mutable_group_rank_list()->Add(group_rank_list.begin(), group_rank_list.end());
   auto var_manager_info = batch_load_model_request->mutable_var_manager_info();
   var_manager_info->set_device_id(0);
   var_manager_info->set_session_id(1);
@@ -522,15 +513,6 @@ TEST_F(EventHandlerTest, TestInitVarManagerInfo) {
   VarManagerPool::Instance().RemoveVarManager(1);
 }
 
-TEST_F(EventHandlerTest, DeployRankTable_Success) {
-  string rank_table = "fake_rankTable";
-  string role_table = "fake_roleTable";
-  string rank_id = "1";
-  ExecutorContext context;
-  auto ret = context.DeployRankTable(rank_table, rank_id, role_table);
-  EXPECT_EQ(ret, SUCCESS);
-}
-
 TEST_F(EventHandlerTest, CreateProxyDynamicModelExecutor_Success) {
   ExecutorContext::ModelHandle handle;
   EXPECT_NE(handle.CreateProxyDynamicModelExecutor(), nullptr);
@@ -561,7 +543,7 @@ TEST_F(EventHandlerTest, LoadDynamicModelWithQ_Failed) {
   QueueAttrs in_queue_0 = {.queue_id = 0, .device_type = CPU, .device_id = 0};
   QueueAttrs in_queue_1 = {.queue_id = 1, .device_type = NPU, .device_id = 0};
   QueueAttrs out_queue_0 = {.queue_id = 2, .device_type = CPU, .device_id = 0};
-  InitBatchLoadDynamicModelMessage({in_queue_0, in_queue_1}, {out_queue_0}, 0, request);
+  InitBatchLoadDynamicModelMessage({in_queue_0, in_queue_1}, {out_queue_0}, request);
   EventHandler handler;
   EXPECT_EQ(handler.Initialize(), SUCCESS);
   handler.context_ = MakeUnique<MockExecutorContext>();
@@ -598,7 +580,7 @@ TEST_F(EventHandlerTest, LoadDynamicModelWithQ_Success) {
   QueueAttrs in_queue_0 = {.queue_id = 0, .device_type = CPU, .device_id = 0};
   QueueAttrs in_queue_1 = {.queue_id = 1, .device_type = NPU, .device_id = 0};
   QueueAttrs out_queue_0 = {.queue_id = 2, .device_type = CPU, .device_id = 0};
-  InitBatchLoadDynamicModelMessage({in_queue_0, in_queue_1}, {out_queue_0}, 0, request);
+  InitBatchLoadDynamicModelMessage({in_queue_0, in_queue_1}, {out_queue_0}, request);
   EventHandler handler;
   EXPECT_EQ(handler.Initialize(), SUCCESS);
   handler.context_ = MakeUnique<MockExecutorContext>();
@@ -607,8 +589,6 @@ TEST_F(EventHandlerTest, LoadDynamicModelWithQ_Success) {
   ASSERT_FALSE(handler.context_.get() == nullptr);
   auto ret = handler.BatchLoadModels(request);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(handler.context_->rank_id_, "0");;
-  EXPECT_EQ(handler.context_->rank_table_, "rank_table_test");
   EXPECT_EQ(handler.context_->model_handles_.size(), 1);
   auto &handle = handler.context_->model_handles_[0U][0U];
   EXPECT_EQ(handle->dynamic_model_executor_->num_outputs_, 1);

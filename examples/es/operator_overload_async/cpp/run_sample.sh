@@ -150,7 +150,7 @@ case "${TARGET}" in
     source "$SETENV_FILE"
     set -e
     echo "[Info] 运行 ${BUILD_DIR}/sample run"
-    "${BUILD_DIR}/sample" run && echo "[Success] sample_and_run 执行成功, pbtxt和data输出dump 已生成在当前目录"
+    "${BUILD_DIR}/sample" run && echo "[Success] sample_and_run 执行成功，pbtxt和data输出dump 已生成在当前目录"
     ;;
   *)
     echo "错误: 未知目标 ${TARGET}" >&2

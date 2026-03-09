@@ -10,7 +10,7 @@
 
 #include "graph/passes/control_flow_and_stream/attach_stream_label_pass.h"
 #include "ge/ge_api_types.h"
-#include "common/omg_util.h"
+#include "common/omg_util/omg_util.h"
 #include "common/checker.h"
 #include "base/err_msg.h"
 

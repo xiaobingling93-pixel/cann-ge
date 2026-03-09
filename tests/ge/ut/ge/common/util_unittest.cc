@@ -22,7 +22,7 @@
 #include "graph/graph.h"
 #include "graph/normal_graph/compute_graph_impl.h"
 #include "common/util.h"
-#include "common/proto_util.h"
+#include "common/proto_util/proto_util.h"
 #include "graph/utils/math_util.h"
 #include "graph/passes/graph_builder_utils.h"
 #include "graph/types.h"

@@ -396,19 +396,63 @@ std::unique_ptr<Om2ModelExecutor> LoadOm2ExecutorFromData(ge::ModelData &model_d
 }
 
 ge::Status IsOm2Model(const void *const data, const size_t size, bool &is_support) {
-  if (data == nullptr || size < FILE_MAGIC_HEADER_SIZE) {
-    return ge::PARAM_INVALID;
+  if (data == nullptr) {
+    REPORT_PREDEFINED_ERR_MSG("E10001", std::vector<const char *>({"parameter", "value", "reason"}),
+                                    std::vector<const char *>({"data", "nullptr", "Model data cannot be nullptr."}));
+    GELOGE(ACL_ERROR_GE_PARAM_INVALID, "[Check][Param] Invalid om2 model. Model data can not be nullptr.");
+    return ACL_ERROR_GE_PARAM_INVALID;
   }
+
+  if (size < FILE_MAGIC_HEADER_SIZE) {
+    const std::string err_msg =
+        "Model data size must be greater than or equal to " + std::to_string(FILE_MAGIC_HEADER_SIZE);
+    REPORT_PREDEFINED_ERR_MSG("E10001", std::vector<const char *>({"parameter", "value", "reason"}),
+                              std::vector<const char *>({"size", std::to_string(size).c_str(), err_msg.c_str()}));
+    GELOGE(ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID,
+           "[Check][Param] Invalid om2 model. Model data size %zu must be greater than or equal to %zu.", size,
+           FILE_MAGIC_HEADER_SIZE);
+    return ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID;
+  }
+
   is_support = std::memcmp(data, OM2_MAGIC, FILE_MAGIC_HEADER_SIZE) == 0;
   return ge::SUCCESS;
 }
 
 ge::Status IsOm2Model(const char *file_path, bool &is_support) {
+  const std::string real_path = ge::RealPath(file_path);
+  if (real_path.empty()) {
+    std::array<char_t, kMaxErrorStringLen + 1U> err_buf = {};
+    const auto err_msg = mmGetErrorFormatMessage(mmGetErrorCode(), err_buf.data(), kMaxErrorStringLen);
+    std::string reason = "[Error " + std::to_string(mmGetErrorCode()) + "] " + err_msg;
+    REPORT_PREDEFINED_ERR_MSG("E13000", std::vector<const char *>({"patch", "errmsg"}),
+                              std::vector<const char *>({file_path, reason.c_str()}));
+    GELOGE(ACL_ERROR_GE_EXEC_MODEL_PATH_INVALID, "[Check][Param]Model file path %s is invalid", file_path);
+    return ACL_ERROR_GE_EXEC_MODEL_PATH_INVALID;
+  }
+
   std::ifstream file(file_path, std::ios::binary);
   if (!file.is_open()) {
-    GELOGE(ge::FAILED, "Opening file %s failed!", file_path);
-    return ge::FAILED;
+    std::array<char_t, kMaxErrorStringLen + 1U> err_buf = {};
+    const auto err_msg = mmGetErrorFormatMessage(mmGetErrorCode(), &err_buf[0], kMaxErrorStringLen);
+    GELOGE(ACL_ERROR_GE_EXEC_MODEL_PATH_INVALID, "[Open][File]Failed, file %s, error %s", file_path, err_msg);
+    REPORT_INNER_ERR_MSG("E19999", "Open file %s failed, error %s", file_path, err_msg);
+    return ACL_ERROR_GE_EXEC_MODEL_PATH_INVALID;
   }
+
+  (void)file.seekg(0, std::ifstream::end);
+  const size_t len = static_cast<size_t>(file.tellg());
+  (void)file.seekg(0, std::ifstream::beg);
+  if (len < FILE_MAGIC_HEADER_SIZE) {
+    const std::string reason = "Invalid om2 file. The model data size " + std::to_string(len) + " is smaller than " +
+                               std::to_string(FILE_MAGIC_HEADER_SIZE) + ".";
+    (void)REPORT_PREDEFINED_ERR_MSG("E10001", std::vector<const char *>({"parameter", "value", "reason"}),
+                                    std::vector<const char *>({"file_path", file_path, reason.c_str()}));
+    GELOGE(ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID,
+           "[Check][Param] Invalid om2 model. Model data size %" PRIu64 " must be greater than or equal to %zu.", len,
+           FILE_MAGIC_HEADER_SIZE);
+    return ACL_ERROR_GE_EXEC_MODEL_DATA_SIZE_INVALID;
+  }
+
   uint8_t magic[FILE_MAGIC_HEADER_SIZE] = {};
   file.read(reinterpret_cast<char *>(magic), FILE_MAGIC_HEADER_SIZE);
   const auto read_len = static_cast<size_t>(file.gcount());

@@ -14,7 +14,7 @@
 ├── CMakeLists.txt               // 编译脚本
 ├── data         
 |   ├──torch_gen_onnx.py         // torch脚本用于导出onnx
-|   ├──torch_forward_1.py          // torch脚本用于在线推理,pass成功执行
+|   ├──torch_forward_1.py          // torch脚本用于在线推理，pass成功执行
 |   ├──torch_forward_2.py          // torch脚本用于在线推理，pass被拦截
 |—— gen_es_api
 |   |——CMakeLists.txt            // 生成eager style api的编译脚本
@@ -35,9 +35,9 @@
     - `Patterns`定义匹配模板，用于在整图中获取与该模板相同的拓扑。
       - `pattern->CaptureTensor()`捕获tensor，tensor结构为：`{NodeIo,index}`。
     - `MeetRequirements`对模板匹配到的拓扑进行筛选。
-      - `match_result->GetCapturedTensor(kAddCaptureIdx,add_node);`读取捕获的NodeIo,进行检查。
+      - `match_result->GetCapturedTensor(kAddCaptureIdx,add_node);`读取捕获的NodeIo，进行检查。
     - `Replacement`定义替换部分。
-      - `match_result->GetCapturedTensor(kMatMulCaptureIdx, matmul_node);`读取捕获的NodeIo,提取属性值。
+      - `match_result->GetCapturedTensor(kMatMulCaptureIdx, matmul_node);`读取捕获的NodeIo，提取属性值。
 3. 注册`FuseMatMulAndAddPass`为自定义融合pass，执行阶段为BeforeInferShape。
 
 ## 程序编译<a name="section6645633456813"></a>
@@ -122,13 +122,13 @@
        ```
        python torch_forward_1.py/torch_forward_2.py
        ```  
-   - 对于torch_forward_1.py,日志中出现如下打印：
+   - 对于torch_forward_1.py，日志中出现如下打印：
      ```
      Define pattern for FuseMatMulAndAddPass in capture tensor sample
      Define MeetRequirements for FuseMatMulAndAddPass in capture tensor sample
      Define replacement for FuseMatMulAndAddPass in capture tensor sample
      ```
-   - 对于torch_forward_2.py,日志中出现如下打印：
+   - 对于torch_forward_2.py，日志中出现如下打印：
       ```
       Define pattern for FuseMatMulAndAddPass in capture tensor sample
       Define MeetRequirements for FuseMatMulAndAddPass in capture tensor sample

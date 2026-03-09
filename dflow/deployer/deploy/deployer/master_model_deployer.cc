@@ -13,7 +13,7 @@
 #include <future>
 #include "framework/common/util.h"
 #include "common/compile_profiling/ge_call_wrapper.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "deploy/deployer/heterogeneous_model_deployer.h"
 #include "deploy/flowrm/network_manager.h"
 #include "deploy/flowrm/heterogeneous_exchange_deployer.h"

@@ -18,7 +18,7 @@
 #include "common/ge_inner_error_codes.h"
 #include "common/op/ge_op_utils.h"
 #include "common/types.h"
-#include "common/fp16_t.h"
+#include "common/fp16_t/fp16_t.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/types.h"
 #include "graph/utils/attr_utils.h"

@@ -40,14 +40,14 @@ set(SRC_FORMAT_TRANSFERS
 )
 
 set(SRC_LIST
-    "common/b_cast.cc"
+    "common/b_cast/b_cast.cc"
     "common/plugin/runtime_plugin_loader.cc"
     "common/plugin/plugin_caller.cc"
-    "common/omg_util.cc"
+    "common/omg_util/omg_util.cc"
     "common/context/properties_manager.cc"
     "common/op/transop_util.cc"
     "common/single_op_parser.cc"
-    "common/platform_info_util.cc"
+    "common/platform_info_util/platform_info_util.cc"
     "common/op_tiling/op_tiling_rt2.cc"
     "common/op_tiling/tiling_memcheck.cc"
     "common/op_tiling/tiling_dfx.cc"
@@ -56,7 +56,7 @@ set(SRC_LIST
     "graph/bin_cache/node_compile_cache_module.cc"
     "graph/bin_cache/op_binary_cache.cc"
     "host_cpu_engine/host_cpu_engine.cc"
-    "common/option_supportion_checker.cc"
+    "common/option_supportion_checker/option_supportion_checker.cc"
     "${AIR_CODE_DIR}/compiler/graph/fusion/pass/fusion_pass_reg.cc"
     "${AIR_CODE_DIR}/compiler/graph/fusion/pass/pass_registry.cc"
 )
@@ -78,9 +78,9 @@ set(SRC_BASE_LIST
     "common/dump/exception_dumper.cc"
     "common/dump/dump_properties.cc"
     "common/fmk_error_codes.cc"
-    "common/const_place_holder_utils.cc"
-    "common/datatype_transfer.cc"
-    "common/fp16_t.cc"
+    "common/const_place_holder_utils/const_place_holder_utils.cc"
+    "common/datatype_transfer/datatype_transfer.cc"
+    "common/fp16_t/fp16_t.cc"
     "common/math/hif8_t.cc"
     "common/plugin/datatype_util.cc"
     "common/plugin/op_tiling_manager.cc"
@@ -110,11 +110,11 @@ set(SRC_BASE_LIST
     "common/kernel_handles_manager/cust_aicpu_kernel_handles_manager.cc"
     "common/kernel_handles_manager/kernel_handles_manager.cc"
     "common/kernel_handles_manager/kernel_handle_utils.cc"
-    "common/thread_pool.cc"
+    "common/thread_pool/thread_pool.cc"
     "common/types.cc"
     "common/util.cc"
-    "common/proto_util.cc"
-    "common/file_constant_utils.cc"
+    "common/proto_util/proto_util.cc"
+    "common/file_constant_utils/file_constant_utils.cc"
     "common/tbe_handle_store/tbe_handle_store.cc"
     "common/tbe_handle_store/bin_register_utils.cc"
     "graph/manager/graph_var_manager.cc"
@@ -540,14 +540,14 @@ endif ()
 #############################################
 set(STUB_HEADER_LIST
     ${AIR_CODE_DIR}/base/common/error_tracking/error_tracking.h
-    ${AIR_CODE_DIR}/base/common/omg_util.h
+    ${AIR_CODE_DIR}/base/common/omg_util/omg_util.h
     ${AIR_CODE_DIR}/base/common/op_tiling/op_tiling_rt2.h
     ${AIR_CODE_DIR}/base/common/op_tiling/tiling_memcheck.h
     ${AIR_CODE_DIR}/base/common/op_tiling/tiling_dfx.h
     ${AIR_CODE_DIR}/base/common/plugin/runtime_plugin_loader.h
     ${AIR_CODE_DIR}/base/common/tbe_handle_store/bin_register_utils.h
     ${AIR_CODE_DIR}/base/host_cpu_engine/host_cpu_engine.h
-    ${AIR_CODE_DIR}/base/common/platform_info_util.h
+    ${AIR_CODE_DIR}/base/common/platform_info_util/platform_info_util.h
 )
 
 list(TRANSFORM STUB_HEADER_LIST

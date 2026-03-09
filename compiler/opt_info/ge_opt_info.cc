@@ -17,7 +17,7 @@
 #include "common/debug/ge_log.h"
 #include "common/checker.h"
 #include "register/optimization_option_registry.h"
-#include <common/option_supportion_checker.h>
+#include "common/option_supportion_checker/option_supportion_checker.h"
 
 namespace ge {
 Status GeOptInfo::SetOptInfo() {

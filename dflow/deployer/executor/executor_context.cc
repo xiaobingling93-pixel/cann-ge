@@ -23,16 +23,14 @@
 #include "runtime/mem.h"
 #include "runtime/dev.h"
 #include "mmpa/mmpa_api.h"
-#include "hccl/hccl_types.h"
 #include "graph/debug/ge_attr_define.h"
 #include "dflow/base/deploy/deploy_planner.h"
 #include "common/checker.h"
-#include "common/thread_pool.h"
+#include "common/thread_pool/thread_pool.h"
 #include "common/helper/model_parser_base.h"
 #include "framework/common/helper/model_helper.h"
 #include "toolchain/prof_api.h"
 #include "dflow/inc/data_flow/model/graph_model.h"
-#include "external/ge/ge_ir_build.h"
 #include "acl/acl_mdl.h"
 #include "acl/acl_rt.h"
 #include "external/graph/types.h"
@@ -50,10 +48,6 @@ constexpr int32_t kDefaultAttachQueueTimeout = 3000;  // 3s
 constexpr const char_t *kAttrNameInvokedByBuiltIn = "_dflow_invoked_by_built_in";
 constexpr int32_t kDefaultHostDeviceId = 64;
 }  // namespace
-
-static void to_json(nlohmann::json &j, const HcomCommGroup &comm_group) {
-  j = nlohmann::json{{"group_name", comm_group.group_name}, {"group_rank_list", comm_group.group_rank_list}};
-}
 
 class SharedMemoryManager : public MemManager {
  public:
@@ -313,54 +307,6 @@ Status ExecutorContext::SetDeviceSatMode() {
       GE_CHK_RT_RET(rtSetDeviceSatMode(it->second));
       GEEVENT("rtSetDeviceSatMode success, mode = %d.", static_cast<int32_t>(it->second));
     }
-  }
-  return SUCCESS;
-}
-
-Status ExecutorContext::DeployCommGroup(const std::vector<HcomCommGroup> &comm_groups) const {
-  if (comm_groups.empty()) {
-    return SUCCESS;
-  }
-  std::string comm_group_str;
-  try {
-    nlohmann::json j = comm_groups;
-    comm_group_str = j.dump();
-  } catch (const nlohmann::json::exception &e) {
-    GELOGE(FAILED, "Generate comm groups failed, exception = %s", e.what());
-    return FAILED;
-  }
-  UpdateGraphOptions(OPTION_EXEC_HCOM_GROUPLIST, comm_group_str);
-  GELOGD("[Handle][HcomCommGroup] deploy success. group name = %s.", comm_group_str.c_str());
-  return SUCCESS;
-}
-
-Status ExecutorContext::DeployRankTable(const std::string &rank_table,
-                                        const std::string &rank_id,
-                                        const std::string &role_table) {
-  rank_table_ = rank_table;
-  rank_id_ = rank_id;
-  role_table_ = role_table;
-  return SUCCESS;
-}
-
-Status ExecutorContext::DestroyRankTable() {
-  GELOGI("Destroy rank table begin.");
-  constexpr const char *kHcclPath = "libhccl.so";
-  const auto handle = mmDlopen(kHcclPath, static_cast<int32_t>(static_cast<uint32_t>(MMPA_RTLD_NOW) |
-      static_cast<uint32_t>(MMPA_RTLD_GLOBAL)));
-  GE_CHECK_NOTNULL(handle);
-  GE_MAKE_GUARD(not_used_var, [&handle] {
-    if (mmDlclose(handle) != 0) {
-      GELOGW("Failed to close handle %s", mmDlerror());
-    }
-  });
-
-  const auto hcom_destroy_func = reinterpret_cast<HcclResult(*)()>(mmDlsym(handle, "HcomDestroy"));
-  if (hcom_destroy_func != nullptr) {
-    auto hccl_ret = hcom_destroy_func();
-    GE_CHK_BOOL_RET_STATUS(hccl_ret == HCCL_SUCCESS, FAILED, "Failed to invoke HcomDestroy, ret = %d",
-                           static_cast<int32_t>(hccl_ret));
-    GELOGI("Destroy rank table success.");
   }
   return SUCCESS;
 }
