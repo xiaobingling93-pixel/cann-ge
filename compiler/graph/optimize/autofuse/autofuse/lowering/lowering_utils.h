@@ -11,10 +11,7 @@
 #ifndef AUTOFUSE_LOWERING_LOWERING_UTILS_H_
 #define AUTOFUSE_LOWERING_LOWERING_UTILS_H_
 #include <vector>
-#include <string>
-#include <sstream>
 #include <set>
-#include <algorithm>
 #include "graph/node.h"
 #include "graph/utils/op_desc_utils.h"
 #include "asc_lowerer/asc_overrides.h"
@@ -29,51 +26,6 @@ struct LoweringConfig {
   size_t max_buffer_readers = 4U;
 };
 
-enum class PrefixType {
-  FusedNumber,   // autofuse_fused_N
-  PureNumber,    // autofuse_N
-  PureString     // autofuse_字符
-};
-
-class FuseNodeNameFormatter {
-  public:
-    // main process func
-    static std::string SimplifyProcess(const std::string& node_name);
-
-  private:
-    static std::pair<PrefixType, size_t> ParsePrefix(const std::vector<std::string>& parts);
-
-    static std::string FormatContinuous(const std::vector<std::string>& op_parts);
-
-    static std::string FormatGlobal(const std::vector<std::string>& op_parts);
-
-    static std::string FormatWithConcat(const std::vector<std::string>& op_parts);
-
-    static bool IsConcatOperator(const std::string& op) {
-      return (op.length() >= 6) && (op.compare(0, 6, "Concat") == 0);
-    }
-
-    static bool IsStrInteger(const std::string& str) {
-      if (str.empty()) {
-        return false;
-      }
-
-      size_t start = 0;
-      if ((str[0] == '+') || (str[0] == '-')) {
-        if (str.length() == 1) {
-          return false;
-        }
-        start = 1;
-      }
-
-      for (size_t i = start; i < str.length(); ++i) {
-        if (!std::isdigit(str[i])) {
-          return false;
-        }
-      }
-      return true;
-    }
-};
 
 class LoweringUtils {
  public:

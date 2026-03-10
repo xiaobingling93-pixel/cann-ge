@@ -447,6 +447,10 @@ std::string CreateFuseNodeName(const NodePtr &node1, const NodePtr &node2, const
     ss << "autofuse_fused_" << counter->NextId() << "_" << ordered_node_type;
   }
   std::string node_name = ss.str();
+  if (node_name.size() > AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len) {
+    // 判断超长截断
+    node_name = node_name.substr(0, AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len);
+  }
   return node_name;
 }
 
