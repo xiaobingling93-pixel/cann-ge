@@ -17,19 +17,18 @@ Status MicroAddApiCall::Generate(const codegen::TensorManager &tensor_mng, [[may
                                      CallParam &param, string &result) {
   GE_ASSERT_TRUE(this->inputs_.size() == 2, "Add api call must have 2 inputs");
   GE_ASSERT_TRUE(this->outputs_.size() == 1, "Add api call must have 1 output");
-
+  for (auto input : this->inputs_) {
+    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(input.second));
+  }
+  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->outputs_[0].second));
   std::stringstream ss;
   ss << "AscendC::MicroAPI::" << this->api_name_ << (this->second_input_scalar_ ? "s" : "") << "(";
-  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->outputs_[0].second));
   ss << *(tensor_mng.GetTensor(this->outputs_[0].second)) << ", ";
-  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->inputs_[0].second));
   ss << *(tensor_mng.GetTensor(this->inputs_[0].second)) << ", ";
   if (inputs_[1].first == TensorType::REG_TENSOR) {
-    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->inputs_[1].second));
-    ss << *(tensor_mng.GetTensor(inputs_[1].second)) << ", ";
+    ss << *tensor_mng.GetTensor(inputs_[1].second) << ", ";
   } else {
-    GE_ASSERT_NOTNULL(tpipe.GetTensor(this->inputs_[1].second));
-    ss << *(tpipe.GetTensor(inputs_[1].second)) << ", ";
+    ss << *tpipe.GetTensor(inputs_[1].second) << ", ";
   }
   ss << param.p_reg << ");" << std::endl;
   result = ss.str();

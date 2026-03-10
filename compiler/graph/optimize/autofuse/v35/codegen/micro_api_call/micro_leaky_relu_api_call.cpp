@@ -20,11 +20,9 @@ Status MicroLeakyReluApiCall::Generate(const codegen::TensorManager &tensor_mng,
   std::string x_dtype;
   ss << "AscendC::MicroAPI::" << this->api_name_ << "(";
   for (auto out_arg : this->outputs_) {
-    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(out_arg.second));
     ss << *(tensor_mng.GetTensor(out_arg.second)) << ", ";
   }
   for (auto in_arg : this->inputs_) {
-    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(in_arg.second));
     GE_CHK_STATUS_RET(Tensor::DtypeName(tensor_mng.GetTensor(in_arg.second)->dtype_, x_dtype), "get name of dtype:%d failed", static_cast<int32_t>(tensor_mng.GetTensor(in_arg.second)->dtype_));
     ss << *(tensor_mng.GetTensor(in_arg.second)) << ", ";
   }

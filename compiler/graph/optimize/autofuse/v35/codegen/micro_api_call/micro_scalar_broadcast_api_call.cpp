@@ -16,18 +16,15 @@ namespace codegen {
 Status MicroScalarBroadcastApiCall::Generate(const TensorManager &tensor_mng, const TPipe &tpipe, CallParam &param,
                                              string &result) {
   std::stringstream ss;
-  auto in_tensor_id = GetInputTensorIdByIndex(0);
   auto out_tensor_id = GetOutputTensorIdByIndex(0);
   GE_ASSERT_NOTNULL(tensor_mng.GetTensor(out_tensor_id));
-
   auto dts = tensor_mng.GetTensor(out_tensor_id);
+  auto in_tensor_id = GetInputTensorIdByIndex(0);
   auto in_tensor_type = inputs_[0].first;
   ss << "AscendC::MicroAPI::Duplicate" << "(" << *dts << ", ";
   if (in_tensor_type == TensorType::REG_TENSOR) {
-    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(in_tensor_id));
     ss << *tensor_mng.GetTensor(in_tensor_id);
   } else {
-    GE_ASSERT_NOTNULL(tpipe.GetTensor(in_tensor_id));
     ss << *tpipe.GetTensor(in_tensor_id);
   }
   ss << ", " << param.p_reg << ");" << std::endl;
