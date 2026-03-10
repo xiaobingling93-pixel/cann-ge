@@ -56,7 +56,6 @@ private:
 class AutofuseUtils {
  public:
   static int64_t GenUniqueNumber();
-  static void ClearUniqueNumber();
 
   template <typename Container>
   static std::string VectorPairToStr(const Container &vec) {
@@ -185,7 +184,6 @@ class AutofuseUtils {
 
  private:
   static NodePtr ConvertAscBackendNodeToAscGraphNode(const ComputeGraphPtr compute_graph, const NodePtr &node);
-  static thread_local int64_t number;
 
   static Status SerializeAndPackComputeGraph(const ComputeGraphPtr &compute_graph, const NodePtr &node,
                                              std::string &output, bool isHash = false);

@@ -189,14 +189,9 @@ void AutofuseUtils::DumpGraphToOnnxLevel1(const ge::ComputeGraph &compute_graph,
   ge::GraphUtils::DumpGrphToOnnx(compute_graph, prefix.str(), suffix);
 }
 
-thread_local int64_t AutofuseUtils::number = 0;
-
 int64_t AutofuseUtils::GenUniqueNumber() {
+  thread_local static int64_t number = 0;
   return number++;
-}
-
-void AutofuseUtils::ClearUniqueNumber() {
-  number = 0;
 }
 
 Status AutofuseUtils::AddOperatorPrototypeAttrs(const OpDescPtr &op_desc) {
