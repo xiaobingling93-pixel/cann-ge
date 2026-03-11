@@ -161,6 +161,42 @@ TEST_F(TestPipePerfExpr, case0)
   EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, exe_times, head_cost), ge::SUCCESS);
 }
 
+namespace {
+// 辅助函数：验证 contrib 变量
+void VerifyContribVar(const std::map<Expr, TenaryOp, ExprCmp> &exe_times) {
+  bool found_aiv_vec_contrib = false;
+  for (const auto &pair : exe_times) {
+    if (Str(pair.first) == "eq_Eq_AIV_VEC_contrib") {
+      found_aiv_vec_contrib = true;
+      const std::string &contrib_expr = pair.second.GetTenaryOpStr();
+      EXPECT_NE(contrib_expr.find("eq_Eq_compare_node"), std::string::npos)
+          << "contrib expr should reference eq_Eq_compare_node: " << contrib_expr;
+      EXPECT_NE(contrib_expr.find("eq_exe_time"), std::string::npos)
+          << "contrib expr should reference eq_exe_time: " << contrib_expr;
+    }
+  }
+  EXPECT_TRUE(found_aiv_vec_contrib) << "Should find eq_Eq_AIV_VEC_contrib in exe_times";
+}
+
+// 辅助函数：验证描述信息
+void VerifyDescriptions(const std::map<Expr, TenaryOp, ExprCmp> &exe_times) {
+  bool found_eq_desc = false;
+  for (const auto &pair : exe_times) {
+    std::string var_name = Str(pair.first);
+    std::string desc = pair.second.GetDescription();
+    if (!desc.empty()) {
+      std::cout << "var_name=" << var_name << ", desc=" << desc << std::endl;
+      if (var_name.find("compare_node") != std::string::npos) {
+        found_eq_desc = true;
+        EXPECT_TRUE(desc.find("in[") != std::string::npos || desc.find("out[") != std::string::npos)
+            << "Description should contain shape info: " << desc;
+      }
+    }
+  }
+  EXPECT_TRUE(found_eq_desc) << "Should find Eq node with description";
+}
+}  // namespace
+
 TEST_F(TestPipePerfExpr, case_get_perf_for_loop)
 {
   ge::AscGraph graph("graph");
@@ -177,40 +213,24 @@ TEST_F(TestPipePerfExpr, case_get_perf_for_loop)
   Expr head_cost;
   EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, exe_times, head_cost), ge::SUCCESS);
   ASSERT_EQ(pipe_costs.size(), 3);
-  std::vector<std::pair<Expr, Expr>> replace_vars;
-  std::string var_name;
-  std::string exe_time = "exe_time";
+
+  // 验证 exe_time 格式
   for (const auto &pair : exe_times) {
-    var_name = Str(pair.first);
-    if (var_name.rfind(exe_time) == (var_name.length() - exe_time.length())) {
+    std::string var_name = Str(pair.first);
+    if (var_name.rfind("exe_time") == (var_name.length() - std::string("exe_time").length())) {
       EXPECT_EQ(pair.second.GetTenaryOpStr(), "Ceiling((S0 / (z0t_size)))");
     }
   }
+
+  // 验证 contrib 变量
   const auto &pipe_vec_cost = std::string(pipe_costs[PipeType::AIV_VEC].Serialize().get());
-  // 外抛for循环
-  // dma==1时：
-  // 表达式变量名：eq_Eq_compare_node（节点名_节点类型）
-  // 注释描述：eq_Eq_in[z0t_size,2,10],[z0t_size,2,10]_out[z0t_size,2,10]_compare_node
-  const auto &iter = pipe_vec_cost.find("((1.245 * eq_Eq_compare_node * eq_exe_time * z0t_size) + 37.3699989318848)");
-  EXPECT_TRUE(iter != std::string::npos);
+  EXPECT_NE(pipe_vec_cost.find("eq_Eq_AIV_VEC_contrib"), std::string::npos);
+  VerifyContribVar(exe_times);
 
-  // 验证描述信息是否被正确设置
-  bool found_eq_desc = false;
-  for (const auto &pair : exe_times) {
-    std::string var_name = Str(pair.first);
-    std::string desc = pair.second.GetDescription();
-    if (!desc.empty()) {
-      std::cout << "var_name=" << var_name << ", desc=" << desc << std::endl;
-      if (var_name.find("compare_node") != std::string::npos) {
-        found_eq_desc = true;
-        // 验证描述包含形状信息
-        EXPECT_TRUE(desc.find("in[") != std::string::npos || desc.find("out[") != std::string::npos)
-            << "Description should contain shape info: " << desc;
-      }
-    }
-  }
-  EXPECT_TRUE(found_eq_desc) << "Should find Eq node with description";
+  // 验证描述信息
+  VerifyDescriptions(exe_times);
 
+  // 调试输出
   for (const auto &pipe_cost : pipe_costs) {
     std::cout << "pipe_cost.first: " << static_cast<int32_t>(pipe_cost.first)
               << ", pipe_cost.second: " << pipe_cost.second << std::endl;

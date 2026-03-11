@@ -84,6 +84,9 @@ namespace att {
         replace_vars_.emplace_back(var);
       }
     }
+    void SetTernaryOps(const std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+      tenary_ops_ = tenary_ops;
+    }
 
     void SetExeTimeMap(const std::map<Expr, std::vector<Expr>, ExprCmp> &exe_time_map) {
       for (const auto &pair : exe_time_map) {
@@ -156,6 +159,12 @@ namespace att {
     std::string GenGetStaticInputParam(const HardwareDef &hardware_type, bool no_type = false) const;
     std::string GenGetObjStaticInputParam(bool no_type = false);
     std::string GenGetObjStaticFunc();
+    void CollectInitialWorkList(std::vector<Expr> &work_list) const;
+    void CollectNeededTenaryVarsClosure(std::vector<Expr> &work_list, std::set<std::string> &needed_vars) const;
+    std::string GenTenaryVarDecls(const std::set<std::string> &needed_vars);
+    std::string GenSingleTenaryVar(const TenaryOp &op, const std::string &var_name,
+                                   std::set<std::string> &declared_vars,
+                                   std::map<std::string, std::string> &content_to_first_var);
     std::string GenGetTilingDataObjStaticFunc();
     std::string GenObjFunc();
     std::string GenGetUbSizeStaticFunc();
@@ -205,6 +214,7 @@ namespace att {
     ExprUintMap data_type_size_map_;
     ExprExprMap container_expr_;
     std::vector<std::pair<Expr, Expr>> replace_vars_;
+    std::map<Expr, TenaryOp, ExprCmp> tenary_ops_;
     std::map<Expr, std::vector<Expr>, ExprCmp> exe_time_map_;
     std::map<Expr, std::string, ExprCmp> container_names_;
     std::map<HardwareDef, Expr> hardware_use_map_;

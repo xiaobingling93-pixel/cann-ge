@@ -458,6 +458,7 @@ void SolverPassManager::InitSolverGen(AxesReorderSolverGen &solver_gen) {
   solver_gen.SetContainerExpr(args_manager_.GetContainerMap());
   solver_gen.SetContainerNames(args_manager_.GetContainerNames());
   solver_gen.SetReplaceVars(args_manager_.GetTenaryOpReplaceVars());
+  solver_gen.SetTernaryOps(args_manager_.GetTenaryOps());
   solver_gen.SetExeTimeMap(args_manager_.GetTenaryOpRelatedVars());
   solver_gen.SetInputAlign(GetInputsAlign(false));
   solver_gen.SetVarPriority(args_manager_.GetAxesPriority());

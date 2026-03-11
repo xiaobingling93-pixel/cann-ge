@@ -14,6 +14,7 @@
 #include "api_perf_register/perf_param.h"
 #include "api_perf_register/api_perf_factory.h"
 #include "api_perf_register/ascendc_api_perf.h"
+#include "utils/stable_node_id.h"
 
 namespace att {
 namespace {
@@ -471,7 +472,7 @@ ge::Status UpdateSwapPerf(const NodeDetail &node_info, const int32_t supported_m
     PipeType pipe_type = node_info.optype == kMoveUbToGm ? PipeType::AIV_MTE3 : PipeType::AIV_MTE2;
     GE_ASSERT_SUCCESS(UpdateTenary(swap_perf, perf_res));
     GE_ASSERT_SUCCESS(UpdateTenary(non_swap_perf, perf_res));
-    GetPerfVar(node_info.name, res, perf_res.tenary_ops);
+    GetPerfVar(att::SanitizeNodeName(node_info.name), res, perf_res.tenary_ops);
     perf_res.tenary_ops[res] = TenaryOp(CondType::K_LT, node_info.input_dims[dim_size - supported_max_dma_len],
                                         node_info.input_dims[dim_size - supported_max_dma_len - 1],
                                         GetPipeCost(swap_perf, pipe_type), GetPipeCost(non_swap_perf, pipe_type));
