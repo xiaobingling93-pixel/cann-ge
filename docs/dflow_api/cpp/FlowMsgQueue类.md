@@ -1,10 +1,9 @@
-# FlowMsgQueue类<a name="ZH-CN_TOPIC_0000002100989774"></a>
+# FlowMsgQueue类
 
--   **[FlowMsgQueue构造函数和析构函数](FlowMsgQueue构造函数和析构函数.md)**  
+- **[FlowMsgQueue构造函数和析构函数](FlowMsgQueue构造函数和析构函数.md)**  
 
--   **[Dequeue](Dequeue.md)**  
+- **[Dequeue](Dequeue.md)**  
 
--   **[Depth](Depth.md)**  
+- **[Depth](Depth.md)**  
 
--   **[Size](Size.md)**  
-
+- **[Size](Size.md)**  

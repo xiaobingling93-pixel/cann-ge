@@ -1,20 +1,19 @@
-# LLMConfig<a name="ZH-CN_TOPIC_0000002408010593"></a>
+# LLMConfig
 
--   **[LLMConfig构造函数](LLMConfig构造函数.md)**  
+- **[LLMConfig构造函数](LLMConfig构造函数.md)**  
 
--   **[generate\_options](generate_options.md)**  
+- **[generate\_options](generate_options.md)**  
 
--   **[device\_id](device_id.md)**  
+- **[device\_id](device_id.md)**  
 
--   **[sync\_kv\_timeout](sync_kv_timeout.md)**  
+- **[sync\_kv\_timeout](sync_kv_timeout.md)**  
 
--   **[enable\_switch\_role](enable_switch_role.md)**  
+- **[enable\_switch\_role](enable_switch_role.md)**  
 
--   **[ge\_options](ge_options.md)**  
+- **[ge\_options](ge_options.md)**  
 
--   **[listen\_ip\_info](listen_ip_info.md)**  
+- **[listen\_ip\_info](listen_ip_info.md)**  
 
--   **[mem\_utilization](mem_utilization.md)**  
+- **[mem\_utilization](mem_utilization.md)**  
 
--   **[buf\_pool\_cfg](buf_pool_cfg.md)**  
-
+- **[buf\_pool\_cfg](buf_pool_cfg.md)**  

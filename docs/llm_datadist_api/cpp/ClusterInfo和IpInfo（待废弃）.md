@@ -1,4 +1,4 @@
-# ClusterInfo和IpInfo（待废弃）<a name="ZH-CN_TOPIC_0000002407742957"></a>
+# ClusterInfo和IpInfo（待废弃）
 
 数据类型ClusterInfo和IpInfo定义在“$\{install\_path\}/latest/include/ge/llm\_engine\_types.h“。其中$\{install\_path\}为runtime安装路径，root用户的默认路径是“/usr/local/Ascend“。具体信息如下。
 
@@ -15,4 +15,3 @@ struct IpInfo {
   uint16_t port = 0U; // 端口号，client侧不需要指定；server侧port需要指定(hccl指定一个固定port让用户填写)
 }
 ```
-

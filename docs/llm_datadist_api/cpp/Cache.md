@@ -1,4 +1,4 @@
-# Cache<a name="ZH-CN_TOPIC_0000002374103430"></a>
+# Cache
 
 Cache，其中维护了一组tensor的地址
 
@@ -10,4 +10,3 @@ struct Cache {
   uint8_t reserved[128];                     // 预留
 }
 ```
-

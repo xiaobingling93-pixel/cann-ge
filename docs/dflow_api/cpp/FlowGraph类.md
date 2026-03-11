@@ -1,20 +1,19 @@
-# FlowGraph类<a name="ZH-CN_TOPIC_0000002013792069"></a>
+# FlowGraph类
 
--   **[FlowGraph构造函数和析构函数](FlowGraph构造函数和析构函数.md)**  
+- **[FlowGraph构造函数和析构函数](FlowGraph构造函数和析构函数.md)**  
 
--   **[SetInputs](SetInputs.md)**  
+- **[SetInputs](SetInputs.md)**  
 
--   **[SetOutputs](SetOutputs.md)**  
+- **[SetOutputs](SetOutputs.md)**  
 
--   **[SetOutputs（index）](SetOutputs（index）.md)**  
+- **[SetOutputs（index）](SetOutputs（index）.md)**  
 
--   **[SetContainsNMappingNode](SetContainsNMappingNode.md)**  
+- **[SetContainsNMappingNode](SetContainsNMappingNode.md)**  
 
--   **[SetInputsAlignAttrs](SetInputsAlignAttrs.md)**  
+- **[SetInputsAlignAttrs](SetInputsAlignAttrs.md)**  
 
--   **[const ge::Graph &ToGeGraph\(\) const](const-ge-Graph-ToGeGraph()-const.md)**  
+- **[const ge::Graph &ToGeGraph\(\) const](const-ge-Graph-ToGeGraph()-const.md)**  
 
--   **[SetGraphPpBuilderAsync](SetGraphPpBuilderAsync.md)**  
+- **[SetGraphPpBuilderAsync](SetGraphPpBuilderAsync.md)**  
 
--   **[SetExceptionCatch](SetExceptionCatch.md)**  
-
+- **[SetExceptionCatch](SetExceptionCatch.md)**  

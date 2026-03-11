@@ -1,4 +1,4 @@
-# LlmRole<a name="ZH-CN_TOPIC_0000002373943534"></a>
+# LlmRole
 
 LLM-DataDist的角色
 
@@ -10,4 +10,3 @@ enum class LlmRole : int32_t {
   kEnd              // 无效值
 }
 ```
-

@@ -1,4 +1,4 @@
-# KvCacheExtParam<a name="ZH-CN_TOPIC_0000002407583121"></a>
+# KvCacheExtParam
 
 调用Pull或Push相关接口时传入的扩展参数。
 
@@ -10,4 +10,3 @@ struct KvCacheExtParam {
   uint8_t reserved[127];                                   // 预留字段
 }
 ```
-

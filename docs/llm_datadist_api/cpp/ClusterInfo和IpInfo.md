@@ -1,4 +1,4 @@
-# ClusterInfo和IpInfo<a name="ZH-CN_TOPIC_0000002373943590"></a>
+# ClusterInfo和IpInfo
 
 用于描述集群信息，用于建链与断链。
 
@@ -17,4 +17,3 @@ struct IpInfo {
   uint8_t reserved[128];   // 预留
 }
 ```
-

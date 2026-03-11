@@ -1,4 +1,3 @@
-# FlowBufferFactory类<a name="ZH-CN_TOPIC_0000002094418878"></a>
+# FlowBufferFactory类
 
--   **[AllocTensor（FlowBufferFactory类）](AllocTensor（FlowBufferFactory类）.md)**  
-
+- **[AllocTensor（FlowBufferFactory类）](AllocTensor（FlowBufferFactory类）.md)**  

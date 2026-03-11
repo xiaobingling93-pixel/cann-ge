@@ -1,6 +1,5 @@
-# dataflow.GraphProcessPoint<a name="ZH-CN_TOPIC_0000001976834062"></a>
+# dataflow.GraphProcessPoint
 
--   **[GraphProcessPoint](GraphProcessPoint.md)**  
+- **[GraphProcessPoint](GraphProcessPoint.md)**  
 
--   **[fnode](fnode.md)**  
-
+- **[fnode](fnode.md)**  

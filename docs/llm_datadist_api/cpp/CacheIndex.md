@@ -1,4 +1,4 @@
-# CacheIndex<a name="ZH-CN_TOPIC_0000002373943574"></a>
+# CacheIndex
 
 Cache的索引
 
@@ -10,4 +10,3 @@ struct CacheIndex {
   uint8_t reserved[128];      // 预留
 }
 ```
-

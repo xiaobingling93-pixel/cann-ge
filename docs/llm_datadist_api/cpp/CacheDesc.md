@@ -1,4 +1,4 @@
-# CacheDesc<a name="ZH-CN_TOPIC_0000002407583137"></a>
+# CacheDesc
 
 Cache的描述信息
 
@@ -11,4 +11,3 @@ struct CacheDesc {
   uint8_t reserved[128];                                 // 预留
 }
 ```
-

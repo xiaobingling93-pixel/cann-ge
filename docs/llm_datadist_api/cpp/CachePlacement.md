@@ -1,4 +1,4 @@
-# CachePlacement<a name="ZH-CN_TOPIC_0000002407742973"></a>
+# CachePlacement
 
 Cache的内存类型
 
@@ -8,4 +8,3 @@ enum class CachePlacement : uint32_t {
   kDevice = 1U,           // Cache为Device内存
 }
 ```
-

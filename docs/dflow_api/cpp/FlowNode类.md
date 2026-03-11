@@ -1,16 +1,15 @@
-# FlowNode类<a name="ZH-CN_TOPIC_0000001977152486"></a>
+# FlowNode类
 
--   **[FlowNode构造函数和析构函数](FlowNode构造函数和析构函数.md)**  
+- **[FlowNode构造函数和析构函数](FlowNode构造函数和析构函数.md)**  
 
--   **[SetInput](SetInput.md)**  
+- **[SetInput](SetInput.md)**  
 
--   **[AddPp](AddPp.md)**  
+- **[AddPp](AddPp.md)**  
 
--   **[MapInput](MapInput.md)**  
+- **[MapInput](MapInput.md)**  
 
--   **[MapOutput](MapOutput.md)**  
+- **[MapOutput](MapOutput.md)**  
 
--   **[SetBalanceScatter](SetBalanceScatter.md)**  
+- **[SetBalanceScatter](SetBalanceScatter.md)**  
 
--   **[SetBalanceGather](SetBalanceGather.md)**  
-
+- **[SetBalanceGather](SetBalanceGather.md)**  

@@ -1,8 +1,7 @@
-# CacheTask<a name="ZH-CN_TOPIC_0000002407890357"></a>
+# CacheTask
 
--   **[CacheTask构造函数](CacheTask构造函数.md)**  
+- **[CacheTask构造函数](CacheTask构造函数.md)**  
 
--   **[synchronize](synchronize.md)**  
+- **[synchronize](synchronize.md)**  
 
--   **[get\_results](get_results.md)**  
-
+- **[get\_results](get_results.md)**  
