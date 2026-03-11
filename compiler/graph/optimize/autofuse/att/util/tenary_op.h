@@ -38,14 +38,7 @@ class IfCase {
   std::string GetStr() const;
   std::shared_ptr<IfCase> DeepCopy() const;
   void Replace(const std::vector<std::pair<Expr, Expr>> &replace_vars);
-  void GetUsedArgs(std::vector<Expr> &used_args) const;
-  bool IsLeaf() const { return choice_b_ == nullptr; }
-  const Expr &GetExpr() const { return expr_; }
-  const Expr &GetCondLeft() const { return cond_left_; }
-  const Expr &GetCondRight() const { return cond_right_; }
-  CondType GetCondType() const { return cond_type_; }
-  std::shared_ptr<IfCase> GetChoiceA() const { return choice_a_; }
-  std::shared_ptr<IfCase> GetChoiceB() const { return choice_b_; }
+  void GetUsedArgs(std::vector<Expr> &used_args);
  private:
   CondType cond_type_{};
   Expr cond_left_;
@@ -77,7 +70,6 @@ public:
   std::string GetDescription() const;
   void UpdateRelatedVars(const std::vector<std::pair<Expr, Expr>> &replace_vars);
   void Replace(const std::vector<std::pair<Expr, Expr>> &replace_vars);
-  void DecomposeNamedVars(const std::string &var_prefix, std::string &preamble, std::string &tenary_expr) const;
 private:
   Expr variable_;
   std::string description_;  // 描述信息（包含形状），用于注释显示

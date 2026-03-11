@@ -11,30 +11,12 @@
 #ifndef ATT_GEN_MODEL_INFO_UTILS_STABLE_NODE_ID_H_
 #define ATT_GEN_MODEL_INFO_UTILS_STABLE_NODE_ID_H_
 
-#include <cctype>
 #include <string>
 #include <vector>
 
 namespace att {
 
 struct NodeInfo;  // 前置声明
-
-// 消毒节点名称中的非法字符，将其转换为合法的C++变量名
-// 将所有非字母数字字符（除了下划线）替换为下划线
-inline std::string SanitizeNodeName(const std::string &name) {
-  std::string result;
-  result.reserve(name.length());
-  for (char c : name) {
-    // C++ 标识符允许：字母、数字、下划线（不能以数字开头）
-    // 非法字符（包括 /, -, ., <, >, :, , 等运算符和标点）统一替换为下划线
-    if (std::isalnum(c) || c == '_') {
-      result += c;
-    } else {
-      result += '_';
-    }
-  }
-  return result;
-}
 
 // 节点表达式标识符，用于生成表达式变量名
 // 表达式变量名格式：{node_name}_{node_type}
@@ -46,9 +28,9 @@ struct NodeExprId {
   std::vector<std::string> input_shapes;  // 输入张量形状摘要
   std::vector<std::string> output_shapes; // 输出张量形状摘要
 
-  // 生成表达式变量名前缀：sanitized(node_name) + "_" + node_type
+  // 生成表达式变量名前缀：node_name + "_" + node_type
   std::string GetExprVarPrefix() const {
-    return SanitizeNodeName(node_name) + "_" + node_type;
+    return node_name + "_" + node_type;
   }
 
   // 生成注释显示的完整前缀：{node_name}_{node_type}_in{shapes}_out{shapes}

@@ -10,7 +10,6 @@
 
 #include "pipe_perf_expr.h"
 #include <unordered_set>
-#include <cctype>
 #include "base/att_const_values.h"
 #include "arg_list_manager.h"
 #include "common/checker.h"
@@ -385,55 +384,45 @@ ge::Status PipePerfExpr::GetNodeExeTime(const NodeInfo &node, const ExeTimePassM
   }
   GE_ASSERT_TRUE(IsValid(exe_time), "Get node exe times expr failed.");
   cur_exe_time = exe_time_mgr.UpdateNodeExeTime(node, exe_time);
-  std::string exe_time_name = att::SanitizeNodeName(node.name) + "_exe_time";
+  std::string exe_time_name = node.name + "_exe_time";
   cur_exe_time.SetVariable(CreateExpr(exe_time_name.c_str()));
   ArgListManager::GetInstance().SetArgExpr(exe_time_name, cur_exe_time.GetVariable());
   return ge::SUCCESS;
 }
 
 ge::Status PipePerfExpr::AddTailPerf(const Expr &tail_exe_time, const Expr &node_exe_times,
+                                     const std::map<PipeType, Expr> &node_perf,
                                      const std::map<PipeType, Expr> &node_tail_perf,
-                                     PerfAddContext &tail_ctx) {
+                                     std::map<PipeType, Expr> &pipe_costs) const {
+  Expr pipe_cost;
   Expr core_exe_time = node_exe_times - tail_exe_time;
   GELOGD("The exe time of the tail block is [%s], the exe time of the other block is [%s].",
          ge::SymbolicUtils::ToString(tail_exe_time).c_str(), ge::SymbolicUtils::ToString(core_exe_time).c_str());
-
-  // 为 core perf 创建临时 context（使用 node_perf）
-  PerfAddContext core_ctx(tail_ctx.node_perf, tail_ctx.pipe_costs, tail_ctx.tenary_ops, tail_ctx.expr_prefix);
-  GE_ASSERT_SUCCESS(AddPerf(core_exe_time, "core_contrib", core_ctx));
-
-  // 为 tail perf 创建临时 context（使用 node_tail_perf）
-  PerfAddContext tail_ctx_adapter(node_tail_perf, tail_ctx.pipe_costs, tail_ctx.tenary_ops, tail_ctx.expr_prefix);
-  GE_ASSERT_SUCCESS(AddPerf(tail_exe_time, "tail_contrib", tail_ctx_adapter));
-
+  GE_ASSERT_SUCCESS(AddPerf(core_exe_time, node_perf, pipe_costs));
+  GE_ASSERT_SUCCESS(AddPerf(tail_exe_time, node_tail_perf, pipe_costs));
   return ge::SUCCESS;
 }
 
-ge::Status PipePerfExpr::AddPerf(const Expr &node_exe_times, const std::string &contrib_suffix,
-                                 PerfAddContext &ctx) {
-  for (const auto &pair : ctx.node_perf) {
+ge::Status PipePerfExpr::AddPerf(const Expr &node_exe_times, const std::map<PipeType, Expr> &node_perf,
+                                 std::map<PipeType, Expr> &pipe_costs) const {
+  Expr pipe_cost;
+  for (const auto &pair : node_perf) {
     const auto &pipe_type_iter = PipeType2Str.find(pair.first);
     GE_ASSERT_TRUE(pipe_type_iter != PipeType2Str.end(), "Get pipe type str failed.");
     GELOGD("Get perf times [%s] at [%s], exe_time [%s]", pair.second.Str().get(), pipe_type_iter->second.c_str(),
            ge::SymbolicUtils::ToString(node_exe_times).c_str());
-    Expr pipe_cost = ge::sym::Mul(node_exe_times, pair.second);
-    std::string var_name = ctx.expr_prefix + "_" + pipe_type_iter->second + "_" + contrib_suffix;
-    Expr contrib_var;
-    GetPerfVar(var_name, contrib_var, ctx.tenary_ops);
-    TenaryOp contrib_op(pipe_cost);
-    contrib_op.SetVariable(contrib_var);
-    ctx.tenary_ops[contrib_var] = std::move(contrib_op);
-    auto iter = ctx.pipe_costs.find(pair.first);
-    if (iter == ctx.pipe_costs.end()) {
-      ctx.pipe_costs[pair.first] = contrib_var;
+    pipe_cost = ge::sym::Mul(node_exe_times, pair.second);
+    auto iter = pipe_costs.find(pair.first);
+    if (iter == pipe_costs.end()) {
+      pipe_costs[pair.first] = pipe_cost;
     } else {
-      ctx.pipe_costs[pair.first] = contrib_var + ctx.pipe_costs[pair.first];
+      pipe_costs[pair.first] = pipe_cost + pipe_costs[pair.first];
     }
   }
   return ge::SUCCESS;
 }
 
-ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times) {
+ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times) const {
   Expr outer_axis;
   const SubAxis *cut_axis = nullptr;
   bool outer_inside_loop = false;
@@ -470,7 +459,7 @@ ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_e
 }
 
 ge::Status PipePerfExpr::UpdatePipeHead(std::map<PipeType, Expr> &pipe_costs,
-                                        std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) const {
+                                        std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
   for (auto &pair : pipe_costs) {
     auto pipe_head_perf_func = GetPipeHeadPerfFunc(pair.first);
     GE_ASSERT_NOTNULL(pipe_head_perf_func);
@@ -557,9 +546,7 @@ ge::Status PipePerfExpr::AddNodePerfToPipeCost(const NodeInfo &node, const Expr 
                                                const std::map<PipeType, Expr> &node_perf,
                                                std::map<PipeType, Expr> &pipe_costs,
                                                std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
-  NodeExprId node_expr_id = BuildNodeExprId(node);
-  std::string expr_prefix = node_expr_id.GetExprVarPrefix();
-  PerfAddContext ctx(node_perf, pipe_costs, tenary_ops, expr_prefix);
+  (void)tenary_ops;
   if (CheckSingleCut(node)) {
     GELOGD("Node with single cut, add tail perf.");
     Expr tail_exe_time;
@@ -567,9 +554,9 @@ ge::Status PipePerfExpr::AddNodePerfToPipeCost(const NodeInfo &node, const Expr 
     GE_ASSERT_SUCCESS(GetNodePerf(node, node_tail_perf, tenary_ops, true),
                       "Get node [%s] tail perf failed.", node.name.c_str());
     GE_ASSERT_SUCCESS(GetTailExeTime(node, exe_var, tail_exe_time));
-    GE_ASSERT_SUCCESS(AddTailPerf(tail_exe_time, exe_var, node_tail_perf, ctx));
+    GE_ASSERT_SUCCESS(AddTailPerf(tail_exe_time, exe_var, node_perf, node_tail_perf, pipe_costs));
   } else {
-    GE_ASSERT_SUCCESS(AddPerf(exe_var, "contrib", ctx));
+    GE_ASSERT_SUCCESS(AddPerf(exe_var, node_perf, pipe_costs));
   }
   return ge::SUCCESS;
 }

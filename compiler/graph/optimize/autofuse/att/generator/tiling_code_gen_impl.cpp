@@ -12,7 +12,6 @@
 #include <fstream>
 #include <set>
 #include <queue>
-#include <sstream>
 #include <utility>
 #include "args_manager.h"
 #include "common/checker.h"
@@ -32,7 +31,6 @@ namespace att {
  namespace {
  constexpr size_t kLogLength = 200;
  constexpr uint32_t kMaxDepth = 20U;
- constexpr size_t kPerfAnnotationMaxExprLen = 80U;
  constexpr ge::char_t kLogLevelStr[] = "ASCEND_GLOBAL_LOG_LEVEL";
  constexpr ge::char_t kEventEnableStr[] = "ASCEND_GLOBAL_EVENT_ENABLE";
  constexpr ge::char_t kInlineStr[] = "inline ";
@@ -312,6 +310,19 @@ inline bool UpdateCurPerfAndBlockByGroup(std::pair<uint32_t, double> group_block
      return false;
    }
    return var_name.substr(var_name.length() - suffix.length()) == suffix;
+ }
+
+ // 查找变量被替换后的表达式
+ std::string FindReplacedExpr(const std::string &variable_name,
+                                const std::vector<std::pair<Expr, Expr>> &variable_tenary_op) {
+   // 默认使用原始变量名
+   for (const auto &var_pair : variable_tenary_op) {
+     // variable_tenary_op 中 pair.first 是原始表达式，pair.second 是替换后的表达式
+     if (Str(var_pair.first) == variable_name) {
+       return Str(var_pair.second);
+     }
+   }
+   return variable_name;
  }
 
  inline std::string GenCallUpdateBetterTiling(bool is_uniq_group) {
@@ -1502,54 +1513,43 @@ static TilingOption tiling_option_default{};
  }
  
  ge::Status TilingCodeGenImpl::GenVariableAnnotation(const ArgsManager &args_manager) {
-   const std::string tiling_id = std::to_string(args_manager.GetTilingCaseId());
+   std::string tiling_id = std::to_string(args_manager.GetTilingCaseId());
    std::string annotations;
-   const auto variable_names = args_manager.GetContainerNames();
+   auto variable_names = args_manager.GetContainerNames();
+   auto variable_tenary_op = args_manager.GetTenaryOpReplaceVars();
+
    if (config_.do_variable_replace && !variable_names.empty()) {
      annotations += " Tensor used for tiling case " + tiling_id + " is:\n";
      for (const auto &pair : variable_names) {
        annotations += "  " + Str(pair.first) + ":" + pair.second + "\n";
      }
    }
-   // 输出性能相关变量（包括 _perf、_exe_time 和 _contrib 结尾的变量）
-   if (const auto &ternary_ops = args_manager.GetTenaryOps(); !ternary_ops.empty()) {
-     annotations += " Exe time & Perf time used for tiling case " + tiling_id + " is:\n";
-     for (const auto &[fst, snd] : ternary_ops) {
-       std::string variable_name = Str(fst);
-       const bool is_perf = CheckPerf("_perf", variable_name);
-       const bool is_exe_time = CheckPerf("_exe_time", variable_name);
-       const bool is_contrib = CheckPerf("_contrib", variable_name);
-       if (!is_perf && !is_exe_time && !is_contrib) {
-         continue;
-       }
-       std::string display_name = variable_name;
-       if (is_perf) {
-         if (std::string desc = snd.GetDescription(); !desc.empty()) {
-           display_name = desc;
-         }
-       }
-       std::string var_preamble;
-       std::string ternary_expr;
-       snd.DecomposeNamedVars(variable_name, var_preamble, ternary_expr);
-       if (std::string full_expr = var_preamble + ternary_expr; full_expr.length() <= kPerfAnnotationMaxExprLen) {
-         annotations += "  " + display_name + ":" + ternary_expr + "\n";
-       } else {
-         // 对 preamble 每行增加 2 空格，与变量名标题行缩进区分
-         std::string indented_preamble;
-         std::istringstream ss(var_preamble);
-         std::string line;
-         while (std::getline(ss, line)) {
-           indented_preamble += "  " + line + "\n";
-         }
-         annotations += "  " + display_name + ":\n" + indented_preamble;
-         annotations += "    " + variable_name + " = " + ternary_expr + "\n";
-       }
-     }
+   // 输出性能相关变量（包括 _perf 和 _exe_time 结尾的变量）
+   const auto &tenary_ops = args_manager.GetTenaryOps();
+   if (!tenary_ops.empty()) {
+    annotations += " Exe time & Perf time used for tiling case " + tiling_id + " is:\n";
+    // 遍历 tenary_ops，找出所有以 _perf 或 _exe_time 结尾的变量
+    for (const auto &op : tenary_ops) {
+      std::string variable_name = Str(op.first);
+      // 只输出以 _perf 或 _exe_time 结尾的性能相关变量
+      if (CheckPerf("_perf", variable_name)) {
+        std::string display_name = variable_name;
+        std::string desc = op.second.GetDescription();
+        if (!desc.empty()) {
+          display_name = desc;  // 使用描述（包含形状信息）
+        }
+        std::string replaced_expr = FindReplacedExpr(variable_name, variable_tenary_op);
+        annotations += "  " + display_name + ":" + replaced_expr + "\n";
+      } else if (CheckPerf("_exe_time", variable_name)) {
+        std::string replaced_expr = FindReplacedExpr(variable_name, variable_tenary_op);
+        annotations += "  " + variable_name + ":" + replaced_expr + "\n";
+      }
+    }
    }
    if (!annotations.empty()) {
-     tiling_func_.AddLine("/*");
-     tiling_func_.AddLine(annotations);
-     tiling_func_.AddLine("*/");
+    tiling_func_.AddLine("/*");
+    tiling_func_.AddLine(annotations);
+    tiling_func_.AddLine("*/");
    }
    return ge::SUCCESS;
  }

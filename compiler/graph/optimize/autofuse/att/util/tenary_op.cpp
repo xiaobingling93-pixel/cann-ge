@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "tenary_op.h"
-#include <cmath>
 
 namespace att {
 namespace {
@@ -57,7 +56,7 @@ std::shared_ptr<IfCase> IfCase::DeepCopy() const {
   return std::make_shared<IfCase>(cond_type_, cond_left_, cond_right_, choice_a_->DeepCopy(), choice_b_->DeepCopy());
 }
 
-void IfCase::GetUsedArgs(std::vector<Expr> &used_args) const {
+void IfCase::GetUsedArgs(std::vector<Expr> &used_args) {
   if (choice_b_ != nullptr) {
     AddUsedArgs(cond_left_, used_args);
     AddUsedArgs(cond_right_, used_args);
@@ -202,7 +201,8 @@ void AddRelatedVars(const Expr &expr, const TenaryOp &tenary_op, const std::map<
                     std::map<Expr, std::vector<Expr>, ExprCmp> &res) {
   std::vector<Expr> related_vars;
   for (const auto &arg : tenary_op.GetRelatedVars()) {
-    if (const auto iter = tenary_ops.find(arg); iter != tenary_ops.end()) {
+    auto iter = tenary_ops.find(arg);
+    if (iter != tenary_ops.end()) {
       if (res.find(arg) == res.end()) {
         AddRelatedVars(arg, iter->second, tenary_ops, res);
       }
@@ -275,112 +275,5 @@ void GetPerfVar(const std::string &prefix, Expr &res, const std::map<Expr, Tenar
     perf_name = prefix + std::to_string(++idx);
     res = CreateExpr(perf_name.c_str());
   }
-}
-
-namespace {
-// 叶子节点表达式超过此长度时提取为命名变量，避免内联过长
-constexpr size_t kLeafExprMaxInlineLen = 60U;
-
-std::string CondToStr(CondType type, const Expr &left, const Expr &right) {
-  if (type == CondType::K_EQ) {
-    return "IsEqual(" + Str(left) + ", " + Str(right) + ")";
-  } else if (type == CondType::K_LT) {
-    return Str(left) + " < " + Str(right);
-  } else if (type == CondType::K_GT) {
-    return Str(left) + " > " + Str(right);
-  } else if (type == CondType::K_LE) {
-    return Str(left) + " <= " + Str(right);
-  } else {
-    return Str(left) + " >= " + Str(right);
-  }
-}
-
-// 尝试将字符串解析为数值：处理 "False"/"True" 和纯数字字符串
-bool TryParseConstStr(const std::string &s, double &val) {
-  if (s == "False") { val = 0.0; return true; }
-  if (s == "True")  { val = 1.0; return true; }
-  try {
-    size_t pos = 0;
-    val = std::stod(s, &pos);
-    return pos == s.size();  // 整个字符串都被解析
-  } catch (...) {
-    return false;
-  }
-}
-
-// 若 cond 两侧均为常量，尝试静态求值；返回 true 并设置 result，否则返回 false
-bool TryEvalConstCond(CondType type, const Expr &left, const Expr &right, bool &result) {
-  double lv = 0.0;
-  double rv = 0.0;
-  // 注意：IsConstExpr() 对 Integer/RealDouble/Rational 均返回 true，
-  // 但 GetConstValue(double) 内部断言只允许 RealDouble/Rational，对 Integer 会 assert。
-  // 因此直接走字符串解析，TryParseConstStr 可以处理所有常量（含 "0", "1", "False", "True"）。
-  const bool lv_ok = TryParseConstStr(Str(left), lv);
-  const bool rv_ok = TryParseConstStr(Str(right), rv);
-  if (!lv_ok || !rv_ok) {
-    return false;
-  }
-  switch (type) {
-    case CondType::K_EQ:
-      result = std::fabs(lv - rv) < 1e-9;
-      break;
-    case CondType::K_LT:
-      result = (lv < rv);
-      break;
-    case CondType::K_GT:
-      result = (lv > rv);
-      break;
-    case CondType::K_LE:
-      result = (lv <= rv);
-      break;
-    default:
-      result = (lv >= rv);
-      break;
-  }
-  return true;
-}
-
-// 递归分解 IfCase 树，每个非叶节点都提取为独立的 double 变量。
-// 叶子节点表达式超过 kLeafExprMaxInlineLen 时也提取为命名 double 变量。
-// is_root=true 时，返回完整 TenaryOp 表达式供调用者赋值给外层变量（不额外包一层）。
-// is_root=false 时，生成一个 double 子变量，返回该变量名（避免嵌套字面量）。
-std::string DecomposeIfCase(const IfCase &node, const std::string &prefix, int &counter,
-                             std::string &preamble, bool is_root = false) {
-  if (node.IsLeaf()) {
-    std::string leaf_expr = Str(node.GetExpr());
-    if (leaf_expr.length() <= kLeafExprMaxInlineLen) {
-      return leaf_expr;
-    }
-    // 叶子表达式过长：提取为命名变量 _caseN
-    std::string case_var = prefix + "_case" + std::to_string(counter++);
-    preamble += "  double " + case_var + " = " + leaf_expr + ";\n";
-    return case_var;
-  }
-  // 常量条件折叠：若 cond 两侧均为常量，直接取对应分支，不生成 bool/TenaryOp
-  if (bool const_result = false; TryEvalConstCond(node.GetCondType(), node.GetCondLeft(), node.GetCondRight(),
-                                                  const_result)) {
-    const IfCase &taken = const_result ? *node.GetChoiceA() : *node.GetChoiceB();
-    return DecomposeIfCase(taken, prefix, counter, preamble, is_root);
-  }
-  const std::string cond_name = prefix + "_cond" + std::to_string(counter++);
-  preamble += "  bool " + cond_name + " = " +
-              CondToStr(node.GetCondType(), node.GetCondLeft(), node.GetCondRight()) + ";\n";
-  const std::string true_str = DecomposeIfCase(*node.GetChoiceA(), prefix, counter, preamble);
-  const std::string false_str = DecomposeIfCase(*node.GetChoiceB(), prefix, counter, preamble);
-  const std::string tenary_str = "TenaryOp(" + cond_name + ", " + true_str + ", " + false_str + ")";
-  if (is_root) {
-    return tenary_str;
-  }
-  // 非根节点：提取为命名 double 变量，避免嵌套字面量
-  std::string sub_var = prefix + "_branch" + std::to_string(counter++);
-  preamble += "  double " + sub_var + " = " + tenary_str + ";\n";
-  return sub_var;
-}
-}  // namespace
-
-void TenaryOp::DecomposeNamedVars(const std::string &var_prefix, std::string &preamble,
-                                   std::string &tenary_expr) const {
-  int counter = 0;
-  tenary_expr = DecomposeIfCase(*tenary_op_, var_prefix, counter, preamble, true);
 }
 }  // namespace att

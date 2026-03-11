@@ -21,19 +21,6 @@
 namespace att {
 using ParentChildsMap = std::map<const SubAxis *, std::vector<std::set<const SubAxis *>>>;
 using OrigAxisTree = std::map<std::vector<SubAxis *>, ParentChildsMap>;
-
-// AddPerf/AddTailPerf 参数封装结构体
-struct PerfAddContext {
-  const std::map<PipeType, Expr> &node_perf;
-  std::map<PipeType, Expr> &pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> &tenary_ops;
-  const std::string &expr_prefix;
-
-  PerfAddContext(const std::map<PipeType, Expr> &perf, std::map<PipeType, Expr> &costs,
-                 std::map<Expr, TenaryOp, ExprCmp> &ops, const std::string &prefix)
-      : node_perf(perf), pipe_costs(costs), tenary_ops(ops), expr_prefix(prefix) {}
-};
-
 class PipePerfExpr {
 public:
   explicit PipePerfExpr(const TuningSpacePtr &tuning_space) : tuning_space_(tuning_space) {}
@@ -57,13 +44,13 @@ private:
   ge::Status GetNodeExeTime(const NodeInfo &node, const ExeTimePassManager &exe_time_mgr, TenaryOp &cur_exe_time) const;
 
   // 获取尾块的loop times
-  static ge::Status GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times);
+  ge::Status GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times) const;
 
-  static ge::Status AddPerf(const Expr &node_exe_times, const std::string &contrib_suffix,
-                            PerfAddContext &ctx);
+  ge::Status AddPerf(const Expr &node_exe_times, const std::map<PipeType, Expr> &node_perf,
+                     std::map<PipeType, Expr> &pipe_costs) const;
   ge::Status AddTailPerf(const Expr &tail_exe_time, const Expr &node_exe_times,
-                         const std::map<PipeType, Expr> &node_tail_perf,
-                         PerfAddContext &tail_ctx);
+                         const std::map<PipeType, Expr> &node_perf, const std::map<PipeType, Expr> &node_tail_perf,
+                         std::map<PipeType, Expr> &pipe_costs) const;
 
   // 获取节点性能（内部方法，包含VectorFunc特殊处理）
   ge::Status GetNodePerfInternal(const NodeInfo &node, std::map<PipeType, Expr> &node_perf,
@@ -75,7 +62,7 @@ private:
                                    std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
 
   Perf UpdateTilingScheduleConfigTable(const NodeInfo &node, bool tail_shape, PerfOutputInfo &perf_res) const;
-  ge::Status UpdatePipeHead(std::map<PipeType, Expr> &pipe_costs, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) const;
+  ge::Status UpdatePipeHead(std::map<PipeType, Expr> &pipe_costs, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
   TuningSpacePtr tuning_space_;
 };
 std::vector<Expr> GetTensorTailRepeat(const TensorPtr &tensor, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
