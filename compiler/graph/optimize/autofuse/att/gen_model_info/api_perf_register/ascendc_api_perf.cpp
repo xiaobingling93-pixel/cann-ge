@@ -56,9 +56,9 @@ ge::Status RptElementwisePerf(const NodeDetail &node_info, const Expr &aligned_r
     std::shared_ptr<IfCase> branch_b = std::make_shared<IfCase>(unaligned_res);
     GE_ASSERT_NOTNULL(branch_a);
     GE_ASSERT_NOTNULL(branch_b);
-    TenaryOp tenary_op = TenaryOp(CondType::K_EQ, aligned_case, CreateExpr(0), std::move(branch_a), std::move(branch_b));
-    tenary_op.SetVariable(res);
-    perf.tenary_ops[res] = tenary_op;
+    TernaryOp ternary_op = TernaryOp(CondType::K_EQ, aligned_case, CreateExpr(0), std::move(branch_a), std::move(branch_b));
+    ternary_op.SetVariable(res);
+    perf.ternary_ops[res] = ternary_op;
     perf.pipe_res[PipeType::AIV_VEC] = res;
   }
   return ge::SUCCESS;

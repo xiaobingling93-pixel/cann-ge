@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "stable_node_id.h"
+#include "node_expr_id.h"
 #include "parser/tuning_space.h"
 #include "base/base_types.h"
 

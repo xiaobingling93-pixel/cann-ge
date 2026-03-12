@@ -52,10 +52,10 @@ bool ArgsManager::ReplaceVars(ExprExprMap &replaced_vars, ExprExprMap &replaceme
     pipe_cost.second = pipe_cost.second.Replace(old_to_new_expr_replacement);
     GELOGD("obj after: %s", pipe_cost.second.Str().get());
   }
-  for (auto &pair : tenary_op_) {
-    GELOGD("tenary op before: %s", pair.second.GetTenaryOpStr().c_str());
+  for (auto &pair : ternary_op_) {
+    GELOGD("tenary op before: %s", pair.second.GetTernaryOpStr().c_str());
     pair.second.Replace(old_to_new_expr_replacement);
-    GELOGD("tenary op after: %s", pair.second.GetTenaryOpStr().c_str());
+    GELOGD("tenary op after: %s", pair.second.GetTernaryOpStr().c_str());
   }
   for (auto &leq_expr : cut_leq_cons_) {
     leq_expr = leq_expr.Replace(old_to_new_expr_replacement);
@@ -389,9 +389,9 @@ bool ArgsManager::DoVarsReplace() {
 void ArgsManager::SetOrigExprs() {
   hardware_cons_ = model_info_.hardware_cons;
   objs_ = model_info_.objects;
-  tenary_op_.clear();
-  for (const auto &pair : model_info_.tenary_op_map) {
-    tenary_op_[pair.first] = pair.second.DeepCopy();
+  ternary_op_.clear();
+  for (const auto &pair : model_info_.ternary_op_map) {
+    ternary_op_[pair.first] = pair.second.DeepCopy();
   }
   for (const auto &var_info : vars_infos_) {
     if (!var_info.second.is_input_var) {
@@ -669,16 +669,16 @@ const std::map<Expr, std::string, ExprCmp> &ArgsManager::GetContainerNames() con
   return model_info_.variable_name_map;
 }
 
-std::vector<std::pair<Expr, Expr>> ArgsManager::GetTenaryOpReplaceVars() const {
-  return ConcursiveReplaceVars(tenary_op_);
+std::vector<std::pair<Expr, Expr>> ArgsManager::GetTernaryOpReplaceVars() const {
+  return ConcursiveReplaceVars(ternary_op_);
 }
 
-std::map<Expr, std::vector<Expr>, ExprCmp> ArgsManager::GetTenaryOpRelatedVars() const {
-  return ConcursiveRelatedVars(tenary_op_);
+std::map<Expr, std::vector<Expr>, ExprCmp> ArgsManager::GetTernaryOpRelatedVars() const {
+  return ConcursiveRelatedVars(ternary_op_);
 }
 
-const std::map<Expr, TenaryOp, ExprCmp>& ArgsManager::GetTenaryOps() const {
-  return tenary_op_;
+const std::map<Expr, TernaryOp, ExprCmp>& ArgsManager::GetTernaryOps() const {
+  return ternary_op_;
 }
 
 const ModelInfo &ArgsManager::GetModelInfo() const {

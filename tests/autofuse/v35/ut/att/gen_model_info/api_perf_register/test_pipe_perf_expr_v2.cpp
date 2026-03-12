@@ -107,7 +107,7 @@ TEST_F(TestPipePerfExpr, case_get_perf_for_loop_with_vf)
   EXPECT_EQ(ArgListManager::GetInstance().LoadArgList(ts), ge::SUCCESS);
   PipePerfExpr pipe_perf(ts);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> exe_times;
+  std::map<Expr, TernaryOp, ExprCmp> exe_times;
   Expr head_cost;
   EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, exe_times, head_cost), ge::SUCCESS);
   ASSERT_EQ(pipe_costs.size(), 3);
@@ -116,9 +116,9 @@ TEST_F(TestPipePerfExpr, case_get_perf_for_loop_with_vf)
   std::string exe_time = "exe_time";
   for (const auto &pair : exe_times) {
     var_name = Str(pair.first);
-    GELOGD("var_name: %s=%s", var_name.c_str(), pair.second.GetTenaryOpStr().c_str());
+    GELOGD("var_name: %s=%s", var_name.c_str(), pair.second.GetTernaryOpStr().c_str());
     if (var_name.rfind(exe_time) == (var_name.length() - exe_time.length())) {
-      EXPECT_EQ(pair.second.GetTenaryOpStr(), "Ceiling((z0b_size / (z0bt_size)))");
+      EXPECT_EQ(pair.second.GetTernaryOpStr(), "Ceiling((z0b_size / (z0bt_size)))");
     }
   }
   for (const auto &pipe_cost : pipe_costs) {

@@ -14,6 +14,7 @@
 #include "api_perf_register/perf_param.h"
 #include "api_perf_register/api_perf_factory.h"
 #include "api_perf_register/ascendc_api_perf.h"
+#include "utils/node_expr_id.h"
 
 namespace att {
 namespace {
@@ -198,12 +199,12 @@ StrideResult CreateDynamicStrideResult(const Expr &last_stride,
   auto non_continuous_case = std::make_shared<IfCase>(last_stride);
 
   constexpr int64_t kContinueLastStrideVal = 1L;
-  TenaryOp tenary_op = TenaryOp(CondType::K_GT, last_stride, CreateExpr(kContinueLastStrideVal),
+  TernaryOp ternary_op = TernaryOp(CondType::K_GT, last_stride, CreateExpr(kContinueLastStrideVal),
                                 std::move(non_continuous_case), std::move(normal_case));
-  tenary_op.SetVariable(res);
+  ternary_op.SetVariable(res);
 
   StrideResult result(res, block_count_idx);
-  result.tenary_ops[res] = tenary_op;
+  result.ternary_ops[res] = ternary_op;
   return result;
 }
 
@@ -439,7 +440,7 @@ ge::Status GetDMAActualPerf(const NodeDetail &node_info, const Expr &swap_outer_
   cur_node.ub_stride = node_info.ub_stride;
   cur_node.block_count_idx = node_info.block_count_idx;
   cur_node.repeats = node_info.repeats;
-  cur_node.tenary_ops = node_info.tenary_ops;
+  cur_node.ternary_ops = node_info.ternary_ops;
   GE_ASSERT_SUCCESS(SetDims(dims, cur_node));
   std::string registered_key_name;
   GE_ASSERT_SUCCESS(GetApiRegisterVerName(registered_key_name));
@@ -471,11 +472,11 @@ ge::Status UpdateSwapPerf(const NodeDetail &node_info, const int32_t supported_m
     PipeType pipe_type = node_info.optype == kMoveUbToGm ? PipeType::AIV_MTE3 : PipeType::AIV_MTE2;
     GE_ASSERT_SUCCESS(UpdateTenary(swap_perf, perf_res));
     GE_ASSERT_SUCCESS(UpdateTenary(non_swap_perf, perf_res));
-    GetPerfVar(node_info.name, res, perf_res.tenary_ops);
-    perf_res.tenary_ops[res] = TenaryOp(CondType::K_LT, node_info.input_dims[dim_size - supported_max_dma_len],
+    GetPerfVar(att::SanitizeNodeName(node_info.name), res, perf_res.ternary_ops);
+    perf_res.ternary_ops[res] = TernaryOp(CondType::K_LT, node_info.input_dims[dim_size - supported_max_dma_len],
                                         node_info.input_dims[dim_size - supported_max_dma_len - 1],
                                         GetPipeCost(swap_perf, pipe_type), GetPipeCost(non_swap_perf, pipe_type));
-    perf_res.tenary_ops[res].SetVariable(res);
+    perf_res.ternary_ops[res].SetVariable(res);
     perf_res.pipe_res[pipe_type] = res;
   }
   return ge::SUCCESS;
@@ -669,7 +670,7 @@ StrideResult CalculateStride(const TensorShapeInfo &shape_info, const bool is_ub
       return StrideResult(last_stride, block_count_idx);
     }
   } else {
-    // 动态shape：使用TenaryOp
+    // 动态shape：使用TernaryOp
     auto normal_stride = ge::sym::Sub(filtered_strides[block_count_idx],
                                       filtered_repeats[filtered_dim_size - 1]);
     auto result = CreateDynamicStrideResult(last_stride, normal_stride, block_count_idx, is_ub_stride);
@@ -692,12 +693,12 @@ ge::Status SetStride(const TensorShapeInfo &shape_info, NodeDetail &node_info, c
   node_info.ub_stride = (ub_stride_result.stride.Serialize() == nullptr) ? CreateExpr(0) : ub_stride_result.stride;
   // 保存 gm_stride 的 block_count_idx，用于性能函数计算
   node_info.block_count_idx = gm_stride_result.block_count_idx;
-  // 合并tenary_ops到node_info
-  for (const auto &tenary_op : gm_stride_result.tenary_ops) {
-    node_info.tenary_ops[tenary_op.first] = tenary_op.second;
+  // 合并ternary_ops到node_info
+  for (const auto &ternary_op : gm_stride_result.ternary_ops) {
+    node_info.ternary_ops[ternary_op.first] = ternary_op.second;
   }
-  for (const auto &tenary_op : ub_stride_result.tenary_ops) {
-    node_info.tenary_ops[tenary_op.first] = tenary_op.second;
+  for (const auto &ternary_op : ub_stride_result.ternary_ops) {
+    node_info.ternary_ops[ternary_op.first] = ternary_op.second;
   }
   GELOGD("%s: repeats=%s, origin_repeats=%s, need_swap=%d, block_count_idx=%d", node_info.ToString().c_str(),
          GetVecString(shape_info.repeats).c_str(), GetVecString(shape_info.origin_repeats).c_str(), need_swap,
@@ -919,12 +920,12 @@ ge::Status GetOuterParams(const vector<Expr> &dims, Expr &outer_repeat, vector<E
 ge::Status UpdateTenary(PerfOutputInfo &perf_res, PerfOutputInfo &output_res) {
   Expr cur_var;
   std::vector<std::pair<Expr, Expr>> replace_vars;
-  for (const auto &pair : perf_res.tenary_ops) {
+  for (const auto &pair : perf_res.ternary_ops) {
     std::string cur_name = Str(pair.first);
-    GetPerfVar(cur_name, cur_var, output_res.tenary_ops);
+    GetPerfVar(cur_name, cur_var, output_res.ternary_ops);
     replace_vars.emplace_back(std::make_pair(pair.first, cur_var));
-    output_res.tenary_ops[cur_var] = pair.second;
-    output_res.tenary_ops[cur_var].SetVariable(cur_var);
+    output_res.ternary_ops[cur_var] = pair.second;
+    output_res.ternary_ops[cur_var].SetVariable(cur_var);
   }
   for (const auto &pair : perf_res.pipe_res) {
     output_res.pipe_res[pair.first] = pair.second.Replace(replace_vars);
@@ -972,9 +973,9 @@ ge::Status GetDmaPerf(const TensorShapeInfo &tensor_info, NodeDetail &node_info,
                         "Update swap perf failed, node=%s", node_info.ToString().c_str());
     }
   }
-  // 合并node_info中的tenary_ops到perf_res
-  for (const auto &tenary_op : node_info.tenary_ops) {
-    perf_res.tenary_ops[tenary_op.first] = tenary_op.second;
+  // 合并node_info中的ternary_ops到perf_res
+  for (const auto &ternary_op : node_info.ternary_ops) {
+    perf_res.ternary_ops[ternary_op.first] = ternary_op.second;
   }
   return ge::SUCCESS;
 }

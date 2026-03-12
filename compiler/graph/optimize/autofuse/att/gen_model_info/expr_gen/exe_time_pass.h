@@ -12,7 +12,7 @@
 #define EXPR_GEN_EXE_TIME_PASS_MANAGER_H_
 
 #include <set>
-#include "util/tenary_op.h"
+#include "util/ternary_op.h"
 #include "parser/tuning_space.h"
 
 namespace att {
@@ -37,7 +37,7 @@ public:
   ~ExeTimePassManager() = default;
   
   // 获取需要处理的节点
-  TenaryOp UpdateNodeExeTime(const NodeInfo &node, const Expr &exe_time) const;
+  TernaryOp UpdateNodeExeTime(const NodeInfo &node, const Expr &exe_time) const;
 private:
   void CheckReduce(const NodeInfo &node);
   void CheckBroadcast(const NodeInfo &node);
@@ -46,6 +46,10 @@ private:
   void UpdateBufNode(const std::vector<NodeInfo> &nodes);
   void GenLog(const std::string &type_name, const std::map<std::string, std::set<std::string>> &axis_list) const;
   bool GetRLoop(const NodeInfo &node, Expr &r_loop) const;
+  bool CheckAxisSplit(const NodeInfo &node, const SubAxis *axis, Expr *fused_axis) const;
+  TernaryOp HandleBroadcastSplit(const NodeInfo &node, const Expr &exe_time, const Expr &fused_exe_time) const;
+  TernaryOp HandleReduceOrNormalSplit(const NodeInfo &node, const Expr &exe_time, const SubAxis *axis,
+                                       bool r_split, bool a_split) const;
   TuningSpacePtr tuning_space_;
   std::map<std::string, std::set<std::string>> broadcast_axis_;
   std::map<std::string, std::set<std::string>> reduce_axis_;

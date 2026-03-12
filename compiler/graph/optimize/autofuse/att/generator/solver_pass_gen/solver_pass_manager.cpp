@@ -153,8 +153,8 @@ auto SolverPassManager::GenerateSolverGen() -> SolverGenType {
   solver_gen.SetInputArgs(args_manager_.GetInputVars());
   solver_gen.SetCutCons(args_manager_.GetTotalCutCons());
   solver_gen.SetInputAlign(GetInputsAlign(true));
-  solver_gen.SetReplaceVars(args_manager_.GetTenaryOpReplaceVars());
-  solver_gen.SetExeTimeMap(args_manager_.GetTenaryOpRelatedVars());
+  solver_gen.SetReplaceVars(args_manager_.GetTernaryOpReplaceVars());
+  solver_gen.SetExeTimeMap(args_manager_.GetTernaryOpRelatedVars());
   solver_gen.SetInnestDim(args_manager_.GetNodeInnerestDimSizes());
   solver_gen.SetInitValue(init_value);
 
@@ -457,8 +457,9 @@ void SolverPassManager::InitSolverGen(AxesReorderSolverGen &solver_gen) {
   solver_gen.SetSearchArgs(args_manager_.GetSearchableVars());
   solver_gen.SetContainerExpr(args_manager_.GetContainerMap());
   solver_gen.SetContainerNames(args_manager_.GetContainerNames());
-  solver_gen.SetReplaceVars(args_manager_.GetTenaryOpReplaceVars());
-  solver_gen.SetExeTimeMap(args_manager_.GetTenaryOpRelatedVars());
+  solver_gen.SetReplaceVars(args_manager_.GetTernaryOpReplaceVars());
+  solver_gen.SetTernaryOps(args_manager_.GetTernaryOps());
+  solver_gen.SetExeTimeMap(args_manager_.GetTernaryOpRelatedVars());
   solver_gen.SetInputAlign(GetInputsAlign(false));
   solver_gen.SetVarPriority(args_manager_.GetAxesPriority());
   solver_gen.SetObjFunc(args_manager_.GetHeadCost(), args_manager_.GetObjectFunc());

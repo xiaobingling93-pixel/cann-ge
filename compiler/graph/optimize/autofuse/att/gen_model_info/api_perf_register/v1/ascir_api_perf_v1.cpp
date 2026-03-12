@@ -1221,10 +1221,10 @@ ge::Status WhereBasePerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
                                                        node_info.output_dtype[kNumZero], do_size, repeat_times);
   GELOGD("branch_small_repeat_cost is [%s]", ge::SymbolicUtils::ToString(branch_small_repeat_cost).c_str());
   Expr res = CreateExpr("where_base_node");
-  TenaryOp tenary_op = TenaryOp(CondType::K_LE, max_do_size, size, branch_max_repeat_cost + left_sign * branch_left_repeat_cost,
+  TernaryOp ternary_op = TernaryOp(CondType::K_LE, max_do_size, size, branch_max_repeat_cost + left_sign * branch_left_repeat_cost,
                                 branch_small_repeat_cost);
-  tenary_op.SetVariable(res);
-  perf.tenary_ops[res] = tenary_op;
+  ternary_op.SetVariable(res);
+  perf.ternary_ops[res] = ternary_op;
   perf.pipe_res[PipeType::AIV_VEC] = res;
   return ge::SUCCESS;
 }
@@ -1290,7 +1290,7 @@ ge::Status WhereApi([[maybe_unused]]const std::vector<TensorShapeInfo> &input_sh
 }
 
 inline ge::Status CompareSpecificPerf(const NodeDetail &node_info, const std::string &mode, PerfOutputInfo &perf,
-                                      TenaryOpMap &tenary_ops_map) {
+                                      TernaryOpMap &ternary_ops_map) {
   if (mode == kGe) {
     ascendcperf::CompareGEPerf(node_info, perf);
   } else if (mode == kEq) {
@@ -1304,7 +1304,7 @@ inline ge::Status CompareSpecificPerf(const NodeDetail &node_info, const std::st
   } else if (mode == kLt) {
     ascendcperf::CompareLTPerf(node_info, perf);
   }
-  tenary_ops_map.insert(perf.tenary_ops.begin(), perf.tenary_ops.end());
+  ternary_ops_map.insert(perf.ternary_ops.begin(), perf.ternary_ops.end());
   return ge::SUCCESS;
 }
 
@@ -1401,9 +1401,9 @@ inline ge::Status CompareInt64EqNePerf(const std::string &mode, const Expr &repe
   GE_ASSERT_NOTNULL(branch_b2);
   std::shared_ptr<IfCase> branch_b = std::make_shared<IfCase>(CondType::K_GT, element_extent, repeat_times, std::move(branch_b2), std::move(branch_b1));
   GE_ASSERT_NOTNULL(branch_b);
-  TenaryOp tenary_op = TenaryOp(CondType::K_LT, last_axis, one_rpt_size, std::move(branch_a), std::move(branch_b));
-  tenary_op.SetVariable(res);
-  perf.tenary_ops[res] = tenary_op;
+  TernaryOp ternary_op = TernaryOp(CondType::K_LT, last_axis, one_rpt_size, std::move(branch_a), std::move(branch_b));
+  ternary_op.SetVariable(res);
+  perf.ternary_ops[res] = ternary_op;
   GELOGD("CompareInt64EqNe's adjustment factor is [%lf]", kCompareInt64EqNeAdjustmentFactor);
   perf.pipe_res[PipeType::AIV_VEC] = res  * CreateExpr(kCompareInt64EqNeAdjustmentFactor); // verify得到的修正系数
   return ge::SUCCESS;
@@ -1505,10 +1505,10 @@ inline ge::Status CompareInt64GtGeLePerf(const std::string &mode, const Expr &re
 
 inline Expr CompareBranchInputRepeatTimeCost(const NodeDetail &node_info, const std::string &mode,
                                              const Expr &repeat_times, const Expr &one_rpt_size,
-                                             const Expr &element_extent, TenaryOpMap &tenary_ops_map) {
+                                             const Expr &element_extent, TernaryOpMap &ternary_ops_map) {
   PerfOutputInfo compare_perf;
   CompareSpecificPerf(GenNodeDetail(node_info.input_dtype[0], node_info.input_dtype[0], {repeat_times * one_rpt_size}),
-                      mode, compare_perf, tenary_ops_map);
+                      mode, compare_perf, ternary_ops_map);
   Expr compare_cost = GetPipeCost(compare_perf, PipeType::AIV_VEC);
   PerfOutputInfo duplicate_perf;
   ascendcperf::DuplicatePerf(
@@ -1528,10 +1528,10 @@ inline Expr CompareBranchInputRepeatTimeCost(const NodeDetail &node_info, const 
 
 inline Expr CompareBranchInputLastAxisCost(const NodeDetail &node_info, const std::string &mode,
                                            const Expr &repeat_times, const Expr &last_axis,
-                                           TenaryOpMap &tenary_ops_map) {
+                                           TernaryOpMap &ternary_ops_map) {
   PerfOutputInfo compare_perf;
   CompareSpecificPerf(GenNodeDetail(node_info.input_dtype[0], node_info.input_dtype[0], {last_axis}),
-                      mode, compare_perf, tenary_ops_map);
+                      mode, compare_perf, ternary_ops_map);
   Expr compare_cost = GetPipeCost(compare_perf, PipeType::AIV_VEC);
   PerfOutputInfo duplicate_perf;
   ascendcperf::DuplicatePerf(GenNodeDetail(node_info.input_dtype[0], node_info.input_dtype[0], {last_axis}),
@@ -1552,16 +1552,16 @@ inline ge::Status CompareNormalPerf(const NodeDetail &node_info, const std::stri
                                     const Expr &element_extent, const Expr &one_rpt_size, const Expr &last_axis,
                                     PerfOutputInfo &perf) {
   Expr branch_input_repeat_time_cost =
-      CompareBranchInputRepeatTimeCost(node_info, mode, repeat_times, one_rpt_size, element_extent, perf.tenary_ops);
+      CompareBranchInputRepeatTimeCost(node_info, mode, repeat_times, one_rpt_size, element_extent, perf.ternary_ops);
   GELOGD("CompareNormal branch_1: [%s]", ge::SymbolicUtils::ToString(branch_input_repeat_time_cost).c_str());
   Expr branch_input_last_axis_cost = CompareBranchInputLastAxisCost(node_info, mode, repeat_times, last_axis,
-                                                                    perf.tenary_ops);
+                                                                    perf.ternary_ops);
   GELOGD("CompareNormal branch_2: [%s]", ge::SymbolicUtils::ToString(branch_input_last_axis_cost).c_str());
   Expr res = CreateExpr("compare_node");
-  TenaryOp tenary_op = TenaryOp(CondType::K_GT, element_extent, repeat_times, branch_input_last_axis_cost,
+  TernaryOp ternary_op = TernaryOp(CondType::K_GT, element_extent, repeat_times, branch_input_last_axis_cost,
                                 branch_input_repeat_time_cost);
-  tenary_op.SetVariable(res);
-  perf.tenary_ops[res] = tenary_op;
+  ternary_op.SetVariable(res);
+  perf.ternary_ops[res] = ternary_op;
   GELOGD("CompareNormal's adjustment factor is [%lf]", kCompareNormalAdjustmentFactor);
   perf.pipe_res[PipeType::AIV_VEC] = res * CreateExpr(kCompareNormalAdjustmentFactor); // verify得到的修正系数
   return ge::SUCCESS;

@@ -60,9 +60,9 @@ TEST_F(TestPipePerfExprV2, TestLoadPipeHead) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::PIPE_NONE] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::PIPE_NONE);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second), "775.0");
@@ -78,9 +78,9 @@ TEST_F(TestPipePerfExprV2, TestUpdatePipeHead) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::PIPE_NONE] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::PIPE_NONE);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second), "775.0");
@@ -96,9 +96,9 @@ TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadV1) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second), "775.0");
@@ -114,9 +114,9 @@ TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadV2) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second), "1174.30004882812");
@@ -132,15 +132,15 @@ TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadV3) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE3] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE3);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second), "571.0");
 }
 
-TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadTenaryOp) {
+TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadTernaryOp) {
   TuningSpacePtr test_tuning_space = std::make_shared<TuningSpace>();
   NodeInfo node;
   node.node_type = "LoadV2";
@@ -150,14 +150,14 @@ TEST_F(TestPipePerfExprV2, TestUpdatePipeHeadTenaryOp) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
-  auto iter2 = tenary_ops.find(iter->second);
-  EXPECT_TRUE(iter2 != tenary_ops.end());
-  EXPECT_EQ(iter2->second.GetTenaryOpStr(),
-        "TenaryOp((2 * z0t_size) < 256, 775.0, 1174.30004882812)");
+  auto iter2 = ternary_ops.find(iter->second);
+  EXPECT_TRUE(iter2 != ternary_ops.end());
+  EXPECT_EQ(iter2->second.GetTernaryOpStr(),
+        "TernaryOp((2 * z0t_size) < 256, 775.0, 1174.30004882812)");
 }
 }

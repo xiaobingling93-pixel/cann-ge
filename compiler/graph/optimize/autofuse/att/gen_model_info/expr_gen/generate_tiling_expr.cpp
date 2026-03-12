@@ -67,9 +67,9 @@ ge::Status GenerateTilingExpr::GetWorkSpaceSize(std::map<int64_t, Expr> &workspa
 }
 
 ge::Status GenerateTilingExpr::GetPipePerformance(std::map<PipeType, Expr> &pipe_perf_object,
-                                                  std::map<Expr, TenaryOp, ExprCmp> &tenary_ops, Expr &head_cost) {
+                                                  std::map<Expr, TernaryOp, ExprCmp> &ternary_ops, Expr &head_cost) {
   PipePerfExpr pipe_perf(tuning_space_);
-  GE_ASSERT_SUCCESS(pipe_perf.GetPerfExpr(pipe_perf_object, tenary_ops, head_cost), "Get tiling performance failed.");
+  GE_ASSERT_SUCCESS(pipe_perf.GetPerfExpr(pipe_perf_object, ternary_ops, head_cost), "Get tiling performance failed.");
   return ge::SUCCESS;
 }
 
@@ -606,7 +606,7 @@ ge::Status GenerateTilingExpr::Generate(ModelInfo &model_info) {
   GE_ASSERT_SUCCESS(GetReservedUbSize(model_info.reserved_ub_size), "Get reserved ub size failed.");
   GELOGD("Get reserved ub size success.");
 
-  GE_ASSERT_SUCCESS(GetPipePerformance(model_info.objects, model_info.tenary_op_map, model_info.head_cost),
+  GE_ASSERT_SUCCESS(GetPipePerformance(model_info.objects, model_info.ternary_op_map, model_info.head_cost),
                     "Get perf objects failed.");
   model_info.tiling_schedule_config_table = tuning_space_->tiling_schedule_config_table;
 

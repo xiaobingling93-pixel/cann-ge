@@ -197,24 +197,72 @@ brc缓存执行逻辑：
 1）若切分轴同时为R轴或非A轴，则使用性能公式除以切分轴的循环次数
 2）若切分轴同时是A轴，且当前loop axis中与R轴相关的循环轴的循环轮次为1，则使用性能公式除以B切分轴的循环次数，否则不做压缩
 */
-TenaryOp ExeTimePassManager::UpdateNodeExeTime(const NodeInfo &node, const Expr &exe_time) const {
+bool ExeTimePassManager::CheckAxisSplit(const NodeInfo &node, const SubAxis *axis, Expr *fused_axis) const {
   bool b_split = false;
   bool a_split = false;
   bool r_split = false;
-  Expr cur_exe_time;
-  Expr *fused_axis = nullptr;
-  if (brc_buf_node_.find(node.name) == brc_buf_node_.end()) {
-    return TenaryOp(exe_time);
+  for (const auto &node_name : node.from_data) {
+    for (const auto &orig_axis : axis->orig_axis) {
+      CheckSplit(broadcast_axis_, node_name, orig_axis->name, b_split);
+      CheckSplit(reduce_axis_, node_name, orig_axis->name, r_split);
+      CheckSplit(non_reduce_axis_, node_name, orig_axis->name, a_split);
+      CheckExecConditionBroadcast(tuning_space_, node, orig_axis, b_split, &fused_axis);
+    }
+    if (b_split) {
+      return true;
+    }
   }
+  return b_split;
+}
+
+TernaryOp ExeTimePassManager::HandleBroadcastSplit(const NodeInfo &node, const Expr &exe_time,
+                                                     const Expr &fused_exe_time) const {
+  GELOGD("[DFX] fused broadcast updates [%s] exe time : [%s] -> [%s]", node.name.c_str(),
+         Str(exe_time).c_str(), Str(fused_exe_time).c_str());
+  return TernaryOp(fused_exe_time);
+}
+
+TernaryOp ExeTimePassManager::HandleReduceOrNormalSplit(const NodeInfo &node, const Expr &exe_time,
+                                                         const SubAxis *axis,
+                                                         bool r_split, bool a_split) const {
+  Expr cur_exe_time = ge::sym::Div(exe_time, axis->repeat);
+  if (r_split || !a_split) {
+    GELOGD("Axis [%s] r_split and not asplit.", axis->name.c_str());
+    GELOGD("Brc buf module updates [%s] exe time : [%s] -> [%s]", node.name.c_str(),
+           Str(exe_time).c_str(), Str(cur_exe_time).c_str());
+    return TernaryOp(cur_exe_time);
+  }
+  GELOGD("Axis [%s] a_split.", axis->name.c_str());
+  Expr r_loop;
+  if (GetRLoop(node, r_loop)) {
+    GELOGD("Brc buf module updates [%s] exe time : [%s] -> [%s == 1 ? %s : %s]",
+           node.name.c_str(), Str(exe_time).c_str(), Str(r_loop).c_str(),
+           Str(cur_exe_time).c_str(), Str(exe_time).c_str());
+    return TernaryOp(CondType::K_EQ, r_loop, CreateExpr(1.0f), ge::sym::Div(cur_exe_time, r_loop), exe_time);
+  }
+  return TernaryOp(exe_time);
+}
+
+TernaryOp ExeTimePassManager::UpdateNodeExeTime(const NodeInfo &node, const Expr &exe_time) const {
+  if (brc_buf_node_.find(node.name) == brc_buf_node_.end()) {
+    return TernaryOp(exe_time);
+  }
+  Expr *fused_axis = nullptr;
+  bool b_split = false;
+  bool a_split = false;
+  bool r_split = false;
+
   for (const auto &axis : node.loop_axes) {
     GE_ASSERT_NOTNULL(axis, "Get axis failed.");
     if (axis->axis_type != AxisPosition::OUTER && axis->axis_type != AxisPosition::INNER) {
       continue;
     }
+    // Reset flags for each axis
+    b_split = false;
+    a_split = false;
+    r_split = false;
+
     for (const auto &node_name : node.from_data) {
-      b_split = false;
-      a_split = false;
-      r_split = false;
       for (const auto &orig_axis : axis->orig_axis) {
         CheckSplit(broadcast_axis_, node_name, orig_axis->name, b_split);
         CheckSplit(reduce_axis_, node_name, orig_axis->name, r_split);
@@ -225,32 +273,16 @@ TenaryOp ExeTimePassManager::UpdateNodeExeTime(const NodeInfo &node, const Expr 
         break;
       }
     }
+
     if (fused_axis != nullptr) {
-      cur_exe_time = ge::sym::Max(ge::sym::kSymbolOne, ge::sym::Div(exe_time, *fused_axis));
-      GELOGD("[DFX] fused broadcast updates [%s] exe time : [%s] -> [%s]", node.name.c_str(), Str(exe_time).c_str(),
-             Str(cur_exe_time).c_str());
-      return TenaryOp(cur_exe_time);
+      Expr fused_exe_time = ge::sym::Max(ge::sym::kSymbolOne, ge::sym::Div(exe_time, *fused_axis));
+      return HandleBroadcastSplit(node, exe_time, fused_exe_time);
     }
-    if (!b_split) {
-      continue;
-    }
-    GELOGD("axis [%s] b_split.", axis->name.c_str());
-    GELOGD("axis [%s] r_split:[%u].", axis->name.c_str(), r_split);
-    GELOGD("axis [%s] a_split:[%u].", axis->name.c_str(), a_split);
-    cur_exe_time = ge::sym::Div(exe_time, axis->repeat);
-    if (r_split || !a_split) {
-      GELOGD("Axis [%s] r_split and not asplit.", axis->name.c_str());
-      GELOGD("Brc buf module updates [%s] exe time : [%s] -> [%s]", node.name.c_str(), Str(exe_time).c_str(), Str(cur_exe_time).c_str());
-      return TenaryOp(cur_exe_time);
-    } else if (a_split) {
-      GELOGD("Axis [%s] a_split.", axis->name.c_str());
-      Expr r_loop;
-      if (GetRLoop(node, r_loop)) {
-        GELOGD("Brc buf module updates [%s] exe time : [%s] -> [%s == 1 ? %s : %s]", node.name.c_str(), Str(exe_time).c_str(), Str(r_loop).c_str(), Str(cur_exe_time).c_str(), Str(exe_time).c_str());
-        return TenaryOp(CondType::K_EQ, r_loop, CreateExpr(1.0f), ge::sym::Div(cur_exe_time, r_loop), exe_time);
-      }
+
+    if (b_split) {
+      return HandleReduceOrNormalSplit(node, exe_time, axis, r_split, a_split);
     }
   }
-  return TenaryOp(exe_time);
+  return TernaryOp(exe_time);
 }
 }  // namespace att

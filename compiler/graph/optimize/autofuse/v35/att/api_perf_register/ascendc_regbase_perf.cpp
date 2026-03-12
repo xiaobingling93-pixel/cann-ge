@@ -671,9 +671,9 @@ ge::Status SumPerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
   std::shared_ptr<IfCase> branch_not_small = std::make_shared<IfCase>
       (CondType::K_LE, cal_count, oneRepSize * oneRepSize, std::move(branch_mid), std::move(branch_large));
   GE_ASSERT_NOTNULL(branch_not_small);
-  TenaryOp tenary_op = TenaryOp(CondType::K_LE, cal_count, oneRepSize, std::move(branch_small), std::move(branch_not_small));
-  tenary_op.SetVariable(repeat);
-  perf.tenary_ops[repeat] = tenary_op;
+  TernaryOp ternary_op = TernaryOp(CondType::K_LE, cal_count, oneRepSize, std::move(branch_small), std::move(branch_not_small));
+  ternary_op.SetVariable(repeat);
+  perf.ternary_ops[repeat] = ternary_op;
   GELOGD("cal_count is [%s], oneRepSize is [%s], repeat is [%s].", ge::SymbolicUtils::ToString(cal_count).c_str(),
          ge::SymbolicUtils::ToString(oneRepSize).c_str(), ge::SymbolicUtils::ToString(repeat).c_str());
   GE_ASSERT_SUCCESS(VfPerfUtils::AddVfInstructPerf(kVcadd, node_info.input_dtype[0], max_latency, all_vf_instruct_cost, repeat));

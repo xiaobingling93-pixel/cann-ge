@@ -147,9 +147,9 @@ ge::Status LoadPerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
     auto res_case = std::make_shared<IfCase>(CondType::K_EQ, block_len_checker, CreateExpr(false),
                                              std::move(small_blk_case), std::move(ub_stride_case));
     GE_ASSERT_NOTNULL(res_case);
-    TenaryOp tenary_op = TenaryOp(CondType::K_LT, data_size, kLoadExprThres, std::move(res_case), std::move(normal_case));
-    tenary_op.SetVariable(res);
-    perf.tenary_ops[res] = tenary_op;
+    TernaryOp ternary_op = TernaryOp(CondType::K_LT, data_size, kLoadExprThres, std::move(res_case), std::move(normal_case));
+    ternary_op.SetVariable(res);
+    perf.ternary_ops[res] = ternary_op;
     perf.pipe_res[PipeType::AIV_MTE2] = res;
   }
   return ge::SUCCESS;
@@ -207,9 +207,9 @@ ge::Status StorePerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
         std::make_shared<IfCase>(CondType::K_LT, case3, CreateExpr(0), std::move(branch_c), std::move(branch_b_3));
     GE_ASSERT_NOTNULL(branch_b);
     // blocklen对齐32B时走branch_a；否则走branch_b
-    TenaryOp tenary_op = TenaryOp(CondType::K_EQ, case1, CreateExpr(0), std::move(branch_a), std::move(branch_b));
-    tenary_op.SetVariable(res);
-    perf.tenary_ops[res] = tenary_op;
+    TernaryOp ternary_op = TernaryOp(CondType::K_EQ, case1, CreateExpr(0), std::move(branch_a), std::move(branch_b));
+    ternary_op.SetVariable(res);
+    perf.ternary_ops[res] = ternary_op;
     perf.pipe_res[PipeType::AIV_MTE3] = res;
   }
   return ge::SUCCESS;

@@ -19,7 +19,7 @@ const Expr kMte2PipeHeadNormalCost = CreateExpr(1174.3f);
 const Expr kMte2PipeHeadSmallCost = CreateExpr(775.0f);
 const Expr kMte3PipeHeadCost = CreateExpr(571.0f);
 }
-Expr PerfParamTableV2::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+Expr PerfParamTableV2::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   Expr mte2_pipe_head;
   Expr max_blk = ge::sym::kSymbolZero;
   for (const auto &node : node_infos) {
@@ -45,10 +45,10 @@ Expr PerfParamTableV2::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, 
       mte2_pipe_head = kMte2PipeHeadSmallCost;
     }
   } else {
-    GetPerfVar("mte2_pipe_head", mte2_pipe_head, tenary_ops);
-    TenaryOp tenary_op = TenaryOp(CondType::K_LT, max_blk, kMTE2Thres, kMte2PipeHeadSmallCost, kMte2PipeHeadNormalCost);
-    tenary_op.SetVariable(mte2_pipe_head);
-    tenary_ops[mte2_pipe_head] = tenary_op;
+    GetPerfVar("mte2_pipe_head", mte2_pipe_head, ternary_ops);
+    TernaryOp ternary_op = TernaryOp(CondType::K_LT, max_blk, kMTE2Thres, kMte2PipeHeadSmallCost, kMte2PipeHeadNormalCost);
+    ternary_op.SetVariable(mte2_pipe_head);
+    ternary_ops[mte2_pipe_head] = ternary_op;
   }
   return mte2_pipe_head;
 }
@@ -353,9 +353,9 @@ PerfParamTableV2::PerfParamTableV2() {
   pipes_head_perf_.emplace(PipeType::AIV_MTE2, &PerfParamTableV2::GetMTE2PipeHead);
   pipes_head_perf_.emplace(PipeType::AIV_MTE3,
                           [](const std::vector<NodeInfo> &node_infos,
-                             std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) -> Expr {
+                             std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) -> Expr {
                             (void)node_infos;
-                            (void)tenary_ops;
+                            (void)ternary_ops;
                             return kMte3PipeHeadCost;
                           });
   vf_instruct_type_2_api_perf_ = GetVfInstructPerfTable();

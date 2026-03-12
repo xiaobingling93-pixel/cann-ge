@@ -172,15 +172,15 @@ public:
   /**
    * @brief 获取执行次数表达式替换表
    */
-  std::vector<std::pair<Expr, Expr>> GetTenaryOpReplaceVars() const;
+  std::vector<std::pair<Expr, Expr>> GetTernaryOpReplaceVars() const;
   /**
    * @brief 获取执行次数表达式参数集
    */
-  std::map<Expr, std::vector<Expr>, ExprCmp> GetTenaryOpRelatedVars() const;
+  std::map<Expr, std::vector<Expr>, ExprCmp> GetTernaryOpRelatedVars() const;
   /**
-   * @brief 获取 TenaryOp 映射（用于获取描述信息）
+   * @brief 获取 TernaryOp 映射（用于获取描述信息）
    */
-  const std::map<Expr, TenaryOp, ExprCmp>& GetTenaryOps() const;
+  const std::map<Expr, TernaryOp, ExprCmp>& GetTernaryOps() const;
   /**
   * @brief 获取多核头开销
    */
@@ -238,7 +238,7 @@ private:
   ExprExprMap ori_var_max_values_;
   ExprExprMap ori_var_align_values_;
   ExprExprMap replaced_var_init_values_;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_op_;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_op_;
 };
 bool GetNewVarsInExpr(const Expr &expr, const ExprExprMap &new_expr_replacements, std::vector<Expr> &expr_args);
 bool SplitVars(const AttAxisPtr &arg_axis, ExprInfoMap &var_infos);

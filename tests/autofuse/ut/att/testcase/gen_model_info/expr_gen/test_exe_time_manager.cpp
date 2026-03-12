@@ -34,7 +34,7 @@ class TestExeTimePass : public ::testing::Test {
   }
 };
 
-void GetExeTime(const TuningSpacePtr &tuning_space, TenaryOp &exe_cast0, TenaryOp &exe_store) {
+void GetExeTime(const TuningSpacePtr &tuning_space, TernaryOp &exe_cast0, TernaryOp &exe_store) {
   ExeTimePassManager exe_mgr(tuning_space);
   Expr exe_time;
   for (const auto &node : tuning_space->node_infos) {
@@ -60,11 +60,11 @@ TEST_F(TestExeTimePass, case1)
   TuningSpacePtr tuning_space = std::make_shared<TuningSpace>();
   att::AscendGraphParser ascend_graph_parser(tuning_space);
   auto ret = ascend_graph_parser.GraphParser(graph);
-  TenaryOp exe_time_cast0;
-  TenaryOp exe_time_store;
+  TernaryOp exe_time_cast0;
+  TernaryOp exe_time_store;
   GetExeTime(tuning_space, exe_time_cast0, exe_time_store);
-  EXPECT_EQ(exe_time_cast0.GetTenaryOpStr(), "z0z2Tb_size");
-  EXPECT_EQ(exe_time_store.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_cast0.GetTernaryOpStr(), "z0z2Tb_size");
+  EXPECT_EQ(exe_time_store.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
 }
 
 TEST_F(TestExeTimePass, case2)
@@ -77,11 +77,11 @@ TEST_F(TestExeTimePass, case2)
   TuningSpacePtr tuning_space = std::make_shared<TuningSpace>();
   att::AscendGraphParser ascend_graph_parser(tuning_space);
   auto ret = ascend_graph_parser.GraphParser(graph);
-  TenaryOp exe_time_cast0;
-  TenaryOp exe_time_store;
+  TernaryOp exe_time_cast0;
+  TernaryOp exe_time_store;
   GetExeTime(tuning_space, exe_time_cast0, exe_time_store);
-  EXPECT_EQ(exe_time_cast0.GetTenaryOpStr(), "TenaryOp(IsEqual(z0z2Tb_size, 1.0), 1, (Ceiling((Z1 / (z1t_size))) * z0z2Tb_size))");
-  EXPECT_EQ(exe_time_store.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_cast0.GetTernaryOpStr(), "TernaryOp(IsEqual(z0z2Tb_size, 1.0), 1, (Ceiling((Z1 / (z1t_size))) * z0z2Tb_size))");
+  EXPECT_EQ(exe_time_store.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
 }
 
 TEST_F(TestExeTimePass, case3)
@@ -94,11 +94,11 @@ TEST_F(TestExeTimePass, case3)
   TuningSpacePtr tuning_space = std::make_shared<TuningSpace>();
   att::AscendGraphParser ascend_graph_parser(tuning_space);
   auto ret = ascend_graph_parser.GraphParser(graph);
-  TenaryOp exe_time_cast0;
-  TenaryOp exe_time_store;
+  TernaryOp exe_time_cast0;
+  TernaryOp exe_time_store;
   GetExeTime(tuning_space, exe_time_cast0, exe_time_store);
-  EXPECT_EQ(exe_time_cast0.GetTenaryOpStr(), "z0z2Tb_size");
-  EXPECT_EQ(exe_time_store.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_cast0.GetTernaryOpStr(), "z0z2Tb_size");
+  EXPECT_EQ(exe_time_store.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
 }
 
 TEST_F(TestExeTimePass, case4)
@@ -111,11 +111,11 @@ TEST_F(TestExeTimePass, case4)
   TuningSpacePtr tuning_space = std::make_shared<TuningSpace>();
   att::AscendGraphParser ascend_graph_parser(tuning_space);
   auto ret = ascend_graph_parser.GraphParser(graph);
-  TenaryOp exe_time_cast0;
-  TenaryOp exe_time_store;
+  TernaryOp exe_time_cast0;
+  TernaryOp exe_time_store;
   GetExeTime(tuning_space, exe_time_cast0, exe_time_store);
-  EXPECT_EQ(exe_time_cast0.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
-  EXPECT_EQ(exe_time_store.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_cast0.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_store.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
 }
 
 TEST_F(TestExeTimePass, exec_condition) {
@@ -129,10 +129,10 @@ TEST_F(TestExeTimePass, exec_condition) {
   TuningSpacePtr tuning_space = std::make_shared<TuningSpace>();
   att::AscendGraphParser ascend_graph_parser(tuning_space);
   auto ret = ascend_graph_parser.GraphParser(graph);
-  TenaryOp exe_time_cast0;
-  TenaryOp exe_time_store;
+  TernaryOp exe_time_cast0;
+  TernaryOp exe_time_store;
   GetExeTime(tuning_space, exe_time_cast0, exe_time_store);
-  EXPECT_EQ(exe_time_cast0.GetTenaryOpStr(), "Max(1, (Ceiling((Z1 / (z1t_size))) * z0z2Tb_size / (Ceiling((Z2 / (z2t_size))))))");
-  EXPECT_EQ(exe_time_store.GetTenaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
+  EXPECT_EQ(exe_time_cast0.GetTernaryOpStr(), "Max(1, (Ceiling((Z1 / (z1t_size))) * z0z2Tb_size / (Ceiling((Z2 / (z2t_size))))))");
+  EXPECT_EQ(exe_time_store.GetTernaryOpStr(), "(Ceiling((Z1 / (z1t_size))) * z0z2Tb_size)");
 }
 }

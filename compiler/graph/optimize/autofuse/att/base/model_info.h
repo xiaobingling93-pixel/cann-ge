@@ -14,7 +14,7 @@
 #include <map>
 #include "base/base_types.h"
 #include "schedule_result.h"
-#include "util/tenary_op.h"
+#include "util/ternary_op.h"
 
 namespace att {
 // NO_TAIL用于modelifno等式约束表达父轴大小要整除子轴，no_tail对应的表达式应为div
@@ -248,7 +248,7 @@ struct ModelInfo {
   ReuseScheduleGroupPtr reuse_schedule_group; // 标记reuse group信息
   ExprExprMap variable_expr_map; //用于记录tensor的表达式
   std::map<Expr, std::string, ExprCmp> variable_name_map; //用于记录tensor的名称
-  std::map<Expr, TenaryOp, ExprCmp> tenary_op_map; //用于记录三目运算符的名称
+  std::map<Expr, TernaryOp, ExprCmp> ternary_op_map; //用于记录三目运算符的名称
   uint32_t output_size;
   std::vector<ge::AscNodePtr> input_nodes; // 获取输入schedule_results[0].input_nodes
   std::vector<ge::AscNodePtr> output_nodes; // 获取输入出schedule_results[0].output_nodes
