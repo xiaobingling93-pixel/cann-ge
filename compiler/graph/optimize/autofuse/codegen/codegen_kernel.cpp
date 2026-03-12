@@ -4589,20 +4589,25 @@ std::string TPipe::TensorSizeDefine() const {
   return ss.str();
 }
 
-std::string TPipe::TensorSizeAssign(std::string dtype_name) const {
+Status TPipe::TensorSizeAssign(std::string dtype_name, std::string &result) const {
   stringstream ss;
 
   for (auto &pair : this->tensors) {
     auto &t = pair.second;
     if ((t.alloc_type == ge::AllocType::kAllocTypeQueue) || (t.alloc_type == ge::AllocType::kAllocTypeBuffer)) {
       if (t.is_ub_scalar) {
- 	      ss << t.size.Str() << " = 1;" << std::endl;
+        std::string tensor_dtype_name;
+        GE_CHK_STATUS_RET(Tensor::DtypeName(t.dtype, tensor_dtype_name), "Codegen get data type:%d failed",
+                          static_cast<int32_t>(t.dtype));
+ 	      ss << t.size.Str() << " = KernelUtils::BlkAlign<" << tensor_dtype_name << ">(1);" << std::endl;
  	    } else {
  	      ss << t.size.Str() << " = stage_size / sizeof(" << dtype_name << ");" << std::endl;
  	    }
     }
   }
-  return ss.str();
+  ss << std::endl;
+  result = ss.str();
+  return ge::SUCCESS;
 }
 
 std::string TPipe::GenDuplicateBufDefine(const std::set<std::pair<std::string, std::string>>& pre_api_extract_dup) const {
@@ -4826,7 +4831,8 @@ class AutoFusionVector {
 
   result << ub_tensor->Str() << "_actual_size =  stage_size_type;" << std::endl << std::endl;
  
-  result << this->tpipe.TensorSizeAssign(dtype_name) << std::endl;
+  GE_CHK_STATUS_RET(this->tpipe.TensorSizeAssign(dtype_name, tmp), "Tensor size assign failed");
+  result << tmp;
 
   for (auto &input : this->inputs) {
     result << input << " = params." << input << ";" << std::endl;

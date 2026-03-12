@@ -339,7 +339,7 @@ class TPipe : public Variable {
   Status LocalTensorDefine(std::string &result) const;
   Status LocalTBufAssign(const TBuf &buf, std::string &result) const;
   std::string TensorSizeDefine() const;
-  std::string TensorSizeAssign(std::string dtype_name) const;
+  Status TensorSizeAssign(std::string dtype_name, std::string &result) const;
   std::string GenDuplicateBufDefine(const std::set<std::pair<std::string, std::string>>& pre_api_extract_dup) const;
   std::string GenDuplicateBufAssign(const std::set<std::pair<std::string, std::string>>& pre_api_extract_dup) const;
   Status BlkTensorDefine(std::string &result) const;
