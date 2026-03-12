@@ -63,6 +63,9 @@ function(do_add_codegen_e2e_st_test)
     target_link_libraries(${E2E_ST2_EXE_KERNEL_EXE_NAME} tikicpulib_ascend910B1 GTest::gtest GTest::gtest_main)
     target_compile_options(${E2E_ST2_EXE_KERNEL_EXE_NAME} PRIVATE -DAUTO_FUSE_DEVICE=1)
     #gtest_discover_tests(${E2E_ST2_EXE_KERNEL_EXE_NAME})
+
+    add_test(NAME ${E2E_ST2_EXE_KERNEL_EXE_NAME} COMMAND ${E2E_ST2_EXE_KERNEL_EXE_NAME} --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/${E2E_ST2_EXE_KERNEL_EXE_NAME}.xml)
+    set_tests_properties(${E2E_ST2_EXE_KERNEL_EXE_NAME} PROPERTIES LABELS "st;codegen_e2e_st;${E2E_ST2_EXE_KERNEL_EXE_NAME}")
 endfunction()
 
 macro(add_codegen_e2e_st_test)

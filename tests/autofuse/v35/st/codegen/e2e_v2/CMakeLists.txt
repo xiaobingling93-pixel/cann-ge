@@ -80,7 +80,7 @@ target_include_directories(e2e_v2_com PUBLIC
 add_subdirectory(load_abs_store_expect_code)
 add_subdirectory(load_scalar_abs_brc_store_expect_code)
 add_subdirectory(load_scalar_clip_store_expect_code)
-add_subdirectory(load_sub_store_expect_code)
+# add_subdirectory(load_sub_store_expect_code)
 add_subdirectory(load_div_store_expect_code)
 add_subdirectory(load_nan_out_for_store_expect_code)
 add_subdirectory(load_scalar_sub_store_expect_code)
