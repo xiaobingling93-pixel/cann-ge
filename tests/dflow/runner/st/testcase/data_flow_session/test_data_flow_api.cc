@@ -13,7 +13,7 @@
 #include <fstream>
 #include "nlohmann/json.hpp"
 #include "depends/mmpa/src/mmpa_stub.h"
-#include "ge/st/stubs/utils/mock_execution_runtime.h"
+#include "utils/mock_execution_runtime.h"
 
 #include "dflow/compiler/session/dflow_api.h"
 #include "depends/slog/src/slog_stub.h"
