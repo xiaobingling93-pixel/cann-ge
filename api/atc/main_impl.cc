@@ -425,6 +425,9 @@ const std::unordered_set<std::string> kOm2UnsuppotedFlag = {
     "display_model_info",
     "atomic_clean_policy",
     "status_check",
+    "save_original_model",
+    "compress_weight_conf",
+    "enable_compress_weight",
 };
 
 namespace ge {
