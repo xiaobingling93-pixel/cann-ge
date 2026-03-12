@@ -78,8 +78,8 @@ graphStatus KernelHandleUtils::LaunchKernel(const rtFuncHandle func_handle, cons
   attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_DATA_DUMP;
   attrs[actual_cfg_num].value.isDataDump = static_cast<uint8_t>(launch_param.launch_config.is_data_dump);
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_LOCAL_MEM_SIZE;
-  attrs[actual_cfg_num].value.localMemorySize = launch_param.launch_config.local_memory_size;
+  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE;
+  attrs[actual_cfg_num].value.dynUBufSize = launch_param.launch_config.local_memory_size;
   actual_cfg_num++;
   if (launch_param.launch_config.time_out >= 0) {
     attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_TIMEOUT;
