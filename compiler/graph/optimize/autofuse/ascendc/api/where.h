@@ -696,6 +696,8 @@ inline __aicore__ void WhereExtend(const AscendC::LocalTensor<T> &dst,
   uint32_t element_reminder = last_axis - element_extent * ONE_RPT_SIZE;
   // 2. 根据临时空间，计算外抛实际一次能计算的repeat times
   uint32_t max_do_rpt_num = KernelUtils::Min(MAX_REPEAT_TIME, params.sel_res_buf.GetSize() / sizeof(float) / ONE_RPT_SIZE);
+  // 确保根据params.src0_offset、params.src1_offset和params.dst_offset计算的地址，可以32字节对齐
+  max_do_rpt_num = max_do_rpt_num / (sizeof(float) / sizeof(T)) * (sizeof(float) / sizeof(T));
 
   uint32_t repeat_throw_for_extent = first_axis / max_do_rpt_num;
   uint32_t repeat_reminder = first_axis - repeat_throw_for_extent * max_do_rpt_num;
