@@ -751,7 +751,8 @@ void InnerSession::SetTrainFlagOption() {
 
 Status InnerSession::CompileGraph(uint32_t graph_id, const vector<ge::Tensor> &inputs) {
   UpdateGlobalSessionContext();
-  const auto ret = graph_manager_.CompileGraph(graph_id, session_id_, inputs);
+  GE_ASSERT_NOTNULL(user_graphs_manager_);
+  const auto ret = user_graphs_manager_->CompileGraph(graph_id, session_id_, inputs);
   GE_CHK_STATUS_RET(ret, "[Compile][Graph]Failed, InnerSession:%lu, graph_id:%u, inputs size:%zu.",
                     session_id_, graph_id, inputs.size());
   GELOGI("[InnerSession:%lu]Compile graph success, session_id:%lu, graph_id:%u, inputs size:%zu.",
