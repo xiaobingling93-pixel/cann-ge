@@ -23,6 +23,7 @@ const std::string kTilingHeadCceKtTestGuard = "#ifndef __CCE_KT_TEST__";
 const std::string kTilingHeadEndGuard = "#endif";
 const std::string kTilingHeadTilingContext = "#include \"exe_graph/runtime/tiling_context.h\"";
 const std::string kTilingDefAndConstIdentify = "tiling_def_and_tiling_const";
+const std::string kCubeTilingHeadInclude = "#include \"autofuse_cube_tiling_data.h\"";
 
   using TilingLibCodegenFunc = bool (*)(const std::string &op_name,
                                         const ::ascir::FusedScheduledResult& fused_schedule_result,

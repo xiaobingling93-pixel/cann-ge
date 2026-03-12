@@ -293,8 +293,6 @@ void FakeFuzzCompileEngine() {
         .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"));
 }
 
-// todo test
-/*
 void FakeFuzzCompileEngineForUbFusion() {
   auto fuzz_compile_optimzer = MakeShared<FakeFuzzCompileOptimizer>();
   GeneralizedShapeInfo shape_info;
@@ -326,7 +324,6 @@ void FakeFuzzCompileEngineForUbFusion() {
         .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"))
         .Install(FakeOp("_RetVal").InfoStoreAndBuilder("DNN_VM_GE_LOCAL_OP_STORE"));
 }
-*/
 
 Graph BuildFuzzCompileUnknownRankGraph() {
   std::vector<int64_t> shape = {-2};  // NCHW
@@ -363,77 +360,44 @@ Graph BuildFuzzCompileUnknownRankGraph() {
   return ToGeGraph(g1);
 }
 
-// todo test
-/*
 Graph BuildFuzzCompileOriginGraphWithUBfusion() {
-   std::vector<int64_t> shape = {2,2,3,2};  // NCHW
-   std::vector<int64_t> unknown_shape = {2,2,-1,2};  // NCHW
+  std::vector<int64_t> shape = {2,2,3,2};  // NCHW
+  std::vector<int64_t> unknown_shape = {2,2,-1,2};  // NCHW
 
-  auto data1 = OP_CFG(DATA)
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Attr(ATTR_NAME_PARENT_NODE_INDEX, 0)
-        .Attr("OwnerGraphIsUnknown", true)
-        .Build("data1");
+  auto data1 = OP_CFG(DATA).TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
+        .InCnt(1).OutCnt(1).Attr(ATTR_NAME_PARENT_NODE_INDEX, 0).Attr("OwnerGraphIsUnknown", true).Build("data1");
 
   vector<int64_t> test_int64_list_attr = {1,2,3};
   vector<int32_t> test_int32_list_attr = {1,2,3};
   vector<uint32_t> test_uint32_list_attr = {1,2,3};
-  auto conv2d = OP_CFG(CONV2D)
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Attr("string_attr", "test")
-        .Attr("int32_attr", (int32_t)1)
-        .Attr("uint32_attr", (uint32_t)1)
-        .Attr("test_int64_list_attr", test_int64_list_attr)
-        .Attr("test_int32_list_attr", test_int32_list_attr)
-        .Attr("test_uint32_list_attr", test_uint32_list_attr)
-        .Attr("data_format", "NHWC")  // attr on operator
-        .Attr("dilations", test_int64_list_attr)
-        .Attr("groups", (int32_t)1)
-        .Attr("offset_x", (int32_t)1)
+  auto conv2d = OP_CFG(CONV2D).TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
+        .InCnt(1).OutCnt(1).Attr("string_attr", "test").Attr("int32_attr", (int32_t)1).Attr("uint32_attr", (uint32_t)1)
+        .Attr("test_int64_list_attr", test_int64_list_attr).Attr("test_int32_list_attr", test_int32_list_attr)
+        .Attr("test_uint32_list_attr", test_uint32_list_attr).Attr("data_format", "NHWC")  // attr on operator
+        .Attr("dilations", test_int64_list_attr).Attr("groups", (int32_t)1).Attr("offset_x", (int32_t)1)
         .Build("conv2d");
   conv2d->SetOpEngineName("AIcoreEngine");
   conv2d->SetOpKernelLibName("AIcoreEngine");  // fake op can not do that?
 
-  auto relu = OP_CFG(RELU)
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Build("relu");
+  auto relu = OP_CFG(RELU).TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
+        .InCnt(1).OutCnt(1).Build("relu");
   relu->SetOpEngineName("AIcoreEngine");
   relu->SetOpKernelLibName("AIcoreEngine");  // fake op can not do that? // fe should insure kernel lib name
 
-  auto netoutput_sub = OP_CFG("_RetVal")
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Attr(ATTR_NAME_PARENT_NODE_INDEX, 0)
-        .Build("netoutput_sub");
+  auto netoutput_sub = OP_CFG("_RetVal").TensorDesc(FORMAT_NCHW, DT_FLOAT, unknown_shape)
+        .InCnt(1).OutCnt(1).Attr(ATTR_NAME_PARENT_NODE_INDEX, 0).Build("netoutput_sub");
 
   DEF_GRAPH(fuse_origin_graph) {
     CHAIN(NODE(data1)->NODE(conv2d)->NODE(relu)->NODE(netoutput_sub));
   };
 
-  auto data_a = OP_CFG(DATA)
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Attr(ATTR_NAME_INDEX, 0)
-        .Build("data_a");
+  auto data_a = OP_CFG(DATA).TensorDesc(FORMAT_NCHW, DT_FLOAT, shape)
+        .InCnt(1).OutCnt(1).Attr(ATTR_NAME_INDEX, 0).Build("data_a");
 
-  auto conv2d_fused = OP_CFG(CONV2D)
-        .TensorDesc(FORMAT_NCHW, DT_FLOAT, shape)
-        .InCnt(1)
-        .OutCnt(1)
-        .Attr("data_format", "NHWC")  // attr on operator
-        .Attr("dilations", test_int64_list_attr)
-        .Attr("groups", (int32_t)1)
-        .Attr("offset_x", (int32_t)1)
-        .Attr("_original_fusion_graph", fuse_origin_graph)
-        .Build("conv2d_fused");
+  auto conv2d_fused = OP_CFG(CONV2D).TensorDesc(FORMAT_NCHW, DT_FLOAT, shape)
+        .InCnt(1).OutCnt(1).Attr("data_format", "NHWC")  // attr on operator
+        .Attr("dilations", test_int64_list_attr).Attr("groups", (int32_t)1).Attr("offset_x", (int32_t)1)
+        .Attr("_original_fusion_graph", fuse_origin_graph).Build("conv2d_fused");
   conv2d_fused->SetOpEngineName("AIcoreEngine");
   conv2d_fused->SetOpKernelLibName("AIcoreEngine");  // fake op can not do that?
 
@@ -451,7 +415,6 @@ Graph BuildFuzzCompileOriginGraphWithUBfusion() {
   AttrUtils::SetGraph(conv2d_fused_node->GetOpDesc(), "_original_fusion_graph", fused_compute_graph);
   return graph;
 }
-*/
 
 void InitGeLib() {
   map<string, string> options;
@@ -1087,6 +1050,7 @@ void ExecuteDynamicOnlineGraph(Graph &graph,
   std::vector<Tensor> outputs;
   EXPECT_EQ(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
   session.RemoveGraph(graph_id);
+  DumpManager::GetInstance().RemoveDumpProperties(0);
 }
 
 void EXPECT_ExecuteDynamicOnlineInfer(Graph &graph,
@@ -1167,6 +1131,7 @@ void BuildAndExecDynamicOnlineModelExp(Status status) {
     EXPECT_NE(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
   }
   session.RemoveGraph(graph_id);
+  DumpManager::GetInstance().RemoveDumpProperties(session.GetSessionId());
 }
 
 void ExecDynamicOfflineModel(GeExecutor &ge_executor, uint32_t model_id) {
@@ -1646,6 +1611,7 @@ TEST_F(DynamicGraphTest, TestDynamicOnlineTraining_invalid_ac_parallel_enable) {
   EXPECT_NE(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
   session.RemoveGraph(graph_id);
   unsetenv("ENABLE_DYNAMIC_SHAPE_MULTI_STREAM");
+  DumpManager::GetInstance().RemoveDumpProperties(0);
 }
 
 TEST_F(DynamicGraphTest, TestDynamicOnlineTraining_ac_parallel_enable) {
@@ -1733,6 +1699,7 @@ TEST_F(DynamicGraphTest, TestDynamicOnlineTrainingWithNpuGetFloatStatus) {
   std::vector<Tensor> outputs;
   EXPECT_EQ(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
   session.RemoveGraph(graph_id);
+  DumpManager::GetInstance().RemoveDumpProperties(0);
 }
 
 TEST_F(DynamicGraphTest, TestDynamicTraining_String_Type) {
@@ -3268,18 +3235,18 @@ TEST_F(DynamicGraphTest, TestFuzzCompileUnknownRankLoadWithOutKernel_GertTensor)
   FakeFuzzCompileEngine();
   MockOnceForOnceSkipGenerateTask("AIcoreEngine", SkipGenerateTask, GenerateTaskForTaskWithHandle);
   auto graph = BuildFuzzCompileUnknownRankGraph();
-  std::map<AscendString, AscendString> options;
-  options[OPTION_GRAPH_RUN_MODE] = "1";  // train
-  options[OPTION_EXEC_ENABLE_DUMP_DEBUG] = "1";
-  options[OPTION_EXEC_DUMP_PATH] = "./";
-  options[OPTION_EXEC_DUMP_DEBUG_MODE] = "aicore_overflow"; // OP_DEBUG_ATOMIC /  OP_DEBUG_ALL
-  options[VARIABLE_MEMORY_MAX_SIZE] = "12800";
+  std::map<AscendString, AscendString> session_options;
+  session_options[OPTION_GRAPH_RUN_MODE] = "1";  // train
+  session_options[OPTION_EXEC_ENABLE_DUMP_DEBUG] = "1";
+  session_options[OPTION_EXEC_DUMP_PATH] = "./";
+  session_options[OPTION_EXEC_DUMP_DEBUG_MODE] = "aicore_overflow"; // OP_DEBUG_ATOMIC /  OP_DEBUG_ALL
+  session_options[VARIABLE_MEMORY_MAX_SIZE] = "12800";
 
   std::map<AscendString, AscendString> graph_options;
   graph_options[OPTION_EXEC_DYNAMIC_EXECUTE_MODE] = "dynamic_execute";
   graph_options["ge.shape_generalized_build_mode"] = "shape_generalized";
 
-  GeSession session(options);
+  GeSession session(session_options);
   GraphId graph_id = 1;
   EXPECT_EQ(session.AddGraph(graph_id, graph, graph_options), SUCCESS);
 
@@ -3321,8 +3288,6 @@ TEST_F(DynamicGraphTest, TestFuzzCompileUnknownRankLoadWithOutKernel_GertTensor)
  *
  */
 
-// todo test
-/*
 TEST_F(DynamicGraphTest, TestFuzzCompileUBfusionExecuteSwitchToOriginGraphExecution) {
   FakeFuzzCompileEngineForUbFusion();
   MockForGenerateTask("AIcoreEngine", GenerateTaskForTaskWithHandle);
@@ -3360,7 +3325,7 @@ TEST_F(DynamicGraphTest, TestFuzzCompileUBfusionExecuteSwitchToOriginGraphExecut
   auto relu_in_sub_fuzz_compile_counts = fuzz_compile_store->GetNodeFuzzCompileCount("relu");
   EXPECT_EQ(relu_in_sub_fuzz_compile_counts, 1); //fuse node fuzz failed, switch to origin graph execution, so relu will fuzz once
   session.RemoveGraph(graph_id);
-}*/
+}
 
 const static std::vector<int64_t> val_list_int;
 const static std::vector<bool> val_list_bool;

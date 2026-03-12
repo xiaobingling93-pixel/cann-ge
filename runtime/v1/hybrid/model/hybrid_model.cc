@@ -50,6 +50,11 @@ HybridModel::HybridModel(GeRootModelPtr ge_model) : ge_root_model_(std::move(ge_
 }
 
 HybridModel::~HybridModel() {
+  for (const auto &it : node_items_) {
+    if (it.second != nullptr) {
+      it.second->kernel_task.reset();
+    }
+  }
   GELOGD("[%s] HybridModel destroyed.", model_name_.c_str());
 }
 

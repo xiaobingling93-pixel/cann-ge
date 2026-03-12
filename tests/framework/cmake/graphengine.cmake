@@ -140,8 +140,8 @@ add_custom_target(
 
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/tests/ge/st/testcase/plugin/opskernel/optimizer_priority.pbtxt
-    COMMAND mkdir -p ${CMAKE_BINARY_DIR}/tests/ge/st/testcase/plugin/opskernel/
-    COMMAND cp ${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/optimizer_priority.pbtxt ${CMAKE_BINARY_DIR}/tests/ge/st/testcase/plugin/opskernel/
+    COMMAND mkdir -p ${CMAKE_BINARY_DIR}/compiler/plugin/opskernel/
+    COMMAND cp ${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/optimizer_priority.pbtxt ${CMAKE_BINARY_DIR}/compiler/plugin/opskernel/
     COMMAND mkdir -p ${CMAKE_BINARY_DIR}/tests/framework/ge_running_env/tests/plugin/opskernel/
     COMMAND cp ${AIR_CODE_DIR}/compiler/engines/manager/opskernel_manager/optimizer_priority.pbtxt ${CMAKE_BINARY_DIR}/tests/framework/ge_running_env/tests/plugin/opskernel/
 )

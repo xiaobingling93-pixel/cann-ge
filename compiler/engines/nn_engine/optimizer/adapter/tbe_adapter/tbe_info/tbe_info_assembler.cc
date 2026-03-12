@@ -309,7 +309,8 @@ Status TbeInfoAssembler::FeedParameterInfoForOutput(const ge::OpDesc &op_desc, c
     }
   } else {
     bool need_tensor =
-        (output_type == OpParamType::OPTIONAL && !IsMemoryEmpty(output_desc)) || output_type == OpParamType::REQUIRED;
+        (output_type == OpParamType::OPTIONAL && !IsMemoryEmpty(output_desc) && !HasNullableOutput(output_desc))
+        || output_type == OpParamType::REQUIRED;
     if (need_tensor) {
       tbe_op_param.SetTensor(tbe_op_tensor);
     } else {
@@ -869,6 +870,23 @@ void TbeInfoAssembler::SetOutputDdrBaseProp(const ge::Node *node, const uint32_t
   }
 }
 
+void TbeInfoAssembler::SetIsNullOutputFlag(const ge::Node *node, const uint32_t &tensor_index,
+ 	                                            te::TbeOpTensor &output_tensor) const {
+ 	FE_CHECK(node == nullptr, FE_LOGI("Node is null."), return);
+ 	auto tensor_desc = node->GetOpDesc()->MutableOutputDesc(tensor_index);
+ 	if (tensor_desc == nullptr) {
+ 	  FE_LOGW("Node[%s, %s], unexpected tensor desc nullptr, output idx is: %u.", node->GetNamePtr(),
+ 	          node->GetTypePtr(), tensor_index);
+ 	}
+ 	bool is_null_output = false;
+ 	(void)ge::AttrUtils::GetBool(tensor_desc, ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+ 	if(is_null_output) {
+ 	  FE_LOGD("The peer node of op[%s, %s]'s output[%u] has attribute is_null_output %d.",
+ 	    node->GetName().c_str(), node->GetType().c_str(), tensor_index, is_null_output);
+ 	  output_tensor.SetIsNullOutput(is_null_output);
+ 	}
+}
+
 void TbeInfoAssembler::SetIsConstInputFlag(const ge::Node *node, const ge::OpDesc &op_desc,
                                            const uint32_t &tensor_index, te::TbeOpTensor &input_tensor) const {
   if (CheckAOETuning(node)) {
@@ -1242,6 +1260,7 @@ Status TbeInfoAssembler::FeedOutputsToTbeOpInfo(const ge::Node *node, IndexNameM
         SetOutputDdrBaseProp(node, index_in_opdesc, output_tensor);
         FE_LOGD("Ddr base prop of op[%s, %s]'s output[%u] is [%d].", op->GetName().c_str(), op->GetType().c_str(),
                 index_in_opdesc, static_cast<int32_t>(output_tensor.GetDdrBaseProp()));
+        SetIsNullOutputFlag(node, index_in_opdesc, output_tensor);
         SetTbeTensorShape(*op.get(), tensor_info, output_tensor);
         // take care that danamic output have multiple sub-outputs.
         if (FeedParameterInfoForOutput(*(node->GetOpDesc().get()), *(output_desc.get()), output_info_ptr,

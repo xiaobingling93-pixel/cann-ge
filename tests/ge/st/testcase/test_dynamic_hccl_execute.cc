@@ -497,24 +497,27 @@ static void BuildHcclRemoteWriteGraph(Graph &ge_graph, uint32_t &mem_offset) {
         .OutCnt(1)
         .Attr(ATTR_NAME_WEIGHTS, tensor)
         .Attr(ATTR_NAME_INDEX, 0)
-        .TensorDesc(FORMAT_ND, DT_UINT64, {3});
+        .TensorDesc(FORMAT_ND, DT_UINT64, {3,3})
+        .Attr(ATTR_NAME_FORCE_UNKNOWN_SHAPE, true);
 
     auto const1 = OP_CFG(CONSTANTOP)
         .InCnt(1)
         .OutCnt(1)
         .Attr(ATTR_NAME_WEIGHTS, tensor)
-        .Attr(ATTR_NAME_INDEX, 0)
-        .TensorDesc(FORMAT_ND, DT_UINT64, {3});
+        .Attr(ATTR_NAME_INDEX, 1)
+        .TensorDesc(FORMAT_ND, DT_UINT64, {3})
+        .Attr(ATTR_NAME_FORCE_UNKNOWN_SHAPE, true);
 
     auto const2 = OP_CFG(CONSTANTOP)
         .InCnt(1)
         .OutCnt(1)
         .Attr(ATTR_NAME_WEIGHTS, tensor)
-        .Attr(ATTR_NAME_INDEX, 0)
-        .TensorDesc(FORMAT_ND, DT_UINT64, {3});
+        .Attr(ATTR_NAME_INDEX, 2)
+        .TensorDesc(FORMAT_ND, DT_UINT64, {3})
+        .Attr(ATTR_NAME_FORCE_UNKNOWN_SHAPE, true);
 
     auto hcom_remote_write = OP_CFG(HCOMREMOTEWRITE)
-        .InCnt(1)
+        .InCnt(3)
         .OutCnt(1)
         .TensorDesc(FORMAT_ND, DT_UINT64, {3})
         .Attr(ATTR_NAME_FORCE_UNKNOWN_SHAPE, true)
@@ -555,8 +558,7 @@ TEST_F(DynamicHcclTest, TestDynamicOnlineTrainingRemoteWrite) {
   input_0.SetData(buffer, sizeof(buffer));
   std::vector<Tensor> inputs{input_0};
   std::vector<Tensor> outputs;
-  // toto test
-  // EXPECT_EQ(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
+  EXPECT_EQ(session.RunGraph(graph_id, inputs, outputs), SUCCESS);
   session.RemoveGraph(graph_id);
   EXPECT_EQ(GEFinalize(), SUCCESS);
 }

@@ -12,32 +12,17 @@
 #include <gmock/gmock.h>
 #include <string.h>
 
-#include "macro_utils/dt_public_scope.h"
-
 #include "dflow/executor/flow_model_manager.h"
 #include "common/profiling/profiling_manager.h"
-#include "common/profiling/profiling_properties.h"
 #include "common/helper/om_file_helper.h"
 #include "common/op/ge_op_utils.h"
-#include "hybrid/model/hybrid_model_builder.h"
-#include "graph/load/graph_loader.h"
-#include "graph/load/model_manager/model_manager.h"
-#include "graph/load/model_manager/model_utils.h"
-#include "graph/load/model_manager/data_inputer.h"
-#include "graph/ge_context.h"
 #include "graph/ops_stub.h"
 #include "graph/manager/graph_manager.h"
 #include "graph/passes/graph_builder_utils.h"
-#include "graph/debug/ge_attr_define.h"
-#include "graph/utils/graph_utils.h"
-#include "graph/utils/graph_utils_ex.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "depends/runtime/src/runtime_stub.h"
-#include "common/share_graph.h"
 #include "dflow/inc/data_flow/model/flow_model_helper.h"
-#include "common/env_path.h"
-#include "graph/execute/model_executor.h"
-#include "session/inner_session.h"
+#include "framework/common/helper/model_helper.h"
 
 using namespace std;
 using namespace testing;

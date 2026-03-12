@@ -399,8 +399,7 @@ ComputeGraphPtr GetSimplePhonyConcatComputeGraph() {
   pc->GetOpDesc()->MutableOutputDesc(0)->SetShape(GeShape({1, 2, 2, 8, 8}));
   return compute_graph;
 }
-// todo test
-/*
+
 TEST_F(GeLocalEngineTest, PhonyConcatGraphBuild) {
   DUMP_GRAPH_WHEN("AfterAssignResource");
 
@@ -499,7 +498,6 @@ TEST_F(GeLocalEngineTest, PhonyConcatGraphBuildNegetiveDim) {
     EXPECT_EQ(list_int_attr[0], 64);
   };
 }
-*/
 
 /*
  *       data1
@@ -513,8 +511,6 @@ TEST_F(GeLocalEngineTest, PhonyConcatGraphBuildNegetiveDim) {
  *      netoutput
  */
 
-// todo test
-/*
 ComputeGraphPtr GetSimplePhonySplitComputeGraph() {
   DEF_GRAPH(test1) {
     auto mul3 = OP_CFG("Mul").TensorDesc(FORMAT_ND, DT_FLOAT16, {1, 2, 2, 8, 8});
@@ -599,6 +595,6 @@ TEST_F(GeLocalEngineTest, PhonySplitGraphBuild) {
     EXPECT_EQ(ge::AttrUtils::GetListInt(name_to_node["mul2"]->GetOpDesc(), "_input_offset_list_for_continuous", list_int_attr), true);
     EXPECT_EQ(list_int_attr[0], 64);
   };
-}*/
+}
 
 }  // namespace ge

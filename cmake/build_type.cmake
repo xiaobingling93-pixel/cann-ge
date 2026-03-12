@@ -15,6 +15,8 @@ if (CMAKE_BUILD_TYPE MATCHES GCOV)
             -g
             --coverage -fprofile-arcs -ftest-coverage
             -DFUNC_VISIBILITY
+            -DFMK_SUPPORT_DUMP
+            -DFWK_SUPPORT_TRAINING_TRACE
             )
     set(AIR_COV_COMPILE_OPTION
             --coverage -fprofile-arcs -ftest-coverage

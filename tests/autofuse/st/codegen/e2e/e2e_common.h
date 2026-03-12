@@ -106,7 +106,7 @@ namespace {
 	ss << "#include <cinttypes>" << std::endl;
 	ss << "#include <sys/syscall.h>" << std::endl;
 	ss << "#include <unistd.h>" << std::endl;
-	ss << "#include \"dlog_pub.h\"" << std::endl;
+	ss << "#include \"toolchain/slog.h\"" << std::endl;
 	ss << "#define OP_LOGD(name, fmt, ...)" << std::endl;
 	ss << "#define OP_LOGI(name, fmt, ...)" << std::endl;
 	ss << "#define GE_MODULE_NAME static_cast<int32_t>(45)" << std::endl;

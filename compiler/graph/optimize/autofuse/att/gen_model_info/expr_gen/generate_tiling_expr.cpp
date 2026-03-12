@@ -26,12 +26,16 @@ const uint32_t kUBAlignValue = 32u;
 const uint32_t kConcatOuterDimAlign = 16u;
 template <typename T>
 ge::Status UpdateLastTileAxisPromptAlign(const SubAxis *sub_axis, const AttAxis &arg_info, T &size) {
-  GELOGD("UpdateLastTileAxisPromptAlign sub_axis=[%s]", sub_axis->ToString().c_str());
+  GELOGD(
+      "[DFX] UpdateLastTileAxisPromptAlign sub_axis=[%s], is_node_innerest_dim=%d, bind_multicore=%d, axis_pos=%d",
+      sub_axis->ToString().c_str(), arg_info.is_node_innerest_dim, arg_info.bind_multicore,
+      static_cast<int>(arg_info.axis_pos));
   if (arg_info.is_node_innerest_dim && (!arg_info.bind_multicore) && (arg_info.axis_pos == AxisPosition::INNER)) {
     auto block_len = std::gcd(sub_axis->data_type_size, kUBAlignValue);
     GE_ASSERT_TRUE(block_len != 0, "block_len is 0");
     size.prompt_align = kUBAlignValue / block_len;
-    GELOGD("Update axis[%s] to (%u / %u)", arg_info.name.c_str(), kUBAlignValue, block_len);
+    GELOGD("[DFX] Set axis[%s] prompt_align to %u (kUBAlignValue=%u / block_len=%u), data_type_size=%u",
+           arg_info.name.c_str(), size.prompt_align, kUBAlignValue, block_len, sub_axis->data_type_size);
   }
   return ge::SUCCESS;
 }
@@ -92,6 +96,16 @@ ge::Status GenerateTilingExpr::GetCoreConstraint(std::map<HardwareDef, Expr> &ha
 ge::Status GenerateTilingExpr::MakeArg(const SubAxis *sub_axis,
                                        std::map<const SubAxis *, std::set<HardwareDef>> related_scopes,
                                        AttAxisPtr &arg_info) const {
+  InitArgInfo(sub_axis, arg_info);
+  if (sub_axis->repeat.IsConstExpr()) {
+    GE_ASSERT_GRAPH_SUCCESS(MakeConstArg(sub_axis, arg_info));
+  } else {
+    GE_ASSERT_GRAPH_SUCCESS(MakeVarArg(sub_axis, related_scopes, arg_info));
+  }
+  return ge::SUCCESS;
+}
+
+void GenerateTilingExpr::InitArgInfo(const SubAxis *sub_axis, AttAxisPtr &arg_info) const {
   arg_info->name = sub_axis->name;
   arg_info->axis_pos = sub_axis->axis_type;
   arg_info->is_node_innerest_dim = sub_axis->is_node_innerest_dim;
@@ -99,49 +113,58 @@ ge::Status GenerateTilingExpr::MakeArg(const SubAxis *sub_axis,
   arg_info->is_last = sub_axis->is_last;
   arg_info->is_concat_outer_dim = sub_axis->is_concat_vec_axis && !sub_axis->is_node_innerest_dim;
   arg_info->is_concat_inner_dim = sub_axis->is_concat_vec_axis && sub_axis->is_node_innerest_dim;
-
-  // 新增：转换分核轴类型标记
   arg_info->is_reduce_split_axis = sub_axis->is_reduce_split_axis;
   arg_info->is_broadcast_split_axis = sub_axis->is_broadcast_split_axis;
+}
 
-  if (sub_axis->repeat.IsConstExpr()) {
-    auto size = ge::MakeShared<SymConstInfo>(sub_axis->repeat);
-    GE_ASSERT_NOTNULL(size, "Create sym const info failed.");
-    std::vector<std::pair<Expr, Expr>> vars_value;
-    double const_value = 0;
-    auto ret = sub_axis->repeat.GetResult(vars_value, const_value);
-    GE_ASSERT_GRAPH_SUCCESS(ret, "Get const expr value failed, ret [%d].", ret);
-    size->const_value = static_cast<uint32_t>(const_value);
-    size->value_range = sub_axis->value_range;
-    size->data_type_size = sub_axis->data_type_size;
-    GE_ASSERT_TRUE(sub_axis->data_type_size != 0, "sub_axis->data_type_size is 0");
-    // 最内轴是Tile切分内轴, 后续kUBAlignValue要统一为GetInnerDimPromptAlignSize获取
-    GE_ASSERT_GRAPH_SUCCESS(UpdateLastTileAxisPromptAlign(sub_axis, *arg_info, *size));
-    if (arg_info->is_concat_inner_dim) {
-      size->prompt_align = kUBAlignValue / sub_axis->data_type_size;
-    }
-    arg_info->size = size;
-  } else {
-    Expr expr = ArgListManager::GetInstance().GetArgExpr(sub_axis->name);
-    auto size = ge::MakeShared<SymVarInfo>(expr);
-    GE_ASSERT_NOTNULL(size, "Create sym var info failed.");
-    size->align = sub_axis->align;
-    size->value_range = sub_axis->value_range;
-    size->data_type_size = sub_axis->data_type_size;
-    GE_ASSERT_TRUE(sub_axis->data_type_size != 0, "sub_axis->data_type_size is 0");
-    if (arg_info->is_concat_inner_dim) {
-      size->prompt_align = kUBAlignValue / sub_axis->data_type_size;
-    } else if (arg_info->is_concat_outer_dim) {
-      size->prompt_align = kConcatOuterDimAlign;
-    }
-    UpdateLastTileAxisPromptAlign(sub_axis, *arg_info, *size);
-    if (related_scopes.find(sub_axis) != related_scopes.end()) {
-      for (auto &scope : related_scopes[sub_axis]) {
-        size->related_scope.emplace_back(scope);
-      }
-    }
-    arg_info->size = size;
+ge::Status GenerateTilingExpr::MakeConstArg(const SubAxis *sub_axis, AttAxisPtr &arg_info) const {
+  auto size = ge::MakeShared<SymConstInfo>(sub_axis->repeat);
+  GE_ASSERT_NOTNULL(size, "Create sym const info failed.");
+  std::vector<std::pair<Expr, Expr>> vars_value;
+  double const_value = 0;
+  auto ret = sub_axis->repeat.GetResult(vars_value, const_value);
+  GE_ASSERT_GRAPH_SUCCESS(ret, "Get const expr value failed, ret [%d].", ret);
+  size->const_value = static_cast<uint32_t>(const_value);
+  size->value_range = sub_axis->value_range;
+  size->data_type_size = sub_axis->data_type_size;
+  GE_ASSERT_TRUE(sub_axis->data_type_size != 0, "sub_axis->data_type_size is 0");
+  GELOGD("[DFX] MakeArg (const) axis[%s]: is_concat_inner_dim=%d, is_concat_outer_dim=%d, data_type_size=%u",
+         sub_axis->name.c_str(), arg_info->is_concat_inner_dim, arg_info->is_concat_outer_dim,
+         sub_axis->data_type_size);
+  GE_ASSERT_GRAPH_SUCCESS(UpdateLastTileAxisPromptAlign(sub_axis, *arg_info, *size));
+  if (arg_info->is_concat_inner_dim) {
+    size->prompt_align = kUBAlignValue / sub_axis->data_type_size;
   }
+  arg_info->size = size;
+  return ge::SUCCESS;
+}
+
+ge::Status GenerateTilingExpr::MakeVarArg(const SubAxis *sub_axis,
+                                          std::map<const SubAxis *, std::set<HardwareDef>> &related_scopes,
+                                          AttAxisPtr &arg_info) const {
+  Expr expr = ArgListManager::GetInstance().GetArgExpr(sub_axis->name);
+  auto size = ge::MakeShared<SymVarInfo>(expr);
+  GE_ASSERT_NOTNULL(size, "Create sym var info failed.");
+  size->align = sub_axis->align;
+  size->value_range = sub_axis->value_range;
+  size->data_type_size = sub_axis->data_type_size;
+  GE_ASSERT_TRUE(sub_axis->data_type_size != 0, "sub_axis->data_type_size is 0");
+  GELOGD("[DFX] MakeArg (non-const) axis[%s]: is_concat_inner_dim=%d, is_concat_outer_dim=%d, data_type_size=%u, "
+         "axis_pos=%d",
+         sub_axis->name.c_str(), arg_info->is_concat_inner_dim, arg_info->is_concat_outer_dim,
+         sub_axis->data_type_size, static_cast<int>(arg_info->axis_pos));
+  if (arg_info->is_concat_inner_dim) {
+    size->prompt_align = kUBAlignValue / sub_axis->data_type_size;
+  } else if (arg_info->is_concat_outer_dim) {
+    size->prompt_align = kConcatOuterDimAlign;
+  }
+  UpdateLastTileAxisPromptAlign(sub_axis, *arg_info, *size);
+  if (related_scopes.find(sub_axis) != related_scopes.end()) {
+    for (auto &scope : related_scopes[sub_axis]) {
+      size->related_scope.emplace_back(scope);
+    }
+  }
+  arg_info->size = size;
   return ge::SUCCESS;
 }
 

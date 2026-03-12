@@ -196,7 +196,7 @@ TEST_F(CacheableTilingUt, CacheableTiling_Fail_CallTilingFuncFailed) {
                          .KernelIONum(6UL, static_cast<size_t>(TilingExOutputIndex::kNum))
                          .Inputs({&in_shape1, &in_shape2, &out_shape, nullptr, nullptr, &cacheable_fwk_data, nullptr, nullptr})
                          .Outputs({nullptr, nullptr, nullptr, nullptr, workspace_sizes_holder.get(),
-                                   nullptr, nullptr, nullptr, nullptr, nullptr})
+                                   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr})
                          .Build();
   ASSERT_EQ(kf_cacheable_tiling->run_func(run_context), ge::GRAPH_FAILED);
   // tiling_func调用失败不做缓存

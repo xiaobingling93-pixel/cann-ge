@@ -124,8 +124,11 @@ class SymbolicInfoPostProcessorST : public testing::Test {
     setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
     setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
     graph_ = EsCreateGraphBuilder("Hello");
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
   }
 
   void TearDown() override {
@@ -135,8 +138,8 @@ class SymbolicInfoPostProcessorST : public testing::Test {
     unsetenv("LD_LIBRARY_PATH");
     mmSetEnv("ASCEND_OPP_PATH", old_opp_path_env_, 1);
     mmSetEnv("LD_LIBRARY_PATH", old_ld_path_env_, 1);
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
  protected:
@@ -144,7 +147,7 @@ class SymbolicInfoPostProcessorST : public testing::Test {
  private:
   char old_opp_path_env_[MMPA_MAX_PATH] = {'\0'};
   char old_ld_path_env_[MMPA_MAX_PATH] = {'\0'};
-  const char* env;
+  std::string env;
 };
 REG_OP(FooTestGuard)
     .INPUT(x1, TensorType::NumberType())

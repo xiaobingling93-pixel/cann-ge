@@ -22,6 +22,8 @@
 #include "common/checker.h"
 #include "engine/ffts_plus/converter/ffts_plus_proto_transfer.h"
 #include "engine/aicore/fe_rt2_common.h"
+#include "aprof_pub.h"
+
 namespace gert {
 namespace kernel {
 const size_t kContextLen = 128UL;

@@ -34,8 +34,11 @@ namespace ge {
 class GuardCodeGenUT : public testing::Test {
 public:
   void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
     auto ascend_install_path = EnvPath().GetAscendInstallPath();
     setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
     setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
@@ -47,13 +50,13 @@ public:
     graph_ = nullptr;
     unsetenv("ASCEND_OPP_PATH");
     unsetenv("LD_LIBRARY_PATH");
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
 
   EsCGraphBuilder *graph_{nullptr};
-  const char *env;
+  std::string env;
 };
 int memfd_create(const char *name, unsigned int flags) {
   return syscall(__NR_memfd_create, name, flags);

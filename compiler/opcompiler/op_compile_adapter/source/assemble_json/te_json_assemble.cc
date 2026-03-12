@@ -749,6 +749,7 @@ void TeJsonAssemble::OutputsDescToJsonProcess(nlohmann::json &json_str, const st
     std::string atomicType;
     std::string tensordtype;
     TensorType tensorType = TT_REQ;
+    bool is_null_output = false;
     if (idx < outputs.size()) {
         const std::vector<TbeOpTensor> &tensors = outputs[idx].GetTensors();
         (void)outputs[idx].GetType(tensorType);
@@ -772,6 +773,7 @@ void TeJsonAssemble::OutputsDescToJsonProcess(nlohmann::json &json_str, const st
             (void)tensors[0].GetCAxisValue(cAxisValue);
             (void)tensors[0].GetAtomicType(atomicType);
             (void)tensors[0].GetType(tensordtype);
+            (void)tensors[0].GetIsNullOutput(is_null_output);
             ddrBaseProp = tensors[0].GetDdrBaseProp();
         }
     }
@@ -789,7 +791,16 @@ void TeJsonAssemble::OutputsDescToJsonProcess(nlohmann::json &json_str, const st
             hasDataAnchor = false;
         }
         peerSize = 1;
+    } else {
+ 	    if(is_null_output) {
+ 	    TE_DBGLOG("Op[%s] with peer size 0 and tensorType TT_OPT create outputDescJson with is_null_output %d",
+ 	        outputParam.node->GetOpDesc()->GetName().c_str(), is_null_output);
+ 	    outputDescJson["is_null_output"] = is_null_output;
+ 	    json_str["output_desc"].push_back(outputDescJson);
+ 	    return;
+ 	    }
     }
+    
     TE_DBGLOG("Peers size: %d, node: %s", peerSize, outputParam.keyName.c_str());
     for (size_t i = 0; i < peerSize; ++i) {
         // get data_type
@@ -833,7 +844,10 @@ void TeJsonAssemble::OutputsDescToJsonProcess(nlohmann::json &json_str, const st
         if (NotZero(validShape)) {
             outputDescJson["total_shape"] = validShape;
         }
-
+        if (is_null_output) {
+ 	        TE_DBGLOG("Node[%s] get the null_output as %d", outputParam.keyName.c_str(), is_null_output);
+ 	        outputDescJson["is_null_output"] = is_null_output;
+ 	    }
         outputDescJson["split_index"] = splitIndex;
         outputDescJson["shape"] = currShape;
         if (NotZero(sgtSliceShape)) {

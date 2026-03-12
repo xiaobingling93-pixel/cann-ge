@@ -58,8 +58,8 @@ Status MicroCastApiCall::Generate(const TensorManager &tensor_mng, [[maybe_unuse
 
   ss << "AscendC::MicroAPI::Cast<" << output_dtype_name << ", " << input_dtype_name << ", " << this->cast_trait_ << ">";
 
-  ss << "(" << *(tensor_mng.GetTensor(this->GetOutputTensorIdByIndex(0))) << ", "
-     << *(tensor_mng.GetTensor(this->GetInputTensorIdByIndex(0))) << ", " << param.p_reg << ");" << std::endl;
+  ss << "(" << *(tensor_mng.GetTensor(output_tensor_id)) << ", " << *(tensor_mng.GetTensor(input_tensor_id)) << ", "
+     << param.p_reg << ");" << std::endl;
   result = ss.str();
   return ge::SUCCESS;
 }

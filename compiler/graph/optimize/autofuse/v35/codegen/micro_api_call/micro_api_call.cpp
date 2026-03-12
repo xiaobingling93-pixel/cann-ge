@@ -73,12 +73,15 @@ namespace codegen {
     stringstream ss;
     ss << "AscendC::MicroAPI::" << this->api_name_ << "(";
     for (auto out_arg : this->outputs_) {
+      GE_ASSERT_NOTNULL(tensor_mng.GetTensor(out_arg.second));
       ss << *(tensor_mng.GetTensor(out_arg.second)) << ", ";
     }
     for (auto in_arg : this->inputs_) {
       if (in_arg.first == TensorType::REG_TENSOR) {
+        GE_ASSERT_NOTNULL(tensor_mng.GetTensor(in_arg.second));
         ss << *(tensor_mng.GetTensor(in_arg.second)) << ", ";
       } else {
+        GE_ASSERT_NOTNULL(tpipe.GetTensor(in_arg.second));
         ss << *(tpipe.GetTensor(in_arg.second)) << ", ";
       }
     }

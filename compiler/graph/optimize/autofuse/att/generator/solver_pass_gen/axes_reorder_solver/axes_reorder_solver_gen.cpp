@@ -1011,16 +1011,25 @@ std::string AxesReorderSolverGen::GenInput(const TradeOffConfig &trade_off_confi
 void AxesReorderSolverGen::InitConcatPromptAlign(const Expr &local_var, const uint32_t prompt_align,
                                                  std::string &strs) {
   const Expr concat_innner_dim = concat_inner_dims_[0];
+  const auto concat_align = arg_prompt_align_map_[concat_innner_dim];
   int32_t const_val = 0;
-  if (concat_innner_dim.GetConstValue(const_val)) {
-    if ((const_val != 0) && (const_val % arg_prompt_align_map_[concat_innner_dim] != 0)) {
+  const auto is_const = concat_innner_dim.GetConstValue(const_val);
+  GELOGD(
+      "[DFX] InitConcatPromptAlign (is_const %d): const_val=%d, concat_align=%u, local_var=%s, prompt_align=%u,"
+      " concat_inner_dim=%s", is_const, const_val, concat_align, Str(local_var).c_str(), prompt_align, Str
+      (concat_innner_dim).c_str());
+  if (is_const) {
+    if ((const_val != 0) && (const_val % concat_align != 0)) {
       strs += "    " + Str(local_var) + ".prompt_align = " + std::to_string(prompt_align) + ";\n";
     }
   } else {
-    strs += "    if (" + Str(concat_innner_dim) + ".value % " +
-            std::to_string(arg_prompt_align_map_[concat_innner_dim]) + " != 0) {\n";
+    // 非const表达式：如果concat_align <= 1，条件无意义（任何数模1都是0），直接赋值
+    const bool not_check = (concat_align <= 1);
+    strs += not_check
+              ? ""
+              : "    if (" + Str(concat_innner_dim) + ".value % " + std::to_string(concat_align) + " != 0) {\n";
     strs += "      " + Str(local_var) + ".prompt_align = " + std::to_string(prompt_align) + ";\n";
-    strs += "    }\n;";
+    strs += not_check ? "" : "    }\n";
   }
 }
 

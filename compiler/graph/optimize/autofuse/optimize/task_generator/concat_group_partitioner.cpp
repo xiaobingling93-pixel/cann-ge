@@ -97,12 +97,14 @@ Status ConcatGroupPartitioner::PartitionGroups(std::vector<ConcatGroup> &groups)
   if (index_start_ != -1) {
     GroupEnd(all_in_data_anchors.size());
   }
-  MergeSmallGroups(groups);
-  groups_ = std::move(groups);
+  MergeSmallGroups();
   ConvertToDefaultIfTooSmall();
-  MergeSmallGroups(groups);
-  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(groups, false, has_recompute_));
-  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(groups, true, has_recompute_));
+  MergeSmallGroups();
+  if ((groups_.size() > 1) && (groups_.size() != concat_node_->inputs.Size())) {
+    GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(false, has_recompute_));
+    GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(true, has_recompute_));
+  }
+  groups = std::move(groups_);
   return ge::SUCCESS;
 }
 
@@ -204,7 +206,8 @@ void ConcatGroupPartitioner::MergeGroups(std::vector<ConcatGroup>::value_type &l
   lhs_group.end = lhs_group.start;
 }
 
-void ConcatGroupPartitioner::MergeSmallGroups(std::vector<ConcatGroup> &groups) {
+void ConcatGroupPartitioner::MergeSmallGroups() {
+  std::vector<ConcatGroup> groups;
   // 将过小的group转为default, 供后续合并
   for (size_t index = 0UL; index < groups_.size() - 1UL; ++index) {
     auto &lhs_group = groups_[index];
@@ -223,6 +226,7 @@ void ConcatGroupPartitioner::MergeSmallGroups(std::vector<ConcatGroup> &groups) 
       groups.emplace_back(group);
     }
   }
+  groups_ = std::move(groups);
 }
 
 bool ConcatGroupPartitioner::CanMerge(const ConcatGroupPartitioner::ConcatGroup &lhs,
@@ -263,9 +267,8 @@ bool ConcatGroupPartitioner::IsSmallTail(uint32_t group_type) {
   return (group_type & kGroupTypeSmallTail) != 0U;
 }
 
-ge::Status ConcatGroupPartitioner::RecomputeNodesCrossGroups(const std::vector<ConcatGroup> &groups,
-                                                             bool search_backward, bool &has_recompute) const {
-  for (const auto &group : groups) {
+ge::Status ConcatGroupPartitioner::RecomputeNodesCrossGroups(bool search_backward, bool &has_recompute) const {
+  for (const auto &group : groups_) {
     std::set<ge::InDataAnchorPtr> visited_in_anchors;
     std::map<std::string, ge::AscNodePtr> name_to_new_node;
     for (size_t i = group.start; i < group.end; ++i) {
@@ -379,14 +382,26 @@ ge::Status ConcatGroupPartitioner::CheckIsAncestorOfConcat(const ge::OutDataAnch
 bool ConcatGroupPartitioner::NeedSplit(const ge::InDataAnchorPtr &in_anchor, int32_t start_index,
                                        const ge::Expression &cur_dim_size) const {
   const auto &size = concat_node_->inputs[in_anchor->GetIdx()].attr.repeats[concat_dim_];
+  const auto cur_group_size = GetGroupSize(static_cast<size_t>(start_index - 1));
+  const auto next_group_size = GetGroupSize(static_cast<size_t>(in_anchor->GetIdx()));
+  const auto is_single_group = (cur_group_size == 1) && (next_group_size == 1);
   const auto need_split =
       ((in_anchor->GetIdx() >= start_index) &&
-       ((!single_group_mode_) || ge::SymbolicUtils::StaticCheckEq(size, cur_dim_size) != ge::TriBool::kTrue));
-  GELOGD("start_index = %d, next_index = %d, single_group_mode = %d, cur_size = %s, next_size = %s, need_split = %d",
-         start_index, in_anchor->GetIdx(), static_cast<int32_t>(single_group_mode_),
+       ((!is_single_group) || ge::SymbolicUtils::StaticCheckEq(size, cur_dim_size) != ge::TriBool::kTrue));
+  GELOGD("start_index = %d, next_index = %d, is_single_group = %d, cur_size = %s, next_size = %s, need_split = %d",
+         start_index, in_anchor->GetIdx(), static_cast<int32_t>(is_single_group),
          ge::SymbolicUtils::ToString(cur_dim_size).c_str(), ge::SymbolicUtils::ToString(size).c_str(),
          static_cast<int32_t>(need_split));
   return need_split;
+}
+
+size_t ConcatGroupPartitioner::GetGroupSize(size_t index) const {
+  for (const auto &group : groups_) {
+    if ((group.start <= index) && (index < group.end)) {
+      return (group.end - group.start);
+    }
+  }
+  return 0UL;
 }
 
 ge::Status ConcatGroupPartitioner::RecomputeInNodes(const ge::InDataAnchorPtr &in_anchor, size_t index,
@@ -509,13 +524,12 @@ uint32_t ConcatGroupPartitioner::MaxInputNumPerGroup() const {
 }
 
 Status ConcatGroupPartitioner::RecomputeDiffAxes() {
-  single_group_mode_ = true;
   const auto num_inputs = concat_node_->inputs.Size();
   for (uint32_t i = 0U; i < num_inputs; ++i) {
     groups_.emplace_back(ConcatGroup{i, i + 1, kGroupTypeDefault, 0});
   }
-  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(groups_, false, has_recompute_));
-  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(groups_, true, has_recompute_));
+  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(false, has_recompute_));
+  GE_ASSERT_SUCCESS(RecomputeNodesCrossGroups(true, has_recompute_));
   return ge::SUCCESS;
 }
 }  // namespace optimize

@@ -278,6 +278,8 @@ class TbeInfoAssembler {
   void SetIsConstInputFlag(const ge::Node *node, const ge::OpDesc &op_desc,
                            const uint32_t &tensor_index, te::TbeOpTensor &input_tensor) const;
 
+  void SetIsNullOutputFlag(const ge::Node *node, const uint32_t &tensor_index, te::TbeOpTensor &output_tensor) const;
+
   Status SetTensorConstValue(const ge::Node *node, const uint32_t &tensor_index, InputOrOutputInfoPtr tensor_info_ptr,
                              te::TbeOpTensor &op_tensor) const;
   Status AssembleConstValue(ge::GeTensorPtr const_tensor_ptr, const ge::OpDescPtr &op_desc,

@@ -450,7 +450,6 @@ aclError Om2Model::InitResources() {
   uint32_t stream0_flag = ACL_STREAM_PERSISTENT;
   OM2_CHK_STATUS(aclrtCreateStreamWithConfig(&stream_list_[0], 0, stream0_flag));
   OM2_CHK_STATUS(aclmdlRIBindStream(model_handle_, stream_list_[0], ACL_MODEL_STREAM_FLAG_HEAD));
-
   is_stream_list_bind_ = true;
   args_table_.Init();
   return ACL_SUCCESS;

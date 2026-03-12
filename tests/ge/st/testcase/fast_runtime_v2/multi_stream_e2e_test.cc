@@ -639,7 +639,7 @@ TEST_F(GraphExecutorMultiStreamSystemTest, Case05_TwoStream_RefMemAccessCrossStr
                                     {"InnerData", 0},
                                     {"CacheableTiling", 6},
                                     {"InnerData", 0},
-                                    {"CacheableTiling", 9},
+                                    {"CacheableTiling", 11},
                                     {"CacheableTiling", 7},
                                     {"AccessMemCrossStream", 0}, // input 0
                                     {"AccessMemCrossStream", 0},  // input 1

@@ -33,6 +33,7 @@
 #include "common/share_graph.h"
 #include "graph/args_format_desc.h"
 #include "common/opskernel/ops_kernel_info_types.h"
+#include "common/tbe_handle_store/tbe_handle_store.h"
 
 using namespace std;
 using namespace testing;
@@ -653,8 +654,6 @@ TEST_F(StestScatteredCollection, ifa_aicore_with_args_format_graph_load_and_succ
   RuntimeStub::Reset();
 }
 
-// toto test
-/*
 // mixl2
 TEST_F(StestScatteredCollection, ifa_aicore_with_tiling_sink_graph_load_and_success) {
   DEF_GRAPH(g1) {
@@ -729,7 +728,7 @@ TEST_F(StestScatteredCollection, ifa_aicore_with_tiling_sink_graph_load_and_succ
   op_desc->AppendIrInput("seq_lens", IrInputType::kIrInputOptional);
   op_desc->AppendIrOutput("attention_out", IrOutputType::kIrOutputDynamic);
 
-  op_desc->SetInputOffset({1000, 2000, 3000, 4000, 5000, 6000});
+  op_desc->SetInputOffset({1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000});
   op_desc->SetOutputOffset({5000, 6000});
   op_desc->SetWorkspace({7000});
   op_desc->SetWorkspaceBytes({512});
@@ -751,6 +750,8 @@ TEST_F(StestScatteredCollection, ifa_aicore_with_tiling_sink_graph_load_and_succ
   std::vector<std::string> names_prefix{"_mix_aiv"};
   (void)ge::AttrUtils::SetListStr(ifa_node->GetOpDesc(), ge::ATTR_NAME_KERNEL_NAMES_PREFIX, names_prefix);
   (void)AttrUtils::SetStr(ifa_node->GetOpDesc(), "_mix_aiv" + ATTR_NAME_TBE_KERNEL_NAME, test_kernel->GetName());
+  ge::TBEHandleStore::GetInstance().StoreTBEHandle("_mix_aiv_static_bin", nullptr, nullptr);
+
   // all kernel
   AttrUtils::SetStr(ifa_node->GetOpDesc(), "_mix_aiv_kernel_list_first_name", "aiv");
 
@@ -821,7 +822,6 @@ TEST_F(StestScatteredCollection, ifa_aicore_with_tiling_sink_graph_load_and_succ
   HiddenInputsFuncRegistry::GetInstance().type_to_funcs_.clear();
   RuntimeStub::Reset();
 }
-*/
 
 UINT32 StubTilingMC2(gert::TilingContext *context) {
     context->SetNeedAtomic(false);

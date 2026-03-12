@@ -287,7 +287,7 @@ TEST_F(AutofuseNodeUT, symtiling_kernel_test) {
   auto autofuse_tiling_context_holder = gert::KernelRunContextBuilder()
       .Inputs({(void *)input_data_num, &shape0, &shape1, &parse_data, fwk_data, nullptr, nullptr})
       .Outputs({nullptr, nullptr, nullptr, nullptr,
-                static_cast<void *>(workspace_size_t.get()), nullptr, nullptr, nullptr, nullptr, nullptr})
+                static_cast<void *>(workspace_size_t.get()), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr})
       .Build(op_desc);
 
   auto autofuse_tiling_context = autofuse_tiling_context_holder.GetKernelContext();
@@ -370,7 +370,7 @@ TEST_F(AutofuseNodeUT, cacheablesymtiling_kernel_test) {
   auto cacheable_tiling_context_holder = gert::KernelRunContextBuilder()
       .Inputs({(void *)input_num, &shape0, &shape1, &parse_data, all_sym_num_vector, tiling_fwk_data, nullptr, nullptr})
       .Outputs({nullptr, nullptr, nullptr, nullptr,
-                static_cast<void *>(cacheable_workspace_size_t.get()), nullptr, nullptr, nullptr, nullptr, nullptr})
+                static_cast<void *>(cacheable_workspace_size_t.get()), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr})
       .Build(op_desc);
   auto cacheable_tiling_cxt = cacheable_tiling_context_holder.GetKernelContext();
   // add cache

@@ -76,8 +76,11 @@ class SymbolizeValueST : public testing::Test {
     ge::GetThreadLocalContext().SetSessionOption({});
     std::map<std::string, std::string> options;
     GetThreadLocalContext().GetOo().Initialize(options, OptionRegistry::GetInstance().GetRegisteredOptTable());
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
   }
   void TearDown() override {
     RuntimeStub::Reset();
@@ -96,8 +99,8 @@ class SymbolizeValueST : public testing::Test {
     ge::GetThreadLocalContext().SetGraphOption(ori_graph_options_);
     ge::GetThreadLocalContext().SetSessionOption(ori_session_options_);
     gert::UnLoadDefaultSpaceRegistry();
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
 
@@ -109,7 +112,7 @@ class SymbolizeValueST : public testing::Test {
   std::map<std::string, std::string> ori_global_options_;
   std::map<std::string, std::string> ori_graph_options_;
   std::map<std::string, std::string> ori_session_options_;
-  const char *env;
+  std::string env;
 };
 
 /*

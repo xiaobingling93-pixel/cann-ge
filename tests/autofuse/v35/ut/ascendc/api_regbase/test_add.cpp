@@ -25,24 +25,15 @@ using namespace AscendC;
 
 namespace ge {
 
-template <typename T>
-struct AddInputParam {
-  T *y{};
-  T *x1{};
-  T *x2{};
-  T *exp{};
-  uint32_t size{};
-};
-
 class TestRegbaseApiAddUT : public testing::Test {
  protected:
   // Tensor - Tensor 场景
   template <typename T>
-  static void InvokeTensorTensorKernel(AddInputParam<T> &param) {
+  static void InvokeTensorTensorKernel(BinaryInputParam<T> &param) {
     TPipe tpipe;
     TBuf<TPosition::VECCALC> x1buf, x2buf, ybuf;
-    tpipe.InitBuffer(x1buf, sizeof(T) * param.size);
     tpipe.InitBuffer(x2buf, sizeof(T) * param.size);
+    tpipe.InitBuffer(x1buf, sizeof(T) * param.size);
     tpipe.InitBuffer(ybuf, sizeof(T) * AlignUp(param.size, ONE_BLK_SIZE / sizeof(T)));
 
     LocalTensor<T> l_x1 = x1buf.Get<T>();
@@ -56,11 +47,11 @@ class TestRegbaseApiAddUT : public testing::Test {
   }
 
   template <typename T>
-  static void CreateTensorInput(AddInputParam<T> &param) {
-    param.y = static_cast<T *>(AscendC::GmAlloc(sizeof(T) * param.size));
+  static void CreateTensorInput(BinaryInputParam<T> &param) {
     param.exp = static_cast<T *>(AscendC::GmAlloc(sizeof(T) * param.size));
     param.x1 = static_cast<T *>(AscendC::GmAlloc(sizeof(T) * param.size));
     param.x2 = static_cast<T *>(AscendC::GmAlloc(sizeof(T) * param.size));
+    param.y = static_cast<T *>(AscendC::GmAlloc(sizeof(T) * param.size));
 
     std::mt19937 eng(1);
     int input_range = 100;
@@ -85,27 +76,10 @@ class TestRegbaseApiAddUT : public testing::Test {
     }
   }
 
-  template <typename T>
-  static uint32_t Valid(AddInputParam<T> &param) {
-    uint32_t diff_count = 0;
-    for (uint32_t i = 0; i < param.size; i++) {
-      if constexpr (std::is_same_v<T, float>) {
-        if (!DefaultCompare(param.y[i], param.exp[i])) {
-          diff_count++;
-        }
-      } else {
-        if (param.y[i] != param.exp[i]) {
-          diff_count++;
-        }
-      }
-    }
-    return diff_count;
-  }
-
   // Tensor - Tensor 测试
   template <typename T>
   static void AddTensorTensorTest(uint32_t size) {
-    AddInputParam<T> param{};
+    BinaryInputParam<T> param{};
     param.size = size;
     CreateTensorInput(param);
 
@@ -116,7 +90,7 @@ class TestRegbaseApiAddUT : public testing::Test {
     AscendC::SetKernelMode(KernelMode::AIV_MODE);
     ICPU_RUN_KF(kernel, 1);
 
-    uint32_t diff_count = Valid(param);
+    uint32_t diff_count = Valid(param.y, param.exp, param.size);
     EXPECT_EQ(diff_count, 0);
   }
 };
@@ -146,6 +120,30 @@ TEST_F(TestRegbaseApiAddUT, Add_TensorTensor_Test) {
   AddTensorTensorTest<bfloat16_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(bfloat16_t));
   AddTensorTensorTest<bfloat16_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(bfloat16_t));
   AddTensorTensorTest<bfloat16_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(bfloat16_t));
+
+  // uint16
+  AddTensorTensorTest<uint16_t>(ONE_BLK_SIZE / sizeof(uint16_t));
+  AddTensorTensorTest<uint16_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint16_t));
+  AddTensorTensorTest<uint16_t>((ONE_BLK_SIZE - sizeof(uint16_t)) / sizeof(uint16_t));
+  AddTensorTensorTest<uint16_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint16_t));
+  AddTensorTensorTest<uint16_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint16_t));
+  AddTensorTensorTest<uint16_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint16_t));
+
+  // uint32
+  AddTensorTensorTest<uint32_t>(ONE_BLK_SIZE / sizeof(uint32_t));
+  AddTensorTensorTest<uint32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint32_t));
+  AddTensorTensorTest<uint32_t>((ONE_BLK_SIZE - sizeof(uint32_t)) / sizeof(uint32_t));
+  AddTensorTensorTest<uint32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint32_t));
+  AddTensorTensorTest<uint32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint32_t));
+  AddTensorTensorTest<uint32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint32_t));
+
+  // uint64
+  AddTensorTensorTest<uint64_t>(ONE_BLK_SIZE / sizeof(uint64_t));
+  AddTensorTensorTest<uint64_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint64_t));
+  AddTensorTensorTest<uint64_t>((ONE_BLK_SIZE - sizeof(uint64_t)) / sizeof(uint64_t));
+  AddTensorTensorTest<uint64_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint64_t));
+  AddTensorTensorTest<uint64_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint64_t));
+  AddTensorTensorTest<uint64_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint64_t));
 }
 
 }  // namespace ge

@@ -9,22 +9,8 @@
  */
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
 #include "dflow/compiler/session/dflow_session_manager.h"
 #include "dflow/compiler/session/dflow_session_impl.h"
-#include "graph/operator_factory_impl.h"
-#include "depends/slog/src/slog_stub.h"
-#include "depends/mmpa/src/mmpa_stub.h"
-#include "common/share_graph.h"
-#include "common/ge_common/ge_types.h"
-#include "graph/ge_local_context.h"
-#include "graph/ge_global_options.h"
-#include "graph/debug/ge_attr_define.h"
-#include "graph/utils/graph_utils_ex.h"
-#include "graph/utils/graph_utils.h"
-#include "stub/gert_runtime_stub.h"
-#include "ge/graph/ops_stub.h"
-#include "external/ge_common/ge_api_types.h"
 
 namespace ge {
 namespace dflow {

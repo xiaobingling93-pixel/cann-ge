@@ -14,6 +14,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "om2_codegen.h"
 #include "common/model/ge_model.h"
@@ -36,10 +37,20 @@ class ProgramGenerator {
   Status GenerateMakeFile(Program &program);
 
  private:
+  struct LoadTaskParams {
+    std::vector<AstNode *> *distribution_code = nullptr;
+    std::vector<AstNode *> *dist_impl_code = nullptr;
+    std::unordered_set<ModelTaskType> *model_task_types = nullptr;
+    std::unordered_map<int64_t, OpInputEdges> *op_id_to_input_edges = nullptr;
+    std::unordered_map<int64_t, std::string> *weight_offset_to_varname = nullptr;
+    std::vector<AstNode *> *const_input_ast_nodes = nullptr;
+  };
+
   Status PrepareGraphData();
   Status InitRuntimeParams();
   Status CreateTaskCodeGenerators();
   OpDescPtr FindOpDescByIndex(int64_t op_index) const;
+  Status ProcessLoadTask(size_t task_index, domi::TaskDef &task_def, LoadTaskParams &params);
 
   void GenKernelRegConsts(Program &program);
   void GenKernelRegCommonFuncs(Program &program);

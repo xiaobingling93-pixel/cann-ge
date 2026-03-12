@@ -84,7 +84,7 @@ def generate_cmake_lists(asc_graph_name, kernel_name, host_build_dir, is_last_co
                f" tiling_api graph_base register)\n")
     source += f"target_include_directories({kernel_name} PRIVATE\n"
     source += f"    {ASCEND_PATH}/include\n"
-    source += f"    {ASCEND_PATH}/pkg_inc/base\n"
+    source += f"    {ASCEND_PATH}/include/base\n"
     source += f"    {ASCEND_PATH}/include/experiment\n"
     source += f"    {ASCEND_PATH}/{machine}-linux/include\n"
     source += f"    {ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform\n"
@@ -1025,18 +1025,14 @@ def create_cube_tiling_data(kernel_name, temp_dir, graph_name, tiling_info, cube
     host_tiling_data = f"""
 #include "arch35/mat_mul_tiling_data.h"
 const int32_t cube_output_type_size = {cube_output_type_size};
-inline int32_t compute_basen_basem_align() {{
-  GET_TILING_DATA_PTR_WITH_STRUCT({struct_name}, tmpTilingData, tmpTilingGM);
+GET_TILING_DATA_PTR_WITH_STRUCT({struct_name}, tmpTilingData, tmpTilingGM);
 """
 
     # 构建class_body，使用data_prefix处理不同的数据访问路径
-    class_body = f"  const int32_t ub_align_value = 32 / cube_output_type_size;\n"
-    class_body += f"  const int32_t basen_align = ({data_prefix}.baseN + ub_align_value - 1) " \
+    class_body = f"const int32_t ub_align_value = 32 / cube_output_type_size;\n"
+    class_body += f"const int32_t basen_align = ({data_prefix}.baseN + ub_align_value - 1) " \
                   f"/ ub_align_value * ub_align_value;\n"
-    class_body += f"  return ({data_prefix}.baseM * basen_align) / 2 + basen_align;\n"
-    class_body += f"}}\n"
-    class_body += f"int32_t get_g_basen_basem_align();\n"
-    class_body += f"void set_g_basen_basem_align(int32_t value);\n"
+    class_body += f"const int32_t basen_basem_align = ({data_prefix}.baseM * basen_align) / 2 + basen_align;\n"
     if (is_matmul_relu_fixpip(tiling_info, cube_info)):
         class_body += f"#define CV_RELU_FIXPIP_MODE 1\n"
 

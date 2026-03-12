@@ -17,7 +17,6 @@
 #include <mutex>
 #include <vector>
 #include "ge/ge_api_error_codes.h"
-#include "executor/executor_event_defs.h"
 #include "common/config/device_debug_config.h"
 #include "deploy/execfwk/pne_executor_client.h"
 #include "proto/deployer.pb.h"

@@ -779,7 +779,7 @@ TEST_F(InferenceRuleUtest, InvalidDtype1) {
   const auto handle = ge::DtypeInferenceRule::FromJsonString(ctx_maker.Str());
   ASSERT_NE(handle, nullptr);
   ASSERT_EQ(handle->Error(),
-            "Element 28 in 'dtype' field is out of range [0,42(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
+            "Element 28 in 'dtype' field is out of range [0,43(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
 }
 
 TEST_F(InferenceRuleUtest, InvalidDtype2) {
@@ -789,7 +789,7 @@ TEST_F(InferenceRuleUtest, InvalidDtype2) {
   const auto handle = ge::DtypeInferenceRule::FromJsonString(ctx_maker.Str());
   ASSERT_NE(handle, nullptr);
   ASSERT_EQ(handle->Error(),
-            "Element 42 in 'dtype' field is out of range [0,42(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
+            "Element 43 in 'dtype' field is out of range [0,43(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
 }
 
 TEST_F(InferenceRuleUtest, InvalidDtype3) {
@@ -799,7 +799,7 @@ TEST_F(InferenceRuleUtest, InvalidDtype3) {
   const auto handle = ge::DtypeInferenceRule::FromJsonString(ctx_maker.Str());
   ASSERT_NE(handle, nullptr);
   ASSERT_EQ(handle->Error(),
-            "Element -1 in 'dtype' field is out of range [0,42(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
+            "Element -1 in 'dtype' field is out of range [0,43(DT_MAX)) and cannot be 28(DT_UNDEFINED).");
 }
 
 TEST_F(InferenceRuleUtest, DtypesFormatError) {

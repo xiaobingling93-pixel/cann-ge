@@ -18,7 +18,7 @@ add_library(test_regbase_ascendc OBJECT
     )
 target_link_libraries(test_regbase_ascendc
     ascendc_api_regbase_extend
-    tikicpulib_ascend910_9599
+    tikicpulib_ascend950pr_9599
     depends
     GTest::gtest)
 

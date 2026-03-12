@@ -461,7 +461,6 @@ void codegen::TilingData::ConstTilingDataFieldPopBack() {
 std::string codegen::TilingData::GenCVConstTilingData(const std::string &tiling_data_struct_name,
     bool is_inductor_scene) {
   std::stringstream ss;
-  ss << "  int32_t basen_basem_align = compute_basen_basem_align();" << std::endl;
   ss << "  set_g_basen_basem_align(basen_basem_align);" << std::endl;
   ss << "  OP_LOGI(OP_NAME, \"basen_basem_align=%d, set_g_basen_basem_align=%d\", ";
   ss << "basen_basem_align, get_g_basen_basem_align());" << std::endl;

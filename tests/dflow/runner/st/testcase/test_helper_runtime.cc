@@ -1006,8 +1006,11 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
   }
 
   void SetUp() {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
     st_dir_path = PathUtils::Join({EnvPath().GetAirBasePath(), "/tests/dflow/runner/st/"});
     hybrid::NodeExecutorManager::GetInstance().
         engine_mapping_.emplace("AiCoreLib", hybrid::NodeExecutorManager::ExecutorType::AICORE);
@@ -1040,8 +1043,8 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
     MmpaStub::GetInstance().Reset();
     RuntimeStub::Reset();
     unsetenv("RESOURCE_CONFIG_PATH");
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
 
@@ -1106,7 +1109,7 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
 
  protected:
   std::string st_dir_path;
-  const char *env;
+  std::string env;
 };
 namespace {
   PneModelPtr BuildPneModel(ComputeGraphPtr root_graph) {
@@ -1374,7 +1377,7 @@ TEST_F(STEST_helper_runtime, TestDeployModel) {
 
 TEST_F(STEST_helper_runtime, TestDeployModelWithFileConstant) {
   mock_handle = (void *) 0xffffffff;
-  mock_method = (void *) &MockInitializeHeterogeneousRuntime2;
+  mock_method = (void *) &MockInitializeHeterogeneousRuntime;
   std::map<std::string, std::string> options_runtime;
   ASSERT_EQ(ExecutionRuntime::InitHeterogeneousRuntime(options_runtime), SUCCESS);
 

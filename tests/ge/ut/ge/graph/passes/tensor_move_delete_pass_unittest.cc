@@ -136,7 +136,7 @@ class UtestTensorMoveDeletePass : public Test {
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromComputeNodeToNetOutput_Deleted) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   auto builder = ut::GraphBuilder("g1");
   auto relu_node = builder.AddNode("Relu", RELU, 1, 1);
   auto node1 = builder.AddNode("TensorMove", TENSORMOVE, 1, 1);
@@ -176,7 +176,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromComputeNodeToNetOutput_Deleted) 
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataToNetOutput_ThroughRefOps_Deleted) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -227,7 +227,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataToNetOutput_ThroughRefOps_De
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataToNetOutput_ThroughSingleRefOp_Deleted) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -275,7 +275,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataToNetOutput_ThroughSingleRef
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataViaRefOp_WithBranch_Kept) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -334,7 +334,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromDataViaRefOp_WithBranch_Kept) {
 TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtUpstreamTensorMove_DataBranched_DownstreamDeleted) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -392,7 +392,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtUpstreamTensorMove_DataB
 TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtReservedUpstreamTensorMove_WithBranch_DownstreamKept) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -445,7 +445,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveTraceStopsAtReservedUpstreamTensorMo
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromData_NoReuseConfig_Kept) {  // 还能补充一个：配置了option，但是不包含0，0
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   auto builder = ut::GraphBuilder("g1");
   auto data_node = builder.AddNode("Data", DATA, 1, 1);
   auto node1 = builder.AddNode("TensorMove", TENSORMOVE, 1, 1);
@@ -483,7 +483,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromData_NoReuseConfig_Kept) {  // �
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromData_MemReuse_Deleted) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -528,13 +528,12 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromData_MemReuse_Deleted) {
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromRelu_SourceHasMultiOutputs_Kept) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
 
   auto builder = ut::GraphBuilder("g1");
     // 创建算子：1个输入，2个输出
@@ -584,7 +583,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveFromRelu_SourceHasMultiOutputs_Kept)
  * - TensorMove 被成功识别并删除。
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_FromParentData_Deleted) {
-  dlog_setlevel(0, 0, 0);
 
   // 1. 设置内存复用选项：设置根图的第 0 个输出复用第 0 个输入
   std::map<std::string, std::string> options;
@@ -658,8 +656,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_FromParentData_Deleted) {
  * - sub_tensormove 可被删除（保证路径后续规则可正常处理空 anchor）。
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_PartitionedCallSourcePath_LogWithoutOutAnchor) {
-  dlog_setlevel(0, 0, 0);
-
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -741,8 +737,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInSubgraph_PartitionedCallSourcePath
  * - 删除 TensorMove,sub_sub_NetOutput两个输出，一个空悬，一个给到TensorMove，但是任意一个的输入都是计算节点(TransData或Add)
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMove_NestedPCall_FromAdd_Deleted) {
-  dlog_setlevel(0, 0, 0);
-
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -832,8 +826,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMove_NestedPCall_FromAdd_Deleted) {
  * tensormove的输入是sub_sub_add0，sub_sub_add0只有一条路径，删除
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInSub_FromSubSubAdd_Deleted) {
-  dlog_setlevel(0, 0, 0);
-
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -929,8 +921,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInSub_FromSubSubAdd_Deleted) {
  */
 
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInRootAndSub_FromSubSubAdd_Deleted) {
-  dlog_setlevel(0, 0, 0);
-
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -1016,8 +1006,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInRootAndSub_FromSubSubAdd_Deleted) 
  * - sub_2_tensormove的真实输入应追溯至sub_1_constant，sub_2_tensormove 不能删除；
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInSub2_TraceToSub1Const_NotDeleted) {
-  dlog_setlevel(0, 0, 0);
-
   // 1. 定义 sub_1： Const -> NetOutput
   DEF_GRAPH(sub_1) {
     CHAIN(NODE("sub_1_constant", CONSTANT)->NODE("sub_1_netoutput", NETOUTPUT));
@@ -1110,7 +1098,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInSub2_TraceToSub1Const_NotDeleted) 
  * - if_tensormove的输入是if_transdata，只有一条路径，被删除
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMoveInRootAndIfSub_ViaTransData_Deleted) {
-  dlog_setlevel(0, 0, 0);
   const auto if_sub_data = OP_CFG(DATA).ParentNodeIndex(0);
   DEF_GRAPH(if_sub) {
     CHAIN(NODE("if_sub_data", if_sub_data)->EDGE(0, 0)
@@ -1191,7 +1178,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMoveInRootAndIfSub_ViaTransData_Deleted)
  * - 主图中的 tensormove 被成功删除，上游源节点为 transdata，transdata → tensormove → netoutput
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMove_RootDeleted_SubKept_DueToSourceBranching) {
-  dlog_setlevel(0, 0, 0);
   const auto if_sub_data = OP_CFG(DATA).ParentNodeIndex(0);
   DEF_GRAPH(if_sub) {
     CHAIN(NODE("if_sub_data", if_sub_data)->EDGE(0, 0)
@@ -1270,7 +1256,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMove_RootDeleted_SubKept_DueToSourceBran
  * - 主图中的 tensormove 被成功删除，其源输入为 transdata，输出是netoutput
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMove_RootDeleted_SubInIfKept_DueToIfOp) {
-  dlog_setlevel(0, 0, 0);
   const auto if_sub_data = OP_CFG(DATA).ParentNodeIndex(0);
   DEF_GRAPH(if_sub) {
     CHAIN(NODE("if_sub_data", if_sub_data)->EDGE(0, 0)->NODE("if_tensormove", TENSORMOVE)
@@ -1339,7 +1324,6 @@ TEST_F(UtestTensorMoveDeletePass, TensorMove_RootDeleted_SubInIfKept_DueToIfOp) 
  * - 主图中的 tensormove 不删除，其输入为根图Data,路径上有IF算子
  */
 TEST_F(UtestTensorMoveDeletePass, TensorMove_InRootAndSub_ConnectedToIf_Kept) {
-  dlog_setlevel(0, 0, 0);
   std::map<std::string, std::string> options;
   options[OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES] = "1,1|0,0";
   ge::GetThreadLocalContext().SetGraphOption(options);
@@ -1405,7 +1389,7 @@ TEST_F(UtestTensorMoveDeletePass, TensorMove_InRootAndSub_ConnectedToIf_Kept) {
 TEST_F(UtestTensorMoveDeletePass, TensorMoveFromData_MemReuse_Deleted2) {
   setenv("DUMP_GRAPH_LEVEL", "2", 1);
   setenv("DUMP_GE_GRAPH", "2", 1);
-  dlog_setlevel(0, 0, 0);
+
   std::map<std::string, std::string> options;
   options[OPTION_INPUT_REUSE_MEM_INDEXES] = "0";
   ge::GetThreadLocalContext().SetGraphOption(options);

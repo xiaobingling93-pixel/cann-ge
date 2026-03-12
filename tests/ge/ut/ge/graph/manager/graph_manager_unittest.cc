@@ -392,15 +392,18 @@ class UtestGraphManagerTest : public testing::Test {
     OpsKernelBuilderRegistry::GetInstance().Unregister(kKernelLibName);
   }
   void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
-  }
-  void TearDown() override {
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
     }
   }
-  const char *env;
+  void TearDown() override {
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
+    }
+  }
+  std::string env;
 };
 
 class StubExecutor : public Executor {

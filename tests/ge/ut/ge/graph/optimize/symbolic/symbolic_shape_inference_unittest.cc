@@ -55,8 +55,11 @@ class SymbolicShapeInferenceUT : public testing::Test {
 
   }
   void SetUp() override {
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
     global_options_ = ge::GetThreadLocalContext().GetAllGlobalOptions();
     graph_options_ = ge::GetThreadLocalContext().GetAllGraphOptions();
     session_options_ = ge::GetThreadLocalContext().GetAllSessionOptions();
@@ -76,12 +79,12 @@ class SymbolicShapeInferenceUT : public testing::Test {
                                                OptionRegistry::GetInstance().GetRegisteredOptTable());
     EsDestroyGraphBuilder(graph_);
     graph_ = nullptr;
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
   EsCGraphBuilder *graph_{nullptr};
-  const char *env;
+  std::string env;
  private:
   std::map<std::string, std::string> global_options_;
   std::map<std::string, std::string> graph_options_;

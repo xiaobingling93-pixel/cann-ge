@@ -19,9 +19,11 @@ Status MicroWhereApiCall::Generate(const codegen::TensorManager &tensor_mng, [[m
   std::stringstream ss;
   ss << "AscendC::MicroAPI::" << this->api_name_ << "(";
   for (auto out_arg : this->outputs_) {
+    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(out_arg.second));
     ss << *(tensor_mng.GetTensor(out_arg.second)) << ", ";
   }
   for (auto in_arg : this->inputs_) {
+    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(in_arg.second));
     if (tensor_mng.GetTensor(in_arg.second)->init_as_mask_reg_ == false) {
       ss << *(tensor_mng.GetTensor(in_arg.second)) << ", ";
     }

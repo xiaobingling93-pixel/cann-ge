@@ -20,7 +20,6 @@
 #include "common/message_handle/message_server.h"
 #include "executor/executor_context.h"
 #include "executor/event_handler.h"
-#include "executor_event_defs.h"
 
 namespace ge {
 class EngineDaemon {

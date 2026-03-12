@@ -24,8 +24,7 @@ add_executable(st_fast_runtime2_test
         ${RUNTIME2_TEST_SRCS}
         "${AIR_CODE_DIR}/tests/graph_metadef/depends/faker/plugin_manager_stub.cc")
 
-target_link_libraries(st_fast_runtime2_test PRIVATE intf_pub)
-target_compile_options(st_fast_runtime2_test PRIVATE -g
+target_compile_options(st_fast_runtime2_test PRIVATE -g -O0
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
         -Wno-subobject-linkage
@@ -61,8 +60,7 @@ target_link_options(st_fast_runtime2_test PRIVATE
         -Wl,-Bsymbolic
         )
 
-target_link_libraries(st_fast_runtime2_test PRIVATE 
-        intf_pub
+target_link_libraries(st_fast_runtime2_test PRIVATE
         GTest::gtest
         GTest::gtest_main
         adump_headers
@@ -76,7 +74,6 @@ target_link_libraries(st_fast_runtime2_test PRIVATE
         ge_common_base
         metadef_headers
         -Wl,--no-as-needed
-        profiler_stub
         ge_runner
         ge_running_env
         ge_compiler

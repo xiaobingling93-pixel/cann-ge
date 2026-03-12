@@ -36,6 +36,9 @@ bool CheckValidTilingkey() {
   std::regex pattern2("tiling_key = (\\d+)");
   std::sregex_iterator it2(str.begin(), str.end(), pattern2);
   std::sregex_iterator end2;
+  if (it2 == end2) {
+    return false;
+  }
   uint64_t used_key = stoi(it2->str(1));
 
   for (auto it = myMap.begin(); it != myMap.end(); ++it) {
@@ -80,6 +83,9 @@ uint64_t ObtainOutput(const std::string &pattern) {
   std::regex cur_pattern(pattern);
   std::sregex_iterator it(str.begin(), str.end(), cur_pattern);
   std::sregex_iterator end;
+  if (it == end) {
+    return 0;
+  }
   return stoi(it->str(1));
 }
 }  // namespace att

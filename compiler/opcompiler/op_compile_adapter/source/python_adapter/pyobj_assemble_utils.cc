@@ -626,12 +626,38 @@ bool GetPyObjectOfInputConst(const TbeOpTensor &paraTensor, PyObject *&pyTensor,
     return true;
 }
 
+bool GetPyObjectOfNullableOutputExist(const TbeOpTensor &paraTensor, PyObject *&pyTensor, bool &, const TbeOpInfo &opinfo)
+{
+ 	(void)opinfo;
+ 	PyObject *pyTrue = HandleManager::Instance().get_py_true();
+ 	PyObject *pyFalse = HandleManager::Instance().get_py_false();
+ 	bool isPyTrueFalseNullptr = pyTrue == nullptr || pyFalse == nullptr;
+ 	if (isPyTrueFalseNullptr) {
+ 	    TE_FUSION_LOG_EXEC(TE_FUSION_LOG_ERROR, "Failed to get pyTrue or pyFalse from class HandleManager.");
+ 	    return false;
+ 	}
+ 	bool is_null_output = false;
+ 	paraTensor.GetIsNullOutput(is_null_output);
+ 	if(is_null_output) {
+ 	    TE_DBGLOG("Get the is_null_output as True.");
+ 	    int ires = HandleManager::Instance().TE_PyDict_SetItemString(pyTensor, "is_null_output",
+ 	                                                                is_null_output ? pyTrue : pyFalse);
+ 	    TE_FUSION_CHECK_WITH_DUMP_PYERR((ires != 0), {
+ 	        TE_FUSION_LOG_EXEC(TE_FUSION_LOG_ERROR, "Failed to add is_null_output to pyObj.");
+ 	        return false;
+ 	    });
+ 	}
+
+    return true;
+}
+
 const std::vector<GetPyTensorByTbeOpTensor> PY_TENSOR_GET_FUNCS = {
     GetPyObjOfShape,          GetPyObjOfOriShape,         GetPyObjOfFormat,               GetPyObjOfCurSubFormat,
     GetPyObjOfOriFormat,      GetPyObjOfDtype,            GetPyObjOfAddrType,             GetPyObjOfTotalShape,
     GetPyObjOfSliceOffset,    GetPyObjOfL1Info,           GetPyObjOfValidShape,           GetPyObjSplitIndex,
     GetPyObjOfIsFirstLayer,   GetPyObjOfShapeRange,       GetPyObjOfOriginalShapeRange,   GetPyObjOfValueRange,
-    GetPyObjOfConstValue,     GetPyObjAtomicAtrr,         GetPyObjOfCAxisValue,           GetPyObjectOfInputConst
+    GetPyObjOfConstValue,     GetPyObjAtomicAtrr,         GetPyObjOfCAxisValue,           GetPyObjectOfInputConst,
+    GetPyObjectOfNullableOutputExist
 };
 
 /*

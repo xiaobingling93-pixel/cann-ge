@@ -114,6 +114,31 @@ Status KernelTaskCodeGenerator::CheckTaskSupport(TaskDistributionContext &contex
   return SUCCESS;
 }
 
+Status KernelTaskCodeGenerator::GenTaskDistributionCodeForAicpu(TaskDistributionContext &context,
+  const std::string &args_var_names, std::stringstream &code_stream, const std::string &kernel_name)
+{
+  // aicpu
+  std::string op_type = context.op_desc->GetType();
+  std::string aicpu_kernel_sign = op_type + kernel_name;
+  GE_ASSERT_TRUE(context.func_handle_indices.find(aicpu_kernel_sign) != context.func_handle_indices.end());
+
+  const std::string ioaddr_var_name = "op" + std::to_string(context.op_index) + "_iow_addr";
+  code_stream << "  std::vector<uint64_t> " << ioaddr_var_name << " = FlattenHostArgs(" + args_var_names + ");\n";
+  const std::string args_var_name = "op" + std::to_string(context.op_index) + "_args";
+  std::string aicpu_args_code;
+  GE_ASSERT_SUCCESS(AssembleAicpuArgsCode(context, ioaddr_var_name, args_var_name, aicpu_args_code));
+  code_stream << aicpu_args_code;
+  const std::string cfg_holder_var_name = "op" + std::to_string(context.op_index) + "_cfg_holder";
+  Om2LaunchKernelParam param;
+  AssembleLaunchKernelConfig(context.op_desc, context.task_def, param);
+  code_stream << EmitLaunchConfigSetupCode(context.op_index, param.launch_config);
+  code_stream << "  OM2_CHK_STATUS((AicpuKernelTaskDistribute("+ args_var_name +", args_table_.GetArgsInfo("
+              << context.args_table_index << "), func_handles_[" << context.func_handle_indices[kernel_name] << "], "
+              << param.block_dim << ", stream_list_[" << param.stream_id << "], &" << cfg_holder_var_name
+              << ".cfg)));\n";
+  return SUCCESS;
+}
+
 Status KernelTaskCodeGenerator::GenTaskDistributionCode(TaskDistributionContext &context) {
   GELOGD("[OM2] start to generate task distribute code.");
   std::stringstream code_stream;
@@ -148,24 +173,7 @@ Status KernelTaskCodeGenerator::GenTaskDistributionCode(TaskDistributionContext 
         << "), func_handles_[" << context.func_handle_indices[kernel_name] << "], " << param.block_dim
         << ", stream_list_[" << param.stream_id << "], &" << cfg_holder_var_name << ".cfg)));\n";
   } else if (static_cast<ccKernelType>(kernel_type) == ge::ccKernelType::AI_CPU) {
-    // aicpu
-    std::string op_type = context.op_desc->GetType();
-    std::string aicpu_kernel_sign = op_type + kernel_name;
-    GE_ASSERT_TRUE(context.func_handle_indices.find(aicpu_kernel_sign) != context.func_handle_indices.end());
-
-    const std::string ioaddr_var_name = "op" + std::to_string(op_index) + "_iow_addr";
-    code_stream << "  std::vector<uint64_t> " << ioaddr_var_name << " = FlattenHostArgs(" + args_var_names.str() + ");\n";
-    const std::string args_var_name = "op" + std::to_string(context.op_index) + "_args";
-    std::string aicpu_args_code;
-    GE_ASSERT_SUCCESS(AssembleAicpuArgsCode(context, ioaddr_var_name, args_var_name, aicpu_args_code));
-    code_stream << aicpu_args_code;
-    const std::string cfg_holder_var_name = "op" + std::to_string(op_index) + "_cfg_holder";
-    Om2LaunchKernelParam param;
-    AssembleLaunchKernelConfig(context.op_desc, context.task_def, param);
-    code_stream << EmitLaunchConfigSetupCode(op_index, param.launch_config);
-    code_stream << "  OM2_CHK_STATUS((AicpuKernelTaskDistribute("+ args_var_name +", args_table_.GetArgsInfo(" << context.args_table_index
-                << "), func_handles_[" << context.func_handle_indices[kernel_name] << "], " << param.block_dim
-                << ", stream_list_[" << param.stream_id << "], &" << cfg_holder_var_name << ".cfg)));\n";
+    GE_ASSERT_SUCCESS(GenTaskDistributionCodeForAicpu(context, args_var_names.str(), code_stream, kernel_name));
   } else {
     REPORT_INNER_ERR_MSG("E19999", "Unsupported task type %d", static_cast<int32_t>(task_type));
     GELOGE(FAILED, "[OM2] Unsupported task type %d, task def %s", static_cast<int32_t>(task_type),
@@ -176,6 +184,29 @@ Status KernelTaskCodeGenerator::GenTaskDistributionCode(TaskDistributionContext 
   context.nodes.push_back(RAW_CODE_STMT(context.ast_ctx, code_stream.str()));
   ++context.args_table_index;
   return SUCCESS;
+}
+
+Status KernelTaskCodeGenerator::GenKernelTaskDistributeCode(TaskDistributionImplContext &context) {
+  std::stringstream code_stream;
+  code_stream << R"(aclError KernelTaskDistribute(const std::vector<uint64_t>& io_addrs, ArgsInfo *args_info, aclrtFuncHandle func_handle,
+                              uint32_t block_dim, aclrtStream stream, aclrtLaunchKernelCfg *config) {
+  OM2_CHK_NOTNULL(args_info);
+  OM2_CHK_STATUS(memcpy_s(args_info->host_addr, args_info->size, io_addrs.data(), io_addrs.size() * sizeof(uint64_t)));
+  OM2_CHK_STATUS(
+    aclrtLaunchKernelV2(
+      func_handle,
+      block_dim,
+      args_info->dev_addr,
+      args_info->size,
+      config,
+      stream
+    )
+  );
+  return ACL_SUCCESS;
+}
+)";
+context.nodes.push_back(RAW_CODE_STMT(context.ast_ctx, code_stream.str()));
+return SUCCESS;
 }
 
 Status KernelTaskCodeGenerator::GenDistributionImplCode(TaskDistributionImplContext &context) {
@@ -219,25 +250,9 @@ void AssembleLaunchConfig(LaunchKernelCfgHolder &holder, const LaunchKernelConfi
   holder.cfg.attrs = &holder.attrs[0];
   holder.cfg.numAttrs = actual_cfg_num;
 }
-
-aclError KernelTaskDistribute(const std::vector<uint64_t>& io_addrs, ArgsInfo *args_info, aclrtFuncHandle func_handle,
-                              uint32_t block_dim, aclrtStream stream, aclrtLaunchKernelCfg *config) {
-  OM2_CHK_NOTNULL(args_info);
-  OM2_CHK_STATUS(memcpy_s(args_info->host_addr, args_info->size, io_addrs.data(), io_addrs.size() * sizeof(uint64_t)));
-  OM2_CHK_STATUS(
-    aclrtLaunchKernelV2(
-      func_handle,
-      block_dim,
-      args_info->dev_addr,
-      args_info->size,
-      config,
-      stream
-    )
-  );
-  return ACL_SUCCESS;
-}
 )";
   context.nodes.push_back(RAW_CODE_STMT(context.ast_ctx, code_stream.str()));
+  (void)GenKernelTaskDistributeCode(context);
   return SUCCESS;
 }
 
@@ -471,21 +486,102 @@ Status KernelTaskCodeGenerator::UpdateShapeAndType(const GeShape &shape, const D
   return SUCCESS;
 }
 
+Status KernelTaskCodeGenerator::ParseExtShape(AicpuExtInfo &aicpu_ext_info, const uint32_t num_tensor,
+  const std::string &node_name, const bool all_shape, const OpDescPtr &op_desc)
+{
+  std::vector<AicpuShapeAndType *> shape_and_type;
+  shape_and_type.clear();
+  GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != (num_tensor * sizeof(AicpuShapeAndType)),
+                  REPORT_INNER_ERR_MSG("E19999", "Node[%s] parse ext shape failed as infoLen must be "
+                                     "tensor_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
+                                     node_name.c_str(), num_tensor, sizeof(AicpuShapeAndType),
+                                     aicpu_ext_info.infoLen);
+                  GELOGE(ACL_ERROR_GE_PARAM_INVALID,
+                         "[OM2][Check][DataLen]Node[%s] parse ext shape failed as infoLen must be "
+                         "tensor_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
+                         node_name.c_str(), num_tensor, sizeof(AicpuShapeAndType), aicpu_ext_info.infoLen);
+                  return ACL_ERROR_GE_PARAM_INVALID;);
+  const auto tensor_info = reinterpret_cast<AicpuShapeAndType *>(aicpu_ext_info.infoMsg);
+  if (all_shape) {
+    for (uint32_t i = 0U; i < num_tensor; ++i) {
+      shape_and_type.emplace_back(PtrAdd<AicpuShapeAndType>(tensor_info, static_cast<size_t>(num_tensor),
+                                                                  static_cast<size_t>(i)));
+      const auto tensor_desc = op_desc->MutableInputDesc(i);
+      GE_CHECK_NOTNULL(tensor_desc);
+      const auto &shape = tensor_desc->GetShape();
+      GE_CHK_STATUS_RET(UpdateShapeAndType(shape, tensor_desc->GetDataType(),
+                                  shape_and_type[static_cast<size_t>(i)]),
+              "[OM2][Update][ShapeAndType] failed, Node[%s] tensor_info[%u] .",
+              node_name.c_str(), i);
+    }
+  }
+  GELOGI("[OM2]Node[%s] parse ext shape success infoLen=%u.", node_name.c_str(), aicpu_ext_info.infoLen);
+  return SUCCESS;
+}
 
-Status KernelTaskCodeGenerator::InitAicpuTaskExtInfo(uint8_t *ext_info, size_t ext_info_len, const OpDescPtr op_desc, const domi::TaskDef &task_def, int32_t &session_info_offset) {
-  GELOGD("[OM2] start to init aicpu task ext info.");
-  (void)task_def;
-  std::string node_name = op_desc->GetName();
-  const uint32_t num_inputs = static_cast<uint32_t>(op_desc->GetInputsSize());
-  const uint32_t num_outputs = static_cast<uint32_t>(op_desc->GetOutputsSize());
+Status KernelTaskCodeGenerator::ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name)
+{
+  GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != sizeof(uint64_t),
+                  REPORT_INNER_ERR_MSG("E19999",
+                                    "Node[%s] parse bit_map info failed as infoLen must be %zu but %u.",
+                                    node_name.c_str(), sizeof(uint64_t), aicpu_ext_info.infoLen);
+                  GELOGE(PARAM_INVALID,
+                        "[OM2][Check][DataLen]Node[%s] parse bit_map info failed as infoLen must be %zu but %u.",
+                        node_name.c_str(), sizeof(uint64_t), aicpu_ext_info.infoLen);
+                  return PARAM_INVALID;);
 
-  std::vector<AicpuShapeAndType *> input_shape_and_type;
-  std::vector<AicpuShapeAndType *> output_shape_and_type;
-  input_shape_and_type.clear();
-  output_shape_and_type.clear();
+  uint64_t *bit_map = reinterpret_cast<uint64_t *>(aicpu_ext_info.infoMsg);
+  *(bit_map) |= 1UL;
+  GELOGI("[OM2] Node[%s] bit_map info success infoLen=%u, value = %" PRIu64 ".",
+          node_name.c_str(), aicpu_ext_info.infoLen, *(bit_map));
+  return SUCCESS;
+}
 
-  bool all_shape = false;
-  (void)AttrUtils::GetBool(op_desc, kAllShapeInAicpu, all_shape);
+Status KernelTaskCodeGenerator::ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name)
+{
+  if (aicpu_ext_info.infoLen != sizeof(int32_t)) {
+    REPORT_INNER_ERR_MSG("E19999",
+                       "Node[%s] parse topic_type info failed as infoLen must be %zu but %u.",
+                       node_name.c_str(), sizeof(int32_t), aicpu_ext_info.infoLen);
+    GELOGE(ACL_ERROR_GE_PARAM_INVALID,
+           "[Check][DataLen]Node[%s] parse topic_type info failed as infoLen must be %zu but %u.",
+           node_name.c_str(), sizeof(int32_t), aicpu_ext_info.infoLen);
+    return ACL_ERROR_GE_PARAM_INVALID;
+  }
+  GE_CHECK_NOTNULL(aicpu_ext_info.infoMsg);
+  const int32_t type = *(reinterpret_cast<int32_t *>(aicpu_ext_info.infoMsg));
+  int32_t deploy_type_flag = Om2CodegenUtils::TopicTypeToRtsFlag(type);
+  if (deploy_type_flag == -1) {
+    REPORT_INNER_ERR_MSG("E19999", "Node[%s] parse ext topic type failed as need %d %d %d %d but %d.",
+                       node_name.c_str(),
+                       aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_ONLY,
+                       aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_FIRST,
+                       aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_ONLY,
+                       aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_FIRST,
+                       type);
+    GELOGE(ACL_ERROR_GE_PARAM_INVALID,
+      "[Check][Type]Node[%s] parse ext topic type failed as need %d %d %d %d but %d.",
+      node_name.c_str(),
+      aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_ONLY,
+      aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_FIRST,
+      aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_ONLY,
+      aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_FIRST,
+      type);
+    return ACL_ERROR_GE_PARAM_INVALID;
+  } else if (deploy_type_flag == static_cast<int32_t>(RT_KERNEL_HOST_ONLY)) {
+    REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario. Node[%s], infoType=%d, infoLen=%u.", node_name.c_str(),
+                      aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
+    GELOGE(FAILED, "[OM2] Unsupport scenario. Node[%s], infoType=%d, infoLen=%u.",
+                  node_name.c_str(), aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
+    return FAILED;
+  }
+  return SUCCESS;
+}
+
+Status KernelTaskCodeGenerator::ParseExtInfo(uint8_t *ext_info, const size_t ext_info_len, const OpDescPtr &op_desc,
+  int32_t &session_info_offset, const uint32_t num_inputs, const uint32_t num_outputs, const std::string &node_name,
+  const bool all_shape)
+{
   size_t offset = 0UL;
   while ((offset + sizeof(AicpuExtInfo)) <= ext_info_len) {
     auto tmp_ext_info_data = PtrAdd(ext_info, ext_info_len, offset);
@@ -494,107 +590,27 @@ Status KernelTaskCodeGenerator::InitAicpuTaskExtInfo(uint8_t *ext_info, size_t e
     GELOGD("[OM2] Ext infoType=%d, infoLen=%u.", aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
     switch (aicpu_ext_info.infoType) {
       case aicpu::FWKAdapter::FWK_ADPT_EXT_SHAPE_TYPE:
-        GELOGI("[OM2] Reserve infoType[%d] for Node[%s].",
-               aicpu_ext_info.infoType, node_name.c_str());
+        GELOGI("[OM2] Reserve infoType[%d] for Node[%s].", aicpu_ext_info.infoType, node_name.c_str());
         break;
-      case aicpu::FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE: {
-        GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != (num_inputs * sizeof(AicpuShapeAndType)),
-                  REPORT_INNER_ERR_MSG("E19999", "Node[%s] parse ext input shape failed as infoLen must be "
-                                     "input_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
-                                     node_name.c_str(), num_inputs, sizeof(AicpuShapeAndType),
-                                     aicpu_ext_info.infoLen);
-                  GELOGE(ACL_ERROR_GE_PARAM_INVALID,
-                         "[OM2][Check][DataLen]Node[%s] parse ext input shape failed as infoLen must be "
-                         "input_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
-                         node_name.c_str(), num_inputs, sizeof(AicpuShapeAndType), aicpu_ext_info.infoLen);
-                  return ACL_ERROR_GE_PARAM_INVALID;);
-
-        const auto input = reinterpret_cast<AicpuShapeAndType *>(aicpu_ext_info.infoMsg);
-        if (all_shape) {
-          for (uint32_t i = 0U; i < num_inputs; ++i) {
-            input_shape_and_type.emplace_back(PtrAdd<AicpuShapeAndType>(input, static_cast<size_t>(num_inputs),
-                                                                        static_cast<size_t>(i)));
-            const auto input_desc = op_desc->MutableInputDesc(i);
-            GE_CHECK_NOTNULL(input_desc);
-            const auto &shape = input_desc->GetShape();
-            GE_CHK_STATUS_RET(UpdateShapeAndType(shape, input_desc->GetDataType(),
-                                       input_shape_and_type[static_cast<size_t>(i)]),
-                    "[OM2][Update][ShapeAndType] failed, Node[%s] input[%u] .",
-                    node_name.c_str(), i);
-          }
-        }
-        GELOGI("[OM2]Node[%s] parse ext input shape success infoLen=%u.", node_name.c_str(), aicpu_ext_info.infoLen);
+      case aicpu::FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE:
+        GE_CHK_STATUS_RET(ParseExtShape(aicpu_ext_info, num_inputs, node_name, all_shape, op_desc),
+                                        "[OM2] Parse ext input shape failed, Node[%s].", node_name.c_str());
         break;
-      }
-      case aicpu::FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE:{
-        GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != (num_outputs * sizeof(AicpuShapeAndType)),
-                        REPORT_INNER_ERR_MSG("E19999", "Node[%s] parse ext output shape failed as infoLen must be "
-                                          "output_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
-                                          node_name.c_str(), num_outputs, sizeof(AicpuShapeAndType),
-                                          aicpu_ext_info.infoLen);
-                        GELOGE(ACL_ERROR_GE_PARAM_INVALID,
-                              "[OM2][Check][DataLen]Node[%s] parse ext output shape failed as infoLen must be "
-                              "output_num[%u]*sizeof(ShapeAndType)[%zu] but %u.",
-                              node_name.c_str(), num_outputs, sizeof(AicpuShapeAndType), aicpu_ext_info.infoLen);
-                        return ACL_ERROR_GE_PARAM_INVALID;);
-
-        const auto output = reinterpret_cast<AicpuShapeAndType *>(aicpu_ext_info.infoMsg);
-        if (all_shape) {
-          for (uint32_t i = 0U; i < num_outputs; ++i) {
-            output_shape_and_type.emplace_back(PtrAdd<AicpuShapeAndType>(output, static_cast<size_t>(num_outputs),
-                                                                        static_cast<size_t>(i)));
-            const auto output_desc = op_desc->MutableOutputDesc(i);
-            GE_CHECK_NOTNULL(output_desc);
-            const auto &shape = output_desc->GetShape();
-            GE_CHK_STATUS_RET(UpdateShapeAndType(shape, output_desc->GetDataType(),
-                                       output_shape_and_type[static_cast<size_t>(i)]),
-                    "[OM2][Update][ShapeAndType] failed, Node[%s] input[%u] .", node_name.c_str(), i);
-          }
-        }
-        GELOGI("[OM2] Node[%s] parse ext output shape success infoLen=%u.", node_name.c_str(), aicpu_ext_info.infoLen);
+      case aicpu::FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE:
+        GE_CHK_STATUS_RET(ParseExtShape(aicpu_ext_info, num_outputs, node_name, all_shape, op_desc),
+                                        "[OM2] Parse ext output shape failed, Node[%s].", node_name.c_str());
         break;
-      }
       case aicpu::FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
         session_info_offset = offset + 8;
         break;
-      case aicpu::FWKAdapter::FWK_ADPT_EXT_BITMAP: {
-        GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != sizeof(uint64_t),
-                        REPORT_INNER_ERR_MSG("E19999",
-                                          "Node[%s] parse bit_map info failed as infoLen must be %zu but %u.",
-                                          node_name.c_str(), sizeof(uint64_t), aicpu_ext_info.infoLen);
-                        GELOGE(PARAM_INVALID,
-                              "[OM2][Check][DataLen]Node[%s] parse bit_map info failed as infoLen must be %zu but %u.",
-                              node_name.c_str(), sizeof(uint64_t), aicpu_ext_info.infoLen);
-                        return PARAM_INVALID;);
-
-        uint64_t *bit_map = reinterpret_cast<uint64_t *>(aicpu_ext_info.infoMsg);
-        *(bit_map) |= 1UL;
-        GELOGI("[OM2] Node[%s] bit_map info success infoLen=%u, value = %" PRIu64 ".",
-               node_name.c_str(), aicpu_ext_info.infoLen, *(bit_map));
+      case aicpu::FWKAdapter::FWK_ADPT_EXT_BITMAP:
+        GE_CHK_STATUS_RET(ParseExtBitmap(aicpu_ext_info, node_name.c_str()),
+                                         "[OM2] Parse ext bitmap failed, Node[%s].", node_name.c_str());
         break;
-      }
-      case aicpu::FWKAdapter::FWK_ADPT_EXT_TOPIC_TYPE: {
-        const int32_t type = *(reinterpret_cast<int32_t *>(aicpu_ext_info.infoMsg));
-        int32_t deploy_type_flag = Om2CodegenUtils::TopicTypeToRtsFlag(type);
-        if (deploy_type_flag == -1) {
-          GELOGE(ACL_ERROR_GE_PARAM_INVALID,
-            "[Check][Type]Node[%s] parse ext shape type failed as need %d %d %d %d but %d.",
-            node_name.c_str(),
-            aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_ONLY,
-            aicpu::FWKAdapter::FWK_ADPT_TOPIC_DEVICE_FIRST,
-            aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_ONLY,
-            aicpu::FWKAdapter::FWK_ADPT_TOPIC_HOST_FIRST,
-            type);
-          return ACL_ERROR_GE_PARAM_INVALID;
-        } else if (deploy_type_flag == static_cast<int32_t>(RT_KERNEL_HOST_ONLY)) {
-          REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario. Node[%s], infoType=%d, infoLen=%u.", node_name.c_str(),
-                            aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
-          GELOGE(FAILED, "[OM2] Unsupport scenario. Node[%s], infoType=%d, infoLen=%u.",
-                       node_name.c_str(), aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
-          return FAILED;
-        }
+      case aicpu::FWKAdapter::FWK_ADPT_EXT_TOPIC_TYPE:
+        GE_CHK_STATUS_RET(ParseExtTopicType(aicpu_ext_info, node_name.c_str()),
+                                            "[OM2] Parse ext topic type failed, Node[%s].", node_name.c_str());
         break;
-      }
       case aicpu::FWKAdapter::FWK_ADPT_EXT_ASYNCWAIT: {
         REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario. Node[%s], infoType=%d, infoLen=%u.", node_name.c_str(),
                           aicpu_ext_info.infoType, aicpu_ext_info.infoLen);
@@ -618,6 +634,25 @@ Status KernelTaskCodeGenerator::InitAicpuTaskExtInfo(uint8_t *ext_info, size_t e
                          "parse not reach end, offset=%zu, ext_info_len=%zu.",
                          node_name.c_str(), offset, ext_info_len);
                   return ACL_ERROR_GE_PARAM_INVALID;);
+  return SUCCESS;
+}
+
+Status KernelTaskCodeGenerator::InitAicpuTaskExtInfo(uint8_t *ext_info, size_t ext_info_len, const OpDescPtr op_desc,
+  const domi::TaskDef &task_def, int32_t &session_info_offset)
+{
+  GELOGD("[OM2] start to init aicpu task ext info.");
+  (void)task_def;
+  std::string node_name = op_desc->GetName();
+  const uint32_t num_inputs = static_cast<uint32_t>(op_desc->GetInputsSize());
+  const uint32_t num_outputs = static_cast<uint32_t>(op_desc->GetOutputsSize());
+
+  std::vector<AicpuShapeAndType *> output_shape_and_type;
+  output_shape_and_type.clear();
+
+  bool all_shape = false;
+  (void)AttrUtils::GetBool(op_desc, kAllShapeInAicpu, all_shape);
+  GE_ASSERT_SUCCESS(ParseExtInfo(ext_info, ext_info_len, op_desc, session_info_offset, num_inputs, num_outputs,
+                                 node_name, all_shape));
   GELOGI("[OM2] Node[%s] parse ext info end.", node_name.c_str());
   return SUCCESS;
 }
@@ -657,23 +692,14 @@ Status KernelTaskCodeGenerator::ParseArgsFormat(TaskDistributionContext &context
       args_format_holder.level1_addr_cnt += ir_range.second + shape_info.size();
       args_format_holder.shape_infos.push_back(shape_info);
     } else if (arg_format.addr_type == AddrType::TILING_CONTEXT &&
-               arg_format.ir_idx == static_cast<int32_t>(TilingContextSubType::TILING_CONTEXT)) {
+               (arg_format.ir_idx == static_cast<int32_t>(TilingContextSubType::TILING_CONTEXT) ||
+                arg_format.ir_idx == static_cast<int32_t>(TilingContextSubType::TILING_DATA))) {
       REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario. addr_type[%d], ir_idx[%d].",
                      static_cast<int32_t>(AddrType::TILING_CONTEXT),
-                     static_cast<int32_t>(TilingContextSubType::TILING_CONTEXT));
-      GELOGE(FAILED, "[OM2] Unsupport scenario. addr_type[%d], ir_idx[%d].", static_cast<int32_t>(AddrType::TILING_CONTEXT),
-                     static_cast<int32_t>(TilingContextSubType::TILING_CONTEXT));
+                     arg_format.ir_idx);
+      GELOGE(FAILED, "[OM2] Unsupport scenario. addr_type[%d], ir_idx[%d].",
+                     static_cast<int32_t>(AddrType::TILING_CONTEXT), arg_format.ir_idx);
       return FAILED;
-    } else if ((arg_format.addr_type == AddrType::TILING_CONTEXT) &&
-               (arg_format.ir_idx == static_cast<int32_t>(TilingContextSubType::TILING_DATA))) {
-      REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario. addr_type[%d], ir_idx[%d].",
-                     static_cast<int32_t>(AddrType::TILING_CONTEXT),
-                     static_cast<int32_t>(TilingContextSubType::TILING_DATA));
-      GELOGE(FAILED, "[OM2] Unsupport scenario. addr_type[%d], ir_idx[%d].", static_cast<int32_t>(AddrType::TILING_CONTEXT),
-                     static_cast<int32_t>(TilingContextSubType::TILING_DATA));
-      return FAILED;
-    } else {
-      // misra
     }
   }
   return SUCCESS;
@@ -840,51 +866,38 @@ Status KernelTaskCodeGenerator::GenArgsByArgsFormat(TaskDistributionContext &con
   std::vector<void *> context_addrs;
   for (const auto &arg_format : arg_descs) {
     switch (arg_format.addr_type) {
-      case AddrType::INPUT_INSTANCE: {
+      case AddrType::INPUT_INSTANCE:
         GE_ASSERT_SUCCESS(GenInputOutputAddrByInstanceIndex(context, static_cast<size_t>(arg_format.ir_idx), true));
         break;
-      }
-      case AddrType::OUTPUT_INSTANCE: {
+      case AddrType::OUTPUT_INSTANCE:
         GE_ASSERT_SUCCESS(GenInputOutputAddrByInstanceIndex(context, static_cast<size_t>(arg_format.ir_idx), false));
         break;
-      }
       case AddrType::INPUT_DESC:
       case AddrType::OUTPUT_DESC:
         level_addr_idx.push_back(args_addr_nodes_.size());
         dynamic_args_desc.push_back(arg_format);
         args_addr_nodes_.emplace_back();
         break;
-      case AddrType::INPUT: {
+      case AddrType::INPUT:
         GE_ASSERT_SUCCESS(
             GenInputOutputAddr(context, args_format_holder, static_cast<size_t>(arg_format.ir_idx), true));
         break;
-      }
-      case AddrType::OUTPUT: {
+      case AddrType::OUTPUT:
         GE_ASSERT_SUCCESS(
             GenInputOutputAddr(context, args_format_holder, static_cast<size_t>(arg_format.ir_idx), false));
         break;
-      }
-      case AddrType::WORKSPACE: {
+      case AddrType::WORKSPACE:
         GE_ASSERT_SUCCESS(GenWorkspaceAddr(context, arg_format.ir_idx));
         break;
-      }
-      case AddrType::PLACEHOLDER: {
+      case AddrType::PLACEHOLDER:
         AppendPlaceholder(context);
         break;
-      }
-      case AddrType::CUSTOM_VALUE: {
+      case AddrType::CUSTOM_VALUE:
         GenCustomValue(context, *reinterpret_cast<const uint64_t *>(arg_format.reserved));
         break;
-      }
-      case AddrType::HIDDEN_INPUT:
-      case AddrType::TILING:
-      case AddrType::OVERFLOW_ADDR:
-      case AddrType::OP_TYPE:
-      case AddrType::TILING_CONTEXT:
-      case AddrType::FFTS_ADDR:
-      case AddrType::EVENT_ADDR:
       default:
-        GELOGE(FAILED, "Args Format type %d is currently not supported.", static_cast<int32_t>(arg_format.addr_type));
+        REPORT_INNER_ERR_MSG("E19999", "Args Format type %d is currently not supported.",
+                             static_cast<int32_t>(arg_format.addr_type));
         GELOGE(FAILED, "[OM2] Args Format type %d is currently not supported.",
                static_cast<int32_t>(arg_format.addr_type));
         return FAILED;
@@ -892,7 +905,6 @@ Status KernelTaskCodeGenerator::GenArgsByArgsFormat(TaskDistributionContext &con
   }
   GE_ASSERT_SUCCESS(AssembleShapeInfoAddrs(context, dynamic_args_desc, level_addr_idx, args_format_holder));
   GELOGD("[OM2] All Args are successfully generated according to the args format.");
-
   return SUCCESS;
 }
 

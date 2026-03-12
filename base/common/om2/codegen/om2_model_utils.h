@@ -27,6 +27,33 @@ class Om2ModelUtils {
                                       std::vector<AddrGenInfo> &workspace_addr_nodes);
 
  private:
+  struct InputAddrBuildParams {
+    const vector_bit_t &v_is_input_const;
+    const std::vector<int64_t> &input_offsets;
+    const std::vector<int64_t> &v_memory_type;
+    size_t &non_const_index;
+  };
+
+  struct WorkspaceMemTypeParams {
+    const std::vector<int64_t> &v_workspace_offset;
+    bool has_mem_type_attr;
+    const std::vector<int64_t> &v_memory_type;
+    bool has_mem_type_workspace;
+    const std::vector<int64_t> &workspace_memory_type;
+  };
+
+  struct WorkspaceAddrBuildParams {
+    const std::vector<int64_t> &v_workspace_offset;
+    const vector_bit_t &workspace_reuse_flag;
+    bool has_workspace_reuse;
+    const std::vector<int32_t> &workspace_no_reuse_scope;
+    bool has_workspace_no_reuse_scope;
+    const std::vector<int64_t> &workspace_memory_type;
+    bool has_mem_type_workspace;
+    const std::vector<int64_t> &v_memory_type;
+    bool has_mem_type_attr;
+  };
+
   static uint64_t GetWorkspaceMemTypeByPriority(const bool is_p2p_memory, const bool is_l1_memory,
                                                 const bool is_ub_memory, const bool session_scope_memory);
 
@@ -38,6 +65,24 @@ class Om2ModelUtils {
   static Status GetOrCreateInputVarName(TaskDistributionContext &context, size_t input_idx,
                                         size_t non_const_idx, const std::vector<int64_t> &input_offsets,
                                         std::string &input_ptr_name, std::vector<AstNode *> &input_nodes);
+
+  static Status ValidateInputMemTypeList(const TaskDistributionContext &context, bool has_mem_type_attr,
+                                         const std::vector<int64_t> &v_memory_type, size_t inputs_size);
+  static Status BuildSingleInputAddrNode(TaskDistributionContext &context, size_t input_idx,
+                                         InputAddrBuildParams &params, AddrGenInfo &input_addr_node);
+
+  static Status ValidateOutputAddrParams(TaskDistributionContext &context, const std::vector<int64_t> &v_output_offset,
+                                         size_t outputs_size, bool has_mem_type_attr,
+                                         const std::vector<int64_t> &v_memory_type);
+  static Status BuildMaterializedOutputAddrNode(TaskDistributionContext &context, size_t output_idx,
+                                                const std::vector<int64_t> &v_output_offset,
+                                                const std::vector<int64_t> &v_memory_type,
+                                                AddrGenInfo &output_addr_node);
+
+  static Status ValidateWorkspaceMemTypeParams(TaskDistributionContext &context,
+                                               const WorkspaceMemTypeParams &params);
+  static Status BuildSingleWorkspaceAddrNode(TaskDistributionContext &context, size_t workspace_idx,
+                                             const WorkspaceAddrBuildParams &params, AddrGenInfo &workspace_addr_node);
 };
 } // namespace ge
 

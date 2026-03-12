@@ -86,6 +86,16 @@ class KernelTaskCodeGenerator : public TaskCodeGenerator {
                            uint32_t &args_size, uint32_t &kernel_type) const;
   std::string EmitLaunchConfigSetupCode(size_t op_index, const Om2LaunchKernelConfig &launch_config);
   std::string SerializeBytesToOctalString(const std::vector<uint8_t> &buffer);
+  Status ParseExtShape(AicpuExtInfo &aicpu_ext_info, const uint32_t num_inputs,
+    const std::string &node_name, const bool all_shape, const OpDescPtr &op_desc);
+  Status ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name);
+  Status ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name);
+  Status ParseExtInfo(uint8_t *ext_info, const size_t ext_info_len, const OpDescPtr &op_desc,
+    int32_t &session_info_offset, const uint32_t num_inputs, const uint32_t num_outputs, const std::string &node_name,
+    const bool all_shape);
+  Status GenKernelTaskDistributeCode(TaskDistributionImplContext &context);
+  Status GenTaskDistributionCodeForAicpu(TaskDistributionContext &context, const std::string &args_var_names,
+    std::stringstream &code_stream, const std::string &kernel_name);
  private:
   uint64_t host_args_offset_;
   std::vector<AddrGenInfo> input_addr_nodes_;

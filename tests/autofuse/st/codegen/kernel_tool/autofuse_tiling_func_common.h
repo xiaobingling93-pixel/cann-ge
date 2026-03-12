@@ -51,7 +51,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <map>
-#include "dlog_pub.h"
+#include "toolchain/slog.h"
 
 #define GE_MODULE_NAME static_cast<int32_t>(45)
 inline bool IsLogPrintStdout() {

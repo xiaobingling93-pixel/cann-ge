@@ -16,7 +16,6 @@
 #include "ge/st/stubs/utils/mock_execution_runtime.h"
 
 #include "dflow/compiler/session/dflow_api.h"
-#include "graph/operator_factory_impl.h"
 #include "depends/slog/src/slog_stub.h"
 #include "common/ge_common/ge_types.h"
 #include "graph/ge_local_context.h"
@@ -24,14 +23,9 @@
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/graph_utils.h"
-#include "register/ops_kernel_builder_registry.h"
-#include "stub/gert_runtime_stub.h"
-#include "host_cpu_engine/host_cpu_engine.h"
-#include "ge_graph_dsl/graph_dsl.h"
 #include "ge_running_env/fake_op.h"
 #include "ge_running_env/ge_running_env_faker.h"
 #include "api/gelib/gelib.h"
-#include "ge_running_env/include/ge_running_env/dir_env.h"
 #include "init_ge.h"
 #include "ge/ge_api.h" // 等GE提供真正的依赖接口
 #include "dflow/compiler/pne/udf/udf_process_node_engine.h"

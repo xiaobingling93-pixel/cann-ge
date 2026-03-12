@@ -277,7 +277,7 @@ class ComputeGraphImpl {
     int32_t parent_node_index;
   };
   graphStatus AddNetOutputNodeToGraph(const ComputeGraphPtr &compute_graph, NodePtr &output_node);
-  graphStatus CreateNetOutputNode(OpDescPtr &net_output_desc);
+  graphStatus CreateNetOutputNode(OpDescPtr &net_output_desc) const;
   graphStatus CollectOutputNode(const ComputeGraphPtr &compute_graph, std::vector<RetvalInfo> &output_nodes_info);
   graphStatus GetRetvalOutputInfo(const ge::NodePtr &node, std::map<int32_t, RetvalInfo> &retval_node_index_map);
   graphStatus CheckOutputNodeInfo(const std::vector<RetvalInfo> &outputs) const;

@@ -219,7 +219,7 @@ TEST_F(E2E_LoadAbsStore, Codegen_Tiling_With_Lambda)
 #include <cinttypes>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include "dlog_pub.h"
+#include "toolchain/slog.h"
 #define OP_LOGD(name, fmt, ...)
 #define OP_LOGI(name, fmt, ...)
 #define GE_MODULE_NAME static_cast<int32_t>(45)
@@ -606,7 +606,7 @@ TEST_F(E2E_LoadAbsStore, Codegen_PGO_Code)
 #include <vector>
 
 #include "acl/acl.h"
-#include "dlog_pub.h"
+#include "toolchain/slog.h"
 #include "mspti.h"
 #include "tiling/platform/platform_ascendc.h"
 
@@ -1426,7 +1426,7 @@ private:
 #include <cinttypes>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include "dlog_pub.h"
+#include "toolchain/slog.h"
 #define OP_LOGD(name, fmt, ...)
 #define OP_LOGI(name, fmt, ...)
 #define GE_MODULE_NAME static_cast<int32_t>(45)

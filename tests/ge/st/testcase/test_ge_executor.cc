@@ -1858,8 +1858,6 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
  * 预期结果：
  * 1. 两次加载，session id不同，因此外置权重不能共享同一份device内存，各自有h2d拷贝
  */
- // todo test
- /*
   TEST_F(GeExecutorTest, FileConstant_OneThreadLoadTwoOm) {
   shared_ptr<OpsKernelInfoStore> fake_ops_kernel_info_store = std::make_shared<FakeOpsKernelInfoStore>();
   // hccl op goes to AIcoreEngine in this testcase
@@ -1918,13 +1916,17 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
 
     GeExecutor ge_executor2;
     ModelData model_data2;
+    ge::ModelLoadArg load_arg2;
     EXPECT_EQ(ge_executor2.LoadDataFromFile("sample_offline_model2.om", model_data2), SUCCESS);
-    model_data.om_name = "g1_om";
+    model_data2.om_name = "g2_om";
+    load_arg2.dev_ptr = nullptr;
+    load_arg2.mem_size = 0;
+    load_arg2.weight_ptr= nullptr;
     uint32_t model_id2 = 1U;
     {
       gert::GertRuntimeStub runtime_stub;
       runtime_stub.GetSlogStub().SetLevel(DLOG_INFO);
-      EXPECT_EQ(ge_executor2.LoadModelFromDataWithArgs(model_id2, model_data2, load_arg), SUCCESS);
+      EXPECT_EQ(ge_executor2.LoadModelFromDataWithArgs(model_id2, model_data2, load_arg2), SUCCESS);
       auto log_ret = runtime_stub.GetSlogStub().FindLog(DLOG_INFO, "CopyOneWeightFromFileWithFilehandler");
       EXPECT_NE(log_ret, -1);
     }
@@ -1939,7 +1941,6 @@ TEST_F(GeExecutorTest, FileConstant_UserSetDeviceMem) {
   system("rm -rf sample_offline_model1.om");
   system("rm -rf sample_offline_model2.om");
 }
-*/
 
 static void BuildSampleCondGraph(ComputeGraphPtr &graph, uint32_t &mem_offset) {
   DEF_GRAPH(g0) {

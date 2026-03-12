@@ -31,6 +31,7 @@ target_link_libraries(profiler_stub
         runtime_headers
         c_sec
         ascend_protobuf
+        mmpa
     PUBLIC
         msprof_headers
         adump_headers

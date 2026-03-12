@@ -28,11 +28,14 @@
 ```
 
 ## 环境准备
+
 - 通过安装指导 [环境准备](../../../docs/build.md#2-安装软件包)正确安装`toolkit`和`ops`包
-- 设置环境变量 (假设包安装在/usr/local/Ascend/)
-```
-source /usr/local/Ascend/cann/set_env.sh
-```
+
+- 设置环境变量 (假设包安装在`/usr/local/Ascend/`)
+
+    ```
+    source /usr/local/Ascend/cann/set_env.sh
+    ```
 
 ## 实现步骤
 
@@ -91,59 +94,42 @@ source /usr/local/Ascend/cann/set_env.sh
 
     请注意，下文中的样例目录均指"examples/acl/3_sample_qwen_llm"目录。
 
-3. 设置环境变量，配置程序编译依赖的头文件与库文件路径。
-
-    设置以下环境变量后，编译脚本会根据"{DDK_PATH}环境变量值/include/"目录查找编译依赖的头文件，根据{NPU_HOST_LIB}环境变量指向的目录查找编译依赖的库文件。
-
-    **注意**，在配置{NPU_HOST_LIB}环境变量时，需使用的"devlib"目录下*.so库，确保在编译基于AscendCL接口的应用程序时，不依赖其它组件（例如Driver）的*.so库，编译成功后，运行应用程序时，系统会根据LD_LIBRARY_PATH环境变量查找"Ascend-cann-toolkit安装目录/lib64"目录下的*.so库，同时会自动链接到所依赖的其它组件的*.so库。
-
-    -   配置示例如下所示：
-
-        ```
-        # toolkit默认路径安装，以root用户为例（非root用户，将/usr/local替换为${HOME}）
-        export DDK_PATH=/usr/local/Ascend/cann
-        export NPU_HOST_LIB=$DDK_PATH/devlib
-        # toolkit指定路径安装，${install_path}为toolkit的安装目录。
-        export DDK_PATH=${install_path}/cann
-        export NPU_HOST_LIB=$DDK_PATH/devlib
-        ```
-
-4.  切换到"样例目录/scripts", 编译程序。
+3.  切换到"样例目录/scripts", 编译程序。
 
     ```
     bash build.sh
     ```
 
-5.  运行程序
+4.  运行程序
     ```
     bash run.sh
     ```
 
-6.  执行结果
+5.  执行结果
 
-执行成功后，在屏幕上的关键提示信息示例如下：
-```
-[INFO] The sample starts to run
-[INFO]  SAMPLE start to execute.
-[INFO]  acl init success
-[INFO]  set device success
-[INFO]  create context success
-[INFO]  create stream success
-[INFO]  load model ../model/qwen.om success.
-[INFO]  Start to Process.
-[INFO]  The first five inputs information:
-[INFO]    Input[0], tensorName=input_ids, size=4096 bytes, dtype=9, format=0, dims=1 512
-[INFO]    Input[1], tensorName=past_key_0.key, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
-[INFO]    Input[2], tensorName=past_key_0.value, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
-[INFO]    Input[3], tensorName=past_key_1.key, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
-[INFO]    Input[4], tensorName=past_key_1.value, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
-[INFO]  Start to execute model.
-[INFO]  The first five outputs information:
-[INFO]    Output[0], tensorName=/lm_head/MatMul:0:logits, size=311164928 bytes, dtype=0, format=0, dims=1 512 151936
-[INFO]    Output[1], tensorName=/model/self_attn/Concat_5:0:present_0.key, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
-[INFO]    Output[2], tensorName=/model/self_attn/Concat_6:0:present_0.value, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
-[INFO]    Output[3], tensorName=/model/self_attn_1/Concat_5:0:present_1.key, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
-[INFO]    Output[4], tensorName=/model/self_attn_1/Concat_6:0:present_1.value, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
-[INFO]  predicted_token_id: 33975
-[INFO]  SAMPLE PASSED.
-```
+    执行成功后，在屏幕上的关键提示信息示例如下：
+    ```
+    [INFO] The sample starts to run
+    [INFO]  SAMPLE start to execute.
+    [INFO]  acl init success
+    [INFO]  set device success
+    [INFO]  create context success
+    [INFO]  create stream success
+    [INFO]  load model ../model/qwen.om success.
+    [INFO]  Start to Process.
+    [INFO]  The first five inputs information:
+    [INFO]    Input[0], tensorName=input_ids, size=4096 bytes, dtype=9, format=0, dims=1 512
+    [INFO]    Input[1], tensorName=past_key_0.key, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
+    [INFO]    Input[2], tensorName=past_key_0.value, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
+    [INFO]    Input[3], tensorName=past_key_1.key, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
+    [INFO]    Input[4], tensorName=past_key_1.value, size=131072 bytes, dtype=1, format=0, dims=1 2 512 64
+    [INFO]  Start to execute model.
+    [INFO]  The first five outputs information:
+    [INFO]    Output[0], tensorName=/lm_head/MatMul:0:logits, size=311164928 bytes, dtype=0, format=0, dims=1 512 151936
+    [INFO]    Output[1], tensorName=/model/self_attn/Concat_5:0:present_0.key, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
+    [INFO]    Output[2], tensorName=/model/self_attn/Concat_6:0:present_0.value, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
+    [INFO]    Output[3], tensorName=/model/self_attn_1/Concat_5:0:present_1.key, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
+    [INFO]    Output[4], tensorName=/model/self_attn_1/Concat_6:0:present_1.value, size=524288 bytes, dtype=0, format=0, dims=1 2 1024 64
+    [INFO]  predicted_token_id: 33975
+    [INFO]  SAMPLE PASSED.
+    ```

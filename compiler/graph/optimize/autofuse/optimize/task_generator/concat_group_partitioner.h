@@ -39,7 +39,7 @@ class ConcatGroupPartitioner {
   void GroupStart(int64_t index_start, uint32_t group_type, int64_t size);
   [[nodiscard]] int64_t GetSizeLimitByGroupType(uint32_t group_type) const;
   [[nodiscard]] uint32_t GetGroupType(int64_t size) const;
-  void MergeSmallGroups(std::vector<ConcatGroup> &groups);
+  void MergeSmallGroups();
   [[nodiscard]] bool CanMerge(const ConcatGroup &lhs, const ConcatGroup &rhs) const;
   void ConvertToDefaultIfTooSmall();
   void UpdateStatus(int64_t size);
@@ -49,7 +49,7 @@ class ConcatGroupPartitioner {
   static bool IsSmallTail(uint32_t group_type);
   static void MergeGroups(std::vector<ConcatGroup>::value_type &lhs_group,
                           std::vector<ConcatGroup>::value_type &rhs_group);
-  ge::Status RecomputeNodesCrossGroups(const std::vector<ConcatGroup> &groups, bool search_backward,
+  ge::Status RecomputeNodesCrossGroups(bool search_backward,
                                        bool &has_recompute) const;
   ge::Status FindFirstMultiOutputAnchors(const ge::InDataAnchorPtr &in_anchor, int32_t end_index, bool search_backward,
                                          std::set<ge::InDataAnchorPtr> &visited_in_anchors,
@@ -63,6 +63,7 @@ class ConcatGroupPartitioner {
   Status TryOptimizeGroupSize();
   uint32_t MaxInputNumPerGroup() const;
   bool NeedSplit(const ge::InDataAnchorPtr &in_anchor, int32_t start_index, const ge::Expression &cur_dim_size) const;
+  size_t GetGroupSize(size_t index) const;
 
   static constexpr uint32_t kGroupTypeDefault = 0x1;
   static constexpr uint32_t kGroupTypeAligned = 0x10;
@@ -97,7 +98,6 @@ class ConcatGroupPartitioner {
   int64_t known_rows_ = 1L;
   int64_t total_rows_ = 0L;
   int64_t default_cols_per_group_ = 0L;
-  bool single_group_mode_ = false;
   bool has_recompute_ = false;
 };
 }  // namespace optimize

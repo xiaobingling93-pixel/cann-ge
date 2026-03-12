@@ -38,7 +38,7 @@ find_package(tikicpulib QUIET)
 # 要修复的目标列表
 set(TIKICPULIB_TARGETS
         tikicpulib_ascend910B1
-        tikicpulib_ascend910_9599
+        tikicpulib_ascend950pr_9599
         # 添加其他可能出错的 target
 )
 

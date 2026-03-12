@@ -186,8 +186,10 @@ LowerResult LoweringAutofuseNode(const ge::NodePtr &node, const LowerInput &lowe
   auto output_sizes = bg::CalcTensorSize(node, output_shapes);
   auto output_addrs = bg::AllocOutputMemory(kOnDeviceHbm, node, output_sizes, lower_input.input_addrs, *(global_data));
   // tiling
-  auto platform_info = bg::AppendCoreTypeToPlatform(
-      node, global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  auto assembled_platform_info_holders = bg::AppendCoreTypeToPlatform(node, global_data);
+  GE_ASSERT_TRUE(assembled_platform_info_holders.size() == static_cast<size_t>(bg::AssemblePlatformInfoIndex::kNums));
+  auto platform_info =
+      assembled_platform_info_holders[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
   auto launch_arg = bg::AllocRtArg(node, task_def->kernel_with_handle(), bg::kMaxTilingSize);
   CONVERTER_CHECK_HOLDERS_ALL_OK(launch_arg, static_cast<size_t>(AllocLaunchArgOutputs::kNum));
   auto tiling_results =

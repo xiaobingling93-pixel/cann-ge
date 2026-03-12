@@ -60,7 +60,6 @@ target_include_directories(ut_flow_func_executor PRIVATE
         ${AIR_CODE_DIR}
         ${AIR_CODE_DIR}/inc/graph_metadef
         ${AIR_CODE_DIR}/dflow/inc
-        ${AIR_CODE_DIR}/dflow/inc/data_flow
         ${ASCEND_INSTALL_PATH}/include
         ${UDF_SRC_PATH}/inc/external
         ${UDF_SRC_PATH}/
@@ -83,7 +82,6 @@ target_link_libraries(ut_flow_func_executor PRIVATE
         $<BUILD_INTERFACE:mmpa_headers>
         $<BUILD_INTERFACE:ascend_hal_headers>
         $<BUILD_INTERFACE:datagw_headers>
-        ascendcl_stub
         GTest::gtest GTest::gmock GTest::gmock_main
 )
 

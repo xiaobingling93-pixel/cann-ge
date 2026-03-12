@@ -9,8 +9,6 @@
 # -----------------------------------------------------------------------------------------------------------
 
 include_directories(${AIR_CODE_DIR}/tests/)
-include_directories(${AIR_CODE_DIR}/tests/ge/ut)
-include_directories(${AIR_CODE_DIR}/tests/ge/ut/ge)
 
 MESSAGE("copy st run data from ${AIR_CODE_DIR}/tests/dflow/runner/st/st_run_data to ${CMAKE_CURRENT_BINARY_DIR}/")
 file(COPY ${AIR_CODE_DIR}/tests/dflow/runner/st/st_run_data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
@@ -46,18 +44,11 @@ target_include_directories(helper_runtime_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${AIR_CODE_DIR}
     ${AIR_CODE_DIR}/dflow/deployer
-    ${AIR_CODE_DIR}/runtime/v2
-    ${AIR_CODE_DIR}/runtime/deploy/deployer/device_mgr
-    ${AIR_CODE_DIR}/runtime/deploy/abnormal_status_handler
-    ${CMAKE_BINARY_DIR}/proto/ge
-    ${CMAKE_BINARY_DIR}/proto/ge/proto
     ${CMAKE_BINARY_DIR}/proto/deployer_proto/
-    ${ASCGEN_DIR}/inc
     ${AIR_CODE_DIR}/inc
-    ${CMAKE_BINARY_DIR}/proto/data_flow_protos
     ${AIR_CODE_DIR}/dflow/base
-    ${AIR_CODE_DIR}/dflow/base/exec_runtime
-    ${ASCEND_3RD_LIB_PATH}/openssl/include
+    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
+    ${CMAKE_BINARY_DIR}/proto/graphengine_protos/proto
     ${CMAKE_BINARY_DIR}/proto/data_flow_protos
     ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto
     ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto/proto

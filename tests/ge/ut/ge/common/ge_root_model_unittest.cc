@@ -67,7 +67,6 @@ TEST_F(UtestGeRootModel, LoadBinDataSuccess) {
   system(("touch " + inner_tiling_path).c_str());
   system(("echo 'op tiling:456 ' > " + inner_tiling_path).c_str());
 
-  dlog_setlevel(0, 0, 0);
   ModelHelper model_helper;
   string cpu_info = "x86_64";
   string os_info = "linux";

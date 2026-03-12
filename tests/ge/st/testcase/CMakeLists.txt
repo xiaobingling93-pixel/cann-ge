@@ -107,7 +107,7 @@ add_executable(graph_engine_test
     "${AIR_CODE_DIR}/tests/ge/st/testcase/test_om2.cc"
 )
 
-add_dependencies(graph_engine_test mdat fmk_parser)
+add_dependencies(graph_engine_test mdat fmk_parser engine optimizer_priority_pbtxt)
 
 target_compile_definitions(graph_engine_test PRIVATE
     $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
@@ -136,7 +136,7 @@ target_include_directories(graph_engine_test PRIVATE
 )
 
 target_link_libraries(graph_engine_test
-    intf_pub
+    intf_llt_pub
     ascendcl_stub
     -Wl,-z,muldefs
     ge_compiler

@@ -20,6 +20,7 @@
 #include "common/string_utils.h"
 #include "common/aicore_util_constants.h"
 #include "common/aicore_util_attr_define.h"
+#include "common/fe_inner_attr_define.h"
 #include "graph/utils/type_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "base/err_msg.h"
@@ -188,6 +189,15 @@ bool IsMemoryEmpty(const ge::GeTensorDesc &tensor_desc) {
     auto memory_size_calc_type = static_cast<int64_t>(ge::MemorySizeCalcType::NORMAL);
     (void)ge::AttrUtils::GetInt(tensor_desc, ge::ATTR_NAME_MEMORY_SIZE_CALC_TYPE, memory_size_calc_type);
     return memory_size_calc_type == static_cast<int64_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY);
+}
+
+bool HasNullableOutput(const ge::GeTensorDesc &tensor_desc) {
+ 	bool is_null_output = false;
+ 	bool has_null_output_attr = ge::AttrUtils::GetBool(tensor_desc, ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+ 	if (!has_null_output_attr) {
+ 	  return false;
+ 	}
+ 	return is_null_output;
 }
 
 bool IsSubGraphData(const ge::OpDescPtr &op_desc_ptr) {

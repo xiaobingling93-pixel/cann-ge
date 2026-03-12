@@ -262,13 +262,18 @@ TEST_F(InferenceRuleUtest, CalledByInferShapeOnCompile) {
   CtxMaker ctx_maker;
   ctx_maker.Input({"s0"}, {32}).Output({"s0"}).Build();
   // 启用asan g++会失败
-  auto env = getenv("LD_PRELOAD");
-  unsetenv("LD_PRELOAD");
+  std::string env;
+  const auto env_ptr = getenv("LD_PRELOAD");
+  if (env_ptr != nullptr) {
+    env = env_ptr;
+    unsetenv("LD_PRELOAD");
+  }
+
   const auto desc = ctx_maker.OpDesc();
   ASSERT_EQ(InferShapeOnCompile(ctx_maker.Operator(), desc), ge::GRAPH_SUCCESS);
   ASSERT_EQ(ShapeEqual(desc->GetOutputDesc(0).GetShape(), {-1}), "");
-  if (env != nullptr) {
-    setenv("LD_PRELOAD", env, 1);
+  if (!env.empty()) {
+    setenv("LD_PRELOAD", env.c_str(), 1);
   }
 }
 

@@ -55,12 +55,23 @@ inline int CopyStubFiles(const std::string& base_dir, const std::string& stub_pa
   // 创建目录
   (void)std::system("mkdir -p ./tiling ./register");
 
-  // 拷贝4个stub文件
+  // 拷贝stub文件
   int ret = 0;
   ret = std::system(std::string("cp ").append(base_dir).append("/").append(stub_path_prefix).append("platform_ascendc.h ./tiling/ -f").c_str());
   ret = std::system(std::string("cp ").append(base_dir).append("/").append(stub_path_prefix).append("tiling_api.h ./tiling/ -f").c_str());
   ret = std::system(std::string("cp ").append(base_dir).append("/").append(stub_path_prefix).append("tiling_context.h ./tiling/ -f").c_str());
   ret = std::system(std::string("cp ").append(base_dir).append("/").append(stub_path_prefix).append("tilingdata_base.h ./register/ -f").c_str());
+  // 复制err_msg.h到当前目录，解决autofuse_tiling_func_common.h编译依赖
+  // 根据stub_path_prefix判断路径
+  std::string err_msg_path;
+  if (stub_path_prefix.find("tests/autofuse") == 0) {
+    // TOP_DIR调用：base_dir=项目根目录, stub_path_prefix=tests/autofuse/st/att/testcase/stub/
+    err_msg_path = base_dir + "/" + stub_path_prefix.substr(0, stub_path_prefix.find("st/att")) + "depends/common/inc/err_msg.h";
+  } else {
+    // ST_DIR/UT_DIR调用：base_dir=tests/autofuse/st/att, stub_path_prefix=testcase/stub/
+    err_msg_path = base_dir + "/../../depends/common/inc/err_msg.h";
+  }
+  ret = std::system(std::string("cp ").append(err_msg_path).append(" ./ -f").c_str());
 
   return ret;
 }

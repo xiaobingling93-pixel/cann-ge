@@ -77,8 +77,11 @@ class TestCanfusePass : public testing::Test {
     setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
     AutoFuseConfig::MutableLoweringConfig().experimental_lowering_reduce = true;
     PlatformContext::GetInstance().SetPlatform("2201");
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
   }
 
   void TearDown() override {
@@ -94,8 +97,8 @@ class TestCanfusePass : public testing::Test {
     mmSetEnv("ASCEND_OPP_PATH", old_opp_path_env_, 1);
     mmSetEnv("LD_LIBRARY_PATH", old_ld_path_env_, 1);
     ge::PlatformContext::GetInstance().Reset();
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
   char old_opp_path_env_[MMPA_MAX_PATH] = {'\0'};
@@ -105,7 +108,7 @@ class TestCanfusePass : public testing::Test {
   std::map<std::string, std::string> graph_options;
   std::map<std::string, std::string> session_options;
   std::map<std::string, std::string> global_options;
-  const char *env;
+  std::string env;
 };
 
 /**

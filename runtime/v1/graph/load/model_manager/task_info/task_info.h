@@ -22,7 +22,6 @@
 #include "graph/load/model_manager/task_info/task_info_factory.h"
 #include "proto/task.pb.h"
 #include "runtime/rt_dfx.h"
-#include "aprof_pub.h"
 #include "runtime/rts/rts_stream.h"
 #include "runtime/rts/rts_kernel.h"
 

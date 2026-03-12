@@ -467,7 +467,7 @@ if [[ "X$ENABLE_GE_DT" = "Xon" ]] || [[ "X$ENABLE_GE_UT" = "Xon" ]]; then
       mk_dir ${OUTPUT_PATH}/plugin/nnengine/ge_config
     fi
     cp -f ${BASEPATH}/compiler/engines/manager/engine_manager/engine_conf.json ${OUTPUT_PATH}/plugin/nnengine/ge_config
-    find ${BUILD_PATH}/ -type f -name "*engine*.so" -print0 | xargs -0 -I {} cp {} ${OUTPUT_PATH}/plugin/nnengine
+
     #execute ut testcase
     export ASAN_OPTIONS=detect_leaks=0
     export LD_PRELOAD=${USE_ASAN}
@@ -491,8 +491,22 @@ fi
 if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$ENABLE_RT3_ST" = "Xon" ]] || [[ "X$ENABLE_PYTHON_ST" = "Xon" ]] || [[ "X$ENABLE_PARSER_ST" = "Xon" ]] || [[ "X$ENABLE_DFLOW_ST" = "Xon" ]]; then
     cp -rf ${BUILD_PATH}/tests/ge/st/testcase/st_run_data ${BUILD_PATH}/
     cp -rf ${BUILD_PATH}/tests/depends/graph_tuner/libgraphtuner_executor.so ${BUILD_PATH}/tests/ge/st/testcase/
+    if [ -d ${BUILD_PATH}/compiler/plugin/nnengine ]; then
+      rm -rf ${BUILD_PATH}/compiler/plugin/nnengine/*engine*.so
+    else
+      mk_dir ${BUILD_PATH}/compiler/plugin/nnengine
+    fi
+    find ${BUILD_PATH}/compiler/engines -type f -name "*engine*.so" -print0 | xargs -0 -I {} cp -rf {} ${BUILD_PATH}/compiler/plugin/nnengine
+
+    if [ -d ${BUILD_PATH}/compiler/plugin/opskernel/ ]; then
+      rm -rf ${BUILD_PATH}/compiler/plugin/opskernel/*engine*.so
+    else
+      mk_dir ${BUILD_PATH}/compiler/plugin/opskernel/
+    fi
+
     #execute st testcase with memory leak detection by default
     if [[ "X$ENABLE_GE_ST" = "Xon" ]];then
+      cp ${BUILD_PATH}/compiler/plugin/nnengine/*engine*.so ${BUILD_PATH}/compiler/plugin/opskernel/
       echo "Run tests with leaks check"
       RUN_TEST_CASE="${BUILD_PATH}/tests/ge/st/testcase/graph_engine_test --gtest_output=xml:${report_dir}/st/graph_engine_test.xml" && ${RUN_TEST_CASE}
       if [[ "$?" -ne 0 ]]; then

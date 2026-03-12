@@ -180,16 +180,19 @@ class ShapeRuleOpUT : public testing::Test {
  public:
   void SetUp() override {
     // 启用asan g++会失败
-    env = getenv("LD_PRELOAD");
-    unsetenv("LD_PRELOAD");
+    const auto env_ptr = getenv("LD_PRELOAD");
+    if (env_ptr != nullptr) {
+      env = env_ptr;
+      unsetenv("LD_PRELOAD");
+    }
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2();
   }
   void TearDown() override {
-    if (env != nullptr) {
-      setenv("LD_PRELOAD", env, 1);
+    if (!env.empty()) {
+      setenv("LD_PRELOAD", env.c_str(), 1);
     }
   }
-  const char *env;
+  std::string env;
 };
 
 TEST_F(ShapeRuleOpUT, ComplexRuleVertical) {

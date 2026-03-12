@@ -12,19 +12,13 @@
 #include <nlohmann/json.hpp>
 #include "dflow/compiler/session/dflow_api.h"
 #include "graph/operator_factory_impl.h"
-#include "depends/slog/src/slog_stub.h"
 #include "depends/mmpa/src/mmpa_stub.h"
-#include "common/share_graph.h"
 #include "common/ge_common/ge_types.h"
 #include "graph/ge_local_context.h"
 #include "graph/ge_global_options.h"
 #include "register/optimization_option_registry.h"
-#include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils_ex.h"
-#include "graph/utils/graph_utils.h"
 #include "register/ops_kernel_builder_registry.h"
-#include "register/optimization_option_registry.h"
-#include "stub/gert_runtime_stub.h"
 #include "ge/graph/ops_stub.h"
 #include "ge_running_env/fake_op.h"
 #include "ge_running_env/ge_running_env_faker.h"
@@ -36,11 +30,8 @@
 #include "dflow/base/deploy/model_deployer.h"
 #include "dflow/base/deploy/exchange_service.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
-#include "ge_graph_dsl/graph_dsl.h"
-#include "graph/manager/graph_manager.h"
 #include "dflow/compiler/session/dflow_session_impl.h"
 #include "dflow/compiler/pne/npu/npu_process_node_engine.h"
-#include "register/ops_kernel_builder_registry.h"
 
 namespace ge {
 class MockExchangeService : public ExchangeService {
@@ -276,7 +267,6 @@ class UtestDflowApi : public testing::Test {
     ge::OperatorFactoryImpl::operator_infershape_funcs_->erase("Data");
     ge::OperatorFactoryImpl::operator_infershape_funcs_->erase("Add");
     ge::OperatorFactoryImpl::operator_infershape_funcs_->erase("NetOutput");
-    ge::RuntimeStub::Reset();
     EXPECT_EQ(DFlowFinalize(), SUCCESS);
     {
       auto &global_options_mutex = ge::GetGlobalOptionsMutex();
@@ -298,9 +288,7 @@ TEST_F(UtestDflowApi, DFlowInitialize) {
   std::string value = "0";
   options[fake_key.c_str()] = value.c_str();
   options[empty_key.c_str()] = value.c_str();
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   auto ret = DFlowInitialize(options);
   ASSERT_NE(ret, SUCCESS);
   options.erase(AscendString(empty_key.c_str()));
@@ -325,7 +313,6 @@ TEST_F(UtestDflowApi, DFlowInitialize_pne_init_failed) {
   std::string fake_key = "fake_key";
   std::string value = "0";
   options[fake_key.c_str()] = value.c_str();
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
   auto ret = DFlowInitialize(options);
   ASSERT_NE(ret, SUCCESS);
@@ -342,9 +329,7 @@ TEST_F(UtestDflowApi, GetSessionId) {
   std::string key_str = "ge.options_unknown";
   std::string value = "0";
   options[key_str.c_str()] = value.c_str();
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   EXPECT_EQ(DFlowInitialize(options), SUCCESS);
   DFlowSession session(options);
   EXPECT_EQ(session.GetSessionId(), 0);
@@ -368,9 +353,7 @@ TEST_F(UtestDflowApi, RemoveGraph) {
     ASSERT_EQ(session.RemoveGraph(graph_id), FAILED); // not init
   }
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -394,9 +377,7 @@ TEST_F(UtestDflowApi, BuildGraphTest) {
     ASSERT_EQ(session.BuildGraph(graph_id, inputs), FAILED); // not init
   }
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -415,9 +396,7 @@ TEST_F(UtestDflowApi, BuildGraphTestInGESession) {
   uint32_t graph_id = 1;
   std::map<AscendString, AscendString> options;
   vector<Tensor> inputs;
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -434,9 +413,7 @@ TEST_F(UtestDflowApi, BuildGraphTestInGESession) {
 TEST_F(UtestDflowApi, CompileGraphTestInGESession) {
   uint32_t graph_id = 1;
   std::map<AscendString, AscendString> options;
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -453,9 +430,7 @@ TEST_F(UtestDflowApi, BuildGraphWithTensorInfoTestInGESession) {
   uint32_t graph_id = 1;
   std::map<AscendString, AscendString> options;
   vector<ge::InputTensorInfo> inputs;
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -482,9 +457,7 @@ TEST_F(UtestDflowApi, FeedDataFlowGraphFetch) {
     ASSERT_EQ(session.FeedDataFlowGraph(graph_id, inputs, data_flow_info, 0), FAILED); // not init
   }
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -509,9 +482,7 @@ TEST_F(UtestDflowApi, FeedDataFlowGraphWithoutRun) {
   vector<FlowMsgPtr> inputs2;
   DataFlowInfo data_flow_info;
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -554,9 +525,7 @@ TEST_F(UtestDflowApi, FeedDataFlowGraphWithIndex) {
     ASSERT_EQ(session.FeedDataFlowGraph(graph_id, indexes, inputs, data_flow_info, 0), FAILED); // not init
   }
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -591,9 +560,7 @@ TEST_F(UtestDflowApi, FeedDataFlowGraphWithFlowMsg) {
     ASSERT_EQ(session.FeedDataFlowGraph(graph_id, inputs, 0), FAILED); // not init
   }
 
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameAiCore, builder);
   ge::OpsKernelBuilderRegistry::GetInstance().Register(ge::kEngineNameGeLocal, builder);
@@ -611,10 +578,6 @@ TEST_F(UtestDflowApi, FeedDataFlowGraphWithFlowMsg) {
 }
 
 TEST_F(UtestDflowApi, FeedRawData) {
-  gert::GertRuntimeStub rtstub;
-  rtstub.GetRtsRuntimeStub().Clear();
-  rtstub.StubByNodeTypes({"Data", "Add", "NetOutput"});
-  rtstub.GetKernelStub().AllKernelRegisteredAndSuccess();
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
 
   ge::OpsKernelBuilderPtr builder = ge::MakeShared<GeFakeOpsKernelBuilder>();
@@ -667,9 +630,7 @@ TEST_F(UtestDflowApi, FeedRawData) {
 
 TEST_F(UtestDflowApi, DFlowInitializeWithoutFinalize) {
   std::map<AscendString, AscendString> options;
-  gert::GertRuntimeStub runtime_stub;
   ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
-  runtime_stub.GetSlogStub().Clear();
   EXPECT_EQ(DFlowInitialize(options), SUCCESS);
   DFlowSession session(options);
 }

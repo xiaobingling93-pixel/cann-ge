@@ -24,6 +24,457 @@
 #include "graph/utils/tensor_utils.h"
 
 namespace ge {
+Status GetStreamFlags(const GeModelPtr &ge_model, std::vector<std::string> &stream_flags_list);
+namespace {
+struct RunMemcpyCode {
+  std::stringstream input_memcpy_sync;
+  std::stringstream output_memcpy_sync;
+  std::stringstream input_memcpy_async;
+  std::stringstream output_memcpy_async;
+};
+
+Status AppendDataNodeMemcpyCode(const OpDescPtr &op_desc, const uint32_t input_data_index,
+                                RunMemcpyCode &run_memcpy_code, std::set<int64_t> &model_io_offsets) {
+  uint32_t tmp_index = input_data_index;
+  if (AttrUtils::GetInt(op_desc, ATTR_NAME_INDEX, tmp_index)) {
+    GELOGD("[OM2] Get new index %u, old %u", tmp_index, input_data_index);
+  }
+  const auto output_offsets = op_desc->GetOutputOffset();
+  GE_ASSERT_TRUE(!output_offsets.empty());
+  model_io_offsets.emplace(output_offsets[0]);
+
+  const auto &addr_var_name = "dev_input" + std::to_string(input_data_index) + "_ptr";
+  const auto &tensor_var_name = "input_data_" + std::to_string(input_data_index) + "_tensor";
+  run_memcpy_code.input_memcpy_sync << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, " << output_offsets[0]
+                                    << ");" << std::endl;
+  run_memcpy_code.input_memcpy_sync << "  auto " << tensor_var_name << " = reinterpret_cast<gert::Tensor *>(input_data["
+                                    << tmp_index << "]);" << std::endl;
+  run_memcpy_code.input_memcpy_sync << "  OM2_CHK_STATUS(aclrtMemcpy(" << addr_var_name << ", " << tensor_var_name
+                                    << "->GetSize(), " << tensor_var_name << "->GetAddr(), " << tensor_var_name
+                                    << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));" << std::endl;
+
+  run_memcpy_code.input_memcpy_async << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
+                                     << output_offsets[0] << ");" << std::endl;
+  run_memcpy_code.input_memcpy_async << "  auto " << tensor_var_name
+                                     << " = reinterpret_cast<gert::Tensor *>(input_data[" << tmp_index << "]);"
+                                     << std::endl;
+  run_memcpy_code.input_memcpy_async << "  OM2_CHK_STATUS(aclrtMemcpyAsync(" << addr_var_name << ", " << tensor_var_name
+                                     << "->GetSize(), " << tensor_var_name << "->GetAddr(), " << tensor_var_name
+                                     << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));" << std::endl;
+  return SUCCESS;
+}
+
+void AppendNetOutputMemcpyCode(const OpDescPtr &op_desc, uint32_t &output_data_index, RunMemcpyCode &run_memcpy_code,
+                               std::set<int64_t> &model_io_offsets) {
+  const auto input_offsets = op_desc->GetInputOffset();
+  for (size_t i = 0U; i < op_desc->GetAllInputsSize(); ++i) {
+    const GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(static_cast<uint32_t>(i));
+    GE_IF_BOOL_EXEC(tensor_desc == nullptr,
+                    GELOGD("[OM2] Op: %s, Index: %zu, has no input", op_desc->GetName().c_str(), i);
+                    continue);
+    model_io_offsets.emplace(input_offsets[i]);
+    const auto &addr_var_name = "dev_output" + std::to_string(output_data_index) + "_ptr";
+    const auto &tensor_var_name = "output_data_" + std::to_string(output_data_index) + "_tensor";
+    run_memcpy_code.output_memcpy_sync << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
+                                       << input_offsets[i] << ");" << std::endl;
+    run_memcpy_code.output_memcpy_sync << "  auto " << tensor_var_name
+                                       << " = reinterpret_cast<gert::Tensor *>(output_data[" << output_data_index
+                                       << "]);" << std::endl;
+    run_memcpy_code.output_memcpy_sync << "  OM2_CHK_STATUS(aclrtMemcpy(" << tensor_var_name << "->GetAddr(), "
+                                       << tensor_var_name << "->GetSize(), " << addr_var_name << ", " << tensor_var_name
+                                       << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));" << std::endl;
+
+    run_memcpy_code.output_memcpy_async << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
+                                        << input_offsets[i] << ");" << std::endl;
+    run_memcpy_code.output_memcpy_async << "  auto " << tensor_var_name
+                                        << " = reinterpret_cast<gert::Tensor *>(output_data[" << output_data_index
+                                        << "]);" << std::endl;
+    run_memcpy_code.output_memcpy_async << "  OM2_CHK_STATUS(aclrtMemcpyAsync(" << tensor_var_name << "->GetAddr(), "
+                                        << tensor_var_name << "->GetSize(), " << addr_var_name << ", " << tensor_var_name
+                                        << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));" << std::endl;
+    ++output_data_index;
+  }
+}
+
+Status CollectRunMemcpyCode(const ComputeGraphPtr &compute_graph, RunMemcpyCode &run_memcpy_code,
+                            std::set<int64_t> &model_io_offsets) {
+  GE_ASSERT_NOTNULL(compute_graph);
+  uint32_t input_data_index = 0U;
+  uint32_t output_data_index = 0U;
+  for (const auto &node : compute_graph->GetDirectNode()) {
+    const auto &op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    if (OpTypeUtils::IsDataNode(op_desc->GetType())) {
+      GE_ASSERT_SUCCESS(AppendDataNodeMemcpyCode(op_desc, input_data_index, run_memcpy_code, model_io_offsets));
+      ++input_data_index;
+      continue;
+    }
+    if (OpTypeUtils::IsGraphOutputNode(op_desc->GetType())) {  // 当前考虑静态，模型中只有一个NETOUTPUT
+      AppendNetOutputMemcpyCode(op_desc, output_data_index, run_memcpy_code, model_io_offsets);
+    }
+  }
+  return SUCCESS;
+}
+
+void EmitRunEntryFunctionsCode(const RunMemcpyCode &run_memcpy_code, std::stringstream &code) {
+  code << R"(aclError Om2Model::RunAsync(
+  aclrtStream &exe_stream,
+  size_t input_count,
+  void **input_data,
+  size_t output_count,
+  void **output_data) {
+  if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
+    return ACL_ERROR_FAILURE;
+  }
+)";
+  code << run_memcpy_code.input_memcpy_async.str();
+  code << R"(
+  OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
+  OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
+)";
+  code << run_memcpy_code.output_memcpy_async.str();
+  code << R"(
+  return ACL_SUCCESS;
+}
+
+aclError Om2Model::Run(
+  size_t input_count,
+  void **input_data,
+  size_t output_count,
+  void **output_data) {
+  if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
+    return ACL_ERROR_FAILURE;
+  }
+)";
+  code << run_memcpy_code.input_memcpy_sync.str();
+  code << R"(
+  OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
+  OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
+)";
+  code << run_memcpy_code.output_memcpy_sync.str();
+  code << R"(
+  return ACL_SUCCESS;
+}
+)";
+}
+
+void EmitKernelRegReadBinaryCode(std::stringstream &code) {
+  code << R"(BinaryBuffer ReadBinaryFileToBuffer(const std::string &file_path) {
+  BinaryBuffer result;
+  std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+  if (!file.is_open()) {
+    return result;
+  }
+  std::streamsize file_size = file.tellg();
+  if (file_size <= 0) {
+    return result;
+  }
+  result.size = static_cast<size_t>(file_size);
+  result.data = std::make_unique<uint8_t[]>(result.size);
+  file.seekg(0, std::ios::beg);
+  file.read(reinterpret_cast<char *>(result.data.get()), result.size);
+  if (!file.good()) {
+    file.close();
+    result.data.reset();
+    result.size = 0;
+  }
+  return result;
+}
+)";
+}
+
+void EmitKernelRegGenerateJsonCode(std::stringstream &code) {
+  EMIT_CODE(code, R"(
+aclError GenerateJsonFile(const AicpuRegisterInfo &register_info, std::string &json_path) {
+  using namespace std::chrono;
+  int64_t cur_timestamp = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+  json_path = "/tmp/temp_ops_info_" + std::to_string(cur_timestamp) + ".json";)");
+  EMIT_CODE(code, "  std::string json_data_format = R\"(");
+  EMIT_CODE(code, R"({
+    "%s":{
+        "opInfo":{
+            "opKernelLib":"%s",
+            "kernelSo":"%s",
+            "functionName":"%s"
+        }
+    }
+})");
+  EMIT_CODE(code, (")\";"));
+  EMIT_CODE(code, R"(  char json_data[kMaxJsonFileLen];
+  std::string op_kernel_lib = register_info.op_kernel_lib;
+  std::string so_name = register_info.so_name;
+  std::string kernel_name = register_info.kernel_name;
+  std::string op_type = register_info.op_type;
+  auto ret = snprintf_s(json_data, kMaxJsonFileLen, kMaxJsonFileLen - 1U, json_data_format.c_str(),
+                        register_info.op_type, register_info.op_kernel_lib, register_info.so_name, register_info.kernel_name);
+  OM2_CHK_TRUE(ret >= 0);
+  std::ofstream ofs(json_path.c_str(), std::ios::trunc);
+  OM2_CHK_TRUE(ofs);
+  ofs << json_data;
+  return ACL_SUCCESS;
+})");
+}
+
+void EmitAicpuExtInfoSupportCode(std::stringstream &code) {
+  code << R"(constexpr uint32_t kAicpuArgsExtInfoAddrOffset = 12U;
+constexpr uint32_t kAicpuArgsio_addr_offset = 20U;
+
+aclError UpdateExtInfoSession(uint8_t *extInfo, size_t session_info_offset, uint64_t *session_id, uint64_t *kernel_id) {
+  AicpuSessionInfo *session_info = reinterpret_cast<AicpuSessionInfo *>(&(extInfo[session_info_offset]));
+  session_info->sessionId = *session_id;
+  session_info->kernelId = *kernel_id;
+  session_info->sessFlag = true;
+  (*kernel_id)++;
+  return ACL_SUCCESS;
+}
+aclError AssembleAicpuExtInfo(uint8_t *ext_info, size_t ext_info_len, int32_t session_info_offset, uint64_t *session_id, uint64_t *kernel_id, std::vector<void *> &dev_ext_info_mem_ptrs, size_t index) {
+  std::unique_ptr<uint8_t[]> tmp_ext_info = std::make_unique<uint8_t[]>(ext_info_len);
+  memcpy_s(tmp_ext_info.get(), ext_info_len, ext_info, ext_info_len);
+  if (session_info_offset != -1) {
+    OM2_CHK_STATUS(UpdateExtInfoSession(tmp_ext_info.get(), session_info_offset, session_id, kernel_id));
+  }
+  void *dev_ptr = nullptr;
+  OM2_CHK_STATUS(aclrtMallocAlign32(&(dev_ptr), ext_info_len, ACL_MEM_MALLOC_HUGE_FIRST));
+  OM2_CHK_STATUS(aclrtMemcpy(dev_ptr, ext_info_len, tmp_ext_info.get(), ext_info_len, ACL_MEMCPY_HOST_TO_DEVICE));
+  dev_ext_info_mem_ptrs[index] = dev_ptr;
+  return ACL_SUCCESS;
+}
+)";
+}
+
+void EmitAicpuArgsAssemblyCode(std::stringstream &code) {
+  code << R"(aclError AssembleAicpuArgs(uint8_t *args, size_t args_len, void *ext_info_addr, size_t ext_info_len, std::vector<uint64_t> &io_addr, void *target_args_ptr) {
+  std::unique_ptr<uint8_t[]> tmp_args = std::make_unique<uint8_t[]>(args_len);
+  memcpy_s(tmp_args.get(), args_len, args, args_len);
+  const auto aicpu_param_head = reinterpret_cast<AicpuParamHead*>(tmp_args.get());
+  aicpu_param_head->extInfoLength = static_cast<uint32_t>(ext_info_len);
+  uint64_t ext_info_addr_value = reinterpret_cast<uint64_t>(ext_info_addr);
+  memcpy_s(tmp_args.get() + kAicpuArgsExtInfoAddrOffset, sizeof(uint64_t), &(ext_info_addr_value), sizeof(uint64_t));
+  size_t addrs_size = sizeof(uint64_t) * io_addr.size();
+  memcpy_s(tmp_args.get() + kAicpuArgsio_addr_offset, addrs_size, io_addr.data(), addrs_size);
+  memcpy_s(target_args_ptr, args_len, tmp_args.get(), args_len);
+  return ACL_SUCCESS;
+}
+)";
+}
+
+void EmitAicpuKernelTaskDistributeCode(std::stringstream &code) {
+  code << R"(aclError AicpuKernelTaskDistribute(const std::vector<uint8_t>& args, ArgsInfo *args_info, aclrtFuncHandle func_handle,
+                              uint32_t block_dim, aclrtStream stream, aclrtLaunchKernelCfg *config) {
+  OM2_CHK_NOTNULL(args_info);
+  OM2_CHK_STATUS(memcpy_s(args_info->host_addr, args_info->size, args.data(), args.size()));
+  OM2_CHK_STATUS(
+    aclrtLaunchKernelV2(
+      func_handle,
+      block_dim,
+      args_info->dev_addr,
+      args_info->size,
+      config,
+      stream
+    )
+  );
+  return ACL_SUCCESS;
+}  
+)";
+}
+
+void EmitArgsTableMappings(const ge::ArgsInfo &args_info, std::stringstream &code_stream) {
+  EMIT_CODE(code_stream, "  args_info_ = {");
+  for (size_t i = 0UL; i < args_info.args_offset.size(); ++i) {
+    EMIT_CODE(code_stream, "    {GetHostArgAddr(" + std::to_string(args_info.args_offset[i]) + "), GetDevArgAddr(" +
+                               std::to_string(args_info.args_offset[i]) + "), " +
+                               std::to_string(args_info.args_sizes[i]) + "},");
+  }
+  EMIT_CODE(code_stream, "  };");
+  EMIT_CODE(code_stream, "  iow_args_addrs_ = {");
+  for (size_t i = 0UL; i < args_info.io_addr_offset.size(); ++i) {
+    EMIT_CODE(code_stream, "    GetHostArgAddr(" + std::to_string(args_info.io_addr_offset[i]) + "),");
+  }
+  EMIT_CODE(code_stream, "  };");
+}
+
+void EmitArgsTableMemberFunctionsCode(std::stringstream &code) {
+  code << R"(Om2ArgsTable::~Om2ArgsTable() {
+}
+
+ArgsInfo *Om2ArgsTable::GetArgsInfo(size_t index) {
+  if (index >= args_info_.size()) {
+    return nullptr;
+  }
+  return &args_info_[index];
+}
+
+void *Om2ArgsTable::GetDevArgAddr(size_t offset) {
+  if (offset >= args_size_) {
+    return nullptr;
+  }
+  return GET_ADDR(dev_args_, offset);
+}
+
+void *Om2ArgsTable::GetHostArgAddr(size_t offset) {
+  if (offset >= args_size_) {
+    return nullptr;
+  }
+  return GET_ADDR(host_args_.data(), offset);
+}
+
+aclError Om2ArgsTable::CopyArgsToDevice() {
+  OM2_CHK_STATUS(aclrtMemcpy(dev_args_, args_size_, host_args_.data(), args_size_, ACL_MEMCPY_HOST_TO_DEVICE));
+  return ACL_SUCCESS;
+}
+)";
+}
+
+void EmitInterfaceHeaderCommonDeclarations(std::stringstream &code) {
+  code << R"(typedef void *Om2ModelHandle;
+typedef void *GeTensorHandle;
+
+struct BinDataInfo {
+  const void *data;
+  size_t size;
+};
+struct AicpuParamHead {
+  uint32_t length;
+  uint32_t ioAddrNum;
+  uint32_t extInfoLength;
+  uint64_t extInfoAddr;
+};
+struct AicpuSessionInfo {
+  uint64_t sessionId;
+  uint64_t kernelId;
+  bool sessFlag;
+};
+struct ArgsInfo {
+  void *host_addr;
+  void *dev_addr;
+  size_t size;
+};
+
+class ScopeGuard {
+ public:
+  // Noncopyable
+  ScopeGuard(const ScopeGuard &) = delete;
+  ScopeGuard &operator=(const ScopeGuard &) = delete;
+
+  explicit ScopeGuard(const std::function<void()> &on_exit_scope)
+      : on_exit_scope_(on_exit_scope) {}
+
+  ~ScopeGuard() {
+    if (on_exit_scope_) {
+      try {
+        on_exit_scope_();
+      } catch (std::bad_function_call &) {
+      } catch (...) {
+      }
+    }
+  }
+
+ private:
+  std::function<void()> on_exit_scope_;
+};)";
+}
+
+void EmitInitResourcesBaseCode(std::stringstream &code, const domi::ModelTaskDef &model_task_def) {
+  EMIT_CODE(code, R"(aclError Om2Model::InitResources() {
+  // 1. 创建 model
+  OM2_CHK_STATUS(aclmdlRIBuildBegin(&model_handle_, 0));
+
+  // 2. 申请内存
+  OM2_CHK_STATUS(aclrtMallocAlign32(&total_dev_mem_ptr_, )" +
+                      std::to_string(model_task_def.memory_size()) + R"(, ACL_MEM_MALLOC_HUGE_FIRST));
+  OM2_CHK_STATUS(aclrtMallocAlign32(&total_weight_mem_ptr_, )" +
+                      std::to_string(model_task_def.weight_size()) + R"(, ACL_MEM_MALLOC_HUGE_FIRST));
+
+  // 3. 下沉权重
+  OM2_CHK_STATUS(aclrtMemcpy(total_weight_mem_ptr_, )" +
+                      std::to_string(model_task_def.weight_size()) + R"(, host_weight_mem_ptr_, )" +
+                      std::to_string(model_task_def.weight_size()) + R"(, ACL_MEMCPY_HOST_TO_DEVICE));
+)");
+  EMIT_CODE(code, "  // 4. 创建其他资源");
+}
+
+Status EmitInitStreamCode(const GeModelPtr &ge_model, const Om2RuntimeParam &runtime_param, std::stringstream &code) {
+  if (runtime_param.stream_num == 0U) {
+    return SUCCESS;
+  }
+  EMIT_CODE(code, "  // 创建下沉Stream并绑定模型");
+  std::vector<std::string> stream_flags_list(runtime_param.stream_num);
+  GE_ASSERT_SUCCESS(GetStreamFlags(ge_model, stream_flags_list));
+  for (uint32_t i = 0U; i < runtime_param.stream_num; ++i) {
+    const std::string flag_var_name = "stream" + std::to_string(i) + "_flag";
+    EMIT_CODE(code, "  uint32_t " + flag_var_name + " = " + stream_flags_list[i] + ";");
+    EMIT_CODE(code, "  OM2_CHK_STATUS(aclrtCreateStreamWithConfig(&stream_list_[" + std::to_string(i) + "], 0, " +
+                        flag_var_name + "));");
+    EMIT_CODE(code, "  OM2_CHK_STATUS(aclmdlRIBindStream(model_handle_, stream_list_[" + std::to_string(i) +
+                        "], ACL_MODEL_STREAM_FLAG_HEAD));");
+  }
+  EMIT_CODE(code, "  is_stream_list_bind_ = true;");
+  return SUCCESS;
+}
+
+void EmitInitNotifyEventLabelCode(const Om2RuntimeParam &runtime_param, std::stringstream &code) {
+  if (runtime_param.notify_num > 0U) {
+    EMIT_CODE(code, "  // 创建Notify");
+    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param.notify_num) + "; ++i) {");
+    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateNotify(&notify_list_[i], ACL_NOTIFY_DEVICE_USE_ONLY));");
+    EMIT_CODE(code, "  }");
+  }
+  if (runtime_param.event_num > 0U) {
+    EMIT_CODE(code, "  // 创建Event");
+    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param.event_num) + "; ++i) {");
+    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateEventWithFlag(&event_list_[i], ACL_EVENT_SYNC));");
+    EMIT_CODE(code, "  }");
+  }
+  if (runtime_param.label_num > 0U) {
+    EMIT_CODE(code, "  // 创建Label");
+    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param.label_num) + "; ++i) {");
+    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateLabel(&label_list_[i]));");
+    EMIT_CODE(code, "  }");
+    EMIT_CODE(code, "  OM2_CHK_STATUS(aclrtCreateLabelList(label_list_.data(), label_list_.size(), &aclrt_label_list_));");
+  }
+}
+
+void EmitReleaseResourcesCode(const Om2RuntimeParam &runtime_param, std::stringstream &code) {
+  if (runtime_param.label_num > 0U) {
+    EMIT_CODE(code, R"(
+  for (auto label : label_list_) {
+    if (label != nullptr) {
+      OM2_CHK_STATUS(aclrtDestroyLabel(label));
+    }
+  }
+  OM2_CHK_STATUS(aclrtDestroyLabelList(aclrt_label_list_));)");
+  }
+  if (runtime_param.event_num > 0U) {
+    EMIT_CODE(code, R"(
+  for (auto event : event_list_) {
+    OM2_CHK_STATUS(aclrtDestroyEvent(event));
+  })");
+  }
+  if (runtime_param.notify_num > 0U) {
+    EMIT_CODE(code, R"(
+  for (auto notify : notify_list_) {
+    OM2_CHK_STATUS(aclrtDestroyNotify(notify));
+  })");
+  }
+  if (runtime_param.stream_num > 0U) {
+    EMIT_CODE(code, R"(
+  if (is_stream_list_bind_) {
+    for (auto stream : stream_list_) {
+      OM2_CHK_STATUS(aclmdlRIUnbindStream(model_handle_, stream));
+    }
+  }
+  for (auto stream : stream_list_) {
+    OM2_CHK_STATUS(aclrtDestroyStream(stream));
+  })");
+  }
+  if (runtime_param.kernel_bin_num > 0U) {
+    EMIT_CODE(code, R"(
+  for (auto bin_handle : bin_handles_) {
+    OM2_CHK_STATUS(aclrtBinaryUnLoad(bin_handle));
+  })");
+  }
+}
+}  // namespace
 
 void WriteInterfaceHeader(Program &program, AstNode *node) {
   program[static_cast<size_t>(GeneratedFileIndex::kInterfaceHeaderFile)].push_back(node);
@@ -41,11 +492,11 @@ void WriteLoadAndRunSource(Program &program, AstNode *node) {
   program[static_cast<size_t>(GeneratedFileIndex::kLoadingAndRunningFile)].push_back(node);
 }
 
-void WriteCmakeLists(Program &program, AstNode *node) {
+void WriteCMakeLists(Program &program, AstNode *node) {
   program[static_cast<size_t>(GeneratedFileIndex::kCMakeListsFile)].push_back(node);
 }
 
-void WriteArgManagerSource(Program &program, AstNode *node) {
+void WriteArgsManagerSource(Program &program, AstNode *node) {
   program[static_cast<size_t>(GeneratedFileIndex::kArgsManagerFile)].push_back(node);
 }
 
@@ -122,56 +573,8 @@ struct CustAicpuRegisterInfo {
 
 void ProgramGenerator::GenKernelRegCommonFuncs(Program &program) {
   std::stringstream code;
-  EMIT_CODE(code, R"(BinaryBuffer ReadBinaryFileToBuffer(const std::string &file_path) {
-  BinaryBuffer result;
-  std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-  if (!file.is_open()) {
-    return result;
-  }
-  std::streamsize file_size = file.tellg();
-  if (file_size <= 0) {
-    return result;
-  }
-  result.size = static_cast<size_t>(file_size);
-  result.data = std::make_unique<uint8_t[]>(result.size);
-  file.seekg(0, std::ios::beg);
-  file.read(reinterpret_cast<char *>(result.data.get()), result.size);
-  if (!file.good()) {
-    file.close();
-    result.data.reset();
-    result.size = 0;
-  }
-  return result;
-})");
-  EMIT_CODE(code, R"(
-aclError GenerateJsonFile(const AicpuRegisterInfo &register_info, std::string &json_path) {
-  using namespace std::chrono;
-  int64_t cur_timestamp = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-  json_path = "/tmp/temp_ops_info_" + std::to_string(cur_timestamp) + ".json";)");
-  EMIT_CODE(code, "  std::string json_data_format = R\"(");
-  EMIT_CODE(code, R"({
-    "%s":{
-        "opInfo":{
-            "opKernelLib":"%s",
-            "kernelSo":"%s",
-            "functionName":"%s"
-        }
-    }
-})");
-  EMIT_CODE(code, (")\";"));
-  EMIT_CODE(code, R"(  char json_data[kMaxJsonFileLen];
-  std::string op_kernel_lib = register_info.op_kernel_lib;
-  std::string so_name = register_info.so_name;
-  std::string kernel_name = register_info.kernel_name;
-  std::string op_type = register_info.op_type;
-  auto ret = snprintf_s(json_data, kMaxJsonFileLen, kMaxJsonFileLen - 1U, json_data_format.c_str(),
-                        register_info.op_type, register_info.op_kernel_lib, register_info.so_name, register_info.kernel_name);
-  OM2_CHK_TRUE(ret >= 0);
-  std::ofstream ofs(json_path.c_str(), std::ios::trunc);
-  OM2_CHK_TRUE(ofs);
-  ofs << json_data;
-  return ACL_SUCCESS;
-})");
+  EmitKernelRegReadBinaryCode(code);
+  EmitKernelRegGenerateJsonCode(code);
   WriteKernelRegSource(program, RAW_CODE_STMT(ast_ctx_, code.str()));
 }
 
@@ -314,59 +717,11 @@ Status ProgramGenerator::GenRegisterKernelsImpl(Program &program) {
 }
 
 Status ProgramGenerator::GenAicpuArgsCommon(Program &program) {
-  std::string getHostArgsFunc = R"(constexpr uint32_t kAicpuArgsExtInfoAddrOffset = 12U;
-constexpr uint32_t kAicpuArgsio_addr_offset = 20U;
-
-aclError UpdateExtInfoSession(uint8_t *extInfo, size_t session_info_offset, uint64_t *session_id, uint64_t *kernel_id) {
-  AicpuSessionInfo *session_info = reinterpret_cast<AicpuSessionInfo *>(&(extInfo[session_info_offset]));
-  session_info->sessionId = *session_id;
-  session_info->kernelId = *kernel_id;
-  session_info->sessFlag = true;
-  (*kernel_id)++;
-  return ACL_SUCCESS;
-}
-aclError AssembleAicpuExtInfo(uint8_t *ext_info, size_t ext_info_len, int32_t session_info_offset, uint64_t *session_id, uint64_t *kernel_id, std::vector<void *> &dev_ext_info_mem_ptrs, size_t index) {
-  std::unique_ptr<uint8_t[]> tmp_ext_info = std::make_unique<uint8_t[]>(ext_info_len);
-  memcpy_s(tmp_ext_info.get(), ext_info_len, ext_info, ext_info_len);
-  if (session_info_offset != -1) {
-    OM2_CHK_STATUS(UpdateExtInfoSession(tmp_ext_info.get(), session_info_offset, session_id, kernel_id));
-  }
-  void *dev_ptr = nullptr;
-  OM2_CHK_STATUS(aclrtMallocAlign32(&(dev_ptr), ext_info_len, ACL_MEM_MALLOC_HUGE_FIRST));
-  OM2_CHK_STATUS(aclrtMemcpy(dev_ptr, ext_info_len, tmp_ext_info.get(), ext_info_len, ACL_MEMCPY_HOST_TO_DEVICE));
-  dev_ext_info_mem_ptrs[index] = dev_ptr;
-  return ACL_SUCCESS;
-}
-aclError AssembleAicpuArgs(uint8_t *args, size_t args_len, void *ext_info_addr, size_t ext_info_len, std::vector<uint64_t> &io_addr, void *target_args_ptr) {
-  std::unique_ptr<uint8_t[]> tmp_args = std::make_unique<uint8_t[]>(args_len);
-  memcpy_s(tmp_args.get(), args_len, args, args_len);
-  const auto aicpu_param_head = reinterpret_cast<AicpuParamHead*>(tmp_args.get());
-  aicpu_param_head->extInfoLength = static_cast<uint32_t>(ext_info_len);
-  uint64_t ext_info_addr_value = reinterpret_cast<uint64_t>(ext_info_addr);
-  memcpy_s(tmp_args.get() + kAicpuArgsExtInfoAddrOffset, sizeof(uint64_t), &(ext_info_addr_value), sizeof(uint64_t));
-  size_t addrs_size = sizeof(uint64_t) * io_addr.size();
-  memcpy_s(tmp_args.get() + kAicpuArgsio_addr_offset, addrs_size, io_addr.data(), addrs_size);
-  memcpy_s(target_args_ptr, args_len, tmp_args.get(), args_len);
-  return ACL_SUCCESS;
-}
-aclError AicpuKernelTaskDistribute(const std::vector<uint8_t>& args, ArgsInfo *args_info, aclrtFuncHandle func_handle,
-                              uint32_t block_dim, aclrtStream stream, aclrtLaunchKernelCfg *config) {
-  OM2_CHK_NOTNULL(args_info);
-  OM2_CHK_STATUS(memcpy_s(args_info->host_addr, args_info->size, args.data(), args.size()));
-  OM2_CHK_STATUS(
-    aclrtLaunchKernelV2(
-      func_handle,
-      block_dim,
-      args_info->dev_addr,
-      args_info->size,
-      config,
-      stream
-    )
-  );
-  return ACL_SUCCESS;
-}  
-)";
-  WriteLoadAndRunSource(program, RAW_CODE_STMT(ast_ctx_, getHostArgsFunc));
+  std::stringstream code;
+  EmitAicpuExtInfoSupportCode(code);
+  EmitAicpuArgsAssemblyCode(code);
+  EmitAicpuKernelTaskDistributeCode(code);
+  WriteLoadAndRunSource(program, RAW_CODE_STMT(ast_ctx_, code.str()));
   return SUCCESS;
 }
 
@@ -452,55 +807,13 @@ Status ProgramGenerator::GenArgsTableImpl(std::vector<AstNode *> &ast_nodes) {
     "  OM2_CHK_STATUS(aclrtMalloc(&dev_args_, args_size_, ACL_MEM_MALLOC_HUGE_FIRST));"));
   
   std::stringstream code_stream;
-  EMIT_CODE(code_stream, "  args_info_ = {");
-  for (size_t i = 0UL; i < args_info_.args_offset.size(); ++i) {
-    EMIT_CODE(code_stream,
-              "    {GetHostArgAddr(" + std::to_string(args_info_.args_offset[i]) + "), GetDevArgAddr(" + std::
-              to_string(args_info_.args_offset[i]) + "), "
-              + std::to_string(args_info_.args_sizes[i]) + "},");
-  }
-  EMIT_CODE(code_stream, "  };");
-
-  EMIT_CODE(code_stream, "  iow_args_addrs_ = {");
-  for (size_t i = 0UL; i < args_info_.io_addr_offset.size(); ++i) {
-    EMIT_CODE(code_stream, "    GetHostArgAddr(" + std::to_string(args_info_.io_addr_offset[i]) +"),");
-  }
-  EMIT_CODE(code_stream, "  };");
+  EmitArgsTableMappings(args_info_, code_stream);
   EMIT_CODE(code_stream, "  return ACL_SUCCESS;");
   EMIT_CODE(code_stream, "}");
   ast_nodes.push_back(RAW_CODE_STMT(ast_ctx_, code_stream.str()));
-
-  // GetHostArgs
-  std::string getHostArgsFunc = R"(Om2ArgsTable::~Om2ArgsTable() {
-}
-
-ArgsInfo *Om2ArgsTable::GetArgsInfo(size_t index) {
-  if (index >= args_info_.size()) {
-    return nullptr;
-  }
-  return &args_info_[index];
-}
-
-void *Om2ArgsTable::GetDevArgAddr(size_t offset) {
-  if (offset >= args_size_) {
-    return nullptr;
-  }
-  return GET_ADDR(dev_args_, offset);
-}
-
-void *Om2ArgsTable::GetHostArgAddr(size_t offset) {
-  if (offset >= args_size_) {
-    return nullptr;
-  }
-  return GET_ADDR(host_args_.data(), offset);
-}
-
-aclError Om2ArgsTable::CopyArgsToDevice() {
-  OM2_CHK_STATUS(aclrtMemcpy(dev_args_, args_size_, host_args_.data(), args_size_, ACL_MEMCPY_HOST_TO_DEVICE));
-  return ACL_SUCCESS;
-}
-)";
-  ast_nodes.push_back(RAW_CODE_STMT(ast_ctx_, getHostArgsFunc));
+  std::stringstream member_funcs_code;
+  EmitArgsTableMemberFunctionsCode(member_funcs_code);
+  ast_nodes.push_back(RAW_CODE_STMT(ast_ctx_, member_funcs_code.str()));
   return SUCCESS;
 }
 
@@ -672,56 +985,11 @@ Status ProgramGenerator::GenInterfaceHeaderCommonPart(Program &program) {
   GE_ASSERT_SUCCESS(GetModelInputNumber(ge_model_, input_num));
   size_t output_num = 0U;
   GE_ASSERT_SUCCESS(GetModelOutputNumber(ge_model_, output_num));
-  std::string content = R"(constexpr int32_t INPUT_NUM = )" + std::to_string(input_num) + R"(;
-constexpr int32_t OUTPUT_NUM = )" +
-                        std::to_string(output_num) + R"(;
-typedef void *Om2ModelHandle;
-typedef void *GeTensorHandle;
-
-struct BinDataInfo {
-  const void *data;
-  size_t size;
-};
-struct AicpuParamHead {
-  uint32_t length;
-  uint32_t ioAddrNum;
-  uint32_t extInfoLength;
-  uint64_t extInfoAddr;
-};
-struct AicpuSessionInfo {
-  uint64_t sessionId;
-  uint64_t kernelId;
-  bool sessFlag;
-};
-struct ArgsInfo {
-  void *host_addr;
-  void *dev_addr;
-  size_t size;
-};
-
-class ScopeGuard {
- public:
-  // Noncopyable
-  ScopeGuard(const ScopeGuard &) = delete;
-  ScopeGuard &operator=(const ScopeGuard &) = delete;
-
-  explicit ScopeGuard(const std::function<void()> &on_exit_scope)
-      : on_exit_scope_(on_exit_scope) {}
-
-  ~ScopeGuard() {
-    if (on_exit_scope_) {
-      try {
-        on_exit_scope_();
-      } catch (std::bad_function_call &) {
-      } catch (...) {
-      }
-    }
-  }
-
- private:
-  std::function<void()> on_exit_scope_;
-};)";
-  WriteInterfaceHeader(program, RAW_CODE_STMT(ast_ctx_, content));
+  std::stringstream content;
+  EMIT_CODE(content, "constexpr int32_t INPUT_NUM = " + std::to_string(input_num) + ";");
+  EMIT_CODE(content, "constexpr int32_t OUTPUT_NUM = " + std::to_string(output_num) + ";");
+  EmitInterfaceHeaderCommonDeclarations(content);
+  WriteInterfaceHeader(program, RAW_CODE_STMT(ast_ctx_, content.str()));
   return SUCCESS;
 }
 
@@ -849,61 +1117,10 @@ void ProgramGenerator::GenOm2ModelDestructor(Program &program) {
 Status ProgramGenerator::GenInitResourcesImpl(Program &program) {
   auto model_task_def = ge_model_->GetModelTaskDefPtr();
   GE_ASSERT_NOTNULL(model_task_def);
-
   std::stringstream code;
-  EMIT_CODE(code, R"(aclError Om2Model::InitResources() {
-  // 1. 创建 model
-  OM2_CHK_STATUS(aclmdlRIBuildBegin(&model_handle_, 0));
-
-  // 2. 申请内存
-  OM2_CHK_STATUS(aclrtMallocAlign32(&total_dev_mem_ptr_, )" +
-                      std::to_string(model_task_def->memory_size()) + R"(, ACL_MEM_MALLOC_HUGE_FIRST));
-  OM2_CHK_STATUS(aclrtMallocAlign32(&total_weight_mem_ptr_, )" +
-                      std::to_string(model_task_def->weight_size()) + R"(, ACL_MEM_MALLOC_HUGE_FIRST));
-
-  // 3. 下沉权重
-  OM2_CHK_STATUS(aclrtMemcpy(total_weight_mem_ptr_, )" +
-                      std::to_string(model_task_def->weight_size()) + R"(, host_weight_mem_ptr_, )" +
-                      std::to_string(model_task_def->weight_size()) + R"(, ACL_MEMCPY_HOST_TO_DEVICE));
-)");
-  EMIT_CODE(code, "  // 4. 创建其他资源");
-  if (runtime_param_.stream_num > 0U) {
-    EMIT_CODE(code, "  // 创建下沉Stream并绑定模型");
-    std::vector<std::string> stream_flags_list(runtime_param_.stream_num);
-    GE_ASSERT_SUCCESS(GetStreamFlags(ge_model_, stream_flags_list));
-    std::stringstream create_and_bind_stream_content;
-    for (uint32_t i = 0U; i < runtime_param_.stream_num; ++i) {
-      const std::string &flag_var_name = "stream" + std::to_string(i) + "_flag";
-      create_and_bind_stream_content << "  uint32_t " << flag_var_name << " = " << stream_flags_list[i] << ";"
-                                     << std::endl;
-      create_and_bind_stream_content << "  OM2_CHK_STATUS(aclrtCreateStreamWithConfig(&stream_list_[" << i << "], 0, "
-                                     << flag_var_name << "));" << std::endl;
-      create_and_bind_stream_content << "  OM2_CHK_STATUS(aclmdlRIBindStream(model_handle_, stream_list_[" << i
-                                     << "], ACL_MODEL_STREAM_FLAG_HEAD));" << std::endl;
-    }
-    EMIT_CODE(code, create_and_bind_stream_content.str());
-    EMIT_CODE(code, "  is_stream_list_bind_ = true;");
-  }
-  if (runtime_param_.notify_num > 0U) {
-    EMIT_CODE(code, "  // 创建Notify");
-    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param_.notify_num) + "; ++i) {");
-    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateNotify(&notify_list_[i], ACL_NOTIFY_DEVICE_USE_ONLY));");
-    EMIT_CODE(code, "  }");
-  }
-  if (runtime_param_.event_num > 0U) {
-    EMIT_CODE(code, "  // 创建Event");
-    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param_.event_num) + "; ++i) {");
-    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateEventWithFlag(&event_list_[i], ACL_EVENT_SYNC));");
-    EMIT_CODE(code, "  }");
-  }
-  if (runtime_param_.label_num > 0U) {
-    EMIT_CODE(code, "  // 创建Label");
-    EMIT_CODE(code, "  for (size_t i = 0; i < " + std::to_string(runtime_param_.label_num) + "; ++i) {");
-    EMIT_CODE(code, "    OM2_CHK_STATUS(aclrtCreateLabel(&label_list_[i]));");
-    EMIT_CODE(code, "  }");
-    EMIT_CODE(code,
-              "  OM2_CHK_STATUS(aclrtCreateLabelList(label_list_.data(), label_list_.size(), &aclrt_label_list_));");
-  }
+  EmitInitResourcesBaseCode(code, *model_task_def);
+  GE_ASSERT_SUCCESS(EmitInitStreamCode(ge_model_, runtime_param_, code));
+  EmitInitNotifyEventLabelCode(runtime_param_, code);
   EMIT_CODE(code, "  args_table_.Init();");
   EMIT_CODE(code, "  return ACL_SUCCESS;");
   EMIT_CODE(code, "}");
@@ -919,44 +1136,7 @@ Status ProgramGenerator::GenInitResourcesImpl(Program &program) {
 void ProgramGenerator::GenReleaseResourcesImpl(Program &program) {
   std::stringstream code;
   EMIT_CODE(code, "aclError Om2Model::ReleaseResources() {");
-  if (runtime_param_.label_num > 0U) {
-    EMIT_CODE(code, R"(
-  for (auto label : label_list_) {
-    if (label != nullptr) {
-      OM2_CHK_STATUS(aclrtDestroyLabel(label));
-    }
-  }
-  OM2_CHK_STATUS(aclrtDestroyLabelList(aclrt_label_list_));)");
-  }
-  if (runtime_param_.event_num > 0U) {
-    EMIT_CODE(code, R"(
-  for (auto event : event_list_) {
-    OM2_CHK_STATUS(aclrtDestroyEvent(event));
-  })");
-  }
-  if (runtime_param_.notify_num > 0U) {
-    EMIT_CODE(code, R"(
-  for (auto notify : notify_list_) {
-    OM2_CHK_STATUS(aclrtDestroyNotify(notify));
-  })");
-  }
-  if (runtime_param_.stream_num > 0U) {
-    EMIT_CODE(code, R"(
-  if (is_stream_list_bind_) {
-    for (auto stream : stream_list_) {
-      OM2_CHK_STATUS(aclmdlRIUnbindStream(model_handle_, stream));
-    }
-  }
-  for (auto stream : stream_list_) {
-    OM2_CHK_STATUS(aclrtDestroyStream(stream));
-  })");
-  }
-  if (runtime_param_.kernel_bin_num > 0U) {
-    EMIT_CODE(code, R"(
-  for (auto bin_handle : bin_handles_) {
-    OM2_CHK_STATUS(aclrtBinaryUnLoad(bin_handle));
-  })");
-  }
+  EmitReleaseResourcesCode(runtime_param_, code);
   EMIT_CODE(code, R"(
   OM2_CHK_STATUS(aclmdlRIDestroy(model_handle_));
   OM2_CHK_STATUS(aclrtFree(total_dev_mem_ptr_));
@@ -982,48 +1162,17 @@ Status ProgramGenerator::GenLoadImpl(std::vector<AstNode *> &load_impl_code,
   const size_t task_size = static_cast<size_t>(model_task_def->task_size());
   std::vector<AstNode *> distribution_code;
   std::unordered_set<ModelTaskType> model_task_types;
-
   std::unordered_map<int64_t, OpInputEdges> op_id_to_input_edges;
   GE_ASSERT_SUCCESS(BuildOpInputEdges(compute_graph, op_id_to_input_edges));
   std::unordered_map<int64_t, std::string> weight_offset_to_varname;
   std::vector<AstNode *> const_input_ast_nodes;
+  LoadTaskParams load_task_params{&distribution_code, &dist_impl_code, &model_task_types, &op_id_to_input_edges,
+                                  &weight_offset_to_varname, &const_input_ast_nodes};
+
   for (size_t i = 0UL; i < task_size; ++i) {
     domi::TaskDef *const task_def = model_task_def->mutable_task(static_cast<int32_t>(i));
-    auto task_type = static_cast<ModelTaskType>(task_def->type());
-    auto &task_code_generator = task_code_generator_list_.at(i);
-    GE_ASSERT_NOTNULL(task_code_generator, "Task code generator from type %d and task index %zu has not been created.",
-                      task_def->type(), i);
-    const auto op_index = task_code_generator->ParseOpIndex(*task_def);
-    if (model_task_types.find(task_type) == model_task_types.end()) {
-      TaskDistributionImplContext task_codegen_ctx = {.ast_ctx = ast_ctx_, .nodes = dist_impl_code};
-      GE_ASSERT_SUCCESS(task_code_generator->GenDistributionImplCode(task_codegen_ctx));
-      model_task_types.insert(task_type);
-    }
-    if (op_index == kInvalidOpIndex) {
-      TaskDistributionContext task_dist_ctx = {
-        ast_ctx_, distribution_code, nullptr,
-        *task_def, op_index, func_handle_indices_, op_id_to_input_edges, weight_offset_to_varname,
-        runtime_param_, aicpu_task_num_, args_info_, args_table_index_, model_io_offsets_
-      };
-      GE_ASSERT_SUCCESS(task_code_generator->GenTaskDistributionCode(task_dist_ctx));
-    } else {
-      const OpDescPtr op_desc = FindOpDescByIndex(op_index);
-      GE_ASSERT_NOTNULL(op_desc, "[OM2] Failed to find op_desc by op_index %" PRId64 ".", op_index);
-      GE_ASSERT_SUCCESS(GenConstInputs(const_input_ast_nodes, op_desc, weight_offset_to_varname));
-      TaskDistributionContext task_dist_ctx = {
-        ast_ctx_, distribution_code, op_desc,
-        *task_def, op_index, func_handle_indices_, op_id_to_input_edges, weight_offset_to_varname,
-        runtime_param_, aicpu_task_num_, args_info_, args_table_index_, model_io_offsets_
-      };
-      auto kernel_type = Om2CodegenUtils::IsAllKernel(task_type)
-                             ? task_def->kernel_with_handle().context().kernel_type()
-                             : task_def->kernel().context().kernel_type();
-      if (static_cast<ccKernelType>(kernel_type) == ge::ccKernelType::AI_CPU) {
-        aicpu_task_num_++;
-      }
-      GE_ASSERT_SUCCESS(task_code_generator->GenTaskDistributionCode(task_dist_ctx));
-    }
-    GELOGI("[OM2] Task launch code is generated, op_index=%" PRId64 ", task_type=%d", op_index, task_type);
+    GE_ASSERT_NOTNULL(task_def);
+    GE_ASSERT_SUCCESS(ProcessLoadTask(i, *task_def, load_task_params));
   }
   load_impl_code.push_back(RAW_CODE_STMT(ast_ctx_, "  dev_ext_info_mem_ptrs_.resize(" + std::to_string(aicpu_task_num_) + ");"));
   load_impl_code.insert(load_impl_code.end(), const_input_ast_nodes.begin(), const_input_ast_nodes.end());
@@ -1037,125 +1186,48 @@ Status ProgramGenerator::GenLoadImpl(std::vector<AstNode *> &load_impl_code,
   return SUCCESS;
 }
 
+Status ProgramGenerator::ProcessLoadTask(const size_t task_index, domi::TaskDef &task_def, LoadTaskParams &params) {
+  auto task_type = static_cast<ModelTaskType>(task_def.type());
+  auto &task_code_generator = task_code_generator_list_.at(task_index);
+  GE_ASSERT_NOTNULL(task_code_generator, "Task code generator from type %d and task index %zu has not been created.",
+                    task_def.type(), task_index);
+  const auto op_index = task_code_generator->ParseOpIndex(task_def);
+  if (params.model_task_types->insert(task_type).second) {
+    TaskDistributionImplContext task_codegen_ctx = {.ast_ctx = ast_ctx_, .nodes = *params.dist_impl_code};
+    GE_ASSERT_SUCCESS(task_code_generator->GenDistributionImplCode(task_codegen_ctx));
+  }
+
+  OpDescPtr op_desc = nullptr;
+  bool is_aicpu_task = false;
+  const uint64_t current_aicpu_task_index = aicpu_task_num_;
+  if (op_index != kInvalidOpIndex) {
+    op_desc = FindOpDescByIndex(op_index);
+    GE_ASSERT_NOTNULL(op_desc, "[OM2] Failed to find op_desc by op_index %" PRId64 ".", op_index);
+    GE_ASSERT_SUCCESS(GenConstInputs(*params.const_input_ast_nodes, op_desc, *params.weight_offset_to_varname));
+    auto kernel_type = Om2CodegenUtils::IsAllKernel(task_type) ? task_def.kernel_with_handle().context().kernel_type()
+                                                                : task_def.kernel().context().kernel_type();
+    is_aicpu_task = static_cast<ccKernelType>(kernel_type) == ge::ccKernelType::AI_CPU;
+  }
+
+  TaskDistributionContext task_dist_ctx = {
+      ast_ctx_, *params.distribution_code, op_desc, task_def, op_index, func_handle_indices_,
+      *params.op_id_to_input_edges, *params.weight_offset_to_varname, runtime_param_, current_aicpu_task_index, args_info_,
+      args_table_index_, model_io_offsets_};
+  GE_ASSERT_SUCCESS(task_code_generator->GenTaskDistributionCode(task_dist_ctx));
+  if (is_aicpu_task) {
+    ++aicpu_task_num_;
+  }
+  GELOGI("[OM2] Task launch code is generated, op_index=%" PRId64 ", task_type=%d", op_index, task_type);
+  return SUCCESS;
+}
+
 Status ProgramGenerator::GenRunImpl(std::vector<AstNode *> &load_impl_code) {
-  std::stringstream input_memcpy_tensor_data_content;
-  std::stringstream output_memcpy_tensor_data_content;
-  std::stringstream input_memcpy_tensor_data_async_content;
-  std::stringstream output_memcpy_tensor_data_async_content;
-  auto compute_graph = ge_model_->GetGraph();
-  GE_ASSERT_NOTNULL(compute_graph);
-  uint32_t input_data_index = 0U;
-  uint32_t output_data_index = 0U;
-  for (const auto &node : compute_graph->GetDirectNode()) {
-    const auto &op_desc = node->GetOpDesc();
-    GE_ASSERT_NOTNULL(op_desc);
-    if (OpTypeUtils::IsDataNode(op_desc->GetType())) {
-      uint32_t tmp_index = input_data_index;
-      if (AttrUtils::GetInt(op_desc, ATTR_NAME_INDEX, tmp_index)) {
-        GELOGD("[OM2] Get new index %u, old %u", tmp_index, input_data_index);
-      }
-      auto output_offsets = op_desc->GetOutputOffset();
-      GE_ASSERT_TRUE(!output_offsets.empty());
-      model_io_offsets_.emplace(output_offsets[0]);
-      const auto &addr_var_name = "dev_input" + std::to_string(input_data_index) + "_ptr";
-      input_memcpy_tensor_data_content << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                       << output_offsets[0] << ");" << std::endl;
-      const auto &tensor_var_name = "input_data_" + std::to_string(input_data_index) + "_tensor";
-      input_memcpy_tensor_data_content << "  auto " << tensor_var_name
-                                       << " = reinterpret_cast<gert::Tensor *>(input_data[" << tmp_index << "]);"
-                                       << std::endl;
-      input_memcpy_tensor_data_content << "  OM2_CHK_STATUS(aclrtMemcpy(" << addr_var_name << ", "
-                                       << tensor_var_name
-                                       << "->GetSize(), " << tensor_var_name << "->GetAddr(), "
-                                       << tensor_var_name << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));"
-                                       << std::endl;
-      input_memcpy_tensor_data_async_content << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                             << output_offsets[0] << ");" << std::endl;
-      input_memcpy_tensor_data_async_content << "  auto " << tensor_var_name
-                                             << " = reinterpret_cast<gert::Tensor *>(input_data[" << tmp_index << "]);"
-                                             << std::endl;
-      input_memcpy_tensor_data_async_content << "  OM2_CHK_STATUS(aclrtMemcpyAsync(" << addr_var_name << ", "
-                                             << tensor_var_name
-                                             << "->GetSize(), " << tensor_var_name << "->GetAddr(), "
-                                             << tensor_var_name << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));"
-                                             << std::endl;
-      input_data_index++;
-    } else if (OpTypeUtils::IsGraphOutputNode(op_desc->GetType())) {  // 当前考虑静态，模型中只有一个NETOUTPUT
-      auto input_offsets = op_desc->GetInputOffset();
-      for (size_t i = 0U; i < op_desc->GetAllInputsSize(); ++i) {
-        const GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(static_cast<uint32_t>(i));
-        GE_IF_BOOL_EXEC(tensor_desc == nullptr,
-                        GELOGD("[OM2] Op: %s, Index: %zu, has no input", op_desc->GetName().c_str(), i);
-                        continue);
-        model_io_offsets_.emplace(input_offsets[i]);
-        const auto &addr_var_name = "dev_output" + std::to_string(output_data_index) + "_ptr";
-        output_memcpy_tensor_data_content << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                          << input_offsets[i] << ");" << std::endl;
-        const auto &tensor_var_name = "output_data_" + std::to_string(output_data_index) + "_tensor";
-        output_memcpy_tensor_data_content << "  auto " << tensor_var_name
-                                          << " = reinterpret_cast<gert::Tensor *>(output_data[" << output_data_index
-                                          << "]);"
-                                          << std::endl;
-        output_memcpy_tensor_data_content << "  OM2_CHK_STATUS(aclrtMemcpy("
-                                          << tensor_var_name << "->GetAddr(), " << tensor_var_name
-                                          << "->GetSize(), " << addr_var_name << ", " << tensor_var_name
-                                          << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));" << std::endl;
-        output_memcpy_tensor_data_async_content << "  auto " << addr_var_name
-                                                << " = GET_ADDR(total_dev_mem_ptr_, " << input_offsets[i] << ");"
-                                                << std::endl;
-        output_memcpy_tensor_data_async_content << "  auto " << tensor_var_name
-                                                << " = reinterpret_cast<gert::Tensor *>(output_data["
-                                                << output_data_index
-                                                << "]);"
-                                                << std::endl;
-        output_memcpy_tensor_data_async_content << "  OM2_CHK_STATUS(aclrtMemcpyAsync("
-                                                << tensor_var_name << "->GetAddr(), "
-                                                << tensor_var_name
-                                                << "->GetSize(), " << addr_var_name << ", "
-                                                << tensor_var_name
-                                                << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));"
-                                                << std::endl;
-        output_data_index++;
-      }
-    }
-  }
-
-  std::string content = R"(aclError Om2Model::RunAsync(
-  aclrtStream &exe_stream,
-  size_t input_count,
-  void **input_data,
-  size_t output_count,
-  void **output_data) {
-  if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
-    return ACL_ERROR_FAILURE;
-  }
-)" + input_memcpy_tensor_data_async_content.str() +
-                        R"(
-  OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
-  OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
-)" + output_memcpy_tensor_data_async_content.str() +
-                        R"(
-  return ACL_SUCCESS;
-}
-
-aclError Om2Model::Run(
-  size_t input_count,
-  void **input_data,
-  size_t output_count,
-  void **output_data) {
-  if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
-    return ACL_ERROR_FAILURE;
-  }
-)" + input_memcpy_tensor_data_content.str() +
-                        R"(
-  OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
-  OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
-)" + output_memcpy_tensor_data_content.str() +
-                        R"(
-  return ACL_SUCCESS;
-}
-)";
-  load_impl_code.push_back(RAW_CODE_STMT(ast_ctx_, content));
+  RunMemcpyCode run_memcpy_code;
+  const auto compute_graph = ge_model_->GetGraph();
+  GE_ASSERT_SUCCESS(CollectRunMemcpyCode(compute_graph, run_memcpy_code, model_io_offsets_));
+  std::stringstream run_entry_code;
+  EmitRunEntryFunctionsCode(run_memcpy_code, run_entry_code);
+  load_impl_code.push_back(RAW_CODE_STMT(ast_ctx_, run_entry_code.str()));
   GELOGD("[OM2] Om2Model::Run() and Om2Model::RunAsync() implementation is generated.");
   return SUCCESS;
 }
@@ -1248,14 +1320,14 @@ Status ProgramGenerator::GenerateResourcesSource(Program &program) {
 }
 
 Status ProgramGenerator::GenerateArgsManagerSource(Program &program) {
-  WriteArgManagerSource(program, RAW_CODE_STMT(ast_ctx_, "#include \"" + ge_model_->GetName() + "_interface.h\"\n"));
-  WriteArgManagerSource(program, RAW_CODE_STMT(ast_ctx_, ("namespace om2 {")));
+  WriteArgsManagerSource(program, RAW_CODE_STMT(ast_ctx_, "#include \"" + ge_model_->GetName() + "_interface.h\"\n"));
+  WriteArgsManagerSource(program, RAW_CODE_STMT(ast_ctx_, ("namespace om2 {")));
   std::vector<AstNode *> args_table_impl_ast_nodes;
   GE_ASSERT_SUCCESS(GenArgsTableImpl(args_table_impl_ast_nodes));
   program[static_cast<size_t>(GeneratedFileIndex::kArgsManagerFile)].insert(
       program[static_cast<size_t>(GeneratedFileIndex::kArgsManagerFile)].end(), args_table_impl_ast_nodes.begin(),
       args_table_impl_ast_nodes.end());
-  WriteArgManagerSource(program, RAW_CODE_STMT(ast_ctx_, ("} // namespace om2")));
+  WriteArgsManagerSource(program, RAW_CODE_STMT(ast_ctx_, ("} // namespace om2")));
   GELOGD("[OM2] Args Manager source file code is generated.");
   return SUCCESS;
 }
@@ -1342,7 +1414,7 @@ $(TARGET): $(SRC_FILES)
 clean:
 	rm -f $(TARGET)
 )";
-  WriteCmakeLists(program, RAW_CODE_STMT(ast_ctx_, cmakelists_content));
+  WriteCMakeLists(program, RAW_CODE_STMT(ast_ctx_, cmakelists_content));
   GELOGD("[OM2] Makefile code is generated.");
   return SUCCESS;
 }

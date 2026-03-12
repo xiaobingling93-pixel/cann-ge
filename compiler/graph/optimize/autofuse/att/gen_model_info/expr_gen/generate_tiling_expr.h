@@ -53,6 +53,16 @@ private:
   ge::Status MakeArg(const SubAxis *sub_axis, std::map<const SubAxis *, std::set<HardwareDef>> related_scopes,
                      AttAxisPtr &arg_info) const;
 
+  // 初始化轴基本信息
+  void InitArgInfo(const SubAxis *sub_axis, AttAxisPtr &arg_info) const;
+
+  // 创建常量类型的轴信息
+  ge::Status MakeConstArg(const SubAxis *sub_axis, AttAxisPtr &arg_info) const;
+
+  // 创建变量类型的轴信息
+  ge::Status MakeVarArg(const SubAxis *sub_axis, std::map<const SubAxis *, std::set<HardwareDef>> &related_scopes,
+                        AttAxisPtr &arg_info) const;
+
   // 获取所有轴信息
   ge::Status GetSubAxisArgs(std::vector<AttAxisPtr> &arg_lists);
 

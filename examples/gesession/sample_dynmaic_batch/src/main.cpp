@@ -22,7 +22,7 @@ int main()
     std::unique_ptr<SampleDynamicBatch> sampleDynamicBatchPtr = nullptr;
     try {
         sampleDynamicBatchPtr = std::make_unique<SampleDynamicBatch>(options);
-    } catch (std::logic_error &e) {
+    } catch (std::runtime_error &e) {
         ERROR_LOG("SampleDynamicBatch creation failed");
         return FAILED;
     }

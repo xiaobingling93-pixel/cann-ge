@@ -117,6 +117,60 @@ Status Om2ModelUtils::GetOrCreateInputVarName(TaskDistributionContext &context, 
   return SUCCESS;
 }
 
+Status Om2ModelUtils::ValidateInputMemTypeList(const TaskDistributionContext &context, const bool has_mem_type_attr,
+                                               const std::vector<int64_t> &v_memory_type, const size_t inputs_size) {
+  const bool check_failed = has_mem_type_attr && (v_memory_type.size() != inputs_size);
+  if (!check_failed) {
+    return SUCCESS;
+  }
+  REPORT_INNER_ERR_MSG("E19999", "Attr:%s, memory_type.size:%zu != input_desc.size:%zu, op:%s(%s), check invalid",
+                       ATTR_NAME_INPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), inputs_size,
+                       context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
+  GELOGE(PARAM_INVALID, "[OM2][Check][Param] Attr:%s, memory_type.size:%zu != input_desc.size:%zu, op:%s(%s)",
+         ATTR_NAME_INPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), inputs_size,
+         context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
+  return FAILED;
+}
+
+Status Om2ModelUtils::BuildSingleInputAddrNode(TaskDistributionContext &context, const size_t input_idx,
+                                               InputAddrBuildParams &params, AddrGenInfo &input_addr_node) {
+  const GeTensorDescPtr tensor_desc = context.op_desc->MutableInputDesc(static_cast<uint32_t>(input_idx));
+  GE_CHECK_NOTNULL_EXEC(tensor_desc, return FAILED);
+  int64_t tensor_size = 0;
+  GE_CHK_STATUS_EXEC(TensorUtils::GetSize(*tensor_desc, tensor_size), return FAILED);
+
+  input_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeFix;
+  std::string input_ptr_name;
+  if ((input_idx < params.v_is_input_const.size()) && params.v_is_input_const[input_idx]) {
+    int64_t data_offset = 0;
+    GE_CHK_STATUS(TensorUtils::GetDataOffset(*tensor_desc, data_offset));
+    int64_t weight_size = 0;
+    GE_CHK_STATUS(TensorUtils::GetTensorSizeInBytes(*tensor_desc, weight_size));
+    GE_IF_BOOL_EXEC(!ValidateMemRange(context.op_desc, context.runtime_param.weight_size, data_offset, weight_size),
+                    return FAILED);
+    GE_ASSERT_TRUE(context.weight_offset_to_varname.find(data_offset) != context.weight_offset_to_varname.end(),
+                   "[OM2] Const input offset %" PRId64 " not found, op %s, index %zu", data_offset,
+                   context.op_desc->GetName().c_str(), input_idx);
+    input_ptr_name = context.weight_offset_to_varname[data_offset];
+  } else {
+    uint64_t memory_type = RT_MEMORY_DEFAULT;
+    GE_ASSERT_SUCCESS(GetValidatedTensorMemType(tensor_desc, params.v_memory_type, input_idx, memory_type));
+    GE_IF_BOOL_EXEC(params.non_const_index >= params.input_offsets.size(), return FAILED);
+    const int64_t input_offset = params.input_offsets[params.non_const_index];
+    if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size, input_offset, 0)) {
+      return FAILED;
+    }
+    if (context.model_io_offsets.find(input_offset) != context.model_io_offsets.end()) {
+      input_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
+    }
+    GE_ASSERT_SUCCESS(GetOrCreateInputVarName(context, input_idx, params.non_const_index, params.input_offsets,
+                                              input_ptr_name, input_addr_node.nodes));
+  }
+  input_addr_node.var_name = input_ptr_name;
+  ++params.non_const_index;
+  return SUCCESS;
+}
+
 Status Om2ModelUtils::GenInputAddrCode(TaskDistributionContext &context, std::vector<AddrGenInfo> &input_addr_nodes) {
   GE_CHECK_NOTNULL_EXEC(context.op_desc, return FAILED);
   GELOGD("[OM2] Start GenInputAddrCode: op_name[%s]", context.op_desc->GetName().c_str());
@@ -125,63 +179,65 @@ Status Om2ModelUtils::GenInputAddrCode(TaskDistributionContext &context, std::ve
   const auto &input_offsets = context.op_desc->GetInputOffset();
   std::vector<int64_t> v_memory_type;
   const bool has_mem_type_attr = AttrUtils::GetListInt(context.op_desc, ATTR_NAME_INPUT_MEM_TYPE_LIST, v_memory_type);
-  const bool check_failed = has_mem_type_attr && (v_memory_type.size() != inputs_size);
-  if (check_failed) {
-    REPORT_INNER_ERR_MSG("E19999", "Attr:%s, memory_type.size:%zu != input_desc.size:%zu, op:%s(%s), check invalid",
-                       ATTR_NAME_INPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), inputs_size,
-                       context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
-    GELOGE(PARAM_INVALID, "[OM2][Check][Param] Attr:%s, memory_type.size:%zu != input_desc.size:%zu, op:%s(%s)",
-           ATTR_NAME_INPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), inputs_size,
-           context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
-    return FAILED;
-  }
+  GE_ASSERT_SUCCESS(ValidateInputMemTypeList(context, has_mem_type_attr, v_memory_type, inputs_size));
 
   input_addr_nodes.reserve(inputs_size);
   size_t non_const_index = 0UL;
+  InputAddrBuildParams build_params{v_is_input_const, input_offsets, v_memory_type, non_const_index};
   for (size_t i = 0U; i < context.op_desc->GetAllInputsSize(); ++i) {
     const GeTensorDescPtr tensor_desc = context.op_desc->MutableInputDesc(static_cast<uint32_t>(i));
     GE_IF_BOOL_EXEC(tensor_desc == nullptr,
                     GELOGD("[OM2] Op: %s, Index: %zu, has no input", context.op_desc->GetName().c_str(), i);
                     continue);
-    int64_t tensor_size = 0;
-    GE_CHK_STATUS_EXEC(TensorUtils::GetSize(*tensor_desc, tensor_size), return FAILED);
-
     input_addr_nodes.emplace_back();
-    input_addr_nodes.back().mem_type = Om2MemoryAppType::kMemoryTypeFix;
-    std::string input_ptr_name;
-    // fileconstant和var场景一阶段暂不支持
-    if ((i < v_is_input_const.size()) && v_is_input_const[i]) {
-      // Add weights address to input
-      int64_t data_offset = 0;
-      GE_CHK_STATUS(TensorUtils::GetDataOffset(*tensor_desc, data_offset));
-      int64_t weight_size = 0;
-      // The reason why GetTensorSizeInBytes is used here is that the weight is allocated based on the size of
-      // TensorData in function AdjustConstWeightSize. and the size is zero when the tensor is empty.
-      GE_CHK_STATUS(TensorUtils::GetTensorSizeInBytes(*tensor_desc, weight_size));
-      GE_IF_BOOL_EXEC(!ValidateMemRange(context.op_desc, context.runtime_param.weight_size, data_offset, weight_size),
-                      return FAILED);
-      GE_ASSERT_TRUE(context.weight_offset_to_varname.find(data_offset) != context.weight_offset_to_varname.end(),
-                     "[OM2] Const input offset %" PRId64 " not found, op %s, index %zu", data_offset,
-                     context.op_desc->GetName().c_str(), i);
-      input_ptr_name = context.weight_offset_to_varname[data_offset];
-    } else {
-      uint64_t memory_type = RT_MEMORY_DEFAULT;
-      GE_ASSERT_SUCCESS(GetValidatedTensorMemType(tensor_desc, v_memory_type, i, memory_type));
-      GE_IF_BOOL_EXEC(non_const_index >= input_offsets.size(), return FAILED);
-      const int64_t input_offset = input_offsets[non_const_index];
-      if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size, input_offset, 0)) {
-        return FAILED;
-      }
-      if (context.model_io_offsets.find(input_offset) != context.model_io_offsets.end()) {
-        input_addr_nodes.back().mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
-      }
-      GE_ASSERT_SUCCESS(GetOrCreateInputVarName(context, i, non_const_index, input_offsets,
-                                                   input_ptr_name, input_addr_nodes.back().nodes));
-    }
-    input_addr_nodes.back().var_name = input_ptr_name;
-    non_const_index++;
+    GE_ASSERT_SUCCESS(BuildSingleInputAddrNode(context, i, build_params, input_addr_nodes.back()));
   }
   GELOGD("[OM2] Input addrs code is successfully generated: op_name[%s].", context.op_desc->GetName().c_str());
+  return SUCCESS;
+}
+
+Status Om2ModelUtils::ValidateOutputAddrParams(TaskDistributionContext &context,
+                                               const std::vector<int64_t> &v_output_offset, const size_t outputs_size,
+                                               const bool has_mem_type_attr,
+                                               const std::vector<int64_t> &v_memory_type) {
+  GE_IF_BOOL_EXEC(
+      v_output_offset.size() != outputs_size,
+      GELOGW("[OM2] Output param invalid: output_offset=%zu, outputs=%zu.", v_output_offset.size(), outputs_size);
+      return FAILED);
+  if (!(has_mem_type_attr && (v_memory_type.size() != outputs_size))) {
+    return SUCCESS;
+  }
+  REPORT_INNER_ERR_MSG("E19999", "[OM2] Attr:%s, memory_type.size:%zu != output_desc.size:%zu, op:%s(%s), check invalid",
+                       ATTR_NAME_OUTPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), outputs_size,
+                       context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
+  GELOGE(PARAM_INVALID, "[OM2][Check][Param] Attr:%s, memory_type.size:%zu != output_desc.size:%zu, op:%s(%s)",
+         ATTR_NAME_OUTPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), outputs_size,
+         context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
+  return FAILED;
+}
+
+Status Om2ModelUtils::BuildMaterializedOutputAddrNode(TaskDistributionContext &context, const size_t output_idx,
+                                                      const std::vector<int64_t> &v_output_offset,
+                                                      const std::vector<int64_t> &v_memory_type,
+                                                      AddrGenInfo &output_addr_node) {
+  const GeTensorDescPtr tensor_desc = context.op_desc->MutableOutputDesc(static_cast<uint32_t>(output_idx));
+  GE_CHECK_NOTNULL_EXEC(tensor_desc, return FAILED);
+  int64_t tensor_size = 0;
+  GE_CHK_STATUS_EXEC(TensorUtils::GetSize(*tensor_desc, tensor_size), return FAILED);
+  uint64_t memory_type = RT_MEMORY_DEFAULT;
+  GE_ASSERT_SUCCESS(GetValidatedTensorMemType(tensor_desc, v_memory_type, output_idx, memory_type));
+  if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size, v_output_offset[output_idx], 0)) {
+    return FAILED;
+  }
+  if (context.model_io_offsets.find(v_output_offset[output_idx]) != context.model_io_offsets.end()) {
+    output_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
+  }
+  const auto op_index = context.op_index;
+  std::string output_ptr_name = "op" + std::to_string(op_index) + "_output" + std::to_string(output_idx);
+  output_addr_node.nodes.push_back(RAW_CODE_STMT(context.ast_ctx,
+    "  auto " + output_ptr_name + " = GET_ADDR(total_dev_mem_ptr_, " +
+    std::to_string(v_output_offset[output_idx]) + ");"));
+  output_addr_node.var_name = output_ptr_name;
   return SUCCESS;
 }
 
@@ -193,21 +249,9 @@ Status Om2ModelUtils::GenOutputAddrCode(TaskDistributionContext &context, std::v
   const size_t outputs_size = context.op_desc->GetOutputsSize();
   const int64_t current_op_id = context.op_desc->GetId();
   const std::vector<int64_t> v_output_offset = context.op_desc->GetOutputOffset();
-  GE_IF_BOOL_EXEC(
-      v_output_offset.size() != outputs_size,
-      GELOGW("[OM2] Output param invalid: output_offset=%zu, outputs=%zu.", v_output_offset.size(), outputs_size);
-      return FAILED);
   std::vector<int64_t> v_memory_type;
   const bool has_mem_type_attr = AttrUtils::GetListInt(context.op_desc, ATTR_NAME_OUTPUT_MEM_TYPE_LIST, v_memory_type);
-  if (has_mem_type_attr && (v_memory_type.size() != outputs_size)) {
-    REPORT_INNER_ERR_MSG("E19999", "[OM2] Attr:%s, memory_type.size:%zu != output_desc.size:%zu, op:%s(%s), check invalid",
-                       ATTR_NAME_OUTPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), outputs_size,
-                       context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
-    GELOGE(PARAM_INVALID, "[OM2][Check][Param] Attr:%s, memory_type.size:%zu != output_desc.size:%zu, op:%s(%s)",
-           ATTR_NAME_OUTPUT_MEM_TYPE_LIST.c_str(), v_memory_type.size(), outputs_size,
-           context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
-    return FAILED;
-  }
+  GE_ASSERT_SUCCESS(ValidateOutputAddrParams(context, v_output_offset, outputs_size, has_mem_type_attr, v_memory_type));
   GE_ASSERT_TRUE(context.op_id_to_input_edges.find(current_op_id) != context.op_id_to_input_edges.end(),
                  "[OM2] Current op_id %" PRId64 " not found in op_id_to_input_edges", current_op_id);
   OpInputEdges &current_edges = context.op_id_to_input_edges.at(current_op_id);
@@ -239,24 +283,74 @@ Status Om2ModelUtils::GenOutputAddrCode(TaskDistributionContext &context, std::v
         context.op_desc->GetName().c_str(), static_cast<int32_t>(has_optional_addr));
       continue;
     }
-
-    int64_t tensor_size = 0;
-    GE_CHK_STATUS_EXEC(TensorUtils::GetSize(*tensor_desc, tensor_size), return FAILED);
-    uint64_t memory_type = RT_MEMORY_DEFAULT;
-    GE_ASSERT_SUCCESS(GetValidatedTensorMemType(tensor_desc, v_memory_type, i, memory_type));
-    if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size, v_output_offset[i], 0)) {
-      return FAILED;
-    }
-    if (context.model_io_offsets.find(v_output_offset[i]) != context.model_io_offsets.end()) {
-      output_addr_nodes.back().mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
-    }
-    output_addr_nodes.back().nodes.push_back(RAW_CODE_STMT(context.ast_ctx,
-      "  auto " + output_ptr_name + " = GET_ADDR(total_dev_mem_ptr_, " +
-      std::to_string(v_output_offset[i]) + ");"));
-    current_edges.output_var_names[i] = output_ptr_name;  // Record output variable name
-    output_addr_nodes.back().var_name = output_ptr_name;
+    GE_ASSERT_SUCCESS(BuildMaterializedOutputAddrNode(context, i, v_output_offset, v_memory_type, output_addr_nodes.back()));
+    current_edges.output_var_names[i] = output_addr_nodes.back().var_name;  // Record output variable name
   }
   GELOGD("[OM2] Output addrs code is successfully generated: op_name[%s].", context.op_desc->GetName().c_str());
+  return SUCCESS;
+}
+
+Status Om2ModelUtils::ValidateWorkspaceMemTypeParams(TaskDistributionContext &context,
+                                                     const WorkspaceMemTypeParams &params) {
+  if ((params.has_mem_type_attr && (params.v_memory_type.size() != params.v_workspace_offset.size())) ||
+      (params.has_mem_type_workspace && (params.workspace_memory_type.size() != params.v_workspace_offset.size()))) {
+    REPORT_INNER_ERR_MSG("E19999",
+                         "[OM2] Attr:%s, memory_type.size:%zu and %s, memory_type.size:%zu and workspaces num:%zu should be "
+                         "same, op:%s(%s), check invalid",
+                         TVM_ATTR_NAME_WORKSPACE_TYPE.c_str(), params.v_memory_type.size(),
+                         ATTR_NAME_WORKSPACE_TYPE_LIST.c_str(), params.workspace_memory_type.size(),
+                         params.v_workspace_offset.size(),
+                         context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
+    GELOGE(PARAM_INVALID,
+           "[OM2][Check][Param] Attr:%s, memory_type.size:%zu and %s, memory_type.size:%zu and workspaces num:%zu should be "
+           "same, op:%s(%s), check invalid",
+           TVM_ATTR_NAME_WORKSPACE_TYPE.c_str(), params.v_memory_type.size(), ATTR_NAME_WORKSPACE_TYPE_LIST.c_str(),
+           params.workspace_memory_type.size(), params.v_workspace_offset.size(), context.op_desc->GetName().c_str(),
+           context.op_desc->GetType().c_str());
+    return FAILED;
+  }
+  return SUCCESS;
+}
+
+Status Om2ModelUtils::BuildSingleWorkspaceAddrNode(TaskDistributionContext &context, const size_t workspace_idx,
+                                                   const WorkspaceAddrBuildParams &params,
+                                                   AddrGenInfo &workspace_addr_node) {
+  const bool aicpu_work_space =
+      (params.has_workspace_reuse && (workspace_idx < params.workspace_reuse_flag.size()) &&
+       (!params.workspace_reuse_flag[workspace_idx]));
+  if (aicpu_work_space) {
+    GELOGE(FAILED, "[OM2] Aicpu task not support append workspace addrs for now.");
+    return FAILED;
+  }
+  const bool session_scope_memory = (params.has_workspace_no_reuse_scope) &&
+      (workspace_idx < params.workspace_no_reuse_scope.size()) &&
+      (params.workspace_no_reuse_scope[workspace_idx] == kSessionNoReuse);
+  const bool is_p2p_memory =
+      params.has_mem_type_workspace &&
+      (static_cast<uint64_t>(params.workspace_memory_type[workspace_idx]) == RT_MEMORY_P2P_DDR);
+  const bool is_l1_memory =
+      params.has_mem_type_attr && (static_cast<uint64_t>(params.v_memory_type[workspace_idx]) == RT_MEMORY_L1);
+  const bool is_ub_memory =
+      params.has_mem_type_attr && (static_cast<uint64_t>(params.v_memory_type[workspace_idx]) == kRtMemoryUB);
+  const uint64_t memory_type = GetWorkspaceMemTypeByPriority(is_p2p_memory, is_l1_memory, is_ub_memory,
+                                                             session_scope_memory);
+  if (memory_type != RT_MEMORY_HBM) {
+    REPORT_INNER_ERR_MSG("E19999", "Workspace mem type[%" PRIu64 "] is invalid, must be RT_MEMORY_HBM.", memory_type);
+    GELOGE(ge::FAILED, "[OM2] Workspace mem type[%" PRIu64 "] is invalid, must be RT_MEMORY_HBM.", memory_type);
+    return FAILED;
+  }
+  if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size,
+                        params.v_workspace_offset[workspace_idx], 0)) {
+    return FAILED;
+  }
+
+  const auto op_index = context.op_index;
+  std::string ws_ptr_name = "op" + std::to_string(op_index) + "_ws" + std::to_string(workspace_idx);
+  workspace_addr_node.nodes.push_back(RAW_CODE_STMT(context.ast_ctx,
+    "  auto " + ws_ptr_name + " = GET_ADDR(total_dev_mem_ptr_, " +
+    std::to_string(params.v_workspace_offset[workspace_idx]) + ");"));
+  workspace_addr_node.var_name = ws_ptr_name;
+  workspace_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeFix;
   return SUCCESS;
 }
 
@@ -279,63 +373,25 @@ Status Om2ModelUtils::GenWorkspaceAddrsCode(TaskDistributionContext &context,
   const bool has_mem_type_attr = AttrUtils::GetListInt(context.op_desc, TVM_ATTR_NAME_WORKSPACE_TYPE, v_memory_type);
   const bool has_mem_type_workspace =
       AttrUtils::GetListInt(context.op_desc, ATTR_NAME_WORKSPACE_TYPE_LIST, workspace_memory_type);
-  if ((has_mem_type_attr && (v_memory_type.size() != v_workspace_offset.size())) ||
-      (has_mem_type_workspace && (workspace_memory_type.size() != v_workspace_offset.size()))) {
-    REPORT_INNER_ERR_MSG("E19999",
-                       "[OM2] Attr:%s, memory_type.size:%zu and %s, memory_type.size:%zu and workspaces num:%zu should be "
-                       "same, op:%s(%s), check invalid",
-                       TVM_ATTR_NAME_WORKSPACE_TYPE.c_str(), v_memory_type.size(),
-                       ATTR_NAME_WORKSPACE_TYPE_LIST.c_str(), workspace_memory_type.size(), v_workspace_offset.size(),
-                       context.op_desc->GetName().c_str(), context.op_desc->GetType().c_str());
-    GELOGE(PARAM_INVALID,
-           "[OM2][Check][Param] Attr:%s, memory_type.size:%zu and %s, memory_type.size:%zu and workspaces num:%zu should be "
-           "same, op:%s(%s), check invalid",
-           TVM_ATTR_NAME_WORKSPACE_TYPE.c_str(), v_memory_type.size(), ATTR_NAME_WORKSPACE_TYPE_LIST.c_str(),
-           workspace_memory_type.size(), v_workspace_offset.size(), context.op_desc->GetName().c_str(),
-           context.op_desc->GetType().c_str());
-    return FAILED;
-  }
+  WorkspaceMemTypeParams mem_type_params{
+      v_workspace_offset, has_mem_type_attr, v_memory_type, has_mem_type_workspace, workspace_memory_type};
+  GE_ASSERT_SUCCESS(ValidateWorkspaceMemTypeParams(context, mem_type_params));
   std::vector<int32_t> workspace_no_reuse_scope;
   const bool has_workspace_no_reuse_scope =
       AttrUtils::GetListInt(context.op_desc, ATTR_NAME_WORKSPACE_MEMORY_NO_REUSE_SCOPE, workspace_no_reuse_scope);
+  WorkspaceAddrBuildParams build_params{v_workspace_offset,
+                                        workspace_reuse_flag,
+                                        has_workspace_reuse,
+                                        workspace_no_reuse_scope,
+                                        has_workspace_no_reuse_scope,
+                                        workspace_memory_type,
+                                        has_mem_type_workspace,
+                                        v_memory_type,
+                                        has_mem_type_attr};
   workspace_addr_nodes.reserve(v_workspace_bytes.size());
   for (size_t i = 0U; i < v_workspace_bytes.size(); ++i) {
-    // Temporary solution, the aicpu workspace of multiple images cannot be shared.
-    const bool aicpu_work_space =
-        (has_workspace_reuse && (i < workspace_reuse_flag.size()) && (!workspace_reuse_flag[i]));
-    // 要确认一下aicpu的怎么弄，是否有个单独的内存池aicpu_mem_mall
-    if (aicpu_work_space) {
-      GELOGE(FAILED, "[OM2] Aicpu task not support append workspace addrs for now.");
-      return FAILED;
-    }
-    const bool session_scope_memory = (has_workspace_no_reuse_scope) && (i < workspace_no_reuse_scope.size()) &&
-        (workspace_no_reuse_scope[i] == kSessionNoReuse);
-    const bool is_p2p_memory =
-        has_mem_type_workspace && (static_cast<uint64_t>(workspace_memory_type[i]) == RT_MEMORY_P2P_DDR);
-    const bool is_l1_memory = has_mem_type_attr && (static_cast<uint64_t>(v_memory_type[i]) == RT_MEMORY_L1);
-    const bool is_ub_memory = has_mem_type_attr && (static_cast<uint64_t>(v_memory_type[i]) == kRtMemoryUB);
-    const uint64_t memory_type = GetWorkspaceMemTypeByPriority(is_p2p_memory, is_l1_memory, is_ub_memory,
-                                                               session_scope_memory);
-    // 未来支持所有类型内存后移除
-    if (memory_type != RT_MEMORY_HBM) {
-      REPORT_INNER_ERR_MSG("E19999", "Workspace mem type[%" PRIu64 "] is invalid, must be RT_MEMORY_HBM.", memory_type);
-      GELOGE(ge::FAILED,
-             "[OM2] Workspace mem type[%" PRIu64 "] is invalid, must be RT_MEMORY_HBM.",
-             memory_type);
-      return FAILED;
-    }
-    if (!ValidateMemRange(context.op_desc, context.runtime_param.mem_size, v_workspace_offset[i], 0)) {
-      return FAILED;
-    }
-
-    const auto op_index = context.op_index;
-    std::string ws_ptr_name = "op" + std::to_string(op_index) + "_ws" + std::to_string(i);
     workspace_addr_nodes.emplace_back();
-    workspace_addr_nodes.back().nodes.push_back(RAW_CODE_STMT(context.ast_ctx,
-      "  auto " + ws_ptr_name + " = GET_ADDR(total_dev_mem_ptr_, " +
-      std::to_string(v_workspace_offset[i]) + ");"));
-    workspace_addr_nodes.back().var_name = ws_ptr_name;
-    workspace_addr_nodes.back().mem_type = Om2MemoryAppType::kMemoryTypeFix;
+    GE_ASSERT_SUCCESS(BuildSingleWorkspaceAddrNode(context, i, build_params, workspace_addr_nodes.back()));
   }
   GELOGD("[OM2] Workspace addrs code is successfully generated: op_name[%s].", context.op_desc->GetName().c_str());
   return SUCCESS;

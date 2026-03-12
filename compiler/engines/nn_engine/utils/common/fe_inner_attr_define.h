@@ -194,5 +194,7 @@ const std::string kAttrPrefixStr = "_prefix";
 const std::string kAttrSubkernelOpBinaryStr = "_subkernel_op_binary";
 
 const std::string kAicpuBlockDim = "_aicpu_blockdim";
+
+const std::string ATTR_NAME_IS_NULL_OUTPUT = "_is_null_output";
 }
 #endif  // FUSION_ENGINE_UTILS_COMMON_FE_INNER_ATTR_DEFINE_H_

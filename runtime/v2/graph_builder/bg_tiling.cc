@@ -135,8 +135,10 @@ bg::ValueHolderPtr BuildAtomCompileInfo(const ge::NodePtr &node, const std::stri
   const auto space_registry_addr = global_data.GetSpaceRegistryV2(static_cast<gert::OppImplVersionTag>(opp_impl_version));
   GE_ASSERT_NOTNULL(space_registry_addr);
   const auto &space_registry = bg::ValueHolder::CreateConst(&space_registry_addr, sizeof(void *), false);
-  const auto platform_info = bg::AppendCoreTypeToPlatform(
-      node, &global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  const auto assembled_platform_info_holders = bg::AppendCoreTypeToPlatform(node, &global_data);
+  GE_ASSERT_TRUE(assembled_platform_info_holders.size() == static_cast<size_t>(bg::AssemblePlatformInfoIndex::kNums));
+  const auto platform_info =
+      assembled_platform_info_holders[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
   return bg::ValueHolder::CreateSingleDataOutput("TilingParse",
                                                  {json_holder, platform_info, node_type_holder, space_registry});
 }

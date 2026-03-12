@@ -74,8 +74,10 @@ LowerResult LoweringOpTiling(const ge::NodePtr &node, const LowerInput &lower_in
   auto current_node = bg::ValueHolder::GetCurrentFrame()->GetCurrentComputeNode();
   bg::ValueHolder::GetCurrentFrame()->SetCurrentComputeNode(tiling_node);
   auto output_shapes = bg::InferStorageShape(tiling_node, lower_input.input_shapes, *(lower_input.global_data));
-  auto platform_info = bg::AppendCoreTypeToPlatform(
-      node, lower_input.global_data)[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
+  auto assembled_platform_info_holders = bg::AppendCoreTypeToPlatform(node, lower_input.global_data);
+  GE_ASSERT_TRUE(assembled_platform_info_holders.size() == static_cast<size_t>(bg::AssemblePlatformInfoIndex::kNums));
+  auto platform_info =
+      assembled_platform_info_holders[static_cast<size_t>(bg::AssemblePlatformInfoIndex::kPlatformInfo)];
   auto tiling_ret = bg::Tiling(
       tiling_node, lower_input.input_shapes, output_shapes,
       {platform_info, *(lower_input.global_data), launch_arg[static_cast<size_t>(AllocLaunchArgOutputs::kRtArg)]});

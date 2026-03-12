@@ -37,22 +37,25 @@ protected:
      setenv("ASCEND_OPP_PATH", (ascend_install_path + "/opp").c_str(), 1);
      setenv("LD_LIBRARY_PATH", (ascend_install_path + "/runtime/lib64").c_str(), 1);
      graph_ = EsCreateGraphBuilder("Hello");
-     env = getenv("LD_PRELOAD");
-     unsetenv("LD_PRELOAD");
+     const auto env_ptr = getenv("LD_PRELOAD");
+     if (env_ptr != nullptr) {
+       env = env_ptr;
+       unsetenv("LD_PRELOAD");
+     }
  }
  void TearDown() override {
      EsDestroyGraphBuilder(graph_);
      graph_ = nullptr;
      unsetenv("ASCEND_OPP_PATH");
      unsetenv("LD_LIBRARY_PATH");
-     if (env != nullptr) {
-       setenv("LD_PRELOAD", env, 1);
+     if (!env.empty()) {
+       setenv("LD_PRELOAD", env.c_str(), 1);
      }
  }
     EsCGraphBuilder *graph_{nullptr};
 
     ExecutionPoint *ep;
-    const char *env;
+    std::string env;
 };
 
 TEST_F(ExecutionPointUT, load_guard_check_func) {

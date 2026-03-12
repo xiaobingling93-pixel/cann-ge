@@ -407,7 +407,7 @@ void TilingLib::GenPgoHeaders(std::stringstream &ss) const {
   ss << "#include <vector>" << std::endl << std::endl;
 
   ss << "#include \"acl/acl.h\"" << std::endl;
-  ss << "#include \"dlog_pub.h\"" << std::endl;
+  ss << "#include \"toolchain/slog.h\"" << std::endl;
   ss << "#include \"mspti.h\"" << std::endl;
   ss << "#include \"tiling/platform/platform_ascendc.h\"" << std::endl << std::endl;
 
@@ -1355,7 +1355,6 @@ extern "C" int64_t GenCVFusionTilingKey(char* config_file, int aiv_num, int ub_s
   ResLimit limit;
   limit.aiv_num = aiv_num;
   limit.ub_size = ub_size - 256;
-  int32_t basen_basem_align = compute_basen_basem_align();
   set_g_basen_basem_align(basen_basem_align);
   OP_LOGI(OP_NAME, "basen_basem_align=%d, set_g_basen_basem_align=%d", basen_basem_align, get_g_basen_basem_align());
   auto ret = AutofuseTilingWithConfig(config_file, &TilingDataValue, &workspace_size, &block_dim, &limit, 0);
@@ -1415,6 +1414,7 @@ std::map<std::string, std::string> TilingLib::GenerateCVFusion(const ascir::Fuse
   }
   std::stringstream ss;
   ss << kTilingHeadInclude << std::endl;
+  ss << kCubeTilingHeadInclude << std::endl;
   ss << kTilingHeadCceKtTestGuard << std::endl;
   ss << kTilingHeadTilingContext << std::endl;
   ss << kTilingHeadEndGuard << std::endl;
@@ -1494,7 +1494,7 @@ std::string TilingLib::StubHeadersWithoutCodegenFunc() const {
 	ss << "#include <cinttypes>" << std::endl;
 	ss << "#include <sys/syscall.h>" << std::endl;
 	ss << "#include <unistd.h>" << std::endl;
-	ss << "#include \"dlog_pub.h\"" << std::endl;
+	ss << "#include \"toolchain/slog.h\"" << std::endl;
 	ss << "#define OP_LOGD(name, fmt, ...)" << std::endl;
 	ss << "#define OP_LOGI(name, fmt, ...)" << std::endl;
 	ss << "#define GE_MODULE_NAME static_cast<int32_t>(45)" << std::endl;
@@ -1552,7 +1552,8 @@ std::string TilingLib::GetTilingIncludeHead(bool is_cv) const {
   ss << "#include <cmath>" << std::endl;
   ss << "#include \"autofuse_tiling_data.h\"" << std::endl;
   if (is_cv) {
-    ss << "#include \"autofuse_cube_tiling_data.h\"" << std::endl;
+    ss << "int32_t get_g_basen_basem_align();" << std::endl;
+    ss << "void set_g_basen_basem_align(int32_t value);" << std::endl;
   }
   ss << kTilingHeadCceKtTestGuard << std::endl;
   ss << "#include \"exe_graph/runtime/infer_shape_context.h\"" << std::endl;

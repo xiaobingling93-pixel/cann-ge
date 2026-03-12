@@ -15,7 +15,6 @@
 #include <thread>
 #include "deploy/execfwk/pne_executor_client.h"
 #include "common/message_handle/message_client.h"
-#include "executor/executor_event_defs.h"
 #include "common/config/device_debug_config.h"
 
 namespace ge {

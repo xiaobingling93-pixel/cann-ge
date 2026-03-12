@@ -19,8 +19,8 @@
 #include <map>
 #include <securec.h>
 #include <vector>
-#include "dlog_pub.h"
-#include "err_mgr.h"
+#include "toolchain/slog.h"
+#include "err_msg.h"
 
 #define GE_MODULE_NAME static_cast<int32_t>(45)
 inline bool IsLogPrintStdout() {

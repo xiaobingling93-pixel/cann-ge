@@ -74,6 +74,10 @@ VarInfo &ArgsManager::SetSizeInfo(VarInfo &info, const SymVarInfoPtr &var_info, 
   info.is_concat_inner_dim = arg_axis->is_concat_inner_dim;
   info.is_concat_outer_dim = arg_axis->is_concat_outer_dim;
   info.scopes = var_info->related_scope;
+  GELOGD("[PROMPT_ALIGN] SetSizeInfo for axis[%s]: prompt_align=%u, align=%s, data_type_size=%u, "
+         "is_concat_inner_dim=%d, is_concat_outer_dim=%d",
+         arg_axis->name.c_str(), info.prompt_align, Str(info.align).c_str(), info.data_type_size,
+         info.is_concat_inner_dim, info.is_concat_outer_dim);
   if (IsValid(var_info->max_value)) {
     info.max_value = var_info->max_value;
   } else {
@@ -122,11 +126,24 @@ bool SplitVars(const AttAxisPtr &arg_axis, ExprInfoMap &var_infos) {
   if (arg_axis->axis_pos == AxisPosition::ORIGIN) {
     if (arg_axis->size->symbol_expr.GetExprType() == ge::ExprType::kExprOperation) {
       auto args = arg_axis->size->symbol_expr.FreeSymbols();
+      GELOGD("[PROMPT_ALIGN] SplitVars: axis[%s] has %zu free variables, is_concat_inner_dim=%d, is_concat_outer_dim=%d, "
+             "prompt_align=%u, data_type_size=%u",
+             arg_axis->name.c_str(), args.size(), arg_axis->is_concat_inner_dim, arg_axis->is_concat_outer_dim,
+             arg_axis->size->prompt_align, arg_axis->size->data_type_size);
       for (auto &arg : args) {
         if (arg.GetExprType() == ge::ExprType::kExprVariable) {
           VarInfo info;
           info.is_input_var = true;
+          // 修复：继承原始轴的prompt_align等属性
+          info.prompt_align = arg_axis->size->prompt_align;
+          info.data_type_size = arg_axis->size->data_type_size;
+          info.is_concat_inner_dim = arg_axis->is_concat_inner_dim;
+          info.is_concat_outer_dim = arg_axis->is_concat_outer_dim;
           var_infos.emplace(arg, info);
+          GELOGD("[PROMPT_ALIGN] SplitVars: created free variable[%s] with prompt_align=%u, data_type_size=%u, "
+                 "is_concat_inner_dim=%d, is_concat_outer_dim=%d",
+                 Str(arg).c_str(), info.prompt_align, info.data_type_size,
+                 info.is_concat_inner_dim, info.is_concat_outer_dim);
         }
       }
       return true;
@@ -158,8 +175,13 @@ VarInfo ArgsManager::GetNaiveVarInfo(const AttAxis *arg_axis) {
     info.is_concat_inner_dim = arg_axis->is_concat_inner_dim;
     info.is_concat_outer_dim = arg_axis->is_concat_outer_dim;
     info.const_value = size_const_info->const_value;
+    info.data_type_size = size_const_info->data_type_size;
     info = SetInitSize(info, arg_axis->is_last);
     info.value_range = size_const_info->value_range;
+    GELOGD("[PROMPT_ALIGN] GetNaiveVarInfo (const) axis[%s]: prompt_align=%u, data_type_size=%u, "
+           "is_concat_inner_dim=%d, is_concat_outer_dim=%d",
+           arg_axis->name.c_str(), info.prompt_align, info.data_type_size,
+           info.is_concat_inner_dim, info.is_concat_outer_dim);
   } else {
     GELOGE(ge::FAILED, "Arg [%s] size type is not defined.", arg_axis->name.c_str());
   }

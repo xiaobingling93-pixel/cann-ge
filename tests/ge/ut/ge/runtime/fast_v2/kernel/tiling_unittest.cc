@@ -120,12 +120,12 @@ TEST_F(TilingUT, Tiling_PrintTilingData_Success) {
 }
 
 TEST_F(TilingUT, Tiling_PrintTilingCacheStatus_Success) {
-  auto run_context = BuildKernelRunContext(2, 10);
+  auto run_context = BuildKernelRunContext(2, gert::TilingContext::kOutputNum + 1);
   auto holder = CreateLaunchArg(2, 8);
   ASSERT_NE(holder, nullptr);
   auto args = reinterpret_cast<RtKernelLaunchArgsEx *>(holder.get());
   run_context.value_holder[5].Set(&(args->GetTilingData()), nullptr);
-  run_context.value_holder[11].Set(args, nullptr);
+  run_context.value_holder[gert::TilingContext::kOutputNum + 2].Set(args, nullptr);
   auto msgs = tiling->trace_printer(run_context);
   ASSERT_EQ(msgs.size(), 1U);
   ASSERT_TRUE(msgs[0].find("Tiling cache status: disabled, ") != string::npos);

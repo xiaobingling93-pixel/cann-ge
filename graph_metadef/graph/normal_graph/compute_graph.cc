@@ -1575,7 +1575,7 @@ void ComputeGraphImpl::SetGraphTargetNodesInfo(const std::vector<ge::NodePtr> &t
   GELOGI("User pointed targets size = %zu.", targets_.size());
 }
 
-graphStatus ComputeGraphImpl::CreateNetOutputNode(ge::OpDescPtr &net_output_desc) {
+graphStatus ComputeGraphImpl::CreateNetOutputNode(ge::OpDescPtr &net_output_desc) const {
   // Only flush subgraph name
   std::string node_name =
       (GetParentGraph() != nullptr) ? (GetName() + "_" + NODE_NAME_NET_OUTPUT) : NODE_NAME_NET_OUTPUT;
@@ -1929,7 +1929,7 @@ graphStatus ComputeGraphImpl::UpdateNetOutputDesc(const ge::NodePtr &net_output)
   OpDescPtr net_output_desc = net_output->GetOpDesc();
   GE_ASSERT_NOTNULL(net_output_desc, "OpDesc in Param net_output is nullptr, check invalid");
   std::vector<bool> is_input_const;
-  for (const auto &in_anchor : net_output->GetAllInDataAnchors()) {
+  for (const auto in_anchor : net_output->GetAllInDataAnchorsPtr()) {
     auto index = static_cast<uint32_t>(in_anchor->GetIdx());
     GE_ASSERT_TRUE(index < net_output_desc->GetAllInputsSize(),
                    "Node:%s(%s) has in_anchor index:%u >= its input desc num:%zu, check invalid",
@@ -1977,7 +1977,7 @@ graphStatus ComputeGraphImpl::UnLinkDataAnchorOfNetoutput(const ge::NodePtr &net
   GE_ASSERT_NOTNULL(net_out_node, "Param net_out_node is nullptr, check invalid");
   Status ret = SUCCESS;
   // unlink all anchor to data anchor of netoutput
-  for (auto &in_data_anchor : net_out_node->GetAllInDataAnchors()) {
+  for (auto in_data_anchor : net_out_node->GetAllInDataAnchorsPtr()) {
     auto peer_out_anchor = in_data_anchor->GetPeerOutAnchor();
     if (peer_out_anchor == nullptr) {
       GELOGI("PeerOutAnchor is null!");

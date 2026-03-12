@@ -241,12 +241,12 @@ class AiCoreTaskDefBuilder {
     std::vector<char> relu_kernel(256);
     op_desc->SetExtAttr(OP_EXTATTR_NAME_TBE_KERNEL, std::make_shared<OpKernelBin>("relu_xxx", std::move(relu_kernel)));
 
-    std::vector<uint8_t> args(32, 0);
+    std::vector<uint8_t> args(64, 0);
     domi::TaskDef task_def;
     task_def.set_type(static_cast<uint32_t>(ModelTaskType::MODEL_TASK_KERNEL));
     auto kernel_info = task_def.mutable_kernel();
     kernel_info->set_args(args.data(), args.size());
-    kernel_info->set_args_size(32);
+    kernel_info->set_args_size(64);
     kernel_info->mutable_context()->set_kernel_type(static_cast<uint32_t>(ccKernelType::TE));
     kernel_info->set_kernel_name(node_.GetName());
     kernel_info->set_block_dim(1);

@@ -1669,6 +1669,32 @@ TEST_F(BgCacheableTilingUT, BgTilingLegacy_Ok_CoreNumInvalid) {
   dlog_setlevel(GE_MODULE_NAME, 3, 0);
 }
 
+TEST_F(BgCacheableTilingUT, AppendCoreTypeToPlatform_NullGlobalData) {
+  auto graph = BuildTwoInputsGraph("Add");
+  auto test_node = graph->FindNode("Add");
+  ASSERT_NE(test_node, nullptr);
+  auto assemble_platform_infos = AppendCoreTypeToPlatform(test_node, nullptr);
+  ASSERT_EQ(assemble_platform_infos.size(), 0);
+}
+
+TEST_F(BgCacheableTilingUT, AppendCoreTypeToPlatform_InvalidAiCoreNum) {
+  std::string node_type = "bg_node_invalid_aicore";
+  auto graph = BuildTwoInputsGraph(node_type);
+  auto test_node = graph->FindNode(node_type);
+  AttrUtils::SetStr(test_node->GetOpDesc(), optiling::COMPILE_INFO_JSON, "{ key : value}");
+  AttrUtils::SetStr(test_node->GetOpDesc(), optiling::COMPILE_INFO_KEY, "{}");
+  optiling::OpTilingFuncRegistry(test_node->GetType(), StubOpTilingFuncV4, StubOpParseFuncV4);
+
+  auto root_model = GeModelBuilder(graph).BuildGeRootModel();
+  auto global_data = GlobalDataFaker(root_model).Build();
+  bg::LowerConstDataNode(global_data);
+  LowerInput data_input = {{}, {}, &global_data};
+
+  AttrUtils::SetStr(test_node->GetOpDesc(), "_op_aicore_num", "invalid");
+  auto assemble_platform_infos = AppendCoreTypeToPlatform(test_node, data_input.global_data);
+  ASSERT_EQ(assemble_platform_infos.size(), 0);
+}
+
 TEST_F(BgCacheableTilingUT, BgTiling_TopoCorrect) {
   auto in_shape0 = ValueHolder::CreateFeed(0);
   auto in_shape1 = ValueHolder::CreateFeed(1);

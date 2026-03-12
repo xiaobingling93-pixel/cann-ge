@@ -1280,8 +1280,8 @@ TEST_F(ConcatScheduleCaseGeneratorTest, RecomputeNode_HorizontalFuse) {
   optimize::ConcatGroupPartitioner partitioner(concat_node, 1);
   std::vector<optimize::ConcatGroupPartitioner::ConcatGroup> groups;
   ASSERT_EQ(partitioner.PartitionGroups(groups), ge::SUCCESS);
-  ASSERT_TRUE(partitioner.HasRecompute());
   ::ascir::utils::DumpGraph(graph, "AfterGroup");
+  ASSERT_FALSE(partitioner.HasRecompute());
 }
 
 TEST_F(ConcatScheduleCaseGeneratorTest, RecomputeSingeItemGroups) {

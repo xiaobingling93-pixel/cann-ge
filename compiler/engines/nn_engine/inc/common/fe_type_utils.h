@@ -35,6 +35,8 @@ std::string GetBufferOptimizeString(const BufferOptimize &buffer_optimize);
 
 bool IsMemoryEmpty(const ge::GeTensorDesc &tensor_desc);
 
+bool HasNullableOutput(const ge::GeTensorDesc &tensor_desc);
+
 bool IsSubGraphData(const ge::OpDescPtr &op_desc_ptr);
 
 bool IsSubGraphNetOutput(const ge::OpDescPtr &op_desc_ptr);

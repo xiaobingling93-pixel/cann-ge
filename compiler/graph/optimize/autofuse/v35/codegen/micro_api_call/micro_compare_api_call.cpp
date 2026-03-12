@@ -17,26 +17,27 @@ Status MicroCompareApiCall::Generate(const codegen::TensorManager &tensor_mng, [
                                      CallParam &param, string &result) {
   GE_ASSERT_TRUE(this->inputs_.size() == 2, "Compare api call must have 2 inputs");
   GE_ASSERT_TRUE(this->outputs_.size() == 1, "Compare api call must have 1 output");
-  for (auto input : this->inputs_) {
-    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(input.second));
-  }
-  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->outputs_[0].second));
+
   std::stringstream ss;
   auto dtype = tensor_mng.GetTensor(this->inputs_[0].second)->dtype_;
   string dtype_name;
   Tensor::DtypeName(dtype, dtype_name);
   ss << "AscendC::MicroAPI::" << "Compare" << (this->second_input_scalar_ ? "s" : "");
   ss << "<" << dtype_name << ", CMPMODE::" << this->api_name_ << ">(";
-  for (auto out_arg : this->outputs_) {
-    ss << *(tensor_mng.GetTensor(out_arg.second)) << ", ";
-  }
+
+  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->outputs_[0].second));
+  ss << *(tensor_mng.GetTensor(this->outputs_[0].second)) << ", ";
+
+  GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->inputs_[0].second));
   ss << *(tensor_mng.GetTensor(this->inputs_[0].second)) << ", ";
-  if (inputs_[1].first == TensorType::REG_TENSOR) {
-    ss << *tensor_mng.GetTensor(inputs_[1].second);
+  if (inputs_[1].first != TensorType::REG_TENSOR) {
+    GE_ASSERT_NOTNULL(tpipe.GetTensor(this->inputs_[1].second));
+    ss << *(tpipe.GetTensor(inputs_[1].second)) << ", ";
   } else {
-    ss << *tpipe.GetTensor(inputs_[1].second);
+    GE_ASSERT_NOTNULL(tensor_mng.GetTensor(this->inputs_[1].second));
+    ss << *(tensor_mng.GetTensor(inputs_[1].second)) << ", ";
   }
-  ss << ", " << param.p_reg << ");" << std::endl;
+  ss << param.p_reg << ");" << std::endl;
   result = ss.str();
   return ge::SUCCESS;
 }

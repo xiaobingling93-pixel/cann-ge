@@ -572,6 +572,16 @@ public:
         ddr_base_prop_ = ddrBaseProp;
     }
 
+    void SetIsNullOutput(const bool is_null_output)
+ 	{
+ 	    is_null_output_ = is_null_output;
+ 	}
+ 	  
+ 	void GetIsNullOutput(bool &is_null_output) const
+ 	{
+ 	    is_null_output = is_null_output_;
+ 	}
+
     bool operator==(TbeOpTensor& rObject);
 
 private:
@@ -615,6 +625,7 @@ private:
     int64_t cAxisValue_{-1};
     DdrBaseType ddr_base_prop_;
     int32_t is_input_const_{-1};
+    bool is_null_output_{false};
 };
 }
 #endif  // ATC_OPCOMPILER_INC_TENSOR_ENGINE_TBE_OP_TENSOR_H_

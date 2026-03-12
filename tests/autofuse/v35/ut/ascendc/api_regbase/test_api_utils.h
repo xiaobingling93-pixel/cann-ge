@@ -110,6 +110,40 @@ constexpr inline double DefaultCompare(double a, double b) {
   return (a - b) < atol && (a - b) > (-atol);
 }
 
+template <typename T>
+struct BinaryInputParam {
+  T *y{};
+  T *x1{};
+  T *x2{};
+  T *exp{};
+  uint32_t size{};
+};
+
+template <typename T>
+struct UnaryInputParam {
+  T *y{};
+  T *x1{};
+  T *exp{};
+  uint32_t size{};
+};
+
+template <typename T>
+static uint32_t Valid(T *y, T *exp, uint32_t size) {
+  uint32_t diff_count = 0;
+  for (uint32_t i = 0; i < size; i++) {
+    if constexpr (std::is_same_v<T, float>) {
+      if (!DefaultCompare(y[i], exp[i])) {
+        diff_count++;
+      }
+    } else {
+      if (y[i] != exp[i]) {
+        diff_count++;
+      }
+    }
+  }
+  return diff_count;
+}
+
 template<typename T>
 void UnaryTest(int size,
         std::function<void(LocalTensor<T>& x, LocalTensor<T>& y, int size, LocalTensor<uint8_t>& tmp)> calc,
