@@ -285,7 +285,11 @@ HcclResult HcomOpsKernelBuilder::GetCountsFromOpDesc(const ge::Node &node, void 
 HcclResult HcomOpsKernelBuilder::TaskDefSetNumBlocks(const ge::Node &node, domi::TaskDef &taskDef,
                                                      const std::string sCollectiveType, const u32 aivCoreLimit) {
   DevType devType = HcomGetDeviceType();
+#ifdef MACRO_DEV_TYPE_NEW
+  if (devType == DevType::DEV_TYPE_950) {
+#else
   if (devType == DevType::DEV_TYPE_910_95) {
+#endif
     return HCCL_SUCCESS;
   }
 
@@ -533,7 +537,11 @@ HcclResult HcomOpsKernelBuilder::SetAttachedStreamInfoList(ge::Node &node, const
   bool ifAiv = false;
   std::string superKernel{};
   DevType devType = HcomGetDeviceType();
+#ifdef MACRO_DEV_TYPE_NEW
+  if (devType != DevType::DEV_TYPE_950) {
+#else
   if (devType != DevType::DEV_TYPE_910_95) {
+#endif
     CHK_PRT(JudgeIsAivMode(node, node.GetOpDesc()->GetType(), ifAiv));
     HCCL_INFO("[%s] ifAiv[%d] should %s set attached stream info", __func__, ifAiv, ifAiv ? "" : "not");
   } else {

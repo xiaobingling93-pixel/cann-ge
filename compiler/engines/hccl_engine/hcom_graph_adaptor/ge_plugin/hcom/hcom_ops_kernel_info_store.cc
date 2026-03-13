@@ -3120,7 +3120,11 @@ HcclResult HcomOpsKernelInfoStore::SetAivCoreLimit(const ge::GETaskInfo &task) {
 #ifndef OPEN_BUILD_PROJECT
 HcclResult HcomOpsKernelInfoStore::CleanInterMemory(DevType devType, std::vector<std::int64_t> &crackSize,
                                                     std::vector<std::int64_t> &crackAddr, rtStream_t stream) {
+#ifdef MACRO_DEV_TYPE_NEW
+  if (devType == DevType::DEV_TYPE_950) {
+#else
   if (devType == DevType::DEV_TYPE_910_95) {
+#endif
     // 遍历内存块列表
     for (size_t i = 0; i < crackSize.size();) {
       int64_t currentSize = crackSize[i];

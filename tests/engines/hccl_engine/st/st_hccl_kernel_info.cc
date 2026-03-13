@@ -1553,7 +1553,11 @@ TEST_F(HcomKernelInfoTest, st_GetHcomOutCCLbufferSize)
     .stubs()
     .with(mockcpp::any(), mockcpp::any(), outBound(outputAddrPtr), outBound(&OutputAddrSize))
     .will(returnValue(HCCL_SUCCESS));
+#ifdef MACRO_DEV_TYPE_NEW
+    MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_950));
+#else
     MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_910_95));
+#endif
     ret = hcomOpsKernelInfoStore_.GetHcomOutCCLbufferSize(commOutputSize, shapeType, hcomComm, sGroup);
     EXPECT_EQ(ret, HCCL_SUCCESS);
     ret = hcomOpsKernelInfoStore_.GetHcomInCCLbufferSize(commOutputSize, shapeType, hcomComm, sGroup);
@@ -3084,7 +3088,11 @@ TEST_F(HcomKernelInfoTest, st_CleanIntervalMemory_When_Normal_Expect_ReturnlsHCC
 
     std::vector<std::int64_t> crackAddr = {16};
     std::vector<std::int64_t> crackSize = {16};
+#ifdef MACRO_DEV_TYPE_NEW
+    DevType devType = DevType::DEV_TYPE_950;
+#else
     DevType devType = DevType::DEV_TYPE_910_95;
+#endif
 
     MOCKER(hrtMemAsyncCopy)
     .stubs()
@@ -3122,7 +3130,11 @@ TEST_F(HcomKernelInfoTest, st_GetInputCCLbufPtrAndIndirectInCCLbufPtr_When_Norma
     HcclDataType dataType = HCCL_DATA_TYPE_FP32;
 
     u64 commOutputSize = 102400;
+#ifdef MACRO_DEV_TYPE_NEW
+    MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_950));
+#else
     MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_910_95));
+#endif
     HcomOpsKernelInfoStore hcomKernelInfo;
     hcomKernelInfo.GetInputCCLbufPtrAndIndirectInCCLbufPtr(hcomComm, sGroup, inputAddr, inputAddrSize, outputAddr, OutputAddrSize);
     hcomKernelInfo.GetOutputCCLbufPtrAndIndirectOutCCLbufPtr(hcomComm, sGroup, inputAddr, inputAddrSize, outputAddr, OutputAddrSize);
