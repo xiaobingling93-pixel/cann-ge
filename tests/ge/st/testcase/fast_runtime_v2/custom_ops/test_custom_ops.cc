@@ -62,7 +62,7 @@ class TestBaseCustomOp : public EagerExecuteOp {
     auto workspaces = ctx->MallocWorkSpace(1024);
     GE_ASSERT_NOTNULL(workspaces);
     auto output_tensor = ctx->MallocOutputTensor(0, StorageShape({2048}, {2048}),
-        StorageFormat(FORMAT_ND, FORMAT_ND, ExpandDimsType()), DT_FLOAT, 10240);
+        StorageFormat(FORMAT_ND, FORMAT_ND, ExpandDimsType()), DT_FLOAT);
     GE_ASSERT_NOTNULL(output_tensor);
     auto output_shape = output_tensor->GetShape().GetStorageShape();
     GE_ASSERT_TRUE(output_shape.GetDimNum() == 1);

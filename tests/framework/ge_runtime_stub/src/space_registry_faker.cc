@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -177,9 +177,10 @@ SpaceRegistryFaker::~SpaceRegistryFaker() {
 
 OpImplSpaceRegistryV2Ptr SpaceRegistryFaker::Build() {
   auto space_registry = std::make_shared<gert::OpImplSpaceRegistryV2>();
-  std::string cmake_binary_path = CMAKE_BINARY_DIR;
-  auto op_impl_path = cmake_binary_path + "/tests/depends/op_stub/libgert_op_impl2.so";
-  space_registry->AddSoToRegistry(
+   std::string cmake_binary_path = CMAKE_BINARY_DIR;
+   auto op_impl_path = cmake_binary_path + "/tests/depends/op_stub/libgert_op_impl2.so";
+
+   space_registry->AddSoToRegistry(
       gert::OppSoDesc(std::vector<ge::AscendString>{ge::AscendString(op_impl_path.c_str())}, "libgert_op_impl2.so"));
   return space_registry;
 }

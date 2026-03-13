@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -44,9 +44,12 @@
 #include "hcom/hcom_topo_info.h"
 #include "dflow/inc/data_flow/model/graph_model.h"
 #include "common/opskernel/ops_kernel_info_types.h"
+#include "graph/custom_op_factory.h"
+#include "graph/custom_op.h"
 
 extern ge::SessionManager *GetSessionManager();
 namespace ge {
+using namespace gert;
 namespace {
 class ExternalAllocatorUtStub : public Allocator {
  public:
@@ -234,7 +237,6 @@ Status GenerateTaskForMemCopyAync(const Node &node,
   if ((node.GetType() != MEMCPYASYNC) && (node.GetType() != IDENTITY)) {
     return SUCCESS;
   }
-
   domi::TaskDef task_def;
   task_def.set_type(static_cast<uint32_t>(ModelTaskType::MODEL_TASK_MEMCPY_ASYNC));
   auto kernel_def = task_def.mutable_memcpy_async();
@@ -476,9 +478,9 @@ void ConstructIOTensor(std::vector<ge::Tensor> &inputs,
   output_tensor_2.SetData(output_data_2.data(), output_data_2.size());
   outputs.emplace_back(output_tensor_2);
 }
+
 }
 
-using namespace gert;
 class FmMemoryRefreshTest : public testing::Test {
  protected:
   void SetUp() {
@@ -6502,7 +6504,7 @@ TEST_F(FmMemoryRefreshTest, UnknownGraphUserNotSetFixedFeatureMemory_GeMallocHbm
   EXPECT_NE(ge_model, nullptr);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_STREAM_NUM, 7));
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_VAR_SIZE, 1536));
-  
+
 
   // get graph summary
   const CompiledGraphSummaryPtr summary = session.GetCompiledGraphSummary(graph_id);
@@ -6617,7 +6619,7 @@ TEST_F(FmMemoryRefreshTest, UnknownGraphUserOnlySetHbmFixedFeatureMemory_GeMallo
   EXPECT_NE(ge_model, nullptr);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_STREAM_NUM, 7));
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_VAR_SIZE, 1536));
-  
+
 
   // get graph summary
   const CompiledGraphSummaryPtr summary = session.GetCompiledGraphSummary(graph_id);
@@ -6735,7 +6737,7 @@ TEST_F(FmMemoryRefreshTest, UnknownGraphUserSetHbmFixedFeatureMemoryNullptr_GeMa
   EXPECT_NE(ge_model, nullptr);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_STREAM_NUM, 7));
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_VAR_SIZE, 1536));
-  
+
 
   // get graph summary
   const CompiledGraphSummaryPtr summary = session.GetCompiledGraphSummary(graph_id);
@@ -8187,7 +8189,7 @@ TEST_F(FmMemoryRefreshTest, set_fixed_fm_memory_dynamic_0001) {
   EXPECT_NE(ge_model, nullptr);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_STREAM_NUM, 5));
   EXPECT_TRUE(AttrUtils::SetInt(ge_model, ATTR_MODEL_VAR_SIZE, 1536));
-  
+
 
   // get graph summary
   const CompiledGraphSummaryPtr summary = session.GetCompiledGraphSummary(graph_id);
@@ -8257,6 +8259,7 @@ Graph BuildDataNetoutputGraph() {
   auto graph = ToGeGraph(simple_d2o);
   return graph;
 }
+
 
 Status GenerateTaskForMemcpyAddrAsync(const Node &node, RunContext &run_context,
                                       std::vector<domi::TaskDef> &tasks, std::string (*builder)(size_t)) {

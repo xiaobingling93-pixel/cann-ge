@@ -818,6 +818,8 @@ class DavinciModel {
     return rt_model_stream_;
   }
 
+  std::shared_ptr<MemoryBlockManager> GetAllocator();
+
   Status MallocExMem();
   void *MallocDynamicMemory(const size_t size, const rtMemType_t mem_type = RT_MEMORY_HBM);
   void FreeDynamicWorkspaceMemory();

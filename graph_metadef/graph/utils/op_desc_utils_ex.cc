@@ -121,7 +121,6 @@ graphStatus OpDescUtilsEx::InferCustomOpShape(const OpDescPtr &op_desc, Operator
     GELOGI("[Call][InferFunc] call V2 func for op [%s][%s]", op_desc->GetNamePtr(), op_desc->GetTypePtr());
     return CallInferFuncV2(op_desc, op);
   }
-
   for (size_t index = 0UL; index < op_desc->GetOutputsSize(); index++) {
     auto output_tensor = op_desc->MutableOutputDesc(index);
     GE_ASSERT_NOTNULL(output_tensor);

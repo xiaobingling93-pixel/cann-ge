@@ -46,7 +46,7 @@ public:
     DataType data_type = input_x->GetDataType();
     const gert::StorageFormat &format = input_x->GetFormat();
     // 申请输出Tensor内存并校验
-    gert::Tensor *output_z = ctx->MallocOutputTensor(0, output_shape, format, data_type, tensor_size);
+    gert::Tensor *output_z = ctx->MallocOutputTensor(0, output_shape, format, data_type);
     if (output_z == nullptr) {
       std::cerr <<"Failed to malloc output tensor memory!"<< std::endl;
       return GRAPH_FAILED;

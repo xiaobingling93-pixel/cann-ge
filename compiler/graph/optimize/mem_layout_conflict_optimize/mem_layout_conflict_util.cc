@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -400,6 +400,10 @@ bool MemLayoutConflictUtil::IsAddressRefreshable(const NodePtr &node) {
   GE_ASSERT_NOTNULL(node->GetOpDesc());
   if (ge::OpUtils::IsHcomNodeNotSupportAddrRefresh(node->GetOpDesc()) &&
       !IsGraphFeatureMapRefreshable(node->GetOwnerComputeGraph())) {
+    return false;
+  }
+  // 后续支持地址刷新特性的时候需要调整判断逻辑
+  if (node->GetOpDesc()->GetOpKernelLibName() == ge::kCustomOpKernelLibName) {
     return false;
   }
 
@@ -1396,7 +1400,7 @@ Status MemLayoutConflictUtil::CheckWhileConflict(const NodePtr &ctrl_node,
 
   bool is_need_insert = true;
   GE_ASSERT_SUCCESS(IsWhileNeedInsertIdentityAtOutput(while_body, is_need_insert));
-  
+
   if (is_need_insert) {
     for (size_t i = 0U; i < netoutput->GetAllInDataAnchorsSize(); i++) {
       if (bypass_index_no_change.count(i) != 0U) {

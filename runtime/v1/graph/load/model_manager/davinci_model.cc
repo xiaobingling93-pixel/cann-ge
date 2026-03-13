@@ -148,7 +148,7 @@ const std::map<rtFftsPlusContextType_t, MsprofGeTaskType> ctx_type_to_task_types
     {RT_CTX_TYPE_INVALIDATE_DATA, MSPROF_GE_TASK_TYPE_INVALID},
     {RT_CTX_TYPE_DSA, MSPROF_GE_TASK_TYPE_DSA}};
 
-const std::map<ModelTaskType, MsprofGeTaskType> model_task_type_to_task_types {
+const std::map<ModelTaskType, MsprofGeTaskType> model_task_type_to_task_types{
     {ModelTaskType::MODEL_TASK_KERNEL, MSPROF_GE_TASK_TYPE_AI_CORE},
     {ModelTaskType::MODEL_TASK_VECTOR_KERNEL, MSPROF_GE_TASK_TYPE_AIV},
     {ModelTaskType::MODEL_TASK_VECTOR_ALL_KERNEL, MSPROF_GE_TASK_TYPE_AIV},
@@ -158,8 +158,8 @@ const std::map<ModelTaskType, MsprofGeTaskType> model_task_type_to_task_types {
     {ModelTaskType::MODEL_TASK_ALL_KERNEL, MSPROF_GE_TASK_TYPE_AI_CORE},
     {ModelTaskType::MODEL_TASK_SUPER_KERNEL, MSPROF_GE_TASK_TYPE_AI_CORE},
     {ModelTaskType::MODEL_TASK_FUSION_KERNEL, MSPROF_GE_TASK_TYPE_AI_CORE},
-    {ModelTaskType::MODEL_TASK_KERNEL_LAUNCH_V2, MSPROF_GE_TASK_TYPE_AI_CORE}
-};
+    {ModelTaskType::MODEL_TASK_KERNEL_LAUNCH_V2, MSPROF_GE_TASK_TYPE_AI_CORE},
+    {ModelTaskType::MODEL_TASK_CUSTOM_KERNEL, MSPROF_GE_TASK_TYPE_AI_CORE}};
 
 inline bool IsNoTaskAndDumpNeeded(const OpDescPtr &op_desc) {
   bool save_dump_info = false;
@@ -6128,6 +6128,7 @@ Status DavinciModel::DistributeTask(const domi::ModelTaskDef &model_task_def) {
 
     // 保存stream id task id 与opdesc的 信息
     const auto op_index = task_info->ParseOpIndex(task_def);
+
     SaveDfxInfo(op_index, *task_info);
     ModelManager::GetInstance().SetCallBackFuncForDumpManager();
     // for profiling and data dump
@@ -7793,6 +7794,15 @@ Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode, c
   GE_ASSERT_SUCCESS(LaunchEventForHcclGroupOrderedStream(rt_model_stream_));
   PrintfModelProfOfModelExecute();
   return SUCCESS;
+}
+
+std::shared_ptr<MemoryBlockManager> DavinciModel::GetAllocator() {
+  auto &allocator = mem_type_to_allocator_[RT_MEMORY_HBM];
+  if (allocator == nullptr) {
+    allocator = ge::MakeShared<MemoryBlockManager>(RT_MEMORY_HBM, kHugePagesize);
+    GE_ASSERT_NOTNULL(allocator);
+  }
+  return allocator;
 }
 
 // Add active entry stream for special env.

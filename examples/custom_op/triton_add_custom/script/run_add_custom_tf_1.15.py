@@ -39,6 +39,7 @@ def main(unused_argv):
     custom_op.name = "NpuOptimizer"
     config.graph_options.rewrite_options.remapping = RewriterConfig.OFF
     config.graph_options.rewrite_options.memory_optimization = RewriterConfig.OFF
+    # custom_op.parameter_map["compile_dynamic_mode"].b = True  # 动态或静态shape配置（默认走静态，添加配置走动态）
 
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())

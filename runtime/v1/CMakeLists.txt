@@ -53,6 +53,7 @@ set(DAVINCI_SRC_LIST
     graph/load/model_manager/model_args_manager.cc
     graph/load/model_manager/aicpu_resources.cc
     graph/load/model_manager/model_utils.cc
+    graph/load/model_manager/sink_only_allocator.cc
     graph/load/model_manager/task_info/args_format/args_format_utils.cc
     graph/load/model_manager/kernel/kernel_register_info_builder.cc
     graph/load/model_manager/kernel/model_kernel_handles_manager.cc
@@ -90,6 +91,7 @@ set(DAVINCI_SRC_LIST
     graph/load/model_manager/task_info/rts/memcpy_addr_async_task_info.cc
     graph/load/model_manager/task_info/rts/memcpy_async_task_info.cc
     graph/load/model_manager/task_info/ge/profiler_trace_task_info.cc
+    graph/load/model_manager/task_info/ge/custom_task_info.cc
     graph/load/model_manager/task_info/rts/stream_active_task_info.cc
     graph/load/model_manager/task_info/rts/stream_switch_task_info.cc
     graph/load/model_manager/task_info/task_info.cc
@@ -358,6 +360,7 @@ target_compile_definitions(davinci_executor PRIVATE
 
 target_include_directories(davinci_executor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ASCEND_INSTALL_PATH}/pkg_inc
     ${AIR_CODE_DIR}
     ${AIR_CODE_DIR}/base
     ${AIR_CODE_DIR}/compiler
