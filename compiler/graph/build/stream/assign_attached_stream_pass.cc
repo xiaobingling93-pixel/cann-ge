@@ -170,8 +170,8 @@ Status AssignAttachedStreamPass::SetAttachedStreamV2(const OpDescPtr &op_desc, c
     GE_ASSERT_TRUE(AttrUtils::GetStr(attr, ATTR_NAME_ATTACHED_RESOURCE_NAME, attr_name));
     (void) AttrUtils::GetStr(attr, ATTR_NAME_ATTACHED_RESOURCE_REUSE_KEY, attr_reuse_key);
     (void) AttrUtils::GetBool(attr, ATTR_NAME_ATTACHED_RESOURCE_FORCE_REUSE, force_reuse);
-    GELOGI("Try set stream id, reuse key is %s, reuse_key_from_attr is %s，force_reuse is %d", reuse_key.c_str(),
-           attr_reuse_key.c_str(), static_cast<int32_t>(force_reuse));
+    GELOGI("Try set stream id, reuse key is %s, reuse_key_from_attr is %s, force_reuse is %d", reuse_key.c_str(),
+            attr_reuse_key.c_str(), static_cast<int32_t>(force_reuse));
     const std::string calc_reuse_key = CalcuAttachedStreamReuseKey(attr_name, attr_reuse_key, force_reuse, op_desc);
     if (calc_reuse_key != reuse_key) {
       continue;
