@@ -14,7 +14,7 @@
 #include "graph/utils/tensor_utils.h"
 #include "common/util/log.h"
 #include "../../../inc/framework/common/runtime_model_ge.h"
-#include "acl_rt_memcpy_kind.h"
+#include "../acl_rt_memcpy_kind.h"
 constexpr uint64_t MAX_MEMCPY_SIZE_OF_D2D = 4ULL * 1024ULL * 1024ULL * 1024ULL;  // 4G
 
 using namespace ge;

@@ -8,21 +8,28 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef _RTS_ENGINE_OP_LABELGOTO_OP_H_
-#define _RTS_ENGINE_OP_LABELGOTO_OP_H_
-#include "op.h"
+#ifndef RTS_ENGINE_OP_CMO_ADDR_OP_H
+#define RTS_ENGINE_OP_CMO_ADDR_OP_H
+
+#include "../op.h"
+
+using namespace ge;
+using namespace std;
 
 namespace cce {
 namespace runtime {
-class LabelGotoOp : public Op {
+constexpr uint32_t kMaxPrefetchLen = 120U * 1024U * 1024U;
+constexpr char_t const *kAttrMaxSize = "max_size";
+constexpr char_t const *kAttrAddrOffset = "offset";
+class CmoAddrOp : public Op {
  public:
-  LabelGotoOp(const ge::Node &node, ge::RunContext &runContext);
+  CmoAddrOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~LabelGotoOp() override = default;
+  ~CmoAddrOp() override = default;
 
-  LabelGotoOp &operator=(const LabelGotoOp &op) = delete;
+  CmoAddrOp &operator=(const CmoAddrOp &op) = delete;
 
-  LabelGotoOp(const LabelGotoOp &op) = delete;
+  CmoAddrOp(const CmoAddrOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -37,8 +44,12 @@ class LabelGotoOp : public Op {
    *          other: run failed
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
+
+ private:
+  ge::Status AddArgsFormatDescInfo(domi::CmoAddrTaskDef *const cmoAddrDef);
+  ge::Status CalculateLenInner(uint32_t &len_inner);
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // _RTS_ENGINE_OP_LABELGOTO_OP_H_
+#endif  // RTS_ENGINE_OP_CMO_ADDR_OP_H

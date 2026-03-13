@@ -7,22 +7,24 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_STREAM_SWITCHN_OP_H_
-#define _RTS_ENGINE_OP_STREAM_SWITCHN_OP_H_
-#include "acl_rt_compare_data_type.h"
-#include "op.h"
+#ifndef _RTS_ENGINE_OP_RECV_OP_H_
+#define _RTS_ENGINE_OP_RECV_OP_H_
+#include "../op.h"
+
+using namespace ge;
+using namespace std;
 
 namespace cce {
 namespace runtime {
-class StreamSwitchNOp : public Op {
+class RecvOp : public Op {
  public:
-  StreamSwitchNOp(const ge::Node &node, ge::RunContext &runContext);
+  RecvOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~StreamSwitchNOp() override = default;
+  ~RecvOp() override = default;
 
-  StreamSwitchNOp &operator=(const StreamSwitchNOp &op) = delete;
+  RecvOp &operator=(const RecvOp &op) = delete;
 
-  StreamSwitchNOp(const StreamSwitchNOp &op) = delete;
+  RecvOp(const RecvOp &op) = delete;
 
   /**
    *  @brief init param for generate task
@@ -38,16 +40,40 @@ class StreamSwitchNOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
-  ge::Status UpdateTaskDef(vector<TaskDef> &tasks) override;
+ private:
+  // logic event id
+  uint32_t eventId_;
+};
+
+class RecvOpMem : public Op {
+ public:
+  RecvOpMem(const ge::Node &node, ge::RunContext &runContext);
+
+  ~RecvOpMem() override = default;
+
+  RecvOpMem &operator=(const RecvOpMem &op) = delete;
+
+  RecvOpMem(const RecvOpMem &op) = delete;
+
+  /**
+   *  @brief init param for generate task
+   *  @return SUCCESS: init success
+   *          other: init failed
+   */
+  ge::Status Init() override;
+
+  /**
+   *  @brief generate task
+   *  @return SUCCESS: run success
+   *          other: run failed
+   */
+  ge::Status Run(vector<TaskDef> &tasks) override;
 
  private:
-  uint32_t element_size_;
-  uint32_t size_;
-  std::vector<int32_t> target_value_;
-  std::vector<int64_t> target_value64_;
-  aclrtCompareDataType data_type_;
-  vector<uint32_t> activeStreamList_;
+  // logic event id
+  int32_t eventId_;
 };
 }  // namespace runtime
 }  // namespace cce
-#endif
+
+#endif  // _RTS_ENGINE_OP_RECV_OP_H_

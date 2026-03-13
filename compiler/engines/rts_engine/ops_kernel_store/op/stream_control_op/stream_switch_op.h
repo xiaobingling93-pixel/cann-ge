@@ -7,25 +7,26 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_DEBUG_STATUS_OP_H_
-#define _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_DEBUG_STATUS_OP_H_
-
-#include "op.h"
+#ifndef RTS_ENGINE_OP_STREAM_SWITCH_OP_H
+#define RTS_ENGINE_OP_STREAM_SWITCH_OP_H
+#include "../acl_rt_compare_data_type.h"
+#include "../op.h"
+#include "../acl_rt_condition.h"
 
 namespace cce {
 namespace runtime {
-class NpuClearFloatDebugStatusOp : public Op {
+class StreamSwitchOp : public Op {
  public:
-  NpuClearFloatDebugStatusOp(const ge::Node &node, ge::RunContext &runContext);
+  StreamSwitchOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~NpuClearFloatDebugStatusOp() override = default;
+  ~StreamSwitchOp() override = default;
 
-  NpuClearFloatDebugStatusOp &operator=(const NpuClearFloatDebugStatusOp &op) = delete;
+  StreamSwitchOp &operator=(const StreamSwitchOp &op) = delete;
 
-  NpuClearFloatDebugStatusOp(const NpuClearFloatDebugStatusOp &op) = delete;
+  StreamSwitchOp(const StreamSwitchOp &op) = delete;
 
   /**
-   *  @brief init param.
+   *  @brief init param for generate task
    *  @return SUCCESS: init success
    *          other: init failed
    */
@@ -38,10 +39,18 @@ class NpuClearFloatDebugStatusOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
+  ge::Status UpdateTaskDef(vector<TaskDef> &tasks) override;
+
+  ge::Status GenerateCtxDef(const ge::Node &node) override;
+
  private:
-  uint32_t check_mode_;
+  aclrtCondition cond_;
+
+  uint32_t trueStreamIndex_;
+
+  aclrtCompareDataType data_type_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif
+#endif  // RTS_ENGINE_OP_STREAM_SWITCH_OP_H

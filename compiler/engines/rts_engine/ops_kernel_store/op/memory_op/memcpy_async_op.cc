@@ -15,7 +15,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "common/util/log.h"
 #include "../../../inc/framework/common/runtime_model_ge.h"
-#include "acl_rt_memcpy_kind.h"
+#include "../acl_rt_memcpy_kind.h"
 constexpr uint32_t MEMCPY_ASYNC_UNIT_SIZE = 64U * 1024U * 1024U;
 constexpr uint64_t MAX_MEMCPY_SIZE_OF_D2D = 4ULL * 1024ULL * 1024ULL * 1024ULL;  // 4G
 

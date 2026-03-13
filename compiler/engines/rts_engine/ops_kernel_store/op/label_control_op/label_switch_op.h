@@ -7,26 +7,25 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef RTS_ENGINE_OP_STREAM_SWITCH_OP_H
-#define RTS_ENGINE_OP_STREAM_SWITCH_OP_H
-#include "acl_rt_compare_data_type.h"
-#include "op.h"
-#include "acl_rt_condition.h"
+
+#ifndef _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_
+#define _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class StreamSwitchOp : public Op {
+class LabelSwitchOp : public Op {
  public:
-  StreamSwitchOp(const ge::Node &node, ge::RunContext &runContext);
+  LabelSwitchOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~StreamSwitchOp() override = default;
+  ~LabelSwitchOp() override = default;
 
-  StreamSwitchOp &operator=(const StreamSwitchOp &op) = delete;
+  LabelSwitchOp &operator=(const LabelSwitchOp &op) = delete;
 
-  StreamSwitchOp(const StreamSwitchOp &op) = delete;
+  LabelSwitchOp(const LabelSwitchOp &op) = delete;
 
   /**
-   *  @brief init param for generate task
+   *  @brief init param.
    *  @return SUCCESS: init success
    *          other: init failed
    */
@@ -39,18 +38,10 @@ class StreamSwitchOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
-  ge::Status UpdateTaskDef(vector<TaskDef> &tasks) override;
-
-  ge::Status GenerateCtxDef(const ge::Node &node) override;
-
  private:
-  aclrtCondition cond_;
-
-  uint32_t trueStreamIndex_;
-
-  aclrtCompareDataType data_type_;
+  uint32_t branch_max_;  // max branch count.
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // RTS_ENGINE_OP_STREAM_SWITCH_OP_H
+#endif  // _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_

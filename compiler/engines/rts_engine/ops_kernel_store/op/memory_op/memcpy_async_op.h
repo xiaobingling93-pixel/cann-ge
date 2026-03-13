@@ -10,8 +10,8 @@
 #ifndef _RTS_ENGINE_OP_MEMCPY_ASYNC_OP_H_
 #define _RTS_ENGINE_OP_MEMCPY_ASYNC_OP_H_
 
-#include "op.h"
-#include "acl_rt_memcpy_kind.h"
+#include "../op.h"
+#include "../acl_rt_memcpy_kind.h"
 
 using namespace ge;
 using namespace std;

@@ -7,29 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#ifndef _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_STATUS_OP_H_
+#define _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_STATUS_OP_H_
 
-#ifndef RTS_ENGINE_OP_CMO_ADDR_OP_H
-#define RTS_ENGINE_OP_CMO_ADDR_OP_H
-
-#include "op.h"
-
-using namespace ge;
-using namespace std;
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-constexpr uint32_t kMaxPrefetchLen = 120U * 1024U * 1024U;
-constexpr char_t const *kAttrMaxSize = "max_size";
-constexpr char_t const *kAttrAddrOffset = "offset";
-class CmoAddrOp : public Op {
+class NpuClearFloatStatusOp : public Op {
  public:
-  CmoAddrOp(const ge::Node &node, ge::RunContext &runContext);
+  NpuClearFloatStatusOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~CmoAddrOp() override = default;
+  ~NpuClearFloatStatusOp() override = default;
 
-  CmoAddrOp &operator=(const CmoAddrOp &op) = delete;
+  NpuClearFloatStatusOp &operator=(const NpuClearFloatStatusOp &op) = delete;
 
-  CmoAddrOp(const CmoAddrOp &op) = delete;
+  NpuClearFloatStatusOp(const NpuClearFloatStatusOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -46,10 +39,9 @@ class CmoAddrOp : public Op {
   ge::Status Run(vector<TaskDef> &tasks) override;
 
  private:
-  ge::Status AddArgsFormatDescInfo(domi::CmoAddrTaskDef *const cmoAddrDef);
-  ge::Status CalculateLenInner(uint32_t &len_inner);
+  uint32_t check_mode_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // RTS_ENGINE_OP_CMO_ADDR_OP_H
+#endif

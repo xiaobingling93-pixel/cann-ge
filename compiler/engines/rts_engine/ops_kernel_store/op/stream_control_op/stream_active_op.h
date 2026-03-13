@@ -7,24 +7,24 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_RECV_OP_H_
-#define _RTS_ENGINE_OP_RECV_OP_H_
-#include "op.h"
+#ifndef _RTS_ENGINE_OP_STREAM_ACTIVE_OP_H_
+#define _RTS_ENGINE_OP_STREAM_ACTIVE_OP_H_
+#include "../op.h"
 
 using namespace ge;
 using namespace std;
 
 namespace cce {
 namespace runtime {
-class RecvOp : public Op {
+class StreamActiveOp : public Op {
  public:
-  RecvOp(const ge::Node &node, ge::RunContext &runContext);
+  StreamActiveOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~RecvOp() override = default;
+  ~StreamActiveOp() override = default;
 
-  RecvOp &operator=(const RecvOp &op) = delete;
+  StreamActiveOp &operator=(const StreamActiveOp &op) = delete;
 
-  RecvOp(const RecvOp &op) = delete;
+  StreamActiveOp(const StreamActiveOp &op) = delete;
 
   /**
    *  @brief init param for generate task
@@ -40,40 +40,9 @@ class RecvOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
- private:
-  // logic event id
-  uint32_t eventId_;
-};
-
-class RecvOpMem : public Op {
- public:
-  RecvOpMem(const ge::Node &node, ge::RunContext &runContext);
-
-  ~RecvOpMem() override = default;
-
-  RecvOpMem &operator=(const RecvOpMem &op) = delete;
-
-  RecvOpMem(const RecvOpMem &op) = delete;
-
-  /**
-   *  @brief init param for generate task
-   *  @return SUCCESS: init success
-   *          other: init failed
-   */
-  ge::Status Init() override;
-
-  /**
-   *  @brief generate task
-   *  @return SUCCESS: run success
-   *          other: run failed
-   */
-  ge::Status Run(vector<TaskDef> &tasks) override;
-
- private:
-  // logic event id
-  int32_t eventId_;
+  ge::Status UpdateTaskDef(vector<TaskDef> &tasks) override;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // _RTS_ENGINE_OP_RECV_OP_H_
+#endif

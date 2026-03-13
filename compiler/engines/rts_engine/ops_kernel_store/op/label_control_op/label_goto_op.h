@@ -7,22 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_NPU_GET_FLOAT_STATUS_OP_H_
-#define _RTS_ENGINE_OP_NPU_GET_FLOAT_STATUS_OP_H_
 
-#include "op.h"
+#ifndef _RTS_ENGINE_OP_LABELGOTO_OP_H_
+#define _RTS_ENGINE_OP_LABELGOTO_OP_H_
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class NpuGetFloatStatusOp : public Op {
+class LabelGotoOp : public Op {
  public:
-  NpuGetFloatStatusOp(const ge::Node &node, ge::RunContext &runContext);
+  LabelGotoOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~NpuGetFloatStatusOp() override = default;
+  ~LabelGotoOp() override = default;
 
-  NpuGetFloatStatusOp &operator=(const NpuGetFloatStatusOp &op) = delete;
+  LabelGotoOp &operator=(const LabelGotoOp &op) = delete;
 
-  NpuGetFloatStatusOp(const NpuGetFloatStatusOp &op) = delete;
+  LabelGotoOp(const LabelGotoOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -37,11 +37,8 @@ class NpuGetFloatStatusOp : public Op {
    *          other: run failed
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
-
- private:
-  uint32_t check_mode_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif
+#endif  // _RTS_ENGINE_OP_LABELGOTO_OP_H_

@@ -7,22 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#ifndef _RTS_ENGINE_OP_NPU_GET_FLOAT_STATUS_OP_H_
+#define _RTS_ENGINE_OP_NPU_GET_FLOAT_STATUS_OP_H_
 
-#ifndef _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_
-#define _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_
-#include "op.h"
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class LabelSwitchOp : public Op {
+class NpuGetFloatStatusOp : public Op {
  public:
-  LabelSwitchOp(const ge::Node &node, ge::RunContext &runContext);
+  NpuGetFloatStatusOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~LabelSwitchOp() override = default;
+  ~NpuGetFloatStatusOp() override = default;
 
-  LabelSwitchOp &operator=(const LabelSwitchOp &op) = delete;
+  NpuGetFloatStatusOp &operator=(const NpuGetFloatStatusOp &op) = delete;
 
-  LabelSwitchOp(const LabelSwitchOp &op) = delete;
+  NpuGetFloatStatusOp(const NpuGetFloatStatusOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -39,9 +39,9 @@ class LabelSwitchOp : public Op {
   ge::Status Run(vector<TaskDef> &tasks) override;
 
  private:
-  uint32_t branch_max_;  // max branch count.
+  uint32_t check_mode_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // _RTS_ENGINE_OP_LABEL_SWITCH_OP_H_
+#endif

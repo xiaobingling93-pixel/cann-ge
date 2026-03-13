@@ -7,22 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_MODELEXIT_OP_H_
-#define _RTS_ENGINE_OP_MODELEXIT_OP_H_
+#ifndef _RTS_ENGINE_OP_NPU_GET_FLOAT_DEBUG_STATUS_OP_H_
+#define _RTS_ENGINE_OP_NPU_GET_FLOAT_DEBUG_STATUS_OP_H_
 
-#include "op.h"
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class ModelExitOp : public Op {
+class NpuGetFloatDebugStatusOp : public Op {
  public:
-  ModelExitOp(const ge::Node &node, ge::RunContext &runContext);
+  NpuGetFloatDebugStatusOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~ModelExitOp() override = default;
+  ~NpuGetFloatDebugStatusOp() override = default;
 
-  ModelExitOp &operator=(const ModelExitOp &op) = delete;
+  NpuGetFloatDebugStatusOp &operator=(const NpuGetFloatDebugStatusOp &op) = delete;
 
-  ModelExitOp(const ModelExitOp &op) = delete;
+  NpuGetFloatDebugStatusOp(const NpuGetFloatDebugStatusOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -37,8 +37,11 @@ class ModelExitOp : public Op {
    *          other: run failed
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
+
+ private:
+  uint32_t check_mode_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // _RTS_ENGINE_OP_MODELEXIT_OP_H_
+#endif

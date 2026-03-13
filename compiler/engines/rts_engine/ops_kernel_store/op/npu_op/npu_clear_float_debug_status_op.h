@@ -7,35 +7,39 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_STREAM_MERGE_OP_H_
-#define _RTS_ENGINE_OP_STREAM_MERGE_OP_H_
-#include "op.h"
+#ifndef _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_DEBUG_STATUS_OP_H_
+#define _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_DEBUG_STATUS_OP_H_
+
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class StreamMergeOp : public Op {
+class NpuClearFloatDebugStatusOp : public Op {
  public:
-  StreamMergeOp(const ge::Node &node, ge::RunContext &runContext);
+  NpuClearFloatDebugStatusOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~StreamMergeOp() override = default;
+  ~NpuClearFloatDebugStatusOp() override = default;
+
+  NpuClearFloatDebugStatusOp &operator=(const NpuClearFloatDebugStatusOp &op) = delete;
+
+  NpuClearFloatDebugStatusOp(const NpuClearFloatDebugStatusOp &op) = delete;
 
   /**
-   *  @brief init para.
-   *  @return SUCCESS init success
-              other init failed
+   *  @brief init param.
+   *  @return SUCCESS: init success
+   *          other: init failed
    */
   ge::Status Init() override;
 
   /**
    *  @brief generate task
-   *  @return SUCCESS run success
-              other run failed
+   *  @return SUCCESS: run success
+   *          other: run failed
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
-  StreamMergeOp &operator=(const StreamMergeOp &op) = delete;
-
-  StreamMergeOp(const StreamMergeOp &op) = delete;
+ private:
+  uint32_t check_mode_;
 };
 }  // namespace runtime
 }  // namespace cce

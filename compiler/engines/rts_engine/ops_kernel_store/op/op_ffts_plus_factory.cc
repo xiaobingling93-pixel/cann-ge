@@ -10,10 +10,10 @@
 #include "op_ffts_plus_factory.h"
 
 #include "graph/op_desc.h"
-#include "label_set_op.h"
-#include "label_switch_by_index_op.h"
-#include "label_switch_op.h"
-#include "memcpy_async_op.h"
+#include "label_control_op/label_set_op.h"
+#include "label_control_op/label_switch_by_index_op.h"
+#include "label_control_op/label_switch_op.h"
+#include "memory_op/memcpy_async_op.h"
 #include "common/util.h"
 #include "common/util/log.h"
 

@@ -13,7 +13,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "op_factory.h"
 #include "common/util/log.h"
-#include "acl_rt_compare_data_type.h"
+#include "../acl_rt_compare_data_type.h"
 #include "../../../inc/framework/common/runtime_model_ge.h"
 
 constexpr uint64_t MAX_UINT64_NUM = 0xFFFFFFFFFFFFFFFFULL;

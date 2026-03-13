@@ -7,22 +7,25 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_STATUS_OP_H_
-#define _RTS_ENGINE_OP_NPU_CLEAR_FLOAT_STATUS_OP_H_
 
-#include "op.h"
+#ifndef RTS_ENGINE_OP_LABELSET_OP_H
+#define RTS_ENGINE_OP_LABELSET_OP_H
+#include "../op.h"
+
+using namespace ge;
+using namespace std;
 
 namespace cce {
 namespace runtime {
-class NpuClearFloatStatusOp : public Op {
+class LabelSetOp : public Op {
  public:
-  NpuClearFloatStatusOp(const ge::Node &node, ge::RunContext &runContext);
+  LabelSetOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~NpuClearFloatStatusOp() override = default;
+  ~LabelSetOp() override = default;
 
-  NpuClearFloatStatusOp &operator=(const NpuClearFloatStatusOp &op) = delete;
+  LabelSetOp &operator=(const LabelSetOp &op) = delete;
 
-  NpuClearFloatStatusOp(const NpuClearFloatStatusOp &op) = delete;
+  LabelSetOp(const LabelSetOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -38,10 +41,12 @@ class NpuClearFloatStatusOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
+  ge::Status GenerateCtxDef(const ge::Node &node) override;
+
  private:
-  uint32_t check_mode_;
+  uint32_t labelIndex_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif
+#endif  // RTS_ENGINE_OP_LABELSET_OP_H

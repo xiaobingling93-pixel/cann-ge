@@ -9,7 +9,7 @@
  */
 #ifndef _RTS_ENGINE_OP_SEND_OP_H_
 #define _RTS_ENGINE_OP_SEND_OP_H_
-#include "op.h"
+#include "../op.h"
 
 namespace cce {
 namespace runtime {

@@ -7,24 +7,25 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
-#define _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
-#include "op.h"
+
+#ifndef RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H
+#define RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class RecvNotifyOp : public Op {
+class LabelGotoExOp : public Op {
  public:
-  RecvNotifyOp(const ge::Node &node, ge::RunContext &runContext);
+  LabelGotoExOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~RecvNotifyOp() override = default;
+  ~LabelGotoExOp() override = default;
 
-  RecvNotifyOp &operator=(const RecvNotifyOp &op) = delete;
+  LabelGotoExOp &operator=(const LabelGotoExOp &op) = delete;
 
-  RecvNotifyOp(const RecvNotifyOp &op) = delete;
+  LabelGotoExOp(const LabelGotoExOp &op) = delete;
 
   /**
-   *  @brief init param for generate task
+   *  @brief init param.
    *  @return SUCCESS: init success
    *          other: init failed
    */
@@ -38,9 +39,9 @@ class RecvNotifyOp : public Op {
   ge::Status Run(vector<TaskDef> &tasks) override;
 
  private:
-  uint32_t notifyId_;
+  uint32_t label_index_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
+#endif  // RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H

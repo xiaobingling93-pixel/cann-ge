@@ -7,27 +7,25 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef _RTS_ENGINE_OP_STREAM_ACTIVE_OP_H_
-#define _RTS_ENGINE_OP_STREAM_ACTIVE_OP_H_
-#include "op.h"
+#ifndef RTS_ENGINE_OP_MEMCPY_ADDR_ASYNC_OP_H
+#define RTS_ENGINE_OP_MEMCPY_ADDR_ASYNC_OP_H
 
-using namespace ge;
-using namespace std;
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class StreamActiveOp : public Op {
+class MemcpyAddrAsyncOp : public Op {
  public:
-  StreamActiveOp(const ge::Node &node, ge::RunContext &runContext);
+  MemcpyAddrAsyncOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~StreamActiveOp() override = default;
+  ~MemcpyAddrAsyncOp() override = default;
 
-  StreamActiveOp &operator=(const StreamActiveOp &op) = delete;
+  MemcpyAddrAsyncOp &operator=(const MemcpyAddrAsyncOp &op) = delete;
 
-  StreamActiveOp(const StreamActiveOp &op) = delete;
+  MemcpyAddrAsyncOp(const MemcpyAddrAsyncOp &op) = delete;
 
   /**
-   *  @brief init param for generate task
+   *  @brief init param.
    *  @return SUCCESS: init success
    *          other: init failed
    */
@@ -40,9 +38,10 @@ class StreamActiveOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
-  ge::Status UpdateTaskDef(vector<TaskDef> &tasks) override;
+ private:
+  rtError_t AddArgsFormatDescInfo(domi::MemcpyAsyncDef * const memcpyAsyncDef, const uint64_t count);
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif
+#endif  // RTS_ENGINE_OP_MEMCPY_ADDR_ASYNC_OP_H

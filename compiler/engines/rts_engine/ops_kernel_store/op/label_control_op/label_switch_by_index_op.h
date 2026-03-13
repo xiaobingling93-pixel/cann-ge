@@ -7,23 +7,21 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
-#ifndef RTS_ENGINE_OP_ENDGRAPH_OP_H
-#define RTS_ENGINE_OP_ENDGRAPH_OP_H
-
-#include "op.h"
+#ifndef RTS_ENGINE_OP_LABEL_SWITCH_BY_INDEX_OP_H
+#define RTS_ENGINE_OP_LABEL_SWITCH_BY_INDEX_OP_H
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class EndGraphOp : public Op {
+class LabelSwitchByIndexOp : public Op {
  public:
-  EndGraphOp(const ge::Node &node, ge::RunContext &runContext);
+  LabelSwitchByIndexOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~EndGraphOp() override = default;
+  ~LabelSwitchByIndexOp() override = default;
 
-  EndGraphOp &operator=(const EndGraphOp &op) = delete;
+  LabelSwitchByIndexOp &operator=(const LabelSwitchByIndexOp &op) = delete;
 
-  EndGraphOp(const EndGraphOp &op) = delete;
+  LabelSwitchByIndexOp(const LabelSwitchByIndexOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -39,10 +37,13 @@ class EndGraphOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
+  ge::Status GenerateCtxDef(const ge::Node &node) override;
+
  private:
-  bool need_gen_endgraph_task_ = true;
+  uint32_t branch_max_;     // max branch count.
+  ge::DataType data_type_;  // datatype for load arsize.
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // RTS_ENGINE_OP_ENDGRAPH_OP_H
+#endif  // RTS_ENGINE_OP_LABEL_SWITCH_BY_INDEX_OP_H

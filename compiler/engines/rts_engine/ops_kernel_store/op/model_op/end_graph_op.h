@@ -8,21 +8,22 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H
-#define RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H
-#include "op.h"
+#ifndef RTS_ENGINE_OP_ENDGRAPH_OP_H
+#define RTS_ENGINE_OP_ENDGRAPH_OP_H
+
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class LabelGotoExOp : public Op {
+class EndGraphOp : public Op {
  public:
-  LabelGotoExOp(const ge::Node &node, ge::RunContext &runContext);
+  EndGraphOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~LabelGotoExOp() override = default;
+  ~EndGraphOp() override = default;
 
-  LabelGotoExOp &operator=(const LabelGotoExOp &op) = delete;
+  EndGraphOp &operator=(const EndGraphOp &op) = delete;
 
-  LabelGotoExOp(const LabelGotoExOp &op) = delete;
+  EndGraphOp(const EndGraphOp &op) = delete;
 
   /**
    *  @brief init param.
@@ -39,9 +40,9 @@ class LabelGotoExOp : public Op {
   ge::Status Run(vector<TaskDef> &tasks) override;
 
  private:
-  uint32_t label_index_;
+  bool need_gen_endgraph_task_ = true;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // RTS_ENGINE_OP_LABEL_GOTO_EX_OP_H
+#endif  // RTS_ENGINE_OP_ENDGRAPH_OP_H

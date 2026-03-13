@@ -7,28 +7,24 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
-#ifndef RTS_ENGINE_OP_LABELSET_OP_H
-#define RTS_ENGINE_OP_LABELSET_OP_H
-#include "op.h"
-
-using namespace ge;
-using namespace std;
+#ifndef _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
+#define _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
+#include "../op.h"
 
 namespace cce {
 namespace runtime {
-class LabelSetOp : public Op {
+class RecvNotifyOp : public Op {
  public:
-  LabelSetOp(const ge::Node &node, ge::RunContext &runContext);
+  RecvNotifyOp(const ge::Node &node, ge::RunContext &runContext);
 
-  ~LabelSetOp() override = default;
+  ~RecvNotifyOp() override = default;
 
-  LabelSetOp &operator=(const LabelSetOp &op) = delete;
+  RecvNotifyOp &operator=(const RecvNotifyOp &op) = delete;
 
-  LabelSetOp(const LabelSetOp &op) = delete;
+  RecvNotifyOp(const RecvNotifyOp &op) = delete;
 
   /**
-   *  @brief init param.
+   *  @brief init param for generate task
    *  @return SUCCESS: init success
    *          other: init failed
    */
@@ -41,12 +37,10 @@ class LabelSetOp : public Op {
    */
   ge::Status Run(vector<TaskDef> &tasks) override;
 
-  ge::Status GenerateCtxDef(const ge::Node &node) override;
-
  private:
-  uint32_t labelIndex_;
+  uint32_t notifyId_;
 };
 }  // namespace runtime
 }  // namespace cce
 
-#endif  // RTS_ENGINE_OP_LABELSET_OP_H
+#endif  // _RTS_ENGINE_OP_RECV_NOTIFY_OP_H_
