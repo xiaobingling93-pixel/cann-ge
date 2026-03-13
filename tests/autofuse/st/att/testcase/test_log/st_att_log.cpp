@@ -101,7 +101,7 @@ TEST_F(TestAttLog, test_att_logi)
   auto ret = std::system("./tiling_func_log_main 1024 2048 -1 > ./att_info.log");
   EXPECT_EQ(ret, 0);
 
-  EXPECT_TRUE(CheckOutput("\\[INFO\\]\\[OpTest6\\]The user didn't specify tilingCaseId, iterate all templates."));
+  EXPECT_TRUE(CheckOutput("\\[INFO\\]\\[OpTest6\\]The user didn't specify tiling_case_id, iterate all templates."));
 }
 
 TEST_F(TestAttLog, test_att_logw)
