@@ -356,17 +356,4 @@ Status SplitFusionCaseGenerator::GenerateScoreFuncForUbSplit(const ascir::HintGr
                                                              std::string &score_func) {
   return SplitScoreFunctionGenerator(graph, split_node, split_dim).Generate(score_func);
 }
-
-Status SplitFusionCaseGenerator::ConvertSplitToLoadsOnly(ascir::HintGraph &graph) {
-  auto split_nodes = FindSplitNodes(graph);
-  GE_ASSERT_TRUE(!split_nodes.empty(), "No split node found in graph");
-
-  const auto &split_node = split_nodes.front();
-  split_node_ = split_node;
-  size_t split_dim = 0;
-  bool is_first_dim = false;
-  GE_CHK_STATUS_RET(ResolveSplitDim(split_node, split_dim, is_first_dim), "ResolveSplitDim failed");
-  GE_CHK_STATUS_RET(ConvertSplitToLoads(graph, split_node, split_dim), "ConvertSplitToLoads failed");
-  return ge::SUCCESS;
-}
 }  // namespace optimize

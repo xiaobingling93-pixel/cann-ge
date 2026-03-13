@@ -22,9 +22,6 @@ class SplitFusionCaseGenerator : public FusionCaseGenerator {
   Status Generate(ascir::HintGraph &graph, std::vector<ascir::ImplGraph> &graphs,
                   std::vector<std::string> &score_functions) override;
 
-  // 仅将 Split 转换为 Loads
-  Status ConvertSplitToLoadsOnly(ascir::HintGraph &graph);
-
  private:
   static std::vector<ge::AscNodePtr> FindSplitNodes(const ascir::HintGraph &owner_graph);
   static Status ResolveSplitDim(const ge::AscNodePtr &split_node, size_t &split_dim, bool &is_first_dim);

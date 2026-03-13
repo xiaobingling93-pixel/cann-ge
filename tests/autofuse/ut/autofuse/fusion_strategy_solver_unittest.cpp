@@ -2330,8 +2330,6 @@ TEST_F(UtestFusionStrategySolver, Fuse_split) {
  *    concat
  *       |
  *   netoutput
- *
- * Note: 放开 Split-Concat 融合限制后，split 与 concat 可以融合
  */
 TEST_F(UtestFusionStrategySolver, Fuse_split_nok) {
   class SplitFusionDecider : public AscBackendFusionDecider {
@@ -2366,8 +2364,7 @@ TEST_F(UtestFusionStrategySolver, Fuse_split_nok) {
   EXPECT_EQ(fusion_strategy_solver.Fuse(graph), SUCCESS);
   dlog_setlevel(ASCGEN_MODULE_NAME, DLOG_DEBUG, 0);
   auto post_nodes_size = graph->GetAllNodesSize();
-  // 放开 Split-Concat 融合限制后，split 与 concat 可以融合，节点减少1个
-  EXPECT_EQ(pre_nodes_size - 1U, post_nodes_size);
+  EXPECT_EQ(pre_nodes_size, post_nodes_size);
 }
 
 /*
@@ -2380,8 +2377,6 @@ TEST_F(UtestFusionStrategySolver, Fuse_split_nok) {
  *    concat
  *       |
  *   netoutput
- *
- * Note: 放开 Split-Concat 融合限制后，split、abs、concat 都可以融合
  */
 
 TEST_F(UtestFusionStrategySolver, Fuse_split_concat_nok) {
@@ -2416,8 +2411,7 @@ TEST_F(UtestFusionStrategySolver, Fuse_split_concat_nok) {
   EXPECT_EQ(fusion_strategy_solver.Fuse(graph), SUCCESS);
   dlog_setlevel(ASCGEN_MODULE_NAME, DLOG_DEBUG, 0);
   auto post_nodes_size = graph->GetAllNodesSize();
-  // 放开 Split-Concat 融合限制后，split、两个abs、concat 都可以融合，节点减少3个
-  EXPECT_EQ(pre_nodes_size - 3U, post_nodes_size);
+  EXPECT_EQ(pre_nodes_size - 2U, post_nodes_size);
 }
 
 /*

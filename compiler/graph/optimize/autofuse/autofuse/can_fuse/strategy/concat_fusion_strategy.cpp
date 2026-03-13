@@ -254,6 +254,18 @@ bool ConcatFusionStrategy::IsFirstDimConcat(const NodePtr &node) {
 }
 
 Status ConcatFusionStrategy::CanFuseSplit(const NodePtr &node1, const NodePtr &node2) {
+  // 首轴split将被转为load, 可以与concat融合
+  GE_CHK_BOOL_RET_SPECIAL_STATUS(IsFirstDimSplit(node1), SUCCESS, "[%s] split on first dim, can fuse split",
+                                 node1->GetNamePtr());
+
+  // split与concat都非首轴，不能融合
+  GE_CHK_BOOL_RET_SPECIAL_STATUS(
+      (!IsFirstDimConcat(node2)), NOT_CHANGED,
+      "node1 %s(%s) and node2 %s(%s) can not fuse, the reason is [%s][neither Concat nor Split is operating on "
+      "the first dim]",
+      node1->GetNamePtr(), node1->GetType().c_str(), node2->GetNamePtr(), node2->GetType().c_str(),
+      ge::NotFuseReasonCode(ge::NotFuseReason::kSplitCanNotFuseConcatBackward));
+
   // 首轴concat时, 防止Split作为后融合算子的输入
   if (node2->GetType() == kFusedAscBackendType) {
     bool can_fuse = false;
