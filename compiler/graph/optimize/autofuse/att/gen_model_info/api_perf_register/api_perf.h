@@ -27,7 +27,7 @@ struct NodeDetail {
   Expr gm_stride{CreateExpr(0)};
   Expr ub_stride{CreateExpr(0)};
   int32_t block_count_idx{0};  // 用于 LoadStoreStrideV2Func，表示发生非连续的轴索引
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;  // 动态shape表达式
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;  // 动态shape表达式
 
   std::string ToString() const {
     std::string res = name + "[" + optype + "]";
@@ -46,14 +46,14 @@ struct NodeDetail {
     return res;
   }
 };
-using TenaryOpMap = std::map<Expr, TenaryOp, ExprCmp>;
+using TernaryOpMap = std::map<Expr, TernaryOp, ExprCmp>;
 struct PerfOutputInfo {
   std::map<PipeType, Expr> pipe_res;
-  TenaryOpMap tenary_ops;
+  TernaryOpMap ternary_ops;
   vector<CacheLineConfig> *cache_line_config{nullptr};
   std::string ToString() {
     std::string res;
-    auto replace_vars = ConcursiveReplaceVars(tenary_ops);
+    auto replace_vars = ConcursiveReplaceVars(ternary_ops);
     for (const auto &pair : pipe_res) {
       res += PipeType2Str.at(pair.first) + ":" + Str(pair.second.Replace(replace_vars)) + ",";
     }

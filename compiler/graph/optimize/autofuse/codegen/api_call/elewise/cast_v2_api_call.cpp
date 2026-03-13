@@ -25,24 +25,6 @@ using namespace ge::ops;
 using namespace ge::ascir_op;
 using namespace ascgen_utils;
 
-static bool EnableCastMaskModeOptimize(const std::string &input_dtype, const std::string &output_dtype) {
-  std::vector<std::pair<std::string, std::string>> src_cast_dst_lists = {
-      // first is input dtype, second is output dtype
-      {"uint8_t", "half"},    {"int64_t", "float"},    {"int64_t", "int32_t"}, {"half", "float"},
-      {"half", "int32_t"},    {"half", "int16_t"},     {"half", "int8_t"},     {"half", "uint8_t"},
-      {"half", "int4_t"},     {"float", "half"},       {"float", "int64_t"},   {"float", "int32_t"},
-      {"float", "int16_t"},   {"float", "bfloat16_t"},   {"int4_t", "half"},     {"int16_t", "half"},
-      {"int16_t", "float"},   {"int32_t", "float"},    {"int32_t", "int64_t"}, {"int32_t", "int16_t"},
-      {"int32_t", "half"},    {"bfloat16_t", "float"}, {"bfloat16_t", "int32_t"}, {"uint8_t", "float"}, 
-      {"uint8_t", "int32_t"}, {"uint8_t", "int16_t"}, {"uint8_t", "int8_t"},   {"uint8_t", "int4_t"}, 
-      {"int64_t", "half"},    {"half", "int64_t"},    {"int64_t", "uint8_t"},  {"int8_t", "uint8_t"},
-      {"int16_t", "uint16_t"}, {"uint16_t", "int16_t"}, {"int32_t", "uint32_t"}, {"uint32_t", "int32_t"},
-      {"int64_t", "uint64_t"}, {"uint64_t", "int64_t"}, {"int64_t", "half"}};
-  std::pair<std::string, std::string> src_cast_dst = {input_dtype, output_dtype};
-  GELOGD("current cast from %s to %s", input_dtype.c_str(), output_dtype.c_str());
-  return std::find(src_cast_dst_lists.begin(), src_cast_dst_lists.end(), src_cast_dst) != src_cast_dst_lists.end();
-}
-
 Status CastV2ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
   const std::vector<std::reference_wrapper<const Tensor>> &inputs,
   const std::vector<std::reference_wrapper<const Tensor>> &outputs,
@@ -76,45 +58,34 @@ Status CastV2ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axis
        << "{" << "ConvertToUint32(" << x.actual_size << ")" << "}, "
        << "{ConvertToUint32(1)}, {ConvertToUint32(1)});" << std::endl;
   } else {
-    if (EnableCastMaskModeOptimize(x_dtype, y_dtype)) {
-      GELOGD("enable cast mask mode optimize, x_dtype = %s, y_dtype = %s", x_dtype.c_str(), y_dtype.c_str());
-      // 获取输入输出中最大的数据类型max_dtype_size
-      std::string dtype_size;
-      GE_CHK_BOOL_RET_STATUS(GetMaxDtypeSize(x.dtype, y.dtype, dtype_size) == true, ge::FAILED,
-        "get max data type size failed, x_dtype = %s, y_dtype = %s", x_dtype.c_str(),
-        y_dtype.c_str());
-      size_t input_strides_size = param.inputs_strides[0].size();
-      std::vector<ascir::SizeExpr> inner_input_strides(param.inputs_strides[0].begin(),
-                                  param.inputs_strides[0].begin() + input_strides_size - 1);
-      std::string input_inner_offset = input_strides_size == 1U ? "0" : CalcInnerOffset(tpipe, inner_input_strides);
+    GELOGD("enable cast mask mode optimize, x_dtype = %s, y_dtype = %s", x_dtype.c_str(), y_dtype.c_str());
+    // 获取输入输出中最大的数据类型max_dtype_size
+    std::string dtype_size;
+    GE_CHK_BOOL_RET_STATUS(GetMaxDtypeSize(x.dtype, y.dtype, dtype_size) == true, ge::FAILED,
+      "get max data type size failed, x_dtype = %s, y_dtype = %s", x_dtype.c_str(),
+      y_dtype.c_str());
+    size_t input_strides_size = param.inputs_strides[0].size();
+    std::vector<ascir::SizeExpr> inner_input_strides(param.inputs_strides[0].begin(),
+                                param.inputs_strides[0].begin() + input_strides_size - 1);
+    std::string input_inner_offset = input_strides_size == 1U ? "0" : CalcInnerOffset(tpipe, inner_input_strides);
 
-      size_t output_strides_size = param.outputs_strides[0].size();
-      std::vector<ascir::SizeExpr> inner_output_strides(param.outputs_strides[0].begin(),
-                                  param.outputs_strides[0].begin() + output_strides_size - 1);
-      std::string output_inner_offset = output_strides_size == 1U ? "0" : CalcInnerOffset(tpipe, inner_output_strides);
+    size_t output_strides_size = param.outputs_strides[0].size();
+    std::vector<ascir::SizeExpr> inner_output_strides(param.outputs_strides[0].begin(),
+                                param.outputs_strides[0].begin() + output_strides_size - 1);
+    std::string output_inner_offset = output_strides_size == 1U ? "0" : CalcInnerOffset(tpipe, inner_output_strides);
 
-      std::stringstream ss1;
-      ss1 << this->api_name_ << "(" << y << "[" << output_inner_offset << "], " << x << "[" << input_inner_offset << "], "
-          << "{" << "ConvertToUint32(" << param.outer_repeats[outer_repeats_size - 1] << ")" << ", " << "ConvertToUint32(" << tpipe.tiler.ActualSize(param.cal_count) << ")" << "}, "
-          << "{" << "ConvertToUint32(" << tpipe.tiler.Size(param.output_second_to_last_stride) << ")" << ", " << "ConvertToUint32(1)" << "}, "
-          << "{" << "ConvertToUint32(" << tpipe.tiler.Size(param.input_second_to_last_stride) << ")" << ", " << "ConvertToUint32(1)" << "});"
-          << std::endl;
-      if (outer_repeats_size == 1U) {
-        ss << ss1.str();
-      } else {
-        std::vector<std::string> inner_outer_repeats(param.outer_repeats.begin(),
-                                  param.outer_repeats.begin() + outer_repeats_size - 1);
-        CreateComputeNodeOuterFor(inner_outer_repeats, ss1, ss, 0);
-      }
+    std::stringstream ss1;
+    ss1 << this->api_name_ << "(" << y << "[" << output_inner_offset << "], " << x << "[" << input_inner_offset << "], "
+        << "{" << "ConvertToUint32(" << param.outer_repeats[outer_repeats_size - 1] << ")" << ", " << "ConvertToUint32(" << tpipe.tiler.ActualSize(param.cal_count) << ")" << "}, "
+        << "{" << "ConvertToUint32(" << tpipe.tiler.Size(param.output_second_to_last_stride) << ")" << ", " << "ConvertToUint32(1)" << "}, "
+        << "{" << "ConvertToUint32(" << tpipe.tiler.Size(param.input_second_to_last_stride) << ")" << ", " << "ConvertToUint32(1)" << "});"
+        << std::endl;
+    if (outer_repeats_size == 1U) {
+      ss << ss1.str();
     } else {
-      GELOGD("not enable cast mask mode optimize, x_dtype = %s, y_dtype = %s", x_dtype.c_str(), y_dtype.c_str());
-      std::string input_inner_offset = CalcInnerOffset(tpipe, param.inputs_strides[0]);
-      std::string output_inner_offset = CalcInnerOffset(tpipe, param.outputs_strides[0]);
-      std::stringstream ss1;
-      ss1 << this->api_name_ << "(" << y << "[" << output_inner_offset << "], " << x << "[" << input_inner_offset << "], "
-          << "{" << "ConvertToUint32(" << tpipe.tiler.ActualSize(param.cal_count) << ")" << "}, "
-          << "{ConvertToUint32(1)}, {ConvertToUint32(1)});" << std::endl;
-      CreateComputeNodeOuterFor(param.outer_repeats, ss1, ss, 0);
+      std::vector<std::string> inner_outer_repeats(param.outer_repeats.begin(),
+                                param.outer_repeats.begin() + outer_repeats_size - 1);
+      CreateComputeNodeOuterFor(inner_outer_repeats, ss1, ss, 0);
     }
   }
 

@@ -266,17 +266,18 @@ inline Status OptimizeTransposeCountPro(AscGraph &asc_graph, [[maybe_unused]] co
   std::vector<std::pair<int64_t, int64_t>> load_store_transpose_cnt(unique_loop_axes.size(), {0, 0});
   GE_ASSERT_SUCCESS(CountExpectedTransposesForLoopAxis(asc_graph, unique_loop_axes, load_store_transpose_cnt));
 
-  // 4、找出transpose总个数最少的循环轴，如果总个数相等，找出load预期反推出的transpose个数少的循环轴，应用到loat和store
-  std::vector<int64_t> optimal_loop_axes;
-  size_t optimal_loop_axis_index = 0U;
-  GE_ASSERT_SUCCESS(SelectOptimalLoopAxisByTransposeCount(unique_loop_axes, load_store_transpose_cnt, optimal_loop_axes,
-                                                          optimal_loop_axis_index));
-  // 因为后端只支持一个transpose，如果选择了最优轴后，还有多个load后者store需要插入transpose，则直接返回不处理，否则会出现transpose全在非重计算结点的store
-  if (load_store_transpose_cnt[optimal_loop_axis_index].first +
-      load_store_transpose_cnt[optimal_loop_axis_index].second > 1) {
-    GELOGI("graph %s, can't find optimize transpose count = 1.", asc_graph.GetName().c_str());
-    return SUCCESS;
+  // 4、使用transpose都在load上的轴，避免transpose在store上，否则会推出多个transpose
+  std::vector<int64_t> optimal_loop_axes = unique_loop_axes[0];
+  for (auto index = 0U; index < load_store_transpose_cnt.size(); index++) {
+    if (load_store_transpose_cnt[index].second == 0U) {
+      optimal_loop_axes = unique_loop_axes[index];
+      break;
+    }
   }
+  //  找出transpose总个数最少的循环轴，如果总个数相等，找出load预期反推出的transpose个数少的循环轴，应用到load和store
+  //  （当前先注释，后端支持后放开）GE_ASSERT_SUCCESS(SelectOptimalLoopAxisByTransposeCount(unique_loop_axes,
+  //  （当前先注释，后端支持后放开）load_store_transpose_cnt, optimal_loop_axes, optimal_loop_axis_index));
+
   // 5、根据应用后的循环轴，刷新ascgraph图
   GE_ASSERT_SUCCESS(UpdateAscGraphWithAppliedLoopAxis(asc_graph, graph_axis, optimal_loop_axes));
   return SUCCESS;

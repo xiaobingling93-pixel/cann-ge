@@ -15,9 +15,12 @@ add_library(df_st_stubs STATIC ${UTILS_SRCS})
 target_include_directories(df_st_stubs PRIVATE
         ${AIR_CODE_DIR}
         ${AIR_CODE_DIR}/inc
+        ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/graph_metadef
         ${METADEF_DIR}/inc
         ${METADEF_DIR}/pkg_inc
+        ${AIR_CODE_DIR}/inc/graph_metadef/external
+        ${AIR_CODE_DIR}/base
         ${AIR_CODE_DIR}/dflow/base
         ${AIR_CODE_DIR}/dflow/base/exec_runtime
         ${CMAKE_BINARY_DIR}/proto/metadef_protos
@@ -37,6 +40,7 @@ target_compile_options(df_st_stubs PRIVATE
     -Wall -Wfloat-equal -Werror
 )
 
-target_link_libraries(df_st_stubs PUBLIC intf_pub ge_graph_dsl ge_running_env GTest::gtest GTest::gmock GTest::gmock_main datagw_headers)
+target_link_libraries(df_st_stubs PUBLIC intf_pub ge_running_env GTest::gtest GTest::gmock ascend_protobuf metadef_headers)
 
 add_library(df_memset_stubs STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/memset.c)
+target_link_libraries(df_memset_stubs PUBLIC intf_pub)

@@ -16,6 +16,9 @@
 #include "common_utils.h"
 
 namespace codegen {
+  
+#define MAX_VF_AXIS_MERGE_SIZE 2
+
 class VfCall final : public ApiCall {
  public:
   using ApiCall::Generate;

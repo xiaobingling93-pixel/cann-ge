@@ -31,7 +31,8 @@ class VectorFuncPartitioner {
   ClusterPtr CreateAndInitCluster(const ge::AscNodePtr &node, size_t &rank);
   void EstablishClusterConnections(ClusterPtr &cluster, const ge::AscNodePtr &node);
   void FixAllCompareClusterConnections();
-  static void RefineEnableVFFlag(const ge::AscNodePtr &node, bool &enable_vf);
+  void RefineEnableVFFlag(const ge::AscNodePtr &node, bool &enable_vf);
+  bool HasReduceNodeInGraph(const ge::AscGraph &impl_graph);
   static ge::Status InitClusterAttr(const std::unique_ptr<ge::ascir::AscIrCodegen> &codegen_impl,
                                     const ge::AscNodePtr &node, ClusterPtr &cluster);
   ge::Status MergeClusters();
@@ -72,6 +73,7 @@ class VectorFuncPartitioner {
   // dictionary for node->cluster
   ClusterDict cluster_dict_;
   size_t subgraph_id_ = 0UL;
+  bool graph_has_reduce_node_ = false;  // 缓存图是否有reduce节点
 };
 }  // namespace optimize
 #endif  // OPTIMIZE_PLATFORM_V2_VECTOR_FUNC_PARTITIONER_H

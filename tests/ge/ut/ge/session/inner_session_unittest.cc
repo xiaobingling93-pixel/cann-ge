@@ -198,6 +198,19 @@ TEST_F(UtestInnerSession, InnerLoadGraph_test) {
   EXPECT_EQ(inner_session.Finalize(), SUCCESS);
 }
 
+TEST_F(UtestInnerSession, CompileGraph_UserGraphsManagerNull_Failed) {
+  std::map<string, string> options;
+  uint64_t session_id = 1;
+  InnerSession inner_session(session_id, options);
+  EXPECT_EQ(inner_session.Initialize(), SUCCESS);
+  std::vector<ge::Tensor> inputs;
+  ge::Tensor tensor;
+  inputs.emplace_back(tensor);
+  inner_session.user_graphs_manager_ = nullptr;
+  EXPECT_NE(inner_session.CompileGraph(1, inputs), SUCCESS);
+  EXPECT_EQ(inner_session.Finalize(), SUCCESS);
+}
+
 TEST_F(UtestInnerSession, InnerLoadGraph_test_with_invalid_frozenInputIndexes) {
   uint32_t graph_id = 1;
   std::map<std::string, std::string> options_init = {};

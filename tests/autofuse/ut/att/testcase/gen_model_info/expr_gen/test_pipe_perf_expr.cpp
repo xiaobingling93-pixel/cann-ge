@@ -156,10 +156,46 @@ TEST_F(TestPipePerfExpr, case0)
   EXPECT_EQ(ArgListManager::GetInstance().LoadArgList(tuning_space), ge::SUCCESS);
   PipePerfExpr pipe_perf(tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> exe_times;
+  std::map<Expr, TernaryOp, ExprCmp> exe_times;
   Expr head_cost;
   EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, exe_times, head_cost), ge::SUCCESS);
 }
+
+namespace {
+// 辅助函数：验证 contrib 变量
+void VerifyContribVar(const std::map<Expr, TernaryOp, ExprCmp> &exe_times) {
+  bool found_aiv_vec_contrib = false;
+  for (const auto &pair : exe_times) {
+    if (Str(pair.first) == "eq_Eq_AIV_VEC_contrib") {
+      found_aiv_vec_contrib = true;
+      const std::string &contrib_expr = pair.second.GetTernaryOpStr();
+      EXPECT_NE(contrib_expr.find("eq_Eq_compare_node"), std::string::npos)
+          << "contrib expr should reference eq_Eq_compare_node: " << contrib_expr;
+      EXPECT_NE(contrib_expr.find("eq_exe_time"), std::string::npos)
+          << "contrib expr should reference eq_exe_time: " << contrib_expr;
+    }
+  }
+  EXPECT_TRUE(found_aiv_vec_contrib) << "Should find eq_Eq_AIV_VEC_contrib in exe_times";
+}
+
+// 辅助函数：验证描述信息
+void VerifyDescriptions(const std::map<Expr, TernaryOp, ExprCmp> &exe_times) {
+  bool found_eq_desc = false;
+  for (const auto &pair : exe_times) {
+    std::string var_name = Str(pair.first);
+    std::string desc = pair.second.GetDescription();
+    if (!desc.empty()) {
+      std::cout << "var_name=" << var_name << ", desc=" << desc << std::endl;
+      if (var_name.find("compare_node") != std::string::npos) {
+        found_eq_desc = true;
+        EXPECT_TRUE(desc.find("in[") != std::string::npos || desc.find("out[") != std::string::npos)
+            << "Description should contain shape info: " << desc;
+      }
+    }
+  }
+  EXPECT_TRUE(found_eq_desc) << "Should find Eq node with description";
+}
+}  // namespace
 
 TEST_F(TestPipePerfExpr, case_get_perf_for_loop)
 {
@@ -173,44 +209,28 @@ TEST_F(TestPipePerfExpr, case_get_perf_for_loop)
   EXPECT_EQ(ArgListManager::GetInstance().LoadArgList(ts), ge::SUCCESS);
   PipePerfExpr pipe_perf(ts);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> exe_times;
+  std::map<Expr, TernaryOp, ExprCmp> exe_times;
   Expr head_cost;
   EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, exe_times, head_cost), ge::SUCCESS);
   ASSERT_EQ(pipe_costs.size(), 3);
-  std::vector<std::pair<Expr, Expr>> replace_vars;
-  std::string var_name;
-  std::string exe_time = "exe_time";
-  for (const auto &pair : exe_times) {
-    var_name = Str(pair.first);
-    if (var_name.rfind(exe_time) == (var_name.length() - exe_time.length())) {
-      EXPECT_EQ(pair.second.GetTenaryOpStr(), "Ceiling((S0 / (z0t_size)))");
-    }
-  }
-  const auto &pipe_vec_cost = std::string(pipe_costs[PipeType::AIV_VEC].Serialize().get());
-  // 外抛for循环
-  // dma==1时：
-  // 表达式变量名：eq_Eq_compare_node（节点名_节点类型）
-  // 注释描述：eq_Eq_in[z0t_size,2,10],[z0t_size,2,10]_out[z0t_size,2,10]_compare_node
-  const auto &iter = pipe_vec_cost.find("((1.245 * eq_Eq_compare_node * eq_exe_time * z0t_size) + 37.3699989318848)");
-  EXPECT_TRUE(iter != std::string::npos);
 
-  // 验证描述信息是否被正确设置
-  bool found_eq_desc = false;
+  // 验证 exe_time 格式
   for (const auto &pair : exe_times) {
     std::string var_name = Str(pair.first);
-    std::string desc = pair.second.GetDescription();
-    if (!desc.empty()) {
-      std::cout << "var_name=" << var_name << ", desc=" << desc << std::endl;
-      if (var_name.find("compare_node") != std::string::npos) {
-        found_eq_desc = true;
-        // 验证描述包含形状信息
-        EXPECT_TRUE(desc.find("in[") != std::string::npos || desc.find("out[") != std::string::npos)
-            << "Description should contain shape info: " << desc;
-      }
+    if (var_name.rfind("exe_time") == (var_name.length() - std::string("exe_time").length())) {
+      EXPECT_EQ(pair.second.GetTernaryOpStr(), "Ceiling((S0 / (z0t_size)))");
     }
   }
-  EXPECT_TRUE(found_eq_desc) << "Should find Eq node with description";
 
+  // 验证 contrib 变量
+  const auto &pipe_vec_cost = std::string(pipe_costs[PipeType::AIV_VEC].Serialize().get());
+  EXPECT_NE(pipe_vec_cost.find("eq_Eq_AIV_VEC_contrib"), std::string::npos);
+  VerifyContribVar(exe_times);
+
+  // 验证描述信息
+  VerifyDescriptions(exe_times);
+
+  // 调试输出
   for (const auto &pipe_cost : pipe_costs) {
     std::cout << "pipe_cost.first: " << static_cast<int32_t>(pipe_cost.first)
               << ", pipe_cost.second: " << pipe_cost.second << std::endl;
@@ -370,14 +390,14 @@ TEST_F(TestPipePerfExpr, TestTailRepeatCase1) {
   TensorPtr tensor = std::make_shared<att::Tensor>();
   tensor->dim_info = {z0_size.get(), z1t_size.get()};
 
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
-  auto ret = GetTensorTailRepeat(tensor, tenary_ops);
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
+  auto ret = GetTensorTailRepeat(tensor, ternary_ops);
   EXPECT_TRUE(ret.size() == 2);
   EXPECT_EQ(Str(ret[0]), "z0_size");
   EXPECT_EQ(Str(ret[1]), "z1t_size_tail");
-  auto iter = tenary_ops.find(ret[1]);
-  EXPECT_TRUE(iter != tenary_ops.end());
-  EXPECT_EQ(iter->second.GetTenaryOpStr(), "TenaryOp(IsEqual(Mod(z1_size, z1t_size), 0), z1t_size, Mod(z1_size, z1t_size))");
+  auto iter = ternary_ops.find(ret[1]);
+  EXPECT_TRUE(iter != ternary_ops.end());
+  EXPECT_EQ(iter->second.GetTernaryOpStr(), "TernaryOp(IsEqual(Mod(z1_size, z1t_size), 0), z1t_size, Mod(z1_size, z1t_size))");
 }
 
 TEST_F(TestPipePerfExpr, TestTailRepeatCase2) {
@@ -400,8 +420,8 @@ TEST_F(TestPipePerfExpr, TestTailRepeatCase2) {
   TensorPtr tensor = std::make_shared<att::Tensor>();
   tensor->dim_info = {z0_size.get(), z1t_size.get()};
 
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
-  auto ret = GetTensorTailRepeat(tensor, tenary_ops);
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
+  auto ret = GetTensorTailRepeat(tensor, ternary_ops);
   EXPECT_TRUE(ret.size() == 2);
   EXPECT_EQ(Str(ret[0]), "z0_size");
   EXPECT_EQ(Str(ret[1]), "1");
@@ -417,9 +437,9 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHead) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::PIPE_NONE] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::PIPE_NONE);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second),
@@ -436,9 +456,9 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHeadV1) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second),
@@ -455,9 +475,9 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHeadV2) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second),
@@ -480,16 +500,16 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHeadV3) {
   test_tuning_space->node_infos.emplace_back(node2);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
   EXPECT_EQ(Str(iter->second),
             "((32.7200012207031 * block_dim) + 1575.03002929688)");
 }
 
-TEST_F(TestPipePerfExpr, TestUpdatePipeHeadTenaryOp) {
+TEST_F(TestPipePerfExpr, TestUpdatePipeHeadTernaryOp) {
   TuningSpacePtr test_tuning_space = std::make_shared<TuningSpace>();
   NodeInfo node;
   node.node_type = "Load";
@@ -499,15 +519,15 @@ TEST_F(TestPipePerfExpr, TestUpdatePipeHeadTenaryOp) {
   test_tuning_space->node_infos.emplace_back(node);
   PipePerfExpr pipe_perf(test_tuning_space);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   pipe_costs[PipeType::AIV_MTE2] = ge::sym::kSymbolZero;
-  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, tenary_ops), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.UpdatePipeHead(pipe_costs, ternary_ops), ge::SUCCESS);
   auto iter = pipe_costs.find(PipeType::AIV_MTE2);
   EXPECT_TRUE(iter != pipe_costs.end());
-  auto iter2 = tenary_ops.find(iter->second);
-  EXPECT_TRUE(iter2 != tenary_ops.end());
-  EXPECT_EQ(iter2->second.GetTenaryOpStr(),
-            "TenaryOp((2 * z0t_size) < 25000, ((15.8900003433228 * block_dim) + 882.090026855469), ((32.7200012207031 * block_dim) + 1575.03002929688))");
+  auto iter2 = ternary_ops.find(iter->second);
+  EXPECT_TRUE(iter2 != ternary_ops.end());
+  EXPECT_EQ(iter2->second.GetTernaryOpStr(),
+            "TernaryOp((2 * z0t_size) < 25000, ((15.8900003433228 * block_dim) + 882.090026855469), ((32.7200012207031 * block_dim) + 1575.03002929688))");
 }
 
 // 测试VectorFunc性能注释生成
@@ -523,13 +543,13 @@ TEST_F(TestPipePerfExpr, TestVectorFuncPerfAnnotation) {
 
   PipePerfExpr pipe_perf(ts);
   std::map<PipeType, Expr> pipe_costs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;
   Expr head_cost;
-  EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, tenary_ops, head_cost), ge::SUCCESS);
+  EXPECT_EQ(pipe_perf.GetPerfExpr(pipe_costs, ternary_ops, head_cost), ge::SUCCESS);
 
-  // 验证tenary_ops中包含VectorFunc性能变量
+  // 验证ternary_ops中包含VectorFunc性能变量
   bool found_vector_func_perf = false;
-  for (const auto &entry : tenary_ops) {
+  for (const auto &entry : ternary_ops) {
     const std::string &desc = entry.second.GetDescription();
     if (desc.find("vector_func_VectorFunc") != std::string::npos) {
       found_vector_func_perf = true;
@@ -537,7 +557,7 @@ TEST_F(TestPipePerfExpr, TestVectorFuncPerfAnnotation) {
       break;
     }
   }
-  EXPECT_TRUE(found_vector_func_perf) << "VectorFunc performance variable not found in tenary_ops";
+  EXPECT_TRUE(found_vector_func_perf) << "VectorFunc performance variable not found in ternary_ops";
 
   // 验证pipe_costs包含AIV_VEC类型性能
   auto iter = pipe_costs.find(PipeType::AIV_VEC);

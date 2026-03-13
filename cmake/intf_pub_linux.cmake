@@ -20,6 +20,7 @@ target_compile_options(intf_pub_base INTERFACE
     -Wall
     -fPIC
     -fstack-protector-strong
+    -D_FORTIFY_SOURCE=2
     $<$<CONFIG:Debug>:-g>
     $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
         -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>

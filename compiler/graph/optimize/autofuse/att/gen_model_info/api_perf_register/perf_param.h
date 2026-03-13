@@ -15,7 +15,7 @@
 #include <map>
 #include "base/base_types.h"
 #include "gen_model_info/parser/tuning_space.h"
-#include "util/tenary_op.h"
+#include "util/ternary_op.h"
 namespace att {
 struct NodePerfInfo {
   std::string optype;
@@ -26,7 +26,7 @@ struct NodePerfInfo {
   int32_t block_count_idx{0};  // 用于 LoadStoreStrideV2Func，表示发生非连续的轴索引
 };
 using PipeHeadPerfFunc = att::Expr (*)(const std::vector<att::NodeInfo> &,
-                                       std::map<att::Expr, att::TenaryOp, att::ExprCmp> &);
+                                       std::map<att::Expr, att::TernaryOp, att::ExprCmp> &);
 class PerfParamTable {
  public:
   PerfParamTable() = default;

@@ -13,10 +13,12 @@
 #include <fstream>
 #include "nlohmann/json.hpp"
 #include "depends/mmpa/src/mmpa_stub.h"
-#include "ge/st/stubs/utils/mock_execution_runtime.h"
+#include "utils/mock_execution_runtime.h"
 #include "dflow/compiler/pne/process_node_engine_manager.h"
 #include "dflow/compiler/pne/udf/udf_process_node_engine.h"
 #include "dflow/executor/flow_msg.h"
+#include "ge/ge_api.h"
+#include "flow_graph/data_flow.h"
 
 using namespace testing;
 

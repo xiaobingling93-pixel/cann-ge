@@ -1299,8 +1299,8 @@ void TilingLib::GenPgoLaunchKernelInit(std::stringstream &ss) const {
   ss << "    }" << std::endl;
   const auto backend_spce = optimize::BackendSpec::GetInstance();
   if (backend_spce != nullptr && backend_spce->set_local_memory_size > 0) {
-    ss << "    local_memory_size_attr.id = ACL_RT_LAUNCH_KERNEL_ATTR_LOCAL_MEMORY_SIZE;" << std::endl;
-    ss << "    local_memory_size_attr.value.localMemorySize = " << backend_spce->set_local_memory_size << ";" << std::endl;
+    ss << "    local_memory_size_attr.id = ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE;" << std::endl;
+    ss << "    local_memory_size_attr.value.dynUBufSize = " << backend_spce->set_local_memory_size << ";" << std::endl;
     ss << "    kernel_cfg.numAttrs = 1;" << std::endl;
     ss << "    kernel_cfg.attrs = &local_memory_size_attr;" << std::endl;
   }

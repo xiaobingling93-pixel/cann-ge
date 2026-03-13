@@ -192,11 +192,11 @@ void VFLoop::Destruct() {
 
 /********************************** 生成阶段调用 ***********************************/
 Status VFLoop::Generate(const TPipe &tpipe, const TensorManager &tensor_mgr, int32_t depth, std::string &result,
-                        std::string &loop_size_result) const {
+                        std::string &loop_size_result, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const {
   std::vector<ascir::AxisId> current_axis;
   std::stringstream ss;
   std::stringstream loop_size_ss;
-  GE_CHK_STATUS_RET(this->GenerateLoop(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss),
+  GE_CHK_STATUS_RET(this->GenerateLoop(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss, only_loop_max_depth, loop_size_vec),
                     "Generate loop failed");
   result = ss.str();
   loop_size_result = loop_size_ss.str();
@@ -205,9 +205,9 @@ Status VFLoop::Generate(const TPipe &tpipe, const TensorManager &tensor_mgr, int
 
 Status VFLoop::GenerateLoop(const TPipe &tpipe, const TensorManager &tensor_mgr, int32_t depth,
                             std::vector<ascir::AxisId> &current_axis, std::stringstream &ss,
-                            std::stringstream &loop_size_ss) const {
+                            std::stringstream &loop_size_ss, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const {
   if (this->axis_id_ == ge::kIdNone) {
-    GE_CHK_STATUS_RET(this->GenerateBody(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss),
+    GE_CHK_STATUS_RET(this->GenerateBody(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss, only_loop_max_depth, loop_size_vec),
                       "Codegen generate body failed when axis id is none");
     return ge::SUCCESS;
   }
@@ -221,13 +221,14 @@ Status VFLoop::GenerateLoop(const TPipe &tpipe, const TensorManager &tensor_mgr,
   } else {
     loop_size_ss << "  uint16_t " << axis.loop_size.Str() << " = " << "static_cast<uint16_t>(output_dims_" << current_depth << ");\n";
   }
+  loop_size_vec.push_back(axis.loop_size.Str());
   current_axis.push_back(this->axis_id_);
   ss << "for (" << "uint16_t " << axis.Variable::name << " = 0; " << axis << " < " << axis.loop_size.Str() << "; " << axis << "++) "
      << "{" << std::endl;
   if (current_depth == depth) {
     ss << "    preg_" << current_depth << " = " << "AscendC::MicroAPI::UpdateMask<" << this->max_dtype_size_ << ">(" << "sreg_" << current_depth << ");\n";
   }
-  GE_CHK_STATUS_RET(this->GenerateBody(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss),
+  GE_CHK_STATUS_RET(this->GenerateBody(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss, only_loop_max_depth, loop_size_vec),
                     "Codegen generate body failed for normal loop");
   ss << "}" << std::endl;
 
@@ -237,11 +238,14 @@ Status VFLoop::GenerateLoop(const TPipe &tpipe, const TensorManager &tensor_mgr,
 
 Status VFLoop::GenerateBody(const TPipe &tpipe, const TensorManager &tensor_mgr, int32_t depth,
                             std::vector<ascir::AxisId> &current_axis, std::stringstream &ss,
-                            std::stringstream &loop_size_ss) const {
+                            std::stringstream &loop_size_ss, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const {
+  bool has_loop = false;
+  bool has_call = false;
   for (const auto &body : this->bodys_) {
     if (body.type_ == LoopType::LOOP) {
-      GE_CHK_STATUS_RET(body.loop_->GenerateLoop(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss),
+      GE_CHK_STATUS_RET(body.loop_->GenerateLoop(tpipe, tensor_mgr, depth, current_axis, ss, loop_size_ss, only_loop_max_depth, loop_size_vec),
                         "Generate loop for body failed");
+      has_loop = true;
     } else if (body.type_ == LoopType::CALL) {
       std::string preg_name = GetOriginPregName(current_axis, depth);
       std::string ub_offset = "";
@@ -259,7 +263,11 @@ Status VFLoop::GenerateBody(const TPipe &tpipe, const TensorManager &tensor_mgr,
       CallParam param = {preg_name, ub_offset};
       body.call_->Generate(tensor_mgr, tpipe, param, micro_api_call_str);
       ss << micro_api_call_str;
+      has_call = true;
     }
+  }
+  if (has_loop && !has_call) {
+    only_loop_max_depth = std::max(only_loop_max_depth, static_cast<int32_t>(current_axis.size()));
   }
   return ge::SUCCESS;
 }

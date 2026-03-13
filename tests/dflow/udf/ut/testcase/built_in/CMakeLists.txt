@@ -25,7 +25,6 @@ set(proto_src_files
         ${UDF_SRC_PATH}/proto/ff_udf_def.proto
         ${UDF_SRC_PATH}/proto/ff_deployer.proto
         ${UDF_SRC_PATH}/proto/ff_dynamic_sched.proto
-        ${UDF_SRC_PATH}/proto/ff_dump_data.proto
 )
 
 protobuf_generate(udf_exe PROTO_SRCS PROTO_HDRS ${proto_src_files})

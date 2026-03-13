@@ -33,8 +33,8 @@ class VFLoop {
   Status ConstructFromNodes(ascir::NodeViewVisitorConst nodes, const ascir::NodeView &vf_node);
   void Destruct();
 
- /* kernel生成阶段调用 */
-  Status Generate(const TPipe &tpipe, const TensorManager& tensor_mgr, int32_t depth, std::string &result, std::string &loop_size_result) const;
+  /* kernel生成阶段调用 */
+  Status Generate(const TPipe &tpipe, const TensorManager& tensor_mgr, int32_t depth, std::string &result, std::string &loop_size_result, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const;
   void SetMaxDtypeSize(std::string dtype);
 
  private:
@@ -44,9 +44,9 @@ class VFLoop {
   std::string max_dtype_size_;
 
   Status GenerateLoop(const TPipe &tpipe, const TensorManager& tensor_mgr, int32_t depth, std::vector<ascir::AxisId>& current_axis,
-                      std::stringstream& ss, std::stringstream& loop_size_ss) const;
+                       std::stringstream& ss, std::stringstream& loop_size_ss, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const;
   Status GenerateBody(const TPipe &tpipe, const TensorManager& tensor_mgr, int32_t depth, std::vector<ascir::AxisId>& current_axis,
-                      std::stringstream& ss, std::stringstream& loop_size_ss) const;
+                       std::stringstream& ss, std::stringstream& loop_size_ss, int32_t &only_loop_max_depth, std::vector<std::string>& loop_size_vec) const;
 };
 
 }  // namespace codegen

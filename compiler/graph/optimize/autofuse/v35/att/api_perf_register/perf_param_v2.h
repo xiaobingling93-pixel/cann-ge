@@ -28,7 +28,7 @@ class PerfParamTableV2 : public PerfParamTable {
   [[nodiscard]] Expr GetOpHeadCost() const override;
   [[nodiscard]] const std::string *GetAscendCApiPerfTable() const override;
   [[nodiscard]] PipeHeadPerfFunc GetPipeHeadPerfFunc(PipeType pipe_type) const override;
-  [[nodiscard]] static Expr GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops);
+  [[nodiscard]] static Expr GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops);
 
  private:
   std::map<std::string, std::vector<VfInstructPerf>> vf_instruct_type_2_api_perf_;

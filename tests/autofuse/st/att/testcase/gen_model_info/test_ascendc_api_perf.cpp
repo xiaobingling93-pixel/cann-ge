@@ -1410,8 +1410,8 @@ TEST_F(TestAscendcApiPerf, TestMoveGmToUbSmallblk) {
   auto T = Add(CreateExpr(7.90520000457764), Div(CreateExpr(7.30999994277954), blockdim));
   auto cycles = Add(Div(Mul(CreateExpr(16 * 32 * 2), CreateExpr(1)), T), CreateExpr(27.0100002288818));
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res), Str(cycles));
 }
 
@@ -1455,8 +1455,8 @@ TEST_F(TestAscendcApiPerf, TestMoveGmToUb) {
   auto T = Add(CreateExpr(9.90740013122559), Div(CreateExpr(15.8959999084473), blockdim));
   auto cycles = Add(Div(Mul(CreateExpr(1000 * 50 * 2), CreateExpr(1)), T), CreateExpr(27.0100002288818));
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res), Str(cycles));
 }
 
@@ -2013,7 +2013,7 @@ TEST_F(TestAscendcApiPerf, TestSelectCase1) {
   Expr res = perf_res.pipe_res[PipeType::AIV_VEC];
   EXPECT_EQ(result, ge::SUCCESS);
   EXPECT_EQ(Str(res), "where_base_node");
-  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.tenary_ops))), "TenaryOp(16320 <= 2048, -9260586.41082808, 689197.283277584)");
+  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.ternary_ops))), "TernaryOp(16320 <= 2048, -9260586.41082808, 689197.283277584)");
 }
 
 // 测试 Select API
@@ -2060,7 +2060,7 @@ TEST_F(TestAscendcApiPerf, TestSelectCase2) {
   Expr res = perf_res.pipe_res[PipeType::AIV_VEC];
   EXPECT_EQ(result, ge::SUCCESS);
   EXPECT_EQ(Str(res), "where_base_node");
-  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.tenary_ops))), "TenaryOp(16320 <= 65536, 16926703.4515522, 22081696.3273777)");
+  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.ternary_ops))), "TernaryOp(16320 <= 65536, 16926703.4515522, 22081696.3273777)");
 }
 
 // 测试 SetVectorMask API
@@ -2504,7 +2504,7 @@ TEST_F(TestAscendcApiPerf, TestWhereBase) {
   Expr res = perf_res.pipe_res[PipeType::AIV_VEC];
   EXPECT_EQ(result, ge::SUCCESS);
   EXPECT_EQ(Str(res), "where_base_node");
-  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.tenary_ops))), "TenaryOp(16320 <= 2048, -9273412.97818479, 690200.90328796)");
+  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.ternary_ops))), "TernaryOp(16320 <= 2048, -9273412.97818479, 690200.90328796)");
 }
 
 // 测试Where API的WhereExtend分支
@@ -3379,8 +3379,8 @@ TEST_F(TestAscendcApiPerf, TestLoadApiBFloat16) {
   auto T = Add(CreateExpr(7.90520000457764), Div(CreateExpr(7.30999994277954), blockdim));
   auto cycles = Add(Div(Mul(CreateExpr(64 * 128 * 2), CreateExpr(1)), T), CreateExpr(27.0100002288818));
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res), Str(cycles));
 }
 
@@ -3420,8 +3420,8 @@ TEST_F(TestAscendcApiPerf, TestStoreApiUint8) {
   auto T = Add(CreateExpr(9.96000003814697), Div(CreateExpr(3.78999996185303), blockdim));
   auto cycles = Add(Div(Mul(CreateExpr(64 * 128 * 1), CreateExpr(1)), T), CreateExpr(12.0900001525879));
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res), Str(cycles));
 }
 
@@ -3537,8 +3537,8 @@ TEST_F(TestAscendcApiPerf, TestStoreFloat32) {
   auto T = Add(CreateExpr(9.96000003814697), Div(CreateExpr(3.78999996185303), blockdim));
   auto cycles = Add(Div(Mul(CreateExpr(64 * 128 * 4), CreateExpr(1)), T), CreateExpr(12.0900001525879));
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res), Str(cycles));
 }
 
@@ -4509,7 +4509,7 @@ TEST_F(TestAscendcApiPerf, TestSelectFloat32) {
   Expr res = perf_res.pipe_res[PipeType::AIV_VEC];
   EXPECT_EQ(result, ge::SUCCESS);
   EXPECT_EQ(Str(res), "where_base_node");
-  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.tenary_ops))), "TenaryOp(16320 <= 8192, -7731.84273529891, 4450.97347860783)");
+  EXPECT_EQ(Str(res.Replace(ConcursiveReplaceVars(perf_res.ternary_ops))), "TernaryOp(16320 <= 8192, -7731.84273529891, 4450.97347860783)");
 }
 
 // 测试 WholeReduceMax API - float32类型
@@ -6661,9 +6661,9 @@ TEST_F(TestAscendcApiPerf, TestLoadApiForTypev1) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
+  auto ternary_ops = perf_res.ternary_ops;
   ExprExprMap replace_vars;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   for (const auto &pair : ret) {
     replace_vars[pair.first] = pair.second;
   }
@@ -6677,8 +6677,8 @@ TEST_F(TestAscendcApiPerf, TestLoadApiForTypev1) {
       "((512 / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818)";
   const std::string perf3 =
       "((4 * z0t_size / (((15.8959999084473 / (block_dim)) + 9.90740013122559))) + 27.0100002288818)";
-  const std::string always_true = "TenaryOp(IsEqual(False, 0), " + perf1 + ", " + perf2 + ")";
-  const std::string expect_perf = "TenaryOp(" + is_small_block + ", " + always_true + ", " + perf3 + ")";
+  const std::string always_true = "TernaryOp(IsEqual(False, 0), " + perf1 + ", " + perf2 + ")";
+  const std::string expect_perf = "TernaryOp(" + is_small_block + ", " + always_true + ", " + perf3 + ")";
   EXPECT_EQ(Str(iter->second), expect_perf);
 }
 
@@ -6715,10 +6715,10 @@ TEST_F(TestAscendcApiPerf, TestLoadApiForTypev2) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
   // 外抛for循环
-  auto tenary_ops = perf_res.tenary_ops; 
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops; 
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   EXPECT_EQ(Str(res.Replace(ret)),
-            "TenaryOp(34 < (7 * z0z1t_size), (34 * TenaryOp((392 * z0z1t_size * z4t_size) < 25000, TenaryOp(IsEqual(False, 0), ((0.490000002086163 * Mod(((7 * z4t_size) + -7), 256) * z0z1t_size) + (392 * z0z1t_size * z4t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818), ((3584 * z0z1t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818)), ((0.490000002086163 * Mod(((7 * z4t_size) + -7), 256) * z0z1t_size) + (392 * z0z1t_size * z4t_size / (((15.8959999084473 / (block_dim)) + 9.90740013122559))) + 27.0100002288818))), (7 * TenaryOp((1904 * z4t_size) < 25000, TenaryOp(IsEqual(False, 0), ((1904 * z4t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818), ((17408 / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818)), ((1904 * z4t_size / (((15.8959999084473 / (block_dim)) + 9.90740013122559))) + 27.0100002288818)) * z0z1t_size))");
+            "TernaryOp(34 < (7 * z0z1t_size), (34 * TernaryOp((392 * z0z1t_size * z4t_size) < 25000, TernaryOp(IsEqual(False, 0), ((0.490000002086163 * Mod(((7 * z4t_size) + -7), 256) * z0z1t_size) + (392 * z0z1t_size * z4t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818), ((3584 * z0z1t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818)), ((0.490000002086163 * Mod(((7 * z4t_size) + -7), 256) * z0z1t_size) + (392 * z0z1t_size * z4t_size / (((15.8959999084473 / (block_dim)) + 9.90740013122559))) + 27.0100002288818))), (7 * TernaryOp((1904 * z4t_size) < 25000, TernaryOp(IsEqual(False, 0), ((1904 * z4t_size / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818), ((17408 / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 27.0100002288818)), ((1904 * z4t_size / (((15.8959999084473 / (block_dim)) + 9.90740013122559))) + 27.0100002288818)) * z0z1t_size))");
 }
 
 TEST_F(TestAscendcApiPerf, TestStoreApiForType) {
@@ -6751,12 +6751,12 @@ TEST_F(TestAscendcApiPerf, TestStoreApiForType) {
   auto result = perf(input_shapes, output_shapes, node, perf_res);;
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_FALSE(tenary_ops.empty());
-  auto iter = tenary_ops.find(res);
-  EXPECT_TRUE(iter != tenary_ops.end());
-  EXPECT_EQ(iter->second.GetTenaryOpStr(),
-            "TenaryOp(IsEqual(Mod((2 * z6t_size), 4), 0), ((1904 * z0z1t_size * z6t_size / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879), TenaryOp(((34 * z6t_size) + -512) < 0, TenaryOp(((34 * z6t_size) + -4) < 0, (((((-2.20000004768372 - (0.101000003516674 * block_dim)) * 272 * z6t_size) + (8.89000034332275 * block_dim) + 96.2399978637695) * 7 * z0z1t_size) + 12.0900001525879), ((952.0 * z0z1t_size * z6t_size) + 1.29999995231628)), (((256 - ((512 / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879)) * 1.0) + (1904 * z0z1t_size * z6t_size / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879)))");
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_FALSE(ternary_ops.empty());
+  auto iter = ternary_ops.find(res);
+  EXPECT_TRUE(iter != ternary_ops.end());
+  EXPECT_EQ(iter->second.GetTernaryOpStr(),
+            "TernaryOp(IsEqual(Mod((2 * z6t_size), 4), 0), ((1904 * z0z1t_size * z6t_size / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879), TernaryOp(((34 * z6t_size) + -512) < 0, TernaryOp(((34 * z6t_size) + -4) < 0, (((((-2.20000004768372 - (0.101000003516674 * block_dim)) * 272 * z6t_size) + (8.89000034332275 * block_dim) + 96.2399978637695) * 7 * z0z1t_size) + 12.0900001525879), ((952.0 * z0z1t_size * z6t_size) + 1.29999995231628)), (((256 - ((512 / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879)) * 1.0) + (1904 * z0z1t_size * z6t_size / (((3.78999996185303 / (block_dim)) + 9.96000003814697))) + 12.0900001525879)))");
 }
 
 // 测试 StoreApi API 边界条件
@@ -8494,8 +8494,8 @@ TEST_F(TestAscendcApiPerf, TestGatherFloat16) {
   Expr res2 = perf_res.pipe_res[PipeType::AIV_MTE2];
   EXPECT_EQ(result, ge::SUCCESS);
   EXPECT_EQ(Str(res1), "354.892294883728");
-  auto tenary_ops = perf_res.tenary_ops;
-  EXPECT_TRUE(tenary_ops.empty());
+  auto ternary_ops = perf_res.ternary_ops;
+  EXPECT_TRUE(ternary_ops.empty());
   EXPECT_EQ(Str(res2), "((32768 / (((7.30999994277954 / (block_dim)) + 7.90520000457764))) + 54.0200004577637)");
 }
 

@@ -138,7 +138,7 @@ inline bool IsEqual(double a, double b)
     return abs < epsilon;
 }
 template<typename T1, typename T2>
-inline double TenaryOp(bool cond, T1 a, T2 b)
+inline double TernaryOp(bool cond, T1 a, T2 b)
 {
     return static_cast<double>(cond ? a : b);
 }

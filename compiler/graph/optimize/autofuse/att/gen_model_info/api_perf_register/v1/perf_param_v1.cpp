@@ -24,7 +24,7 @@ const Expr kMte2PipeHeadSmallK = CreateExpr(15.89f);
 const Expr kMte2PipeHeadSmallB = CreateExpr(882.09f);
 const Expr kMte3PipeHeadcost = CreateExpr(497.36f);
 }
-Expr PerfParamTableV1::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+Expr PerfParamTableV1::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   Expr mte2_pipe_head;
   Expr max_data_size = ge::sym::kSymbolZero;
   for (const auto &node : node_infos) {
@@ -56,10 +56,10 @@ Expr PerfParamTableV1::GetMTE2PipeHead(const std::vector<NodeInfo> &node_infos, 
       mte2_pipe_head = small_head_cost;
     }
   } else {
-    GetPerfVar("mte2_pipe_head", mte2_pipe_head, tenary_ops);
-    TenaryOp tenary_op = TenaryOp(CondType::K_LT, max_data_size, kMTE2Thres, small_head_cost, normal_head_cost);
-    tenary_op.SetVariable(mte2_pipe_head);
-    tenary_ops[mte2_pipe_head] = tenary_op;
+    GetPerfVar("mte2_pipe_head", mte2_pipe_head, ternary_ops);
+    TernaryOp ternary_op = TernaryOp(CondType::K_LT, max_data_size, kMTE2Thres, small_head_cost, normal_head_cost);
+    ternary_op.SetVariable(mte2_pipe_head);
+    ternary_ops[mte2_pipe_head] = ternary_op;
   }
   return mte2_pipe_head;
 }
@@ -572,16 +572,16 @@ PerfParamTableV1::PerfParamTableV1() {
   pipes_head_perf.emplace(PipeType::AIV_MTE2, &PerfParamTableV1::GetMTE2PipeHead);
   pipes_head_perf.emplace(PipeType::AIV_MTE3,
                           [](const std::vector<NodeInfo> &node_infos,
-                             std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) -> Expr {
+                             std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) -> Expr {
                             (void)node_infos;
-                            (void)tenary_ops;
+                            (void)ternary_ops;
                             return kMte3PipeHeadcost;
                           });
   pipes_head_perf.emplace(PipeType::AIV_VEC,
                           [](const std::vector<NodeInfo> &node_infos,
-                             std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) -> Expr {
+                             std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) -> Expr {
                             (void)node_infos;
-                            (void)tenary_ops;
+                            (void)ternary_ops;
                             return kVecheadcost;
                           });
 }

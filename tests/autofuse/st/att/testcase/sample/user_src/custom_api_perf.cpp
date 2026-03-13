@@ -54,7 +54,7 @@ ge::Status VfCall1Compute(const std::vector<TensorShapeInfo> &input_shapes,
               const std::vector<TensorShapeInfo> &output_shapes,
               const ge::AscNodePtr &node,
               std::map<PipeType, Expr> &res,
-              std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+              std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   (void)input_shapes;
   (void)output_shapes;
   (void)node;

@@ -38,7 +38,7 @@
 #include "graph/ge_global_options.h"
 #include "depends/runtime/src/runtime_stub.h"
 #include "graph/manager/mem_manager.h"
-#include "ge/st/stubs/utils/mock_execution_runtime.h"
+#include "utils/mock_execution_runtime.h"
 
 using namespace testing;
 using namespace std;

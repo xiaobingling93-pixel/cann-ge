@@ -84,9 +84,9 @@ ge::Status LoadPerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
     std::shared_ptr<IfCase> branch_b = std::make_shared<IfCase>(res_small_blk + res_stride);
     GE_ASSERT_NOTNULL(branch_b);
     // blocklen < 512B时走branch_b；否则走branch_a
-    TenaryOp tenary_op = TenaryOp(CondType::K_LT, blk, CreateExpr(0), std::move(branch_b), std::move(branch_a));
-    tenary_op.SetVariable(res);
-    perf.tenary_ops[res] = tenary_op;
+    TernaryOp ternary_op = TernaryOp(CondType::K_LT, blk, CreateExpr(0), std::move(branch_b), std::move(branch_a));
+    ternary_op.SetVariable(res);
+    perf.ternary_ops[res] = ternary_op;
     perf.pipe_res[PipeType::AIV_MTE2] = res;
   }
   return ge::SUCCESS;
@@ -136,10 +136,10 @@ ge::Status ExpandBlockLen(const NodeDetail &node_info, PerfOutputInfo &perf, std
       GE_ASSERT_NOTNULL(normal_case);
       auto small_block_len_case = std::make_shared<IfCase>(kCacheLineEleNum);
       GE_ASSERT_NOTNULL(small_block_len_case);
-      TenaryOp tenary_op = TenaryOp(CondType::K_EQ, is_small_block_len_checker, CreateExpr(false),
+      TernaryOp ternary_op = TernaryOp(CondType::K_EQ, is_small_block_len_checker, CreateExpr(false),
                                     std::move(normal_case), std::move(small_block_len_case));
-      tenary_op.SetVariable(res);
-      perf.tenary_ops[res] = tenary_op;
+      ternary_op.SetVariable(res);
+      perf.ternary_ops[res] = ternary_op;
       block_len = res;
     }
     GELOGD("Block len checker[%s], is_small_block_len[%d], block_len[%s]", is_small_block_len_checker.Serialize().get(),

@@ -10,13 +10,14 @@
 
 #include "pipe_perf_expr.h"
 #include <unordered_set>
+#include <cctype>
 #include "base/att_const_values.h"
 #include "arg_list_manager.h"
 #include "common/checker.h"
 #include "api_perf_register/utils/vf_perf_utils.h"
 #include "api_perf_register/utils/api_perf_utils.h"
 #include "api_perf_register/api_perf_factory.h"
-#include "utils/stable_node_id.h"
+#include "utils/node_expr_id.h"
 #include "graph/compute_graph.h"
 
 namespace att {
@@ -38,20 +39,20 @@ void UpdateDim(const std::vector<Expr> &stride, std::vector<Expr> &dims) {
   }
 }
 
-// 辅助函数：处理 tenary_ops，生成变量名并更新
-static void ProcessTenaryOps(const NodeExprId &node_expr_id, const std::string &annotation,
-                             const PerfOutputInfo &perf_res, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops,
+// 辅助函数：处理 ternary_ops，生成变量名并更新
+static void ProcessTernaryOps(const NodeExprId &node_expr_id, const std::string &annotation,
+                             const PerfOutputInfo &perf_res, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops,
                              std::vector<Expr> &update_vars, std::vector<std::pair<Expr, Expr>> &replace_vars) {
   std::string expr_prefix = node_expr_id.GetExprVarPrefix();
   std::string full_desc = node_expr_id.GetVarPrefix();
   Expr cur_expr;
-  for (const auto &pair : perf_res.tenary_ops) {
+  for (const auto &pair : perf_res.ternary_ops) {
     std::string var_name = expr_prefix + "_" + Str(pair.first) + annotation;
     std::string desc = full_desc + "_" + Str(pair.first) + annotation;
-    GetPerfVar(var_name, cur_expr, tenary_ops);
-    tenary_ops[cur_expr] = pair.second;
-    tenary_ops[cur_expr].SetVariable(cur_expr);
-    tenary_ops[cur_expr].SetDescription(desc);
+    GetPerfVar(var_name, cur_expr, ternary_ops);
+    ternary_ops[cur_expr] = pair.second;
+    ternary_ops[cur_expr].SetVariable(cur_expr);
+    ternary_ops[cur_expr].SetDescription(desc);
     update_vars.emplace_back(cur_expr);
     replace_vars.emplace_back(std::make_pair(pair.first, cur_expr));
   }
@@ -60,18 +61,18 @@ static void ProcessTenaryOps(const NodeExprId &node_expr_id, const std::string &
 // 辅助函数：应用变量替换
 static void ApplyVariableReplacement(const std::vector<Expr> &update_vars,
                                      const std::vector<std::pair<Expr, Expr>> &replace_vars,
-                                     std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+                                     std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   for (const auto &var : update_vars) {
-    tenary_ops[var].Replace(replace_vars);
-    tenary_ops[var].UpdateRelatedVars(replace_vars);
-    GELOGD("The value of [%s] is [%s]", Str(var).c_str(), tenary_ops[var].GetTenaryOpStr().c_str());
+    ternary_ops[var].Replace(replace_vars);
+    ternary_ops[var].UpdateRelatedVars(replace_vars);
+    GELOGD("The value of [%s] is [%s]", Str(var).c_str(), ternary_ops[var].GetTernaryOpStr().c_str());
   }
 }
 
 // 辅助函数：处理 pipe_res，生成各pipe类型的性能变量
 static void ProcessPipeRes(const NodeExprId &node_expr_id, const std::string &annotation,
                            const PerfOutputInfo &perf_res, std::map<PipeType, Expr> &node_perf,
-                           std::map<Expr, TenaryOp, ExprCmp> &tenary_ops,
+                           std::map<Expr, TernaryOp, ExprCmp> &ternary_ops,
                            const std::vector<std::pair<Expr, Expr>> &replace_vars) {
   std::string expr_prefix = node_expr_id.GetExprVarPrefix();
   std::string full_desc = node_expr_id.GetVarPrefix();
@@ -83,27 +84,27 @@ static void ProcessPipeRes(const NodeExprId &node_expr_id, const std::string &an
     }
     std::string var_name = expr_prefix + annotation + "_" + it->second + "_perf";
     std::string desc = full_desc + annotation + "_" + it->second + "_perf";
-    GetPerfVar(var_name, perf_expr, tenary_ops);
-    auto iter = perf_res.tenary_ops.find(pair.second);
-    if (iter != perf_res.tenary_ops.end()) {
-      // 复制 TenaryOp，但需要保留变量、替换和描述设置
-      tenary_ops[perf_expr] = iter->second;
+    GetPerfVar(var_name, perf_expr, ternary_ops);
+    auto iter = perf_res.ternary_ops.find(pair.second);
+    if (iter != perf_res.ternary_ops.end()) {
+      // 复制 TernaryOp，但需要保留变量、替换和描述设置
+      ternary_ops[perf_expr] = iter->second;
     } else {
-      tenary_ops[perf_expr] = TenaryOp(pair.second);
+      ternary_ops[perf_expr] = TernaryOp(pair.second);
     }
     // 使用传入的 replace_vars 进行变量替换
     node_perf[pair.first] = pair.second.Replace(replace_vars);
-    tenary_ops[perf_expr].Replace(replace_vars);
-    tenary_ops[perf_expr].UpdateRelatedVars(replace_vars);
-    tenary_ops[perf_expr].SetVariable(perf_expr);
-    // 必须在所有操作之后设置描述，因为 Replace/SetVariable/UpdateRelatedVars 可能影响 tenary_ops
-    tenary_ops[perf_expr].SetDescription(desc);
+    ternary_ops[perf_expr].Replace(replace_vars);
+    ternary_ops[perf_expr].UpdateRelatedVars(replace_vars);
+    ternary_ops[perf_expr].SetVariable(perf_expr);
+    // 必须在所有操作之后设置描述，因为 Replace/SetVariable/UpdateRelatedVars 可能影响 ternary_ops
+    ternary_ops[perf_expr].SetDescription(desc);
   }
 }
 
 // 替换性能公式中使用的符号
 ge::Status UpdatePerfRes(const NodeInfo &node, const PerfOutputInfo &perf_res, std::map<PipeType, Expr> &node_perf,
-                         std::map<Expr, TenaryOp, ExprCmp> &tenary_ops, bool tail_shape = false) {
+                         std::map<Expr, TernaryOp, ExprCmp> &ternary_ops, bool tail_shape = false) {
   NodeExprId node_expr_id = BuildNodeExprId(node);
   std::string annotation = tail_shape ? "_tail" : "";
   std::vector<Expr> update_vars;
@@ -113,9 +114,9 @@ ge::Status UpdatePerfRes(const NodeInfo &node, const PerfOutputInfo &perf_res, s
          node.node_type.c_str(), node_expr_id.GetExprVarPrefix().c_str(),
          node_expr_id.GetVarPrefix().c_str());
 
-  ProcessTenaryOps(node_expr_id, annotation, perf_res, tenary_ops, update_vars, replace_vars);
-  ApplyVariableReplacement(update_vars, replace_vars, tenary_ops);
-  ProcessPipeRes(node_expr_id, annotation, perf_res, node_perf, tenary_ops, replace_vars);
+  ProcessTernaryOps(node_expr_id, annotation, perf_res, ternary_ops, update_vars, replace_vars);
+  ApplyVariableReplacement(update_vars, replace_vars, ternary_ops);
+  ProcessPipeRes(node_expr_id, annotation, perf_res, node_perf, ternary_ops, replace_vars);
 
   return ge::SUCCESS;
 }
@@ -146,7 +147,7 @@ ge::Status CheckOuterAxis(const SubAxis *cut_axis, const std::vector<SubAxis *> 
   return ge::SUCCESS;
 }
 
-Expr GetTailSize(const Expr &a, const Expr &b, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+Expr GetTailSize(const Expr &a, const Expr &b, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   Expr tail_size;
   if (a.IsConstExpr() && b.IsConstExpr()) {
     int32_t a_value;
@@ -161,10 +162,10 @@ Expr GetTailSize(const Expr &a, const Expr &b, std::map<Expr, TenaryOp, ExprCmp>
   } else {
     tail_size = CreateExpr((Str(b) + "_tail").c_str());
     Expr status = ge::sym::Mod(a, b);
-    TenaryOp tenary_op = TenaryOp(CondType::K_EQ, status, CreateExpr(0), b, status);
-    tenary_op.SetVariable(tail_size);
-    tenary_ops[tail_size] = tenary_op;
-    GELOGD("The value of [%s] is [%s]", Str(tail_size).c_str(), tenary_op.GetTenaryOpStr().c_str());
+    TernaryOp ternary_op = TernaryOp(CondType::K_EQ, status, CreateExpr(0), b, status);
+    ternary_op.SetVariable(tail_size);
+    ternary_ops[tail_size] = ternary_op;
+    GELOGD("The value of [%s] is [%s]", Str(tail_size).c_str(), ternary_op.GetTernaryOpStr().c_str());
   }
   return tail_size;
 }
@@ -231,7 +232,7 @@ bool CheckSingleCut(const NodeInfo &node) {
 }
 }
 
-std::vector<Expr> GetTensorTailRepeat(const TensorPtr &tensor, std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+std::vector<Expr> GetTensorTailRepeat(const TensorPtr &tensor, std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
   std::vector<Expr> ret;
   for (const auto &dim: tensor->dim_info) {
     if (dim->axis_type != AxisPosition::INNER) {
@@ -239,17 +240,17 @@ std::vector<Expr> GetTensorTailRepeat(const TensorPtr &tensor, std::map<Expr, Te
     } else {
       GE_ASSERT_TRUE(dim->parent_axis.size() == 1);
       Expr parent_size = dim->parent_axis[0]->repeat;
-      ret.emplace_back(GetTailSize(parent_size, dim->repeat, tenary_ops));
+      ret.emplace_back(GetTailSize(parent_size, dim->repeat, ternary_ops));
     }
   }
   return ret;
 }
 
 ge::Status GetTensorShapeInfo(const TensorPtr &tensor, TensorShapeInfo &tensor_shape_info,
-                              std::map<Expr, TenaryOp, ExprCmp> &tenary_ops, bool tail_shape) {
+                              std::map<Expr, TernaryOp, ExprCmp> &ternary_ops, bool tail_shape) {
   GE_ASSERT_TRUE(tensor->repeat.size() == tensor->stride.size());
   if (tail_shape) {
-    auto tail_repeat = GetTensorTailRepeat(tensor, tenary_ops);
+    auto tail_repeat = GetTensorTailRepeat(tensor, ternary_ops);
     tensor_shape_info.repeats = tail_repeat;
     tensor_shape_info.dims = tail_repeat;
   } else {
@@ -272,16 +273,16 @@ ge::Status GetTensorShapeInfo(const TensorPtr &tensor, TensorShapeInfo &tensor_s
 
 ge::Status PipePerfExpr::GetTensorShapes(const NodeInfo &node, std::vector<TensorShapeInfo> &input_dims,
                                          std::vector<TensorShapeInfo> &output_dims,
-                                         std::map<Expr, TenaryOp, ExprCmp> &tenary_ops, bool tail_shape) const {
+                                         std::map<Expr, TernaryOp, ExprCmp> &ternary_ops, bool tail_shape) const {
   for (const auto &tensor : node.inputs) {
     TensorShapeInfo tensor_shape_info;
-    GE_ASSERT_SUCCESS(GetTensorShapeInfo(tensor, tensor_shape_info, tenary_ops, tail_shape),
+    GE_ASSERT_SUCCESS(GetTensorShapeInfo(tensor, tensor_shape_info, ternary_ops, tail_shape),
                        "Get node [%s] in tensor shape[%s] failed.", node.name.c_str(), tensor->name.c_str());
     input_dims.emplace_back(tensor_shape_info);
   }
   for (const auto &tensor : node.outputs) {
     TensorShapeInfo tensor_shape_info;
-    GE_ASSERT_SUCCESS(GetTensorShapeInfo(tensor, tensor_shape_info, tenary_ops, tail_shape),
+    GE_ASSERT_SUCCESS(GetTensorShapeInfo(tensor, tensor_shape_info, ternary_ops, tail_shape),
                        "Get node [%s] out tensor shape[%s] failed.", node.name.c_str(), tensor->name.c_str());
     output_dims.emplace_back(tensor_shape_info);
   }
@@ -292,7 +293,7 @@ ge::Status PipePerfExpr::ConvertToPerfInfo(const std::vector<NodeInfo> &node_inf
                                            std::vector<NodePerfInfo> &node_perf_infos) const {
   std::vector<TensorShapeInfo> inputs;
   std::vector<TensorShapeInfo> outputs;
-  std::map<Expr, TenaryOp, ExprCmp> tenary_ops;  // 当前暂不使用
+  std::map<Expr, TernaryOp, ExprCmp> ternary_ops;  // 当前暂不使用
   for (const auto &sub_node_info : node_infos) {
     NodePerfInfo node_perf;
     node_perf.optype = sub_node_info.node_type;
@@ -301,7 +302,7 @@ ge::Status PipePerfExpr::ConvertToPerfInfo(const std::vector<NodeInfo> &node_inf
     }
     if (!sub_node_info.outputs.empty()) {
       node_perf.output_dtype = sub_node_info.outputs[0]->data_type;
-      GE_ASSERT_SUCCESS(GetTensorShapes(sub_node_info, inputs, outputs, tenary_ops),
+      GE_ASSERT_SUCCESS(GetTensorShapes(sub_node_info, inputs, outputs, ternary_ops),
                         "Get tensor shape failed, node[%s].", sub_node_info.name.c_str());
       node_perf.dims = outputs[0].dims;
     }
@@ -339,7 +340,7 @@ Perf PipePerfExpr::UpdateTilingScheduleConfigTable(const NodeInfo &node, bool ta
 }
 
 ge::Status PipePerfExpr::GetNodePerf(const NodeInfo &node, std::map<PipeType, Expr> &node_perf,
-                                     std::map<Expr, TenaryOp, ExprCmp> &tenary_ops, bool tail_shape) const {
+                                     std::map<Expr, TernaryOp, ExprCmp> &ternary_ops, bool tail_shape) const {
   std::string tail_annotation;
   if (tail_shape) {
     tail_annotation = "tail ";
@@ -348,7 +349,7 @@ ge::Status PipePerfExpr::GetNodePerf(const NodeInfo &node, std::map<PipeType, Ex
   const auto &node_unit = node.node_unit;
   std::vector<TensorShapeInfo> inputs;
   std::vector<TensorShapeInfo> outputs;
-  GE_ASSERT_SUCCESS(GetTensorShapes(node, inputs, outputs, tenary_ops, tail_shape), "Get tensor shape failed!");
+  GE_ASSERT_SUCCESS(GetTensorShapes(node, inputs, outputs, ternary_ops, tail_shape), "Get tensor shape failed!");
   for (size_t i = 0; i < inputs.size(); i++) {
     GELOGD("node[%s, %s] input[%zu] %s shape: {%s}", node.name.c_str(), node.node_type.c_str(), i,
            tail_annotation.c_str(), inputs[i].GetDimExpr().c_str());
@@ -372,57 +373,67 @@ ge::Status PipePerfExpr::GetNodePerf(const NodeInfo &node, std::map<PipeType, Ex
     node_perf.clear();
   }
   GELOGD("node[%s, %s] perf res: {%s}", node.name.c_str(), node.node_type.c_str(), perf_res.ToString().c_str());
-  GE_ASSERT_SUCCESS(UpdatePerfRes(node, perf_res, node_perf, tenary_ops, tail_shape));
+  GE_ASSERT_SUCCESS(UpdatePerfRes(node, perf_res, node_perf, ternary_ops, tail_shape));
   return ge::SUCCESS;
 }
 
 ge::Status PipePerfExpr::GetNodeExeTime(const NodeInfo &node, const ExeTimePassManager &exe_time_mgr,
-                                        TenaryOp &cur_exe_time) const {
+                                        TernaryOp &cur_exe_time) const {
   Expr exe_time = CreateExpr(1U);
   for (auto &loop_axis : node.loop_axes) {
     exe_time = ge::sym::Mul(exe_time, loop_axis->repeat);
   }
   GE_ASSERT_TRUE(IsValid(exe_time), "Get node exe times expr failed.");
   cur_exe_time = exe_time_mgr.UpdateNodeExeTime(node, exe_time);
-  std::string exe_time_name = node.name + "_exe_time";
+  std::string exe_time_name = att::SanitizeNodeName(node.name) + "_exe_time";
   cur_exe_time.SetVariable(CreateExpr(exe_time_name.c_str()));
   ArgListManager::GetInstance().SetArgExpr(exe_time_name, cur_exe_time.GetVariable());
   return ge::SUCCESS;
 }
 
 ge::Status PipePerfExpr::AddTailPerf(const Expr &tail_exe_time, const Expr &node_exe_times,
-                                     const std::map<PipeType, Expr> &node_perf,
                                      const std::map<PipeType, Expr> &node_tail_perf,
-                                     std::map<PipeType, Expr> &pipe_costs) const {
-  Expr pipe_cost;
+                                     PerfAddContext &tail_ctx) {
   Expr core_exe_time = node_exe_times - tail_exe_time;
   GELOGD("The exe time of the tail block is [%s], the exe time of the other block is [%s].",
          ge::SymbolicUtils::ToString(tail_exe_time).c_str(), ge::SymbolicUtils::ToString(core_exe_time).c_str());
-  GE_ASSERT_SUCCESS(AddPerf(core_exe_time, node_perf, pipe_costs));
-  GE_ASSERT_SUCCESS(AddPerf(tail_exe_time, node_tail_perf, pipe_costs));
+
+  // 为 core perf 创建临时 context（使用 node_perf）
+  PerfAddContext core_ctx(tail_ctx.node_perf, tail_ctx.pipe_costs, tail_ctx.ternary_ops, tail_ctx.expr_prefix);
+  GE_ASSERT_SUCCESS(AddPerf(core_exe_time, "core_contrib", core_ctx));
+
+  // 为 tail perf 创建临时 context（使用 node_tail_perf）
+  PerfAddContext tail_ctx_adapter(node_tail_perf, tail_ctx.pipe_costs, tail_ctx.ternary_ops, tail_ctx.expr_prefix);
+  GE_ASSERT_SUCCESS(AddPerf(tail_exe_time, "tail_contrib", tail_ctx_adapter));
+
   return ge::SUCCESS;
 }
 
-ge::Status PipePerfExpr::AddPerf(const Expr &node_exe_times, const std::map<PipeType, Expr> &node_perf,
-                                 std::map<PipeType, Expr> &pipe_costs) const {
-  Expr pipe_cost;
-  for (const auto &pair : node_perf) {
+ge::Status PipePerfExpr::AddPerf(const Expr &node_exe_times, const std::string &contrib_suffix,
+                                 PerfAddContext &ctx) {
+  for (const auto &pair : ctx.node_perf) {
     const auto &pipe_type_iter = PipeType2Str.find(pair.first);
     GE_ASSERT_TRUE(pipe_type_iter != PipeType2Str.end(), "Get pipe type str failed.");
     GELOGD("Get perf times [%s] at [%s], exe_time [%s]", pair.second.Str().get(), pipe_type_iter->second.c_str(),
            ge::SymbolicUtils::ToString(node_exe_times).c_str());
-    pipe_cost = ge::sym::Mul(node_exe_times, pair.second);
-    auto iter = pipe_costs.find(pair.first);
-    if (iter == pipe_costs.end()) {
-      pipe_costs[pair.first] = pipe_cost;
+    Expr pipe_cost = ge::sym::Mul(node_exe_times, pair.second);
+    std::string var_name = ctx.expr_prefix + "_" + pipe_type_iter->second + "_" + contrib_suffix;
+    Expr contrib_var;
+    GetPerfVar(var_name, contrib_var, ctx.ternary_ops);
+    TernaryOp contrib_op(pipe_cost);
+    contrib_op.SetVariable(contrib_var);
+    ctx.ternary_ops[contrib_var] = std::move(contrib_op);
+    auto iter = ctx.pipe_costs.find(pair.first);
+    if (iter == ctx.pipe_costs.end()) {
+      ctx.pipe_costs[pair.first] = contrib_var;
     } else {
-      pipe_costs[pair.first] = pipe_cost + pipe_costs[pair.first];
+      ctx.pipe_costs[pair.first] = contrib_var + ctx.pipe_costs[pair.first];
     }
   }
   return ge::SUCCESS;
 }
 
-ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times) const {
+ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_exe_times, Expr &tail_exe_times) {
   Expr outer_axis;
   const SubAxis *cut_axis = nullptr;
   bool outer_inside_loop = false;
@@ -459,18 +470,18 @@ ge::Status PipePerfExpr::GetTailExeTime(const NodeInfo &node, const Expr &node_e
 }
 
 ge::Status PipePerfExpr::UpdatePipeHead(std::map<PipeType, Expr> &pipe_costs,
-                                        std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
+                                        std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) const {
   for (auto &pair : pipe_costs) {
     auto pipe_head_perf_func = GetPipeHeadPerfFunc(pair.first);
     GE_ASSERT_NOTNULL(pipe_head_perf_func);
-    Expr pipe_head = pipe_head_perf_func(tuning_space_->node_infos, tenary_ops);
+    Expr pipe_head = pipe_head_perf_func(tuning_space_->node_infos, ternary_ops);
     pair.second = ge::sym::Add(pair.second, pipe_head);
   }
   return ge::SUCCESS;
 }
 
 ge::Status PipePerfExpr::GetPerfExpr(std::map<PipeType, Expr> &pipe_costs,
-                                     std::map<Expr, TenaryOp, ExprCmp> &tenary_ops,
+                                     std::map<Expr, TernaryOp, ExprCmp> &ternary_ops,
                                      Expr &head_cost) {
   ExeTimePassManager exe_time_mgr(tuning_space_);
 
@@ -481,31 +492,31 @@ ge::Status PipePerfExpr::GetPerfExpr(std::map<PipeType, Expr> &pipe_costs,
     }
 
     // 获取节点执行时间
-    TenaryOp node_exe_times;
+    TernaryOp node_exe_times;
     GE_ASSERT_SUCCESS(GetNodeExeTime(node, exe_time_mgr, node_exe_times),
                       "Get node [%s] exec times failed.", node.name.c_str());
     Expr exe_var = node_exe_times.GetVariable();
-    tenary_ops[exe_var] = node_exe_times;
+    ternary_ops[exe_var] = node_exe_times;
     GELOGD("Get node [%s] exe times %s=[%s]", node.name.c_str(), exe_var.Serialize().get(),
-           node_exe_times.GetTenaryOpStr().c_str());
+           node_exe_times.GetTernaryOpStr().c_str());
 
     // 获取节点性能
     std::map<PipeType, Expr> node_perf;
-    GE_ASSERT_SUCCESS(GetNodePerfInternal(node, node_perf, tenary_ops),
+    GE_ASSERT_SUCCESS(GetNodePerfInternal(node, node_perf, ternary_ops),
                       "Get node [%s][%s] perf failed.", node.name.c_str(), node.node_type.c_str());
 
     // 添加性能到总成本
-    GE_ASSERT_SUCCESS(AddNodePerfToPipeCost(node, exe_var, node_perf, pipe_costs, tenary_ops));
+    GE_ASSERT_SUCCESS(AddNodePerfToPipeCost(node, exe_var, node_perf, pipe_costs, ternary_ops));
   }
 
-  GE_ASSERT_SUCCESS(UpdatePipeHead(pipe_costs, tenary_ops));
+  GE_ASSERT_SUCCESS(UpdatePipeHead(pipe_costs, ternary_ops));
   GE_ASSERT_SUCCESS(GetOpHeadCost(head_cost));
   return ge::SUCCESS;
 }
 
 // 获取节点性能（内部方法，包含VectorFunc特殊处理）
 ge::Status PipePerfExpr::GetNodePerfInternal(const NodeInfo &node, std::map<PipeType, Expr> &node_perf,
-                                              std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) const {
+                                              std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) const {
   if (node.node_type == kVectorFunc) {
     // VectorFunc节点特殊处理
     std::vector<NodePerfInfo> node_perf_infos;
@@ -515,7 +526,7 @@ ge::Status PipePerfExpr::GetNodePerfInternal(const NodeInfo &node, std::map<Pipe
     GE_ASSERT_SUCCESS(VfPerfUtils::GetVectorFunctionPerf(node_perf_infos, res),
                       "Get vector function perf failed, node = %s %s.", node.name.c_str(), node.node_type.c_str());
 
-    // 为VectorFunc节点创建tenary_ops条目
+    // 为VectorFunc节点创建ternary_ops条目
     NodeExprId node_expr_id = BuildNodeExprId(node);
     std::string expr_prefix = node_expr_id.GetExprVarPrefix();
     std::string full_desc = node_expr_id.GetVarPrefix();
@@ -525,17 +536,17 @@ ge::Status PipePerfExpr::GetNodePerfInternal(const NodeInfo &node, std::map<Pipe
       std::string var_name = expr_prefix + "_" + it->second + "_perf";
       std::string desc = full_desc + "_" + it->second + "_perf";
       Expr perf_expr;
-      GetPerfVar(var_name, perf_expr, tenary_ops);
-      tenary_ops[perf_expr] = TenaryOp(res);
-      tenary_ops[perf_expr].SetVariable(perf_expr);
-      tenary_ops[perf_expr].SetDescription(desc);
+      GetPerfVar(var_name, perf_expr, ternary_ops);
+      ternary_ops[perf_expr] = TernaryOp(res);
+      ternary_ops[perf_expr].SetVariable(perf_expr);
+      ternary_ops[perf_expr].SetDescription(desc);
       node_perf[PipeType::AIV_VEC] = perf_expr;
     } else {
       node_perf[PipeType::AIV_VEC] = res;
     }
   } else {
     // 普通节点
-    GE_ASSERT_SUCCESS(GetNodePerf(node, node_perf, tenary_ops),
+    GE_ASSERT_SUCCESS(GetNodePerf(node, node_perf, ternary_ops),
                       "Get node [%s][%s] perf failed.", node.name.c_str(), node.node_type.c_str());
   }
   return ge::SUCCESS;
@@ -545,18 +556,20 @@ ge::Status PipePerfExpr::GetNodePerfInternal(const NodeInfo &node, std::map<Pipe
 ge::Status PipePerfExpr::AddNodePerfToPipeCost(const NodeInfo &node, const Expr &exe_var,
                                                const std::map<PipeType, Expr> &node_perf,
                                                std::map<PipeType, Expr> &pipe_costs,
-                                               std::map<Expr, TenaryOp, ExprCmp> &tenary_ops) {
-  (void)tenary_ops;
+                                               std::map<Expr, TernaryOp, ExprCmp> &ternary_ops) {
+  NodeExprId node_expr_id = BuildNodeExprId(node);
+  std::string expr_prefix = node_expr_id.GetExprVarPrefix();
+  PerfAddContext ctx(node_perf, pipe_costs, ternary_ops, expr_prefix);
   if (CheckSingleCut(node)) {
     GELOGD("Node with single cut, add tail perf.");
     Expr tail_exe_time;
     std::map<PipeType, Expr> node_tail_perf;
-    GE_ASSERT_SUCCESS(GetNodePerf(node, node_tail_perf, tenary_ops, true),
+    GE_ASSERT_SUCCESS(GetNodePerf(node, node_tail_perf, ternary_ops, true),
                       "Get node [%s] tail perf failed.", node.name.c_str());
     GE_ASSERT_SUCCESS(GetTailExeTime(node, exe_var, tail_exe_time));
-    GE_ASSERT_SUCCESS(AddTailPerf(tail_exe_time, exe_var, node_perf, node_tail_perf, pipe_costs));
+    GE_ASSERT_SUCCESS(AddTailPerf(tail_exe_time, exe_var, node_tail_perf, ctx));
   } else {
-    GE_ASSERT_SUCCESS(AddPerf(exe_var, node_perf, pipe_costs));
+    GE_ASSERT_SUCCESS(AddPerf(exe_var, "contrib", ctx));
   }
   return ge::SUCCESS;
 }

@@ -11773,12 +11773,14 @@ TEST_F(AscBackendPostProcessorTest, Adaption_TransposeAscGraphWithTransposeDtype
       ASSERT_NE(attr, nullptr);
       if (t_cnt == 0) {
         std::vector<int64_t> expect_axis = {1, 2, 0, 3, 4};
-        std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
-        std::vector<ge::Expression> expect_strides = {B * C * D * E, C * D * E, D * E, E, ONE};
+        std::vector<ge::Expression> expect_repeats = {A, B, C, ONE, E};
+        std::vector<ge::Expression> expect_strides = {B * C * E, C * E, E, ZERO, ONE};
+//        std::vector<ge::Expression> expect_repeats = {A, B, C, D, E}; // 后续支持多transpose后使用
+//        std::vector<ge::Expression> expect_strides = {B * C * D * E, C * D * E, D * E, E, ONE};
         ASSERT_EQ(attr->axis, expect_axis);
         ASSERT_EQ(attr->repeats, expect_repeats);
         ASSERT_EQ(attr->strides, expect_strides);
-        ASSERT_EQ(attr->dtype, DT_FLOAT);
+        ASSERT_EQ(attr->dtype, DT_INT64);
       }
       t_cnt++;
     } else if (node->GetType() == "Broadcast") {
@@ -11787,9 +11789,9 @@ TEST_F(AscBackendPostProcessorTest, Adaption_TransposeAscGraphWithTransposeDtype
       auto attr = output_tensor_desc->GetOrCreateAttrsGroup<AscTensorAttr>();
       ASSERT_NE(attr, nullptr);
       if (b_cnt == 0 || b_cnt == 1) {
-        std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4};
-        std::vector<ge::Expression> expect_repeats = {C, A, B, D, E};
-        std::vector<ge::Expression> expect_strides = {A * B * D * E, B * D * E, D * E, E, ONE};
+        std::vector<int64_t> expect_axis = {1, 2, 0, 3, 4};
+        std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
+        std::vector<ge::Expression> expect_strides = {B * C * D * E, C * D * E, D * E, E, ONE};
         ASSERT_EQ(attr->axis, expect_axis);
         ASSERT_EQ(attr->repeats, expect_repeats);
         ASSERT_EQ(attr->strides, expect_strides);
@@ -12147,14 +12149,15 @@ TEST_F(AscBackendPostProcessorTest, Adaption_TransposeAscGraphWith2InputTranspos
         std::vector<int64_t> expect_axis = {2, 0, 1, 3, 4};
         ASSERT_EQ(attr->axis, expect_axis);
       } else {
-        std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4};
+//        std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4}; // 后续支持多transpose后使用
+        std::vector<int64_t> expect_axis = {2, 0, 1, 3, 4};
         ASSERT_EQ(attr->axis, expect_axis);
       }
       b_cnt++;
     }
   }
-  ASSERT_EQ(b_cnt, 8);
-  ASSERT_EQ(t_cnt, 1);
+  ASSERT_EQ(b_cnt, 6);
+  ASSERT_EQ(t_cnt, 0);
   // 取消走torch流程
   AutoFuseConfig::MutableConfig().GetMutableFusionStrategySolver().fwk_type = AutoFuseFwkType::kGe;
 }
@@ -16586,17 +16589,19 @@ TEST_F(AscBackendPostProcessorTest, Fallback_CreatAscGraphWithLoadToBroadcstAndT
       AutofuseUtils::VectorToStr(attr->repeats).c_str(),
       TypeUtils::DataTypeToSerialString(attr->dtype).c_str(), AscGraphUtils::GetComputeGraph(*(attr1->GetAscGraph()))->GetName().c_str());
     if (node->GetType() == "Broadcast") {
-      std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4};
-      std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
-      std::vector<ge::Expression> expect_strides = {B * C * D * E, C * D * E, D * E, E, ONE};
+      std::vector<int64_t> expect_axis = {0, 1, 2, 4, 3};
+      std::vector<ge::Expression> expect_repeats = {A, B, C, E, D};
+      std::vector<ge::Expression> expect_strides = {B * C * D * E, C * D * E, D * E, D, ONE};
       ASSERT_EQ(attr->axis, expect_axis);
       ASSERT_EQ(attr->repeats, expect_repeats);
       ASSERT_EQ(attr->strides, expect_strides);
       ASSERT_EQ(attr->dtype, DT_FLOAT16);
     }else if (node->GetType() == "Transpose") {
       std::vector<int64_t> expect_axis = {0, 1, 2, 4, 3};
-      std::vector<ge::Expression> expect_repeats = {A, B, C, E, D};
-      std::vector<ge::Expression> expect_strides =  {B * C * E * D, C * E * D, E * D, D, ONE};
+      std::vector<ge::Expression> expect_repeats = {A, B, C, E, ONE};
+      std::vector<ge::Expression> expect_strides =  {B * C * E, C * E, E, ONE, ZERO};
+//      std::vector<ge::Expression> expect_repeats = {A, B, C, E, D}; // 后续支持多transpose后使用
+//      std::vector<ge::Expression> expect_strides =  {B * C * E * D, C * E * D, E * D, D, ONE};
       ASSERT_EQ(attr->axis, expect_axis);
       ASSERT_EQ(attr->repeats, expect_repeats);
       ASSERT_EQ(attr->strides, expect_strides);
@@ -16657,17 +16662,19 @@ TEST_F(AscBackendPostProcessorTest, Fallback_CreatAscGraphWithLoadToBroadcstAndT
       AutofuseUtils::VectorToStr(attr->repeats).c_str(),
       TypeUtils::DataTypeToSerialString(attr->dtype).c_str(), AscGraphUtils::GetComputeGraph(*(attr1->GetAscGraph()))->GetName().c_str());
     if (node->GetType() == "Broadcast") {
-      std::vector<int64_t> expect_axis = {0, 1, 2, 4, 3};
-      std::vector<ge::Expression> expect_repeats = {A, B, C, E, D};
-      std::vector<ge::Expression> expect_strides = {B * C * E * D, C * E * D, E * D, D, ONE};
+      std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4};
+      std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
+      std::vector<ge::Expression> expect_strides = {B * C * E * D, C * E * D, E * D, E, ONE};
       ASSERT_EQ(attr->axis, expect_axis);
       ASSERT_EQ(attr->repeats, expect_repeats);
       ASSERT_EQ(attr->strides, expect_strides);
       ASSERT_EQ(attr->dtype, DT_FLOAT16);
     }else if (node->GetType() == "Transpose") {
       std::vector<int64_t> expect_axis = {0, 1, 2, 3, 4};
-      std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
-      std::vector<ge::Expression> expect_strides =  {B * C * D * E, C * D * E, D * E, E, ONE};
+      std::vector<ge::Expression> expect_repeats = {A, B, C, ONE, E};
+      std::vector<ge::Expression> expect_strides =  {B * C * E, C * E, E, ZERO, ONE};
+//      std::vector<ge::Expression> expect_repeats = {A, B, C, D, E};
+//      std::vector<ge::Expression> expect_strides =  {B * C * D * E, C * D * E, D * E, E, ONE}; // 后续支持多transpose后使用
       ASSERT_EQ(attr->axis, expect_axis);
       ASSERT_EQ(attr->repeats, expect_repeats);
       ASSERT_EQ(attr->strides, expect_strides);

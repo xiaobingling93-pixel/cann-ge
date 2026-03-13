@@ -871,3 +871,163 @@ TEST(CodegenKernel, VfCall_FiveDimLoad) {
                 "}\n"
                 "#endif\n"});
 }
+
+// 测试单维场景不触发优化逻辑
+TEST(CodegenKernel, VfCall_OneDim_NoOptimization) {
+  ge::SetupRuntimeStub();
+  ge::AscGraph graph("test_graph");
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", s0);
+
+  Data x_op("x", graph);
+  Load load_op("load");
+
+  std::string sub_graph_name = "vf_sub_graph_1d";
+  ge::AscGraph vf_sub_graph(sub_graph_name.c_str());
+  VectorFunc vf_op("vf");
+  vf_op.SetAttr("sub_graph_name", sub_graph_name);
+
+  Data sub_x_op("sub_x", vf_sub_graph);
+  sub_x_op.ir_attr.SetIndex(0);
+
+  Load sub_load_op("sub_load");
+  Abs abs_op("abs");
+  Store sub_store_op("sub_store");
+  Output sub_output_op("sub_output");
+  sub_output_op.ir_attr.SetIndex(0);
+
+  Store store_op("store");
+  graph.AddNode(load_op);
+  graph.AddSubGraph(vf_sub_graph);
+  graph.AddNode(store_op);
+
+  load_op.x = x_op.y;
+  load_op.attr.sched.axis = {z0.id};
+  *load_op.y.axis = {z0.id};
+  *load_op.y.repeats = {s0};
+  *load_op.y.strides = {One};
+
+  vf_op.InstanceOutputy(1);
+  vf_op.x = {load_op.y};
+  vf_op.attr.sched.axis = {z0.id};
+  *vf_op.y[0].axis = {z0.id};
+  *vf_op.y[0].repeats = {s0};
+  *vf_op.y[0].strides = {One};
+
+  store_op.x = vf_op.y[0];
+  store_op.ir_attr.SetOffset(ge::Symbol(0));
+  *store_op.y.axis = {z0.id};
+  *store_op.y.repeats = {s0};
+  *store_op.y.strides = {One};
+
+  sub_load_op.x = sub_x_op.y;
+  sub_load_op.attr.sched.axis = {z0.id};
+  sub_load_op.attr.sched.loop_axis = -1;
+  *sub_load_op.y.axis = {z0.id};
+  *sub_load_op.y.repeats = {s0};
+  *sub_load_op.y.strides = {One};
+
+  abs_op.x = sub_load_op.y;
+  abs_op.attr.sched.axis = {z0.id};
+  abs_op.attr.sched.loop_axis = -1;
+  *abs_op.y.axis = {z0.id};
+  *abs_op.y.repeats = {s0};
+  *abs_op.y.strides = {One};
+
+  sub_store_op.x = abs_op.y;
+  sub_store_op.attr.sched.axis = {z0.id};
+  sub_store_op.attr.sched.loop_axis = -1;
+  *sub_store_op.y.axis = {z0.id};
+  *sub_store_op.y.repeats = {s0};
+  *sub_store_op.y.strides = {One};
+
+  sub_output_op.x = sub_store_op.y;
+
+  auto load = graph.FindNode("load");
+  load->attr.sched.loop_axis = -1;
+  load->outputs[0].attr.vectorized_axis = {z0.id};
+  load->outputs[0].attr.vectorized_strides = {One};
+  load->outputs[0].attr.dtype = ge::DT_FLOAT;
+  load->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  load->outputs[0].attr.mem.tensor_id = 0;
+  load->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  load->outputs[0].attr.que.id = 1;
+  load->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  auto sub_load = vf_sub_graph.FindNode("sub_load");
+  sub_load->attr.sched.loop_axis = -1;
+  sub_load->outputs[0].attr.vectorized_axis = {z0.id};
+  sub_load->outputs[0].attr.vectorized_strides = {One};
+  sub_load->outputs[0].attr.dtype = ge::DT_FLOAT;
+  sub_load->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  sub_load->outputs[0].attr.mem.tensor_id = 0;
+
+  auto abs = vf_sub_graph.FindNode("abs");
+  abs->attr.sched.loop_axis = -1;
+  abs->outputs[0].attr.vectorized_axis = {z0.id};
+  abs->outputs[0].attr.vectorized_strides = {One};
+  abs->outputs[0].attr.dtype = ge::DT_FLOAT;
+  abs->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  abs->outputs[0].attr.mem.tensor_id = 1;
+
+  auto sub_store = vf_sub_graph.FindNode("sub_store");
+  sub_store->attr.sched.loop_axis = -1;
+  sub_store->outputs[0].attr.vectorized_axis = {z0.id};
+  sub_store->outputs[0].attr.vectorized_strides = {One};
+  sub_store->outputs[0].attr.dtype = ge::DT_FLOAT;
+  sub_store->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  sub_store->outputs[0].attr.mem.tensor_id = 2;
+
+  auto vf = graph.FindNode("vf");
+  vf->attr.sched.loop_axis = -1;
+  vf->outputs[0].attr.vectorized_axis = {z0.id};
+  vf->outputs[0].attr.vectorized_strides = {One};
+  vf->outputs[0].attr.dtype = ge::DT_FLOAT;
+  vf->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  vf->outputs[0].attr.mem.tensor_id = 1;
+  vf->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  vf->outputs[0].attr.que.id = 1;
+  vf->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  auto store = graph.FindNode("store");
+  store->attr.sched.loop_axis = -1;
+  store->outputs[0].attr.vectorized_axis = {z0.id};
+  store->outputs[0].attr.vectorized_strides = {One};
+  store->outputs[0].attr.dtype = ge::DT_FLOAT;
+  store->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
+  store->outputs[0].attr.mem.tensor_id = 2;
+  store->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  store->outputs[0].attr.que.id = 2;
+  store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  codegen::Kernel kernel("test_kernel");
+  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+
+  codegen::Tiler tiler;
+  codegen::TPipe tpipe("tpipe", tiler);
+  tpipe.AddTensor(load->outputs[0]);
+  tpipe.AddTensor(vf->outputs[0]);
+
+  tiler.AddAxis(z0);
+  tiler.AddSizeVar(ge::SizeVar(s0));
+
+  vector<ge::AxisId> current_axis;
+  current_axis.push_back(z0.id);
+  codegen::ApiTensor x1;
+  x1.id = load->outputs[0].attr.mem.tensor_id;
+
+  codegen::VfCall call;
+  EXPECT_EQ(call.Init(vf), 0);
+  call.inputs.push_back(&x1);
+
+  std::stringstream func_def;
+  EXPECT_EQ(call.GenerateFuncDefinition(tpipe, tiler, func_def), 0);
+
+  std::string result = func_def.str();
+
+  // 单维场景（dim_size < MAX_VF_AXIS_MERGE_SIZE），不应该触发优化逻辑
+  // 检查不应该包含优化相关的代码
+  EXPECT_FALSE(result.find("output_dims_1 != strides_align") != std::string::npos)
+      << "Optimization code should not be generated for 1D case (dim_size < MAX_VF_AXIS_MERGE_SIZE)";
+}

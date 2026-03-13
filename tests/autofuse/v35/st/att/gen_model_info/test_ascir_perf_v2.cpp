@@ -145,10 +145,10 @@ TEST_F(STestAscirPerfV2, TestLoadApiForTypev1) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   EXPECT_EQ(Str(res.Replace(ret)),
-            "TenaryOp((-256 + z0t_size) < 0, ((4 * z0t_size / (((6.40880012512207 / (block_dim)) + 13.1354999542236))) + 160.0), ((4 * z0t_size / (((6.61549997329712 / (block_dim)) + 11.8291997909546))) + 160.0))");
+            "TernaryOp((-256 + z0t_size) < 0, ((4 * z0t_size / (((6.40880012512207 / (block_dim)) + 13.1354999542236))) + 160.0), ((4 * z0t_size / (((6.61549997329712 / (block_dim)) + 11.8291997909546))) + 160.0))");
 }
 
 TEST_F(STestAscirPerfV2, TestLoadApiForTypev2) {
@@ -187,14 +187,14 @@ TEST_F(STestAscirPerfV2, TestLoadApiForTypev2) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
   // 外抛for循环
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   const std::string is_cache_line = "(-256 + z0z1t_size) < 0";
   const std::string perf1 =
       "((8 * z0z1t_size / (((6.40880012512207 / (block_dim)) + 13.1354999542236))) + 160.0)";
   const std::string perf2 =
       "((8 * z0z1t_size / (((6.61549997329712 / (block_dim)) + 11.8291997909546))) + 160.0))";
-  EXPECT_EQ(Str(res.Replace(ret)), "TenaryOp(" + is_cache_line + ", " + perf1 + ", " + perf2);
+  EXPECT_EQ(Str(res.Replace(ret)), "TernaryOp(" + is_cache_line + ", " + perf1 + ", " + perf2);
 }
 
 TEST_F(STestAscirPerfV2, TestStoreApiForType) {
@@ -240,8 +240,8 @@ TEST_F(STestAscirPerfV2, TestStoreApiForType) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   // 注意：由于 LoadStoreStrideFunc 不支持 block_count_idx，block_count 计算可能不包括 z0z1t_size
   const std::string expect_stride = "(8 * z0z1t_size)";
   EXPECT_EQ(Str(res.Replace(ret)),
@@ -292,8 +292,8 @@ TEST_F(STestAscirPerfV2, TestStoreApiForSmallStride) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   // 注意：由于 LoadStoreStrideFunc 不支持 block_count_idx，block_count 计算基于实际维度
   // 当 z6t_size 作为符号变量时，计算结果可能与包含 z0z1t_size 的期望不同
   const std::string kStride = "(8 * z0z1t_size)";
@@ -344,8 +344,8 @@ TEST_F(STestAscirPerfV2, TestStoreApiForBiggerStride) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE3];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   // 注意：由于 LoadStoreStrideFunc 不支持 block_count_idx，block_count 计算基于实际维度
   // 当 z6t_size 作为符号变量时，计算结果可能与包含 z0z1t_size 的期望不同
   const std::string kStride = "(8 * z0z1t_size)";
@@ -385,8 +385,8 @@ TEST_F(STestAscirPerfV2, TestNddmaApiForType) {
   EXPECT_EQ(result, ge::SUCCESS);
   Expr res = perf_res.pipe_res[PipeType::AIV_MTE2];
   // 存在外抛
-  auto tenary_ops = perf_res.tenary_ops;
-  auto ret = ConcursiveReplaceVars(tenary_ops);
+  auto ternary_ops = perf_res.ternary_ops;
+  auto ret = ConcursiveReplaceVars(ternary_ops);
   EXPECT_EQ(Str(res.Replace(ret)), "((1904 * z0z1t_size * z6t_size / (((6.3899998664856 / (block_dim)) + 7.6100001335144))) + 418.978912353516)");
 }
 

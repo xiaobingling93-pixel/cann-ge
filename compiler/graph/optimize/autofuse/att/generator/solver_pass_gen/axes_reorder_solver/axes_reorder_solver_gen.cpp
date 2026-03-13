@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "axes_reorder_solver_gen.h"
+#include <set>
 #include "autofuse_config/auto_fuse_config.h"
 #include "graph/symbolizer/symbolic_utils.h"
 #include "common_utils.h"
@@ -495,27 +496,107 @@ std::string AxesReorderSolverGen::GenGetObjStaticInputParam(bool no_type) {
   return codes;
 }
 
+void AxesReorderSolverGen::CollectInitialWorkList(std::vector<Expr> &work_list) const {
+  for (const auto &pair : pipe_2_obj_map_) {
+    for (const auto &sym : pair.second.FreeSymbols()) {
+      work_list.push_back(sym);
+    }
+  }
+  if (IsValid(head_cost_)) {
+    for (const auto &sym : head_cost_.FreeSymbols()) {
+      work_list.push_back(sym);
+    }
+  }
+}
+
+void AxesReorderSolverGen::CollectNeededTenaryVarsClosure(
+    std::vector<Expr> &work_list, std::set<std::string> &needed_vars) const {
+  while (!work_list.empty()) {
+    Expr sym = work_list.back();
+    work_list.pop_back();
+    std::string sym_name = Str(sym);
+    if (needed_vars.count(sym_name) > 0U) {
+      continue;
+    }
+    auto it = ternary_ops_.find(sym);
+    if (it == ternary_ops_.end()) {
+      continue;
+    }
+    needed_vars.insert(sym_name);
+    for (const auto &dep : it->second.GetRelatedVars()) {
+      work_list.push_back(dep);
+    }
+  }
+}
+
+std::string AxesReorderSolverGen::GenSingleTenaryVar(
+    const TernaryOp &op, const std::string &var_name,
+    std::set<std::string> &declared_vars,
+    std::map<std::string, std::string> &content_to_first_var) {
+  if (declared_vars.count(var_name) > 0U) {
+    return "";
+  }
+  declared_vars.insert(var_name);
+  std::string var_preamble;
+  std::string tenary_expr_str;
+  op.DecomposeNamedVars(var_name, var_preamble, tenary_expr_str);
+  std::string content_key = var_preamble + tenary_expr_str;
+  auto content_it = content_to_first_var.find(content_key);
+  if (content_it != content_to_first_var.end()) {
+    return "  double " + var_name + " = " + content_it->second + ";\n";
+  }
+  content_to_first_var[content_key] = var_name;
+  return var_preamble + "  double " + var_name + " = " + tenary_expr_str + ";\n";
+}
+
+std::string AxesReorderSolverGen::GenTenaryVarDecls(const std::set<std::string> &needed_vars) {
+  std::string perf_decls;
+  std::set<std::string> declared_vars;
+  std::map<std::string, std::string> content_to_first_var;
+
+  for (const auto &replace_pair : replace_vars_) {
+    const Expr &var = replace_pair.first;
+    const std::string var_name = Str(var);
+    if (needed_vars.count(var_name) == 0U) {
+      continue;
+    }
+    auto it = ternary_ops_.find(var);
+    if (it == ternary_ops_.end()) {
+      continue;
+    }
+    perf_decls += GenSingleTenaryVar(it->second, var_name, declared_vars, content_to_first_var);
+  }
+  return perf_decls;
+}
+
 std::string AxesReorderSolverGen::GenGetObjStaticFunc() {
   Expr expr;
-  Expr expression;
   std::string codes;
   std::string pipe_obj;
   std::vector<Expr> funcs;
   codes += "double AxesReorderSolver" + tiling_case_id_ + "::GetPerfStatic(const PipeType &pipe_type, " +
            GenGetObjStaticInputParam() + ") {\n";
+
   for (const auto &pair : pipe_2_obj_map_) {
     auto iter = kPipetypeNameMap.find(pair.first);
     if (iter != kPipetypeNameMap.end()) {
       funcs.emplace_back(pair.second);
-      expression = CreateExpr(iter->second.c_str());
-      pipe_obj +=
-          "  double " + Str(expression) + " = " + GetSmoothString(Str(pair.second.Replace(replace_vars_))) + ";\n";
+      Expr expression = CreateExpr(iter->second.c_str());
+      pipe_obj += "  double " + Str(expression) + " = " + GetSmoothString(Str(pair.second)) + ";\n";
       expr = (!IsValid(expr)) ? expression : ge::sym::Max(expr, expression);
       pipe_obj += "  if (pipe_type == PipeType::" + Str(expression) + ") {\n    return " + Str(expression) + ";\n  }\n";
     }
   }
   funcs.emplace_back(head_cost_);
+
+  std::set<std::string> needed_vars;
+  std::vector<Expr> work_list;
+  CollectInitialWorkList(work_list);
+  CollectNeededTenaryVarsClosure(work_list, needed_vars);
+  std::string perf_decls = GenTenaryVarDecls(needed_vars);
+
   codes += GenOriginExpr(funcs, "  ");
+  codes += perf_decls;
   codes += pipe_obj;
   if (!IsValid(expr)) {
     codes += "  return 0;\n";

@@ -42,7 +42,7 @@ TEST_F(UTestAscirPerfV1, TestPerfParamTableV1_GetAscendCApiPerfTable) {
   EXPECT_NE(default_ir_att_v1.GetAscendCApiPerfTable(), nullptr);
   auto pipe_head_perf_func = default_ir_att_v1.GetPipeHeadPerfFunc(att::PipeType::AIV_MTE3);
   ASSERT_NE(pipe_head_perf_func, nullptr);
-  std::map<att::Expr, att::TenaryOp, att::ExprCmp> cond_map;
+  std::map<att::Expr, att::TernaryOp, att::ExprCmp> cond_map;
   auto expr1 = pipe_head_perf_func({}, cond_map);
   EXPECT_NE(std::string(expr1.Serialize().get()), "");
   pipe_head_perf_func = default_ir_att_v1.GetPipeHeadPerfFunc(att::PipeType::AIV_MTE2);

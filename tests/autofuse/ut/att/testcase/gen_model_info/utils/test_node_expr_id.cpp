@@ -9,7 +9,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "utils/stable_node_id.h"
+#include "utils/node_expr_id.h"
 
 namespace att {
 namespace test {

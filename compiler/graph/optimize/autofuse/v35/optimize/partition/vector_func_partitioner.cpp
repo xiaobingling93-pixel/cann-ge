@@ -376,6 +376,12 @@ ge::Status VectorFuncPartitioner::Partition() {
   root_graph_ = ge::AscGraphUtils::GetComputeGraph(impl_graph_);
   GE_ASSERT_NOTNULL(root_graph_);
 
+  // 0.检查图中是否有reduce节点（只检查一次，避免在RefineEnableVFFlag中重复检查）
+  graph_has_reduce_node_ = HasReduceNodeInGraph(impl_graph_);
+  if (graph_has_reduce_node_) {
+    GELOGI("Graph [%s] has reduce node, will disable Cast VF fusion.", impl_graph_.GetName().c_str());
+  }
+
   // 1.InitClusters (Compare nodes' outputs are merged here)
   GE_ASSERT_SUCCESS(InitClusters(), "Failed to do topological sorting for graph[%s].", impl_graph_.GetName().c_str());
 
@@ -429,6 +435,15 @@ void VectorFuncPartitioner::RefineEnableVFFlag(const ge::AscNodePtr &node, bool 
     return;
   }
 
+  // 如果当前图中有reduce节点，cast不参与vf融合
+  if (ge::ops::IsOps<ge::ascir_op::Cast>(node)) {
+    if (graph_has_reduce_node_) {
+      // 当前直接把cast移到外面使用castExtend api有性能问题，待解决后放开。enable_vf = false;
+      GELOGD("Node [%s] is Cast and graph has reduce node, disable VF support.", node->GetNamePtr());
+      // 当前直接把cast移到外面使用castExtend api有性能问题，待解决后放开。return;
+    }
+  }
+
   // ScalarBrc 场景：检查输出节点是否支持 VF
   if (IsScalarBrc(node)) {
     bool is_out_support_vf = false;
@@ -474,6 +489,22 @@ void VectorFuncPartitioner::RefineEnableVFFlag(const ge::AscNodePtr &node, bool 
       }
     }
   }
+}
+
+bool VectorFuncPartitioner::HasReduceNodeInGraph(const ge::AscGraph &impl_graph) {
+  for (const auto &node : impl_graph.GetAllNodes()) {
+    auto asc_node = std::dynamic_pointer_cast<ge::AscNode>(node);
+    if (asc_node == nullptr) {
+      continue;
+    }
+    // 使用标准的 ScheduleUtils::IsReduce 方法检查是否为 reduce 节点
+    if (ScheduleUtils::IsReduce(asc_node)) {
+      GELOGD("Found reduce node [%s] with type [%s] in graph, disable Cast VF fusion.",
+             asc_node->GetNamePtr(), asc_node->GetTypePtr());
+      return true;
+    }
+  }
+  return false;
 }
 
 bool VectorFuncPartitioner::IsCompareOp(const ge::AscNodePtr &node) {
