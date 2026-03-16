@@ -40,11 +40,12 @@
 
   本样例在`add_custom.asc`中定义了一个名为`ascendc_ops`的命名空间，并在其中注册了`ascendc_add`函数。
 
-  PyTorch提供`TORCH_LIBRARY`宏作为自定义算子注册的核心接口，用于创建并初始化自定义算子库，注册后在Python侧可以通过`torch.ops.namespace.op_name`方式进行调用，例如：
+  PyTorch提供`TORCH_LIBRARY`系列宏作为自定义算子注册的核心接口，用于创建并初始化自定义算子库，注册后在Python侧可以通过`torch.ops.namespace.op_name`方式进行调用，例如：
 
   ```c++
-  TORCH_LIBRARY(ascendc_ops, m) {
-      m.def(ascendc_add"(Tensor x, Tensor y) -> Tensor");
+  TORCH_LIBRARY_FRAGMENT(ascendc_ops, m)
+  {
+      m.def("ascendc_add(Tensor x, Tensor y) -> Tensor");
   }
   ```
 
@@ -87,6 +88,8 @@
 
 ## 编译运行
 
+- 安装 CANN 软件，通过[安装指导](../../../docs/build.md#2-安装软件包)正确安装toolkit和ops包, 并正确配置环境变量
+
 - 安装PyTorch以及Ascend Extension for PyTorch插件(torchair要求python版本≥3.8)
 
   请参考[pytorch: Ascend Extension for PyTorch](https://gitcode.com/Ascend/pytorch)开源代码仓或[Ascend Extension for PyTorch昇腾社区](https://hiascend.com/document/redirect/Pytorch-index)的安装说明，选取支持的`Python`版本配套发行版，完成`torch`和`torch-npu`的安装。
@@ -96,27 +99,6 @@
   ```bash
   pip3 install expecttest
   ```
-
-- 配置环境变量
-
-  安装 CANN 软件，进入昇腾官网：[https://www.hiascend.com/document](https://www.hiascend.com/document)，选择“CANN 软件安装”，进行 CANN 软件包安装，软件包安装完成后，需设置环境变量才能生效，请用户根据 set_env.sh 的实际路径执行如下命令。
-   - 默认路径，root用户安装CANN软件包
-
-     ```bash
-     source /usr/local/Ascend/cann/set_env.sh
-     ```
-
-   - 默认路径，非root用户安装CANN软件包
-
-     ```bash
-     source $HOME/Ascend/cann/set_env.sh
-     ```
-
-   - 指定路径install_path，安装CANN软件包
-
-     ```bash
-     source ${install_path}/cann/set_env.sh
-     ```
 
 - 样例执行
 
@@ -135,7 +117,7 @@
   OK
   ```
 
-## 1.3 生成产物
+## 生成产物
 
 - ​`libcust_opapi.so`​-用于将自定义算子入Torch图  
   ​`${CUSTOM_INSTALL_PATH}/build/libcust_opapi.so`
