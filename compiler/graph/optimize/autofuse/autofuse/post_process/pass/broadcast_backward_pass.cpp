@@ -17,8 +17,7 @@
 namespace ge {
 namespace {
 std::vector<std::string> view_op_type = {kTransposeType, kBroadcastType, kSliceType, kSplitType, kConcatType, kGatherType, "Sum",
-                                         "Mean",         "Max",          "Min",      "Prod",      "Any",       "All",
-                                         "Gt",           "Ge",           "Eq",       "Ne",        "Lt",        "Le"};
+                                         "Mean",         "Max",          "Min",      "Prod",      "Any",       "All"};
 Status GetSingleNextNode(NodePtr &node, NodePtr &peer_in_node) {
   std::vector<NodePtr> peer_in_nodes;
   GE_ASSERT_SUCCESS(asc_adapt::GetPeerInNodes(node, peer_in_nodes, 0));
