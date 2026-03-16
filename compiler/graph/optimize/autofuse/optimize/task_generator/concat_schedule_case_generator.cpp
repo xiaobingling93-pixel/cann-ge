@@ -223,6 +223,7 @@ Status ConcatFusionCaseGenerator::ConvertConcatToStores(ascir::HintGraph &owner_
   ConcatGroupPartitioner partitioner(concat_node, concat_dim_);
   GE_ASSERT_SUCCESS(partitioner.RecomputeDiffAxes());
   has_recompute_ = partitioner.HasRecompute();
+  GE_ASSERT_SUCCESS(PrepareForModifyingGraph(concat_node));
   ConcatDimAxisMap repeat_to_axis_id;
   const auto all_in_data_anchors_count = concat_node->GetAllInDataAnchors().size();  // 只需获取一次大小
   for (size_t i = 0UL; i < all_in_data_anchors_count; ++i) {
@@ -246,6 +247,7 @@ Status ConcatFusionCaseGenerator::SplitConcats(ascir::HintGraph &owner_graph, co
     return ge::SUCCESS;
   }
   has_recompute_ = partitioner.HasRecompute();
+  GE_ASSERT_SUCCESS(PrepareForModifyingGraph(concat_node));
   for (size_t i = 0U; i < groups.size(); ++i) {
     const auto &group = groups[i];
     GELOGI("group[%zu] start = %ld, end = %ld", i, group.start, group.end);
@@ -270,11 +272,6 @@ Status ConcatFusionCaseGenerator::SplitConcats(ascir::HintGraph &owner_graph, co
 }
 
 Status ConcatFusionCaseGenerator::Prepare(const ge::AscNodePtr &concat_node, size_t concat_dim) {
-  GE_ASSERT_SUCCESS(CollectBackwardNodes(concat_node, post_concat_nodes_));
-  GE_ASSERT_SUCCESS(CollectReachableLoadNodes(concat_node, reachable_load_nodes_));
-  for (const auto &in_anchor_and_node : ge::NodeUtils::GetOutDataNodesWithAnchorByIndex(*concat_node, 0)) {
-    out_node_name_to_indices_[in_anchor_and_node.second->GetName()].emplace_back(in_anchor_and_node.first->GetIdx());
-  }
   ge::Expression dim_offset = ge::ops::Zero;
   for (const auto &in_anchor : concat_node->GetAllInDataAnchorsPtr()) {
     GE_ASSERT_NOTNULL(in_anchor);
@@ -758,6 +755,15 @@ Status ConcatFusionCaseGenerator::AddExtraShapeEnv(const ge::AscNodePtr &concat_
                  "expect axis eq failed, concat_dim = %zu, cur_dim = %zu, input_axis_size = %s, output_axis_size = %s",
                  concat_dim, i, input_axis_size.Str().get(), output_axis_size.Str().get());
     }
+  }
+  return ge::SUCCESS;
+}
+
+Status ConcatFusionCaseGenerator::PrepareForModifyingGraph(const ge::AscNodePtr &concat_node) {
+  GE_ASSERT_SUCCESS(CollectBackwardNodes(concat_node, post_concat_nodes_));
+  GE_ASSERT_SUCCESS(CollectReachableLoadNodes(concat_node, reachable_load_nodes_));
+  for (const auto &in_anchor_and_node : ge::NodeUtils::GetOutDataNodesWithAnchorByIndex(*concat_node, 0)) {
+    out_node_name_to_indices_[in_anchor_and_node.second->GetName()].emplace_back(in_anchor_and_node.first->GetIdx());
   }
   return ge::SUCCESS;
 }

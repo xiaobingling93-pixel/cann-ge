@@ -235,6 +235,10 @@ graphStatus LowerConcat(const NodePtr &node) {
   std::vector<InDataAnchorPtr> inputs;
   size_t dyn_input_num = 0;
   GE_WARN_ASSERT_GRAPH_SUCCESS(CollectConcatInputs(node, concat_dim_tensor_index, concat_dim, inputs, dyn_input_num));
+  if (inputs.size() == 1UL) {
+    (void) loop::Store(node->GetOutDataAnchor(0), loop::Load(inputs[0]));
+    return GRAPH_SUCCESS;
+  }
   if (ConcatCanBeConvertedToBrc(inputs, concat_dim)) {
     GE_WARN_ASSERT_GRAPH_SUCCESS(ConcatToBroadcast(node));
     return GRAPH_SUCCESS;
@@ -1835,6 +1839,12 @@ REGISTER_LOWERING(Pack) {
   for (const auto &in_anchor : node->GetAllInDataAnchors()) {
     GE_ASSERT_NOTNULL(in_anchor);
     inputs.emplace_back(in_anchor);
+  }
+  if (inputs.size() == 1UL) {
+    auto x = loop::Load(inputs[0]);
+    x = loop::Unsqueeze(x, axis);
+    (void) loop::Store(node->GetOutDataAnchor(0), x);
+    return GRAPH_SUCCESS;
   }
   loop::StorePack(node->GetOutDataAnchor(0), inputs, axis);
   return GRAPH_SUCCESS;

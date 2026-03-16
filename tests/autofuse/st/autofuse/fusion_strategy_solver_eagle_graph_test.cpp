@@ -67,12 +67,12 @@ TEST_F(FusionStrategySolverST, ReduceAndConcatCanNotfuse) {
     abs.SetSymbolShape({"s0", "s1", "s2"});
     auto exp = es::Exp(abs);
     exp.SetSymbolShape({"s0", "s1", "s2"});
-    auto concat = es::ConcatD({abs}, 0);
-    concat.SetSymbolShape({"s0", "s1", "s2"});
+    auto concat = es::ConcatD({abs, data0}, 0);
+    concat.SetSymbolShape({"s0 * 2", "s1", "s2"});
     auto sum = es::ReduceSumD(concat, {1}, true);
-    sum.SetSymbolShape({"s0", "1", "s2"});
+    sum.SetSymbolShape({"s0 * 2", "1", "s2"});
     auto abs1 = es::Abs(sum);
-    abs1.SetSymbolShape({"s0", "1", "s2"});
+    abs1.SetSymbolShape({"s0 * 2", "1", "s2"});
     es_graph_->SetOutput(abs1, 0);
     es_graph_->SetOutput(exp, 1);
   }();
@@ -97,8 +97,8 @@ TEST_F(FusionStrategySolverST, ConcatAndReduceCanNotfuse) {
     abs.SetSymbolShape({"s0", "s1", "s2"});
     auto exp = es::Exp(abs);
     exp.SetSymbolShape({"s0", "s1", "s2"});
-    auto concat = es::ConcatD({abs}, 0);
-    concat.SetSymbolShape({"s0", "s1", "s2"});
+    auto concat = es::ConcatD({abs, data0}, 0);
+    concat.SetSymbolShape({"s0 * 2", "s1", "s2"});
     auto sum = es::ReduceSumD({abs}, {1}, true);
     sum.SetSymbolShape({"s0", "1", "s2"});
     auto abs1 = es::Abs(sum);
@@ -117,6 +117,9 @@ TEST_F(FusionStrategySolverST, ConcatAndReduceCanNotfuse) {
   FusionDeciderRegistry::Instance().Register(std::unique_ptr<FusionDecider>(new AscBackendFusionDecider()));
   EXPECT_EQ(fusion_strategy_solver.Fuse(cg), SUCCESS);
   ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
+  for (const auto &node : cg->GetAllNodes()) {
+    std::cout << node->GetName() << std::endl;
+  }
   ASSERT_EQ(cg->GetAllNodesSize(), 5U);
 }
 
@@ -134,8 +137,8 @@ TEST_F(FusionStrategySolverST, AbsAndConcatCanfuse) {
     data0.SetSymbolShape({"s0", "s1", "s2"});
     auto abs = es::Abs(data0);
     abs.SetSymbolShape({"s0", "s1", "s2"});
-    auto concat = es::ConcatD({abs}, 0);
-    concat.SetSymbolShape({"s0", "s1", "s2"});
+    auto concat = es::ConcatD({data0, abs}, 0);
+    concat.SetSymbolShape({"s0 * 2", "s1", "s2"});
     auto abs1 = es::Abs(abs);
     abs1.SetSymbolShape({"s0", "s1", "s2"});
     es_graph_->SetOutput(abs1, 0);
