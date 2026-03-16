@@ -14,16 +14,10 @@ from typing import Union, List, Tuple
 import numpy as np
 import ctypes
 
-try:
-    from llm_datadist.utils import utils
-    from llm_datadist.status import handle_llm_status
-    from llm_datadist.data_type import _dwrapper_dtype_to_python_dtype
-    from llm_datadist import data_type
-except ModuleNotFoundError:
-    from llm_datadist_v1.utils import utils
-    from llm_datadist_v1.status import handle_llm_status
-    from llm_datadist_v1.data_type import _dwrapper_dtype_to_python_dtype
-    from llm_datadist_v1 import data_type
+from llm_datadist_v1.utils import utils
+from llm_datadist_v1.status import handle_llm_status
+from llm_datadist_v1.data_type import _dwrapper_dtype_to_python_dtype
+from llm_datadist_v1 import data_type
 
 from llm_datadist_v1 import llm_wrapper
 
