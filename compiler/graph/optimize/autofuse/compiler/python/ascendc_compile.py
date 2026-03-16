@@ -123,7 +123,7 @@ def generate_target_configurations(args: argparse.Namespace) -> str:
     source += f"target_include_directories({base_file} PRIVATE\n"
     source += "     ${CMAKE_CURRENT_SOURCE_DIR}/build/host\n"
     source += f"    {ASCEND_PATH}/include\n"
-    source += f"    {ASCEND_PATH}/pkg_inc/base\n"
+    source += f"    {ASCEND_PATH}/include/base\n"
     source += f"    {ASCEND_PATH}/include/experiment\n"
     source += f"    {ASCEND_PATH}/{machine}-linux/include\n"
     source += f"    {ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform\n"

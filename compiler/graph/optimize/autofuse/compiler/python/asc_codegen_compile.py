@@ -677,7 +677,7 @@ def build_pgo_compile_command(source_file, output_file, mspti_dir, mspti_link_fl
     base_cmd = ["g++", "-std=c++17", "-O2", "-fPIC"]
     includes = [
         f"-I{ASCEND_PATH}/include/",
-        f"-I{ASCEND_PATH}/pkg_inc/base",
+        f"-I{ASCEND_PATH}/include/base",
         f"-I{ASCEND_PATH}/include/experiment/runtime",
         f"-I{ASCEND_PATH}/include/experiment/msprof",
         f"-I{ASCEND_PATH}/{machine}-linux/include/toolchain",
