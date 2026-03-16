@@ -1364,6 +1364,11 @@ REGISTER_LOWERING(SigmoidGrad) {
 }
 
 REGISTER_LOWERING(Fill) {
+  auto after_node = node->GetOutNodes().at(0);
+  GE_ASSERT_NOTNULL(after_node);
+  GE_WARN_ASSERT(find(reduce_types.begin(), reduce_types.end(), after_node->GetType()) == reduce_types.end(),
+                 "Skip lowering node:%s, as: After node is reduce type, fuse them is meaningless",
+                 node->GetName().c_str());
   std::vector<loop::Index> indices;
   std::vector<Expression> src_dims;
   GE_ASSERT_NOTNULL(node->GetInDataAnchor(1));
