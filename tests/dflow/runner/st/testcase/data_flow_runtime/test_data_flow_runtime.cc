@@ -11,6 +11,10 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <fstream>
+
+#include "common/env_path.h"
+#include "common/path_utils.h"
+#include "compiler/session/dflow_api.h"
 #include "nlohmann/json.hpp"
 #include "depends/mmpa/src/mmpa_stub.h"
 #include "utils/mock_execution_runtime.h"
@@ -56,17 +60,19 @@ class DataFlowRuntimeTest : public testing::Test {
   void SetUp() {
     PrepareForBuiltInUdf();
     MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaDeployer>());
-    GEFinalize();
-    std::map<AscendString, AscendString> init_options = {
-      {"ge.resourceConfigPath", "some_path"}
-    };
-    EXPECT_EQ(ge::GEInitialize(init_options), SUCCESS);
+
+    std::string st_dir_path = ge::PathUtils::Join({ge::EnvPath().GetAirBasePath(), "/tests/dflow/runner/st/"});
+    auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config.json";
+    setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
+    EXPECT_EQ(dflow::DFlowInitialize({}), SUCCESS);
   }
 
   void TearDown() {
     remove("./builtin_udf_config.json");
     MmpaStub::GetInstance().Reset();
-    GEFinalize();
+    dflow::DFlowFinalize();
+
+    unsetenv("RESOURCE_CONFIG_PATH");
   }
 
   static void PrepareForBuiltInUdf() {

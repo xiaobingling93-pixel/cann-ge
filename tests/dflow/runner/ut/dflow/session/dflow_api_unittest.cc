@@ -235,11 +235,13 @@ class UtestDflowApi : public testing::Test {
     ge::DirEnv::GetInstance().InitEngineConfJson();
     const std::map<AscendString, AscendString> options{};
     // now DFlowInitialize is not include GEInitialize, so add here.
+    EXPECT_EQ(ge::GEInitializeV2(options), SUCCESS);
+    // ge session depend g_session_manager init
     EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
     setenv("RESOURCE_CONFIG_PATH", "./stub_resource_config_path.json", 0);
   }
   static void TearDownTestSuite() {
-    ge::GEFinalize();
+    ge::GEFinalizeV2();
     unsetenv("RESOURCE_CONFIG_PATH");
   }
 

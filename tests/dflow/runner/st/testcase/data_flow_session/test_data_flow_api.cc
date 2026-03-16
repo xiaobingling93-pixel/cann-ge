@@ -134,10 +134,8 @@ class DataFlowApiTest : public testing::Test {
 
   void SetUp() {
     ge::MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaDeployer>());
-    ge::GEFinalize();
     dflow::DFlowFinalize();
     std::map<AscendString, AscendString> init_options = {};
-    EXPECT_EQ(ge::GEInitialize(init_options), SUCCESS);
     EXPECT_EQ(dflow::DFlowInitialize(init_options), SUCCESS);
 
     ge::GeRunningEnvFaker ge_env;
@@ -166,7 +164,6 @@ class DataFlowApiTest : public testing::Test {
   }
 
   void TearDown() {
-    ge::GEFinalize();
     dflow::DFlowFinalize();
     {
       auto &global_options_mutex = ge::GetGlobalOptionsMutex();

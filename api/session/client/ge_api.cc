@@ -907,7 +907,7 @@ Status Session::FeedDataFlowGraph(uint32_t graph_id, const std::vector<uint32_t>
 
   GELOGI("Feed data flow graph, graph_id: %u, timeout: %d ms", graph_id, timeout);
   const auto dflow_session = inner_session->GetDFlowSession();
-  GE_CHECK_NOTNULL(dflow_session, "dflow session is nullptr");
+  GE_CHECK_NOTNULL(dflow_session, ", dflow session is nullptr");
   const Status ret = dflow_session->FeedDataFlowGraph(graph_id, indexes, inputs, info, timeout);
   if (ret != SUCCESS && ret != ACL_ERROR_GE_REDEPLOYING && ret != ACL_ERROR_GE_SUBHEALTHY) {
     GELOGE(ret, "[Feed][Data]Failed, error code:%u, session_id:%lu, graph_id:%u.", ret, sessionId_, graph_id);
@@ -932,7 +932,7 @@ Status Session::FeedDataFlowGraph(uint32_t graph_id, const std::vector<uint32_t>
 
   GELOGI("Feed flow msg, graph_id: %u, timeout: %d ms", graph_id, timeout);
   const auto dflow_session = inner_session->GetDFlowSession();
-  GE_CHECK_NOTNULL(dflow_session, "dflow session is nullptr");
+  GE_CHECK_NOTNULL(dflow_session, ", dflow session is nullptr");
   const Status ret = dflow_session->FeedDataFlowGraph(graph_id, indexes, inputs, timeout);
   const auto status = ret > kExternalErrorCodeMaxValue ? FAILED : ret;
   GE_CHK_BOOL_RET_STATUS((ret == SUCCESS || ret == ACL_ERROR_GE_REDEPLOYING || ret == ACL_ERROR_GE_SUBHEALTHY),
@@ -954,7 +954,7 @@ Status Session::FeedRawData(uint32_t graph_id, const std::vector<RawData> &raw_d
 
   GELOGI("Feed raw data to data flow graph, graph_id: %u, timeout: %d ms", graph_id, timeout);
   const auto dflow_session = inner_session->GetDFlowSession();
-  GE_CHECK_NOTNULL(dflow_session, "dflow session is nullptr");
+  GE_CHECK_NOTNULL(dflow_session, ", dflow session is nullptr");
   const Status ret = dflow_session->FeedRawData(graph_id, raw_data_list, index, info, timeout);
   if (ret != SUCCESS && ret != ACL_ERROR_GE_REDEPLOYING && ret != ACL_ERROR_GE_SUBHEALTHY) {
     GELOGE(ret, "[Feed][Data]Failed, error code:%u, session_id:%lu, graph_id:%u.", ret, sessionId_, graph_id);
@@ -983,7 +983,7 @@ Status Session::FetchDataFlowGraph(uint32_t graph_id, const std::vector<uint32_t
 
   GELOGI("Fetch data flow graph, graph_id: %u, timeout: %d ms", graph_id, timeout);
   const auto dflow_session = inner_session->GetDFlowSession();
-  GE_CHECK_NOTNULL(dflow_session, "dflow session is nullptr");
+  GE_CHECK_NOTNULL(dflow_session, ", dflow session is nullptr");
   Status ret = dflow_session->FetchDataFlowGraph(graph_id, indexes, outputs, info, timeout);
   const bool need_convert_error_code = ((ret == RT_ERROR_TO_GE_STATUS(ACL_ERROR_RT_QUEUE_EMPTY)) && timeout != 0);
   ret = need_convert_error_code ? ACL_ERROR_GE_MODEL_EXECUTE_TIMEOUT : ret;
@@ -1010,7 +1010,7 @@ Status Session::FetchDataFlowGraph(uint32_t graph_id, const std::vector<uint32_t
 
   GELOGI("Fetch flow msg, graph_id: %u, timeout: %d ms", graph_id, timeout);
   const auto dflow_session = inner_session->GetDFlowSession();
-  GE_CHECK_NOTNULL(dflow_session, "dflow session is nullptr");
+  GE_CHECK_NOTNULL(dflow_session, ", dflow session is nullptr");
   Status ret = dflow_session->FetchDataFlowGraph(graph_id, indexes, outputs, timeout);
   const bool need_convert_error_code = ((ret == RT_ERROR_TO_GE_STATUS(ACL_ERROR_RT_QUEUE_EMPTY)) && timeout != 0);
   ret = need_convert_error_code ? ACL_ERROR_GE_MODEL_EXECUTE_TIMEOUT : ret;

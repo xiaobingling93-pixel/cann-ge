@@ -24,6 +24,7 @@
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "common/env_path.h"
+#include "compiler/session/dflow_api.h"
 
 using namespace testing;
 
@@ -137,12 +138,12 @@ class ConvertBatchAttrToUdfPassTest : public testing::Test {
     std::string st_dir_path = ge::PathUtils::Join({ge::EnvPath().GetAirBasePath(), "/tests/dflow/runner/st/"});
     auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config.json";
     setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-    ReInitGe();
+    dflow::DFlowInitialize({});
   }
   void TearDown() {
     ExecutionRuntime::instance_ = nullptr;
     ExecutionRuntime::handle_ = nullptr;
-    GEFinalize();
+    dflow::DFlowFinalize();
     unsetenv("RESOURCE_CONFIG_PATH");
   }
 };
@@ -187,9 +188,9 @@ TEST_F(ConvertBatchAttrToUdfPassTest, TimeBatch_CountBatch_Run_Success) {
 
   EXPECT_EQ(graph->GetDirectNode().size(), 4);
   std::map<AscendString, AscendString> options = {{"ge.runFlag", "0"}};
-  Session session(options);
-  session.AddGraph(1, flow_graph.ToGeGraph());
-  std::vector<InputTensorInfo> inputs;
+  dflow::DFlowSession session(options);
+  session.AddGraph(1, flow_graph);
+  std::vector<Tensor> inputs;
   auto ret = session.BuildGraph(1, inputs);
   ASSERT_EQ(ret, SUCCESS);
   EXPECT_EQ(graph->GetDirectNode().size(), 6);
@@ -235,9 +236,9 @@ TEST_F(ConvertBatchAttrToUdfPassTest, TimeBatch_CountBatch_with_catch_exception)
   (void)AttrUtils::SetBool(graph, "_inputs_align_dropout", true);
   EXPECT_EQ(graph->GetDirectNode().size(), 4);
   std::map<AscendString, AscendString> options = {{"ge.runFlag", "0"}};
-  Session session(options);
-  session.AddGraph(1, flow_graph.ToGeGraph());
-  std::vector<InputTensorInfo> inputs;
+  dflow::DFlowSession session(options);
+  session.AddGraph(1, flow_graph);
+  std::vector<Tensor> inputs;
   auto ret = session.BuildGraph(1, inputs);
   EXPECT_EQ(ret, FAILED);
 }
@@ -283,10 +284,10 @@ TEST_F(ConvertBatchAttrToUdfPassTest, TimeBatch_CountBatch_with_deploy_info) {
   json_file << content << std::endl;
   json_file.close();
   std::map<AscendString, AscendString> options = {{"ge.runFlag", "0"}};
-  Session session(options);
+  dflow::DFlowSession session(options);
   map<AscendString, AscendString> graph_options = {{"ge.experiment.data_flow_deploy_info_path", file_name}};
-  session.AddGraph(1, flow_graph.ToGeGraph(), graph_options);
-  std::vector<InputTensorInfo> inputs;
+  session.AddGraph(1, flow_graph, graph_options);
+  std::vector<Tensor> inputs;
   auto ret = session.BuildGraph(1, inputs);
   ASSERT_EQ(ret, SUCCESS);
   EXPECT_EQ(graph->GetDirectNode().size(), 6);

@@ -100,6 +100,7 @@
 #include "deploy/abnormal_status_handler/device_abnormal_status_handler.h"
 #include "common/env_path.h"
 #include "common/util/sanitizer_options.h"
+#include "compiler/session/dflow_api.h"
 #include "dflow/flow_graph/data_flow_attr_define.h"
 #include "dflow/inc/data_flow/model/flow_model_helper.h"
 #include "dflow/inc/data_flow/model/graph_model.h"
@@ -2037,7 +2038,7 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelOnServer) {
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
   EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
@@ -2090,7 +2091,6 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelOnServer) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
 
   // 4. Cleanup
   ExecutionRuntime::FinalizeExecutionRuntime();
@@ -2123,7 +2123,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeavyLoadUdfModelOnServer) {
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  dflow::DFlowFinalize();
   std::map<AscendString, AscendString> options;
   EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
@@ -2178,7 +2178,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeavyLoadUdfModelOnServer) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   ExecutionRuntime::FinalizeExecutionRuntime();
@@ -2211,9 +2211,8 @@ TEST_F(STEST_helper_runtime, TestDeployHeavyLoadUdfModelOnServerWithHostFlowgw) 
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server_4dev.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
   Session session0(options);
@@ -2270,7 +2269,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeavyLoadUdfModelOnServerWithHostFlowgw) 
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   ExecutionRuntime::FinalizeExecutionRuntime();
@@ -2379,7 +2378,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeavyLoadUdfModelOnDiffServerWithHostFlow
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   // 4. Cleanup
@@ -2422,9 +2421,8 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelsOnServerWithHostFlowgw) {
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server_4dev.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
   Session session0(options);
@@ -2496,7 +2494,7 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelsOnServerWithHostFlowgw) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   ExecutionRuntime::FinalizeExecutionRuntime();
@@ -2536,9 +2534,8 @@ TEST_F(STEST_helper_runtime, TestDeployNpuUdfModelsOnServerWithHostFlowgw) {
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server_4dev.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
   Session session0(options);
@@ -2610,7 +2607,7 @@ TEST_F(STEST_helper_runtime, TestDeployNpuUdfModelsOnServerWithHostFlowgw) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   ExecutionRuntime::FinalizeExecutionRuntime();
@@ -2650,9 +2647,8 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelWriteTarSuccessByMultiTimes) {
   // 2. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
   Session session0(options);
@@ -2704,7 +2700,7 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelWriteTarSuccessByMultiTimes) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   ExecutionRuntime::FinalizeExecutionRuntime();
   MmpaStub::GetInstance().Reset();
@@ -2715,29 +2711,29 @@ TEST_F(STEST_helper_runtime, TestDeployUdfModelWriteTarSuccessByMultiTimes) {
 }
 
 TEST_F(STEST_helper_runtime, TestHeterogeneousInitInvalid) {
-  ge::GEFinalize();
+  dflow::DFlowFinalize();
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaForHeterogeneousRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
-  GEFinalize();
+  dflow::DFlowFinalize();
   std::map<AscendString, AscendString> options;
 
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host_invalid";
   // has no local node
   std::string config_file = real_path + std::string("/numa_config_without_local_node.json");
   setenv("RESOURCE_CONFIG_PATH", config_file.c_str(), 1);
-  EXPECT_EQ(ge::GEInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
+  EXPECT_EQ(dflow::DFlowInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
   unsetenv("RESOURCE_CONFIG_PATH");
-  GEFinalize();
+  dflow::DFlowFinalize();
   // invalid cluster
   config_file = real_path + std::string("/numa_config_invalid_cluster.json");
   setenv("RESOURCE_CONFIG_PATH", config_file.c_str(), 1);
-  EXPECT_EQ(ge::GEInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
+  EXPECT_EQ(dflow::DFlowInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
   unsetenv("RESOURCE_CONFIG_PATH");
-  GEFinalize();
+  dflow::DFlowFinalize();
   // invalid resource type
   config_file = real_path + std::string("/numa_config_invalid_resource.json");
   setenv("RESOURCE_CONFIG_PATH", config_file.c_str(), 1);
-  EXPECT_EQ(ge::GEInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
+  EXPECT_EQ(dflow::DFlowInitialize(options), ACL_ERROR_GE_PARAM_INVALID);
   unsetenv("RESOURCE_CONFIG_PATH");
 
   ge::NumaConfig numa_config;
@@ -2754,7 +2750,7 @@ TEST_F(STEST_helper_runtime, TestHeterogeneousInitInvalid) {
   // invalid num
   config_file = real_path + std::string("/numa_config_invalid_num.json");
   ASSERT_EQ(ge::ConfigParser::InitNumaConfig(config_file, numa_config), ACL_ERROR_GE_PARAM_INVALID);
-  GEFinalize();
+  dflow::DFlowFinalize();
   MmpaStub::GetInstance().Reset();
   RuntimeStub::Reset();
 }
@@ -2765,9 +2761,8 @@ TEST_F(STEST_helper_runtime, TestDeployHeterogeneousModelFusionInput) {
 
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
 
@@ -2798,7 +2793,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeterogeneousModelFusionInput) {
   ASSERT_EQ(output_tensors.size(), 1);
 
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   ExecutionRuntime::FinalizeExecutionRuntime();
   MmpaStub::GetInstance().Reset();
@@ -2808,7 +2803,6 @@ TEST_F(STEST_helper_runtime, TestDeployHeterogeneousModelFusionInput) {
 TEST_F(STEST_helper_runtime, TestDeployWithCompileRes) {
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaForHeterogeneousRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
-  GEFinalize();
   // 1. start server
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/device/numa_config_2server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
@@ -2896,7 +2890,6 @@ TEST_F(STEST_helper_runtime, TestDeployWithCompileRes) {
 TEST_F(STEST_helper_runtime, TestDeployWithFlow) {
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaForHeterogeneousRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
-  GEFinalize();
   // 1. start server
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/device/numa_config_2server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
@@ -2958,7 +2951,7 @@ TEST_F(STEST_helper_runtime, TestDeployHostCpuDynamicModel) {
   // 1. Init master
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   ge::ProcessNodeEngineRegisterar cpu_engine_register __attribute__((unused)) (
       PNE_ID_CPU, []() -> ::ge::ProcessNodeEngine * { return new (std::nothrow) ge::CPUProcessNodeEngine(); });
   std::map<AscendString, AscendString> options;
@@ -3023,7 +3016,7 @@ TEST_F(STEST_helper_runtime, TestDeployHostCpuDynamicModel) {
   subevent_info.modelId = 1023 - 2;
   CpuSchedEventDispatcher::GetInstance().OnInputsReady(event_info);
 
-  GEFinalize();
+  dflow::DFlowFinalize();
   CpuSchedEventDispatcher::GetInstance().Finalize();
   rtMbufFree(input_mbuf);
 }
@@ -3133,9 +3126,8 @@ TEST_F(STEST_helper_runtime, TestDeployHeterogeneousModelMaintenanceCfg) {
   // 2. Init master
   real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_2server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
-  EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
 
@@ -3153,7 +3145,7 @@ TEST_F(STEST_helper_runtime, TestDeployHeterogeneousModelMaintenanceCfg) {
 
   std::vector<Tensor> inputs{tensor};
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   // 4. Cleanup
   grpc_server.Finalize();
@@ -3174,7 +3166,7 @@ TEST_F(STEST_helper_runtime, TestDeployServerModel) {
 
   auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
   setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-  GEFinalize();
+  ReInitDFlow();
   std::map<AscendString, AscendString> options;
   EXPECT_EQ(ge::GEInitialize(options), SUCCESS);
   GeRunningEnvFaker ge_env;
@@ -3196,7 +3188,7 @@ TEST_F(STEST_helper_runtime, TestDeployServerModel) {
   mock_handle = (void *) 0x12345678;
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   mock_handle = nullptr;
-  GEFinalize();
+  dflow::DFlowFinalize();
 
   ExecutionRuntime::FinalizeExecutionRuntime();
   MmpaStub::GetInstance().Reset();
@@ -5486,7 +5478,6 @@ TEST_F(STEST_helper_runtime, TestHostCpuEngineModel_Execute_Success) {
 TEST_F(STEST_helper_runtime, TestDynamicSchedDeployWithFlow) {
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpaForHeterogeneousRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
-  GEFinalize();
 
   DeployerProxy::GetInstance().deployers_.clear();
   ResourceManager::GetInstance().Finalize();

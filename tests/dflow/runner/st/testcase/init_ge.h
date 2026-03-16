@@ -13,11 +13,12 @@
 #include <map>
 #include <iostream>
 #include "ge/ge_api.h"
+#include "ge/ge_api_v2.h"
 #include "ge_running_env/ge_running_env_faker.h"
+#include "compiler/session/dflow_api.h"
 namespace ge {
-inline void ReInitGe() {
-  // init the logging
-  ge::GEFinalize();
+
+inline void InitGe() {
   std::map<AscendString, AscendString> options;
   options[ge::OPTION_HOST_ENV_OS] = "linux";
   options[ge::OPTION_HOST_ENV_CPU] = "x86_64";
@@ -31,6 +32,33 @@ inline void ReInitGe() {
 
   GeRunningEnvFaker ge_env;
   ge_env.InstallDefault();
+}
+
+inline void ReInitGe() {
+  // init the logging
+  ge::GEFinalizeV2();
+  std::map<AscendString, AscendString> options;
+  options[ge::OPTION_HOST_ENV_OS] = "linux";
+  options[ge::OPTION_HOST_ENV_CPU] = "x86_64";
+  auto init_status = ge::GEInitializeV2(options);
+  if (init_status != SUCCESS) {
+    std::cout << "ge init failed , ret code:" << init_status << std::endl;
+  }
+
+  const_cast<std::map<std::string, OpsKernelInfoStorePtr>&>(
+      OpsKernelManager::GetInstance().GetAllOpsKernelInfoStores()).clear();
+
+  GeRunningEnvFaker ge_env;
+  ge_env.InstallDefault();
+}
+
+inline void ReInitDFlow() {
+  dflow::DFlowFinalize();
+  std::map<AscendString, AscendString> options;
+  auto init_status = dflow::DFlowInitialize(options);
+  if (init_status != SUCCESS) {
+    std::cout << "dflow init failed , ret code:" << init_status << std::endl;
+  }
 }
 }
 #endif //AIR_CXX_TESTS_ST_TESTCASE_INIT_GE_H_
