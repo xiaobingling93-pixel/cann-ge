@@ -498,7 +498,6 @@ TEST(CodegenKernel, OutputTensorIsScalarDuplicate_test) {
   kernel.tpipe.need_gen_blk_tensors.push_back(t.id);
   bool is_ub_scalar = true;
 
-  kernel.tpipe.need_alloc_local_blk_tensor_tensors.push_back(t.id);
   std::string result;
   Status ans = kernel.tpipe.BlkTensorAllocAndInit(result);
 
@@ -508,9 +507,6 @@ TEST(CodegenKernel, OutputTensorIsScalarDuplicate_test) {
     "LocalTensor<GlobalTensor<float>> local_blk_tensor_of_global_1 = global_1_tbuf.Get<GlobalTensor<float>>();\n"
     "Duplicate(local_blk_tensor_of_global_1[0], static_cast<GlobalTensor<float>>(), static_cast<uint64_t>(32/sizeof(GlobalTensor<float>)));\n"
     "AscendC::PipeBarrier<PIPE_V>();\n"
-    "TBuf<TPosition::VECCALC> global_1_tbuf_1;\n"
-    "tpipe.InitBuffer(global_1_tbuf_1, 32);\n"
-    "GlobalTensor<float>global_1_1 = global_1_tbuf_1.Get<float>();\n"
   });
 }
 
@@ -737,7 +733,6 @@ TEST(CodegenKernel, ApiCallPreProcessLoadUbScalarTest) {
   std::vector<std::reference_wrapper<const codegen::Tensor>> output_tensors;
   t.need_gen_get_value_of_ub_scalar = true;
   t.need_duplicate_value_of_ub_scalar = true;
-  t.need_alloc_local_blk_tensor_from_tbuf = true;
   output_tensors.emplace_back(t);
   //3
   std::vector<::ascir::AxisId> current_axis = {z0.id};
@@ -751,7 +746,7 @@ TEST(CodegenKernel, ApiCallPreProcessLoadUbScalarTest) {
     "WaitFlag<HardEvent::MTE2_S>(eventID);\n"
     "global_1_ub_scalar = global_1.GetValue(0);\n"
     "AscendC::PipeBarrier<PIPE_ALL>();\n"
-    "Duplicate(global_1_1[0], global_1_ub_scalar, 32/sizeof(float));\n"
+    "Duplicate(global_1[0], global_1_ub_scalar, 32/sizeof(float));\n"
     "AscendC::PipeBarrier<PIPE_V>();\n"
     "}\n"});
 }

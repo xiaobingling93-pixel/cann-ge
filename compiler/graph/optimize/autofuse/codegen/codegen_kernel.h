@@ -130,7 +130,6 @@ class Tensor : public Variable {
   bool is_load_link_store_and_vec{false}; // 该tensor 是load 直连store, load连vec的场景
   bool need_gen_get_value_of_ub_scalar{false};
   bool need_duplicate_value_of_ub_scalar{false};
-  bool need_alloc_local_blk_tensor_from_tbuf{false};
 
   std::string ub_scalar_name;
   bool isAr{false};
@@ -295,7 +294,6 @@ class TPipe : public Variable {
   std::set<ascir::QueId> non_load_store_qids;
   std::string reuse_dtype_name = "";
   std::vector<ascir::TensorId> need_gen_blk_tensors;
-  std::vector<ascir::TensorId> need_alloc_local_blk_tensor_tensors; // 额外从tbuf申请blk的tensor
   ascir::CubeTemplateType cv_fusion_type{ascir::CubeTemplateType::kDefault};
   ascir::TensorId cube_output_tensor_id = ge::kIdNone;
   ascir::TensorId cube_output_que_id = ge::kIdNone;
@@ -597,7 +595,6 @@ class Kernel {
   void SetUseListTensor(bool use_list_tensor);
   Status ParseOptimizeInfo(const ascir::NodeView &node, const ascir::TensorView &tensor);
   Status ParseScalarNeedGenBlkTensors(const ascir::NodeView &node, ascir::TensorId id);
-  Status JudgeIsLoadLinkStoreAndVec(const ascir::NodeView &node, Tensor& t, ascir::TensorId id);
   Status OutputTensorIsUbScalar(const ascir::NodeView &node, bool &is_ub_scalar) const;
   Status GenerateKernelByNode(const ascir::ImplGraph &graph, std::stringstream &ss,
                               std::unordered_set<const std::string *> &kernel_file_ptr);
@@ -610,6 +607,8 @@ class Kernel {
   Status GenerateVecFuncOfCVFusion(std::stringstream &result, bool vector_no_db_flag);
   Status InitCVFusionAddr(std::stringstream &result, bool vector_no_db_flag);
   static std::string GenKernelFuncCallForInductor(const ascir::FusedScheduledResult &fused_schedule_result);
+  Status ParseUbScalarOptimizationInfo(const ascir::NodeView& node, Tensor& t, ascir::TensorId id, bool is_all_link_vf);
+  Status JudgeIsLoadLinkStoreAndVec(const ascir::NodeView& node, Tensor& t, ascir::TensorId id);
  private:
   static std::vector<std::string> GenPackingFunctions(std::stringstream &ss_define,
                                                       const std::vector<Variable> &kernel_args,

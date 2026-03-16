@@ -75,8 +75,9 @@ TEST_P(E2E_LoadWhereUint8x2x3IsUbscalarStore_Code, CalculateCorrect) {
   // Count difference
   uint32_t diff_count = 0;
   for (int i = 0; i < test_size; i++) {
-    half diff = y[i] - expect[i];
-    if (diff > (half)0.0001 || diff < (half)-0.0001) {
+    float diff = y[i] - expect[i];
+    if (diff > (float)0.0001 || diff < (float)-0.0001) {
+      printf("diff[%d] = %f, expect[%d] = %f, y[%d] = %f\n", i, diff, i, expect[i], i, y[i]);
       diff_count++;
     }
   }
