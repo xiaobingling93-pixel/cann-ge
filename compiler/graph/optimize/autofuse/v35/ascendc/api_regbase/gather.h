@@ -646,6 +646,9 @@ inline __aicore__ void GatherExtendVReg(int32_t offset, AscendC::LocalTensor<uin
     param_src.blockLen = gather_dim_size * sizeof(T1);
     param_src.srcStride = 0;
     param_src.dstStride = 0;
+    int32_t event_id_v_to_mte2_0 = static_cast<int32_t>(GetTPipePtr()->FetchEventID(AscendC::HardEvent::V_MTE2));
+    AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(event_id_v_to_mte2_0);
+    AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(event_id_v_to_mte2_0);
     AscendC::DataCopyPad(xLocal, src1, param_src, param_src_pad);
     int32_t max_out_cols;
     uint32_t limit_size = tmp_buf_size - gather_dim_size * sizeof(T1);
@@ -752,6 +755,9 @@ inline __aicore__ void GatherExtendShortVector(AscendC::LocalTensor<T1> &dst, co
     param_src.blockLen = param_size * sizeof(T1);
     param_src.srcStride = 0;
     param_src.dstStride = 0;
+    int32_t event_id_v_to_mte2 = static_cast<int32_t>(GetTPipePtr()->FetchEventID(AscendC::HardEvent::V_MTE2));
+    AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(event_id_v_to_mte2);
+    AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(event_id_v_to_mte2);
     AscendC::DataCopyPad(xLocal, src1, param_src, param_src_pad);
     __ubuf__ int64_t *xAddr = (__ubuf__ int64_t *)xLocal.GetPhyAddr();
     AscendC::Simt::VF_CALL<GatherSimtParamFullLoad<int64_t, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, sizeof(int64_t) / sizeof(T1)>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, xAddr, x2_gm, ub_actual_size,
