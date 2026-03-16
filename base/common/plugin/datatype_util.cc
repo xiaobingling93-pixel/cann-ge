@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -50,6 +50,7 @@ std::map<ge::DataType, ge::proto::DataType> g_dump_data_type_map = {
     {ge::DT_INT2, ge::proto::DT_INT2},
     {ge::DT_UINT2, ge::proto::DT_UINT2},
     {ge::DT_HIFLOAT8, ge::proto::DT_HIFLOAT8},
+    {ge::DT_HIFLOAT4, ge::proto::DT_HIFLOAT4},
     {ge::DT_FLOAT8_E5M2, ge::proto::DT_FLOAT8_E5M2},
     {ge::DT_FLOAT8_E4M3FN, ge::proto::DT_FLOAT8_E4M3FN},
     {ge::DT_FLOAT8_E8M0, ge::proto::DT_FLOAT8_E8M0},
