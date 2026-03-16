@@ -194,8 +194,18 @@ TEST_F(CacheMemoryAllocatorTest, test_allocate_mem_block_try_recycle_then_malloc
     }
   };
 
+  class MockAclRuntime : public ge::AclRuntimeStub {
+    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) {
+      *free_size = 56UL * 1024UL * 1024UL;
+      *total = 56UL * 1024UL * 1024UL * 1024UL;
+      return ACL_SUCCESS;
+    }
+  };
+
   auto mock_runtime = std::make_shared<MockRuntime>();
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   ge::RuntimeStub::SetInstance(mock_runtime);
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   CachingMemAllocator allocator(0, RT_MEMORY_HBM);
   allocator.SetStream((void *)1);
   auto mem_block = allocator.Malloc(20 * 1024UL * 1024UL * 1024UL);
@@ -206,6 +216,7 @@ TEST_F(CacheMemoryAllocatorTest, test_allocate_mem_block_try_recycle_then_malloc
   mem_block1->Free();
   ASSERT_EQ(ge::GRAPH_SUCCESS, allocator.Finalize());
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(CacheMemoryAllocatorTest, test_allocate_mem_block_try_recycle_other_then_malloc_when_mem_cannot_alloc) {
@@ -233,8 +244,18 @@ TEST_F(CacheMemoryAllocatorTest, test_allocate_mem_block_try_recycle_other_then_
       return RT_ERROR_NONE;
     }
   };
+  class MockAclRuntime : public ge::AclRuntimeStub {
+    aclError aclrtGetMemInfo(aclrtMemAttr attr, size_t *free_size, size_t *total) {
+      *free_size = 56UL * 1024UL * 1024UL;
+      *total = 56UL * 1024UL * 1024UL * 1024UL;
+      return ACL_SUCCESS;
+    }
+  };
+
   auto mock_runtime = std::make_shared<MockRuntime>();
+  auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
   ge::RuntimeStub::SetInstance(mock_runtime);
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
   CachingMemAllocator allocator(0, RT_MEMORY_HBM);
   CachingMemAllocator allocator1(0, RT_MEMORY_HBM);
   auto mem_block = allocator.Malloc(20 * 1024UL * 1024UL * 1024UL);
@@ -246,6 +267,7 @@ TEST_F(CacheMemoryAllocatorTest, test_allocate_mem_block_try_recycle_other_then_
   mem_block1->Free();
   ASSERT_EQ(ge::GRAPH_SUCCESS, allocator1.Finalize());
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 }  // namespace memory
 }  // namespace gert
