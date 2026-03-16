@@ -17,6 +17,8 @@ file(COPY ${AIR_CODE_DIR}/tests/dflow/runner/st/st_run_data DESTINATION ${CMAKE_
 # build helper_runtime_test
 add_executable(helper_runtime_test
     test_main.cc
+    build_cache_system_test.cc
+    test_heterogeneous_runtime.cc
     test_helper_runtime.cc
     test_helper_planner.cc
     test_deployer_daemon.cc

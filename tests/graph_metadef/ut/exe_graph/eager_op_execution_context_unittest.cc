@@ -16,9 +16,19 @@
 #include "register/kernel_registry.h"
 #include "runtime/rt.h"
 #include "faker/kernel_run_context_faker.h"
+#include "operator_reg.h"
 
 //#include "faker/kernel_run_context_facker.h"
 //#include "stub/gert_runtime_stub.h"
+
+namespace ge {
+REG_OP(node)
+.INPUT(x, TensorType::ALL())
+.INPUT(y, TensorType::ALL())
+.OUTPUT(x, TensorType::ALL())
+.OUTPUT(z, TensorType::ALL())
+.OP_END_FACTORY_REG(node);
+}
 
 namespace gert {
 class EagerOpExecutionContextUT : public testing::Test {
@@ -128,14 +138,15 @@ class EagerOpExecutionContextUT : public testing::Test {
                                           .NodeInputTd(1, ge::DT_FLOAT16, ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ)
                                           .NodeOutputTd(0, ge::DT_FLOAT16, ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ)
                                           .NodeOutputTd(1, ge::DT_FLOAT16, ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ)
-                                          .InputTensor({&in_2_out_2_case_.input_tensors[0], &in_2_out_2_case_.input_tensors[1]})
-                                          .OutputTensor({&in_2_out_2_case_.output_tensors[0], &in_2_out_2_case_.output_tensors[1]})
-                                          .OutputMem(in_2_out_2_case_.workspace_mems)
-                                          .Allocator(&in_2_out_2_case_.gert_allocator)
-                                          .Stream(static_cast<void *>(&in_2_out_2_case_.stream_int))
+                                          .InputTensor({&dynamic_input_case_.input_tensors[0], &dynamic_input_case_.input_tensors[1]})
+                                          .OutputTensor({&dynamic_input_case_.output_tensors[0], &dynamic_input_case_.output_tensors[1]})
+                                          .OutputMem(dynamic_input_case_.workspace_mems)
+                                          .Allocator(&dynamic_input_case_.gert_allocator)
+                                          .Stream(static_cast<void *>(&dynamic_input_case_.stream_int))
                                           .Build();
   }
 };
+
 TEST_F(EagerOpExecutionContextUT, GetInputTensor) {
   auto context = in_2_out_2_case_.context_holder.GetContext<EagerOpExecutionContext>();
 
@@ -202,8 +213,8 @@ TEST_F(EagerOpExecutionContextUT, MallocOutputTensorOk) {
   std::initializer_list<int64_t> origin_shape = {2, 1, 3, 4};
   std::initializer_list<int64_t> storage_shape = {1, 2, 3, 4};
   auto output_tensor0 =
-      context->MallocOutputTensor(0, {origin_shape, storage_shape}, {ge::FORMAT_ND, ge::FORMAT_ND, ExpandDimsType()},
-                                  ge::DT_FLOAT16, 30);
+      context->MallocOutputTensor(1, {origin_shape, storage_shape}, {ge::FORMAT_ND, ge::FORMAT_ND, ExpandDimsType()},
+                                  ge::DT_FLOAT16);
   ASSERT_NE(output_tensor0, nullptr);
   EXPECT_EQ(output_tensor0->GetOriginShape(), origin_shape);
   EXPECT_EQ(output_tensor0->GetStorageShape(), storage_shape);
@@ -213,7 +224,7 @@ TEST_F(EagerOpExecutionContextUT, MallocOutputTensorOk) {
   EXPECT_EQ(output_tensor0->GetSize(), 512);
   EXPECT_NE(output_tensor0->GetAddr(), nullptr);
 
-  auto output_tensor_0_in_context = context->GetOutputTensor(0);
+  auto output_tensor_0_in_context = context->GetOutputTensor(1);
   ASSERT_NE(output_tensor_0_in_context, nullptr);
   EXPECT_EQ(output_tensor_0_in_context->GetOriginShape(), origin_shape);
   EXPECT_EQ(output_tensor_0_in_context->GetStorageShape(), storage_shape);
@@ -222,6 +233,18 @@ TEST_F(EagerOpExecutionContextUT, MallocOutputTensorOk) {
   EXPECT_EQ(output_tensor_0_in_context->GetDataType(), ge::DT_FLOAT16);
   EXPECT_EQ(output_tensor_0_in_context->GetSize(), 512);
   EXPECT_NE(output_tensor_0_in_context->GetAddr(), nullptr);
+}
+
+TEST_F(EagerOpExecutionContextUT, MallocOutputError) {
+  auto context = in_2_out_2_case_.context_holder.GetContext<EagerOpExecutionContext>();
+
+  ASSERT_NE(context, nullptr);
+  std::initializer_list<int64_t> origin_shape = {2, 1, 3, 4};
+  std::initializer_list<int64_t> storage_shape = {1, 2, 3, 4};
+  auto output_tensor =
+      context->MallocOutputTensor(0, {origin_shape, storage_shape}, {ge::FORMAT_ND, ge::FORMAT_ND, ExpandDimsType()},
+                                  ge::DT_FLOAT16);
+  EXPECT_EQ(output_tensor, nullptr);
 }
 
 TEST_F(EagerOpExecutionContextUT, MallocFreeWorkSpaceOk) {
@@ -249,4 +272,15 @@ TEST_F(EagerOpExecutionContextUT, MakeOutputRefInput) {
   EXPECT_EQ(output_tensor->GetStorageFormat(), in_2_out_2_case_.input_tensors[0].GetStorageFormat());
   EXPECT_EQ(output_tensor->GetAddr(), in_2_out_2_case_.input_tensors[0].GetAddr());
 }
+
+TEST_F(EagerOpExecutionContextUT, MakeOutputRefInputError) {
+  auto context = in_2_out_2_case_.context_holder.GetContext<EagerOpExecutionContext>();
+  ASSERT_NE(context, nullptr);
+  auto output_tensor = context->MakeOutputRefInput(1, 0);
+  ASSERT_EQ(output_tensor, nullptr);
 }
+
+
+}
+
+

@@ -152,11 +152,23 @@ class TilingCodeGenImpl {
   bool GenUpdateCurPerfAndBlockByGroupIfNeeded(const size_t asc_graph_id, const AscGraphNamepspaceMap &asc_graph_map) const;
   // -----------------------小shape优化相关---------------------------
   bool HitSmallShapePattern(ArgsManager &args_manager) const;
-  // 生成TilingCaseNum获取接口函数
-  ge::Status GenGetTilingOptionRange();
   // 生成GetTiling的PGO接口函数
-  ge::Status GenGetTilingWithOption();
   ge::Status GenGetTilingWithCaseId(bool is_tail = false);
+
+  // 辅助函数：获取GetTiling函数的参数定义字符串
+  std::string GetGetTilingParamDefines(bool use_cache, bool use_workspace, std::string &cache_define_head,
+                                        std::string &cache_define_func, std::string &cache_used);
+  // 辅助函数：生成GetTiling函数签名
+  void GenGetTilingFunctionSignature(const std::string &workspace_define, const std::string &cache_define_func,
+                                      const std::string &cache_define_head);
+  // 辅助函数：生成GetTiling函数体（GetTilingKey调用和返回逻辑）
+  ge::Status GenGetTilingFunctionBody(bool use_cache, bool is_tail, const std::string &cache_used);
+  // 辅助函数：生成GetTilingKey调用逻辑
+  ge::Status GenGetTilingKeyCall(const std::string &cache_used);
+  // 辅助函数：生成duration代码（begin或end）
+  ge::Status GenDurationCode(bool is_begin);
+  // 辅助函数：生成operator level cache保存逻辑
+  ge::Status GenOperatorCacheSaveCode(bool need_operator_cache);
   // 校验 force_tiling_case 配置
   ge::Status ValidateForceTilingCase(const std::map<string, int32_t> &group_tiling_case_ids,
                                      int32_t min_tiling_case_size) const;
@@ -342,7 +354,6 @@ class TilingCodeGenImpl {
   ge::Status GenCommonFrameWork();
   // 生成公共框架结构体定义，不同类型求解均需要使用
   ge::Status GenCommonStruct();
-  ge::Status GenUsedTilingOption();
 
   // 生成性能评估函数
   ge::Status GenEvalFunc(const ModelInfo &model_info);

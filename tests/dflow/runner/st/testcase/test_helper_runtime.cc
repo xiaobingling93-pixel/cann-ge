@@ -171,12 +171,6 @@ namespace {
 vector<int8_t> placeholder(224U * 224U * sizeof(int64_t) * 10);
 bool enqueue_dequeue_error_flag = false;
 bool is_auto_malloc_test = false;
-rtError_t rtMemQueueEnQueueBuff(int32_t devId, uint32_t qid, rtMemQueueBuff_t *inBuf, int32_t timeout) {
-  if (!enqueue_dequeue_error_flag) {
-    return 0;
-  }
-  return 207014;
-}
 namespace ge {
 void *mock_handle = nullptr;
 void *mock_method = nullptr;
@@ -214,13 +208,20 @@ class MockRuntime : public RuntimeStub {
   }
 
   rtError_t rtMemQueuePeek(int32_t device, uint32_t qid, size_t *bufLen, int32_t timeout) {
-    *bufLen = sizeof(RuntimeTensorDesc) + 224U * 224U;
+    *bufLen = sizeof(RuntimeTensorDesc) + 4 * 224U * 224U * sizeof(uint64_t);
     return 0;
   }
 
   rtError_t rtMbufGetBuffAddr(rtMbufPtr_t mbuf, void **databuf) {
     *databuf = mbuf;
     return 0;
+  }
+
+  rtError_t rtMemQueueEnQueueBuff(int32_t devId, uint32_t qid, rtMemQueueBuff_t *inBuf, int32_t timeout) {
+    if (!enqueue_dequeue_error_flag) {
+      return 0;
+    }
+    return 207014;
   }
 
   rtError_t rtMemQueueEnQueue(int32_t devId, uint32_t qid, void *mbuf) {
@@ -1023,7 +1024,6 @@ cp ./temp_udf_st/build/_test/X86/release/func_pp1_release.tar.gz ./temp_udf_st/b
     // default config
     auto real_path = st_dir_path + "st_run_data/json/helper_runtime/host/numa_config_1server.json";
     setenv("RESOURCE_CONFIG_PATH", real_path.c_str(), 1);
-    ReInitGe();
   }
   void TearDown() {
     MemoryGroupManager::GetInstance().Finalize();

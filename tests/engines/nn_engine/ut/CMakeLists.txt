@@ -209,6 +209,7 @@ target_include_directories(fe_ut PRIVATE
         ${AIR_CODE_DIR}/base
         ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/framework
+        ${AIR_CODE_DIR}/compiler/graph/fusion/pass
         ${GTEST_INCLUDE}
         ${CMAKE_BINARY_DIR}/proto/fe_ut
         ${AIR_CODE_DIR}/compiler/opcompiler/op_compile_adapter/source

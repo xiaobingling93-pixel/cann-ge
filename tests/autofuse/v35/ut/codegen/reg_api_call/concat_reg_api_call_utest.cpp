@@ -398,6 +398,8 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8) {
   EXPECT_EQ(call.Init(concat), 0);
   codegen::ApiTensor x1;
   codegen::ApiTensor x2;
+  load->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.que.id = 1;
   x1.id = load->outputs[0].attr.mem.tensor_id;
   x2.id = load2->outputs[0].attr.mem.tensor_id;
   call.inputs.push_back(&x1);
@@ -406,7 +408,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8) {
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 3))/(1),\n  .num_srcs_cols = {((3 * t->s2_1))/(1), 48, },\n};\nint8_t *concat_src_addrs[] { (int8_t *)local_0.GetPhyAddr(), (int8_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtend<int8_t, 2>((int8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 3))/(1),\n  .num_srcs_cols = {((3 * t->s2_1))/(1), 48, },\n};\nint8_t *concat_src_addrs[] { (int8_t *)local_0.GetPhyAddr(), (int8_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<int8_t, 2, true>((int8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 
 
 }
@@ -435,13 +437,15 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8ToB16) {
   codegen::ApiTensor x2;
   x1.id = load->outputs[0].attr.mem.tensor_id;
   x2.id = load2->outputs[0].attr.mem.tensor_id;
+  load->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = ((16 + t->s2_1))/(1),\n  .num_srcs_cols = {(t->s2_1)/(1), 16, },\n};\nuint16_t *concat_src_addrs[] { (uint16_t *)local_0.GetPhyAddr(), (uint16_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtend<uint16_t, 2>((uint16_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = ((16 + t->s2_1))/(1),\n  .num_srcs_cols = {(t->s2_1)/(1), 16, },\n};\nuint16_t *concat_src_addrs[] { (uint16_t *)local_0.GetPhyAddr(), (uint16_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<uint16_t, 2, true>((uint16_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B16) {
@@ -468,13 +472,15 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B16) {
   codegen::ApiTensor x2;
   x1.id = load->outputs[0].attr.mem.tensor_id;
   x2.id = load2->outputs[0].attr.mem.tensor_id;
+  load->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 2))/(1),\n  .num_srcs_cols = {((2 * t->s2_1))/(1), 32, },\n};\nhalf *concat_src_addrs[] { (half *)local_0.GetPhyAddr(), (half *)local_2.GetPhyAddr(), };\nconcat::ConcatExtend<half, 2>((half *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 2))/(1),\n  .num_srcs_cols = {((2 * t->s2_1))/(1), 32, },\n};\nhalf *concat_src_addrs[] { (half *)local_0.GetPhyAddr(), (half *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<half, 2, true>((half *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B32) {
@@ -501,13 +507,15 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B32) {
   codegen::ApiTensor x2;
   x1.id = load->outputs[0].attr.mem.tensor_id;
   x2.id = load2->outputs[0].attr.mem.tensor_id;
+  load->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 2))/(1),\n  .num_srcs_cols = {((2 * t->s2_1))/(1), 32, },\n};\nint32_t *concat_src_addrs[] { (int32_t *)local_0.GetPhyAddr(), (int32_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtend<int32_t, 2>((int32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 2))/(1),\n  .num_srcs_cols = {((2 * t->s2_1))/(1), 32, },\n};\nint32_t *concat_src_addrs[] { (int32_t *)local_0.GetPhyAddr(), (int32_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<int32_t, 2, true>((int32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unalign_B64) {
@@ -534,13 +542,15 @@ TEST_F(ConcatRegApiCallUTest, Unalign_B64) {
   codegen::ApiTensor x2;
   x1.id = load->outputs[0].attr.mem.tensor_id;
   x2.id = load2->outputs[0].attr.mem.tensor_id;
+  load->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 4))/(1),\n  .num_srcs_cols = {((4 * t->s2_1))/(1), 64, },\n};\nuint32_t *concat_src_addrs[] { (uint32_t *)local_0.GetPhyAddr(), (uint32_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtend<uint32_t, 2>((uint32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 4))/(1),\n  .num_srcs_cols = {((4 * t->s2_1))/(1), 64, },\n};\nuint32_t *concat_src_addrs[] { (uint32_t *)local_0.GetPhyAddr(), (uint32_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<uint32_t, 2, true>((uint32_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B32_padded) {

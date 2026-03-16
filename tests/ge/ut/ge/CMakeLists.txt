@@ -138,6 +138,7 @@ set(DISTINCT_GRAPH_LOAD_TEST_FILES
     "graph/load/graph_loader_unittest.cc"
     "graph/load/stream_switch_task_info_unittest.cc"
     "graph/load/scattered_collection_unittest.cc"
+    "graph/load/sink_only_allocator_unittest.cc"
     "graph/load/memory_app_type_classifier_unittest.cc"
     "graph/load/task_args_refresh_type_classifier_unittest.cc"
     "graph/load/task_node_map_unittest.cc"
@@ -1072,6 +1073,7 @@ target_link_libraries(ut_libge_distinct_load_utest
     -Wl,-z,muldefs
     -Wl,--whole-archive
     ge_graph_dsl ge_runtime_stub
+    davinci_executor
     profiler_stub es_ge_test gert_op_impl_static rt2_registry_static
     -Wl,--no-whole-archive
     json

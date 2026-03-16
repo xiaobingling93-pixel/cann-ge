@@ -62,6 +62,22 @@ Status ConcatRegApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::A
   return ge::SUCCESS;
 }
 
+bool ConcatRegApiCall::IsShareInputs() const {
+  std::set<int64_t> queue_ids;
+  for (uint32_t i = 0; i < node_->inputs.Size(); ++i) {
+    queue_ids.emplace(node_->inputs[i].attr.que.id);
+  }
+  return queue_ids.size() == 1UL;
+}
+
+bool ConcatRegApiCall::IsContiguousBufRequired() const {
+  const auto is_all_from_load = ascir::utils::AreAllInputsLoad(node_);
+  const auto can_use_gather = is_all_from_load &&
+                              (ascir::utils::AreConcatInputShapesEqual(node_) != ge::TriBool::kFalse) &&
+                              IsShareInputs();
+  return can_use_gather;
+}
+
 bool ConcatRegApiCall::CanConcatOneAxis(const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                                         const Tensor &y) {
   constexpr int64_t kVecLen = 256;
@@ -212,6 +228,8 @@ ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
   GE_CHK_BOOL_RET_SPECIAL_STATUS(tiling.any_padded, ge::SUCCESS, "input is padded, can not use Gather");
   GE_CHK_BOOL_RET_SPECIAL_STATUS((!ascir::utils::AreAllInputsLoad(node_)), ge::SUCCESS,
                                  "contain non-Load or multi-ref input, can not use Gather");
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!IsShareInputs()), ge::SUCCESS,
+                                 "not sharing single input buffer, can not use Gather");
   tiling.all_inputs_shape_equal = ascir::utils::AreConcatInputShapesEqual(node_);
   GE_CHK_BOOL_RET_SPECIAL_STATUS((tiling.all_inputs_shape_equal == ge::TriBool::kFalse), ge::SUCCESS,
                                  "input shapes differ, can not use Gather");
@@ -225,8 +243,7 @@ ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
       return ge::SUCCESS;
     }
   }
-  // 输入节点排序问题解决后放开
-  tiling.can_use_gather = false;
+  tiling.can_use_gather = true;
   return ge::SUCCESS;
 }
 

@@ -1777,12 +1777,18 @@ class WhereAscIrCodegenImplV2 : public AscIrCodegenV2 {
       return false;
     }
     auto in_node = node.GetInDataNodes().at(0);
-    if (in_node->GetType() == "Ge" || in_node->GetType() == "Eq" ||
-        in_node->GetType() == "Ne" || in_node->GetType() == "Le" ||
-        in_node->GetType() == "Lt" || in_node->GetType() == "Gt") {
-      return true;
+    // 当前节点的第一个输入节点必须是比较算子
+    if (in_node->GetType() != "Ge" && in_node->GetType() != "Eq" && in_node->GetType() != "Ne" &&
+        in_node->GetType() != "Le" && in_node->GetType() != "Lt" && in_node->GetType() != "Gt") {
+      return false;
     }
-    return false;
+    // 当前节点的第一个输入节点的所有输出节点必须是Where算子或Select算子
+    for (const auto &out_node : in_node->GetOutNodes()) {
+      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
+        return false;
+      }
+    }
+    return true;
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -1822,12 +1828,18 @@ class SelectAscIrCodegenImplV2 : public AscIrCodegenV2 {
       return false;
     }
     auto in_node = node.GetInDataNodes().at(0);
-    if (in_node->GetType() == "Lt" || in_node->GetType() == "Eq" ||
-        in_node->GetType() == "Ne" || in_node->GetType() == "Le" ||
-        in_node->GetType() == "Ge" || in_node->GetType() == "Gt") {
-      return true;
+    // 当前节点的第一个输入节点必须是比较算子
+    if (in_node->GetType() != "Lt" && in_node->GetType() != "Eq" && in_node->GetType() != "Ne" &&
+        in_node->GetType() != "Le" && in_node->GetType() != "Ge" && in_node->GetType() != "Gt") {
+      return false;
     }
-    return false;
+    // 当前节点的第一个输入节点的所有输出节点必须是Where算子或Select算子
+    for (const auto &out_node : in_node->GetOutNodes()) {
+      if ((out_node->GetType() != "Select") && (out_node->GetType() != "Where")) {
+        return false;
+      }
+    }
+    return true;
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {

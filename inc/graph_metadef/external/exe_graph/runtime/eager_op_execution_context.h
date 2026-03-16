@@ -71,12 +71,10 @@ class EagerOpExecutionContext : public ExtendedKernelContext {
    * @param shape 输出tensor的shape
    * @param format 输出tensor的format
    * @param dtype 输出tensor的data type
-   * @param tensor_size 输出tensor的大小，单位为字节
    * @return Tensor指针，异常时返回空指针
    * 生命周期: 该输出tensor的内存由context构造方管理。接口调用者不需要主动释放
    */
-  Tensor *MallocOutputTensor(size_t index, const StorageShape &shape, const StorageFormat &format, ge::DataType dtype,
-                             size_t tensor_size);
+  Tensor *MallocOutputTensor(size_t index, const StorageShape &shape, const StorageFormat &format, ge::DataType dtype);
 
   /**
    * 指定某输出的内存地址引用自某个输入
@@ -106,7 +104,7 @@ class EagerOpExecutionContext : public ExtendedKernelContext {
  private:
   enum class AdditionalInputIndex : uint32_t {
     kDeviceAllocator = 0,
-    kStream
+    kStream,
   };
 
   enum class AdditionalOutputIndex : uint32_t {

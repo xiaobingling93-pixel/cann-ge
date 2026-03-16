@@ -906,13 +906,11 @@ TEST_F(RefDataSt, refdata_connect_to_hccl_need_memcpy) {
              {"Identity", 2},
              {"MemcpyAddrAsync", 2},
              {"HcomAllReduce", 1},
-             {"NetOutput", 1},
-             {"Send", 2},
-             {"Recv", 2}}),
+             {"NetOutput", 1}}),
         "success");
     for (const auto &node : graph->GetDirectNode()) {
       if (node->GetType() == "HcomAllReduce") {
-        EXPECT_EQ(gert::NodeTopoChecker(node).StrictConnectFrom({{"MemcpyAddrAsync"}, {"MemcpyAddrAsync"}, {"Recv", -1}}), "success");
+        EXPECT_EQ(gert::NodeTopoChecker(node).StrictConnectFrom({{"MemcpyAddrAsync"}, {"MemcpyAddrAsync"}}), "success");
       }
     }
   };

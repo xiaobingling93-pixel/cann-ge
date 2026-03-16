@@ -30,6 +30,12 @@ namespace ge {
   CLASS(const CLASS &) = delete;         \
   CLASS &operator=(const CLASS &) = delete
 
+#define OPTIMIZE_BY_STRUCTURE_PASS_DEFAULT_FUNC(CLASS)  \
+  CLASS() : OptimizeByTopoPass(#CLASS) {} \
+  ~CLASS() override = default;           \
+  CLASS(const CLASS &) = delete;         \
+  CLASS &operator=(const CLASS &) = delete
+
 // Base stream class.
 class LogicalStreamPass {
  public:
@@ -170,6 +176,27 @@ class AllReduceParallelPass : public LogicalStreamPass {
   int64_t GetFusion(const NodePtr &node) const;
 };
 
+class OptimizeByTopoPass {
+ public:
+  explicit OptimizeByTopoPass(const std::string &name);
+  OptimizeByTopoPass(const OptimizeByTopoPass &) = delete;
+  OptimizeByTopoPass &operator=(const OptimizeByTopoPass &) = delete;
+  virtual ~OptimizeByTopoPass() = default;
+  virtual Status Run(const ComputeGraphPtr &graph) = 0;
+  const std::string &GetName() const;
+
+ private:
+  std::string name_;
+};
+
+using OptimizeByTopoPassPtr = std::shared_ptr<OptimizeByTopoPass>;
+
+class OptimizeIneffectiveMultiStreamPass : public OptimizeByTopoPass {
+ public:
+  OPTIMIZE_BY_STRUCTURE_PASS_DEFAULT_FUNC(OptimizeIneffectiveMultiStreamPass);
+  Status Run(const ComputeGraphPtr &graph) override;
+};
+
 // Assign logical streams which is not limited by the number of tasks.
 class LogicalStreamAllocator {
   using Context = LogicalStreamPass::Context;
@@ -190,6 +217,7 @@ class LogicalStreamAllocator {
   Status DoAssign(const ComputeGraphPtr &graph, const Graph2SubGraphInfoList &subgraph_map,
                   const std::map<std::string, EngineConfPtr> &engine_confs);
   Status RunPasses(const ComputeGraphPtr &graph, const std::vector<SubgraphPtr> &subgraphs);
+  Status RunOptimizeByTopoPasses(const ComputeGraphPtr &graph);
   void RefreshContinuousStreams(const ComputeGraphPtr &graph);
 
   const std::map<std::string, int32_t> &max_parallel_num_;

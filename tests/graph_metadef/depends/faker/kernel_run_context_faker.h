@@ -456,6 +456,7 @@ class EagerOpExecutionContextFaker {
   EagerOpExecutionContextFaker &OutputMem(std::shared_ptr<std::vector<gert::GertMemBlock *>> &output_block_memory);
   EagerOpExecutionContextFaker &Allocator(void *allocator);
   EagerOpExecutionContextFaker &Stream(void *stream);
+  EagerOpExecutionContextFaker &OpDesc(ge::OpDesc *op);
   EagerOpExecutionContextFaker &ExecuteFunc(void *execute_func);
   FakeKernelContextHolder Build();
 
@@ -463,13 +464,14 @@ class EagerOpExecutionContextFaker {
   void UpdateInputs();
   void UpdateOutputs();
  private:
-  enum InputsAppend {kAllocator, kStream, kExecuteFunc, kEnd};
+  enum InputsAppend {kAllocator, kStream, kOpDesc, kExecuteFunc, kEnd};
 
   KernelRunContextFaker base_faker_;
   std::vector<gert::Tensor *> input_tensor_;
   std::vector<gert::Tensor *> output_tensor_;
   std::shared_ptr<std::vector<gert::GertMemBlock *>> output_block_memory_;
   void *allocator_ = nullptr;
+  ge::OpDesc *op_desc_ = nullptr;
   void *stream_ = nullptr;
   void *execute_func_ = nullptr;
 };

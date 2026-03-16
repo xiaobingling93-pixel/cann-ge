@@ -48,6 +48,7 @@ protobuf_generate(ge PROTO_SRCS PROTO_HDRS ${PROTO_LIST})
 add_executable(graph_engine_test
     "${AIR_CODE_DIR}/tests/ge/st/testcase/test_static_graph_profiling.cc"
     "${AIR_CODE_DIR}/tests/ge/st/testcase/test_fm_memory_refresh.cc"
+    "${AIR_CODE_DIR}/tests/ge/st/testcase/test_custom_op.cc"
     "${AIR_CODE_DIR}/tests/ge/st/testcase/test_external_allocator_graph.cc"
     "${AIR_CODE_DIR}/tests/ge/st/testcase/test_summary_and_checkpoint.cc"
     "${AIR_CODE_DIR}/tests/ge/ut/ge/ffts_plus_proto_tools.cc"

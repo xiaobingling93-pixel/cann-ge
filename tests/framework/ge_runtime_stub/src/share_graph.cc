@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -107,6 +107,13 @@ REG_OP(TestNoInferShapeRange)
     .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE,
                            DT_COMPLEX128, DT_COMPLEX64, DT_STRING}))
     .OP_END_FACTORY_REG(TestNoInferShapeRange);
+
+REG_OP(CustomOp)
+    .INPUT(x1, TensorType::ALL())
+    .INPUT(x2, TensorType::ALL())
+    .INPUT(x3, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+    .OP_END_FACTORY_REG(CustomOp);
 
 IMPLEMT_INFERFUNC(TestNoInferShapeRange, TestNoInferShapeRangeInfer) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -434,6 +441,137 @@ ComputeGraphPtr ShareGraph::AicoreGraph() {
   net_output->GetOpDesc()->SetSrcIndex({0});
   net_output->GetOpDesc()->SetOpKernelLibName(kEngineNameGeLocal);
   net_output->GetOpDesc()->SetOpEngineName(kEngineNameGeLocal);
+  SetGraphOutShapeRange(graph);
+  return graph;
+}
+
+ /*
+  *  data0  data1  data2
+  *     \    |      /
+  *     \    |     /
+  *       customop
+  *          |
+  *          |
+  *       netoutput
+  */
+ge::ComputeGraphPtr ShareGraph::BuildOnlyCustomOpKnowShapeGraph() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("data0", "Data")->EDGE(0, 0)->NODE("custom_op", "CustomOp"));
+    CHAIN(NODE("data1", "Data")->EDGE(0, 1)->NODE("custom_op")->NODE("NetOutput", "NetOutput"));
+    CHAIN(NODE("data2", "Data")->EDGE(0, 2)->NODE("custom_op"));
+  };
+  auto graph = ToComputeGraph(g1);
+  auto data0 = graph->FindNode("data0");
+  SetNoStorage(data0->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data0->GetOpDesc(), "index", 0);
+
+  auto data1 = graph->FindNode("data1");
+  SetNoStorage(data1->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data1->GetOpDesc(), "index", 1);
+
+
+  auto data2 = graph->FindNode("data2");
+  SetNoStorage(data2->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data2->GetOpDesc(), "index", 2);
+
+  auto custom_op = graph->FindNode("custom_op");
+  SetNoStorage(custom_op->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  custom_op->GetOpDesc()->SetOpKernelLibName("DNN_VM_CUSTOM_OP_STORE");
+  custom_op->GetOpDesc()->SetOpEngineName("DNN_VM_CUSTOM");
+
+  auto net_output = graph->FindNode("NetOutput");
+  net_output->GetOpDesc()->SetSrcName({"custom_op"});
+  net_output->GetOpDesc()->SetSrcIndex({0});
+  SetGraphOutShapeRange(graph);
+  return graph;
+}
+
+/*
+  *  data0  data1    data2  data3    data4  data5
+  *     \    |         \     /          /    /
+  *     \    |         \   /          /     /
+  *         add0       add1          add2
+  *              \       |         /
+  *                \     |       /
+  *                  customop           data6
+  *                    |             /
+  *                     |           /
+  *                        add3
+  *                        |
+  *                      netoutput
+  */
+ge::ComputeGraphPtr ShareGraph::BuildCustomOpWithAddKnowShapeGraph() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("data0", "Data")->EDGE(0, 0)->NODE("add0", "Add")->EDGE(0, 0)->NODE("custom_op", "CustomOp"));
+    CHAIN(NODE("data1", "Data")->EDGE(0, 1)->NODE("add0", "Add"));
+    CHAIN(NODE("data2", "Data")->EDGE(0, 0)->NODE("add1", "Add")->EDGE(1, 1)->NODE("custom_op", "CustomOp"));
+    CHAIN(NODE("data3", "Data")->EDGE(0, 1)->NODE("add1", "Add"));
+    CHAIN(NODE("data4", "Data")->EDGE(0, 0)->NODE("add2", "Add")->EDGE(2, 2)->NODE("custom_op", "CustomOp")->EDGE(0, 0)->NODE("add3", "Add"));
+    CHAIN(NODE("data5", "Data")->EDGE(0, 1)->NODE("add2", "Add"));
+    CHAIN(NODE("data6", "Data")->EDGE(0, 1)->NODE("add3", "Add")->EDGE(0, 0)->NODE("NetOutput", "NetOutput"));
+  };
+  auto graph = ToComputeGraph(g1);
+  auto data0 = graph->FindNode("data0");
+  SetNoStorage(data0->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data0->GetOpDesc(), "index", 0);
+
+  auto data1 = graph->FindNode("data1");
+  SetNoStorage(data1->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data1->GetOpDesc(), "index", 1);
+
+
+  auto data2 = graph->FindNode("data2");
+  SetNoStorage(data2->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data2->GetOpDesc(), "index", 2);
+
+  auto data3 = graph->FindNode("data3");
+  SetNoStorage(data3->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data3->GetOpDesc(), "index", 3);
+
+  auto data4 = graph->FindNode("data4");
+  SetNoStorage(data4->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data4->GetOpDesc(), "index", 4);
+
+  auto data5 = graph->FindNode("data5");
+  SetNoStorage(data5->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data5->GetOpDesc(), "index", 5);
+
+  auto data6 = graph->FindNode("data6");
+  SetNoStorage(data6->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  AttrUtils::SetInt(data6->GetOpDesc(), "index", 6);
+
+  auto custom_op = graph->FindNode("custom_op");
+  SetNoStorage(custom_op->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  custom_op->GetOpDesc()->SetOpKernelLibName("DNN_VM_CUSTOM_OP_STORE");
+  custom_op->GetOpDesc()->SetOpEngineName("DNN_VM_CUSTOM");
+
+  auto add0 = graph->FindNode("add0");
+  AddCompileResult(add0, false);
+  SetNoStorage(add0->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  add0->GetOpDesc()->SetOpKernelLibName("AiCoreLib");
+  add0->GetOpDesc()->SetOpEngineName(kEngineNameAiCore);
+
+  auto add1 = graph->FindNode("add1");
+  AddCompileResult(add1, false);
+  SetNoStorage(add1->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  add1->GetOpDesc()->SetOpKernelLibName("AiCoreLib");
+  add1->GetOpDesc()->SetOpEngineName(kEngineNameAiCore);
+
+  auto add2 = graph->FindNode("add2");
+  AddCompileResult(add2, false);
+  SetNoStorage(add2->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  add2->GetOpDesc()->SetOpKernelLibName("AiCoreLib");
+  add2->GetOpDesc()->SetOpEngineName(kEngineNameAiCore);
+
+  auto add3 = graph->FindNode("add3");
+  AddCompileResult(add3, false);
+  SetNoStorage(add3->GetOpDesc(), FORMAT_NCHW, DT_FLOAT, {2, 2, 2});
+  add2->GetOpDesc()->SetOpKernelLibName("AiCoreLib");
+  add2->GetOpDesc()->SetOpEngineName(kEngineNameAiCore);
+
+  auto net_output = graph->FindNode("NetOutput");
+  net_output->GetOpDesc()->SetSrcName({"add3"});
+  net_output->GetOpDesc()->SetSrcIndex({0});
   SetGraphOutShapeRange(graph);
   return graph;
 }
@@ -2184,8 +2322,8 @@ ge::ComputeGraphPtr ShareGraph::BuildTwoAddNodeGraph() {
  *             /       \
  *       fake_node1     \
  *          /   \       data3
- *         /   data2    
- *        /             
+ *         /   data2
+ *        /
  *      data1
  */
 ge::ComputeGraphPtr ShareGraph::BuildFakeGetTensorNodeGraph() {
@@ -2255,11 +2393,11 @@ ge::ComputeGraphPtr ShareGraph::BuildFakeGetTensorNodeGraph() {
 
 /*
  *           NetOutput
- *             |    
- *       fake_node1    
- *          /   \     
- *         /   data2    
- *        /             
+ *             |
+ *       fake_node1
+ *          /   \
+ *         /   data2
+ *        /
  *      data1
  */
 ge::ComputeGraphPtr ShareGraph::BuildFakeDeterministicNodeGraph() {
@@ -2308,8 +2446,8 @@ ge::ComputeGraphPtr ShareGraph::BuildFakeDeterministicNodeGraph() {
  *             /       \
  *       fake_node1     \
  *          /   \       data3
- *         /   data2    
- *        /             
+ *         /   data2
+ *        /
  *      data1
  */
 ge::ComputeGraphPtr ShareGraph::BuildFakeGetTensorNodeZeroCopyGraph() {
@@ -5360,15 +5498,15 @@ ComputeGraphPtr ShareGraph::IfGraphWithSwitch() {
 }
 
 /*
- *                  
+ *
  *      Data  CONSTANT  Data
- *         \   /        /          
+ *         \   /        /
  *       FillWindowCache
  *            |
  *          Conv
- *            |              
- *        NetOutput          
- *                      
+ *            |
+ *        NetOutput
+ *
  */
 ComputeGraphPtr ShareGraph::GraphWithFifoWindowCache() {
   std::vector<int64_t> shape = {2, 2};
@@ -5417,7 +5555,7 @@ ComputeGraphPtr ShareGraph::GraphWithFifoWindowCache() {
   ge::AttrUtils::SetInt(*fifo->MutableInputDesc(1), ATTR_NAME_TENSOR_MEMORY_SCOPE, 2);
   TensorUtils::SetReuseInput(*output_tensordesc, true);
   TensorUtils::SetReuseInputIndex(*output_tensordesc, 1);
-  
+
   DEF_GRAPH(g1) {
     CHAIN(NODE(data_0)->EDGE(0, 0)->NODE(fifo)->EDGE(0, 0)->
     NODE("conv", CONV2D)->EDGE(0, 0)->NODE("NetOutput", "NetOutput"));
@@ -8810,7 +8948,7 @@ ge::ComputeGraphPtr ShareGraph::IFASingleGraph() {
 
 /*
  *    data1 data2
- *       \    |   
+ *       \    |
  *       CTCBeamSearchDecoder
  *            |
  *         netoutput

@@ -100,6 +100,7 @@ target_include_directories(ffts_st PRIVATE
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/framework
+        ${AIR_CODE_DIR}/compiler/engines
         ${AIR_CODE_DIR}/compiler/graphcompiler/engines
         ${AIR_CODE_DIR}/compiler/engines/nn_engine/inc
         ${AIR_CODE_DIR}/compiler/engines/nn_engine/utils

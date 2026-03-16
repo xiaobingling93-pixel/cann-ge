@@ -1648,6 +1648,7 @@ ApiTensor::ApiTensor()
       reuse_next(nullptr),
       share_prev(nullptr),
       share_next(nullptr),
+      share_order(-1),
       write(nullptr) {}
 
 Status ApiCall::Init(const ascir::NodeView &node) {
@@ -1894,6 +1895,40 @@ BoolType ApiCall::WaitShareInputs(const TPipe &tpipe, const ApiTensor *in, const
   return BoolType::FALSE;
 }
 
+ge::Status DefineShareOffsets(const TPipe &tpipe, const ApiTensor &out, const Tensor &t, std::stringstream &ss) {
+  std::map<int32_t, const ApiTensor *> order_to_tensor;
+  for (auto it = out.share_prev; it != nullptr; it = it->share_prev) {
+    order_to_tensor.emplace(it->share_order, it);
+  }
+  for (auto it = &out; it != nullptr; it = it->share_next) {
+    order_to_tensor.emplace(it->share_order, it);
+  }
+  const auto cur_order = out.share_order;
+  int32_t prev_max = -1;
+  for (auto it = out.share_prev; it != nullptr; it = it->share_prev) {
+    if (it->share_order > prev_max) {
+      prev_max = it->share_order;
+    }
+  }
+  for (int32_t i = prev_max + 1; i <= cur_order; ++i) {
+    if (i == 0) {
+      continue;
+    }
+    auto prev_var_name = t.que_share_offset.name;
+    if (i - 1 > 0) {
+      prev_var_name += ("_part_" + std::to_string(i - 1));
+    }
+    auto prev_tensor = tpipe.GetTensor(order_to_tensor[i - 1]->id);
+    GE_ASSERT_NOTNULL(prev_tensor, "Check[Param] tensor_ptr is nullptr");
+    auto size = ge::GetSizeByDataType(prev_tensor->dtype);
+    auto var_size = prev_var_name + " + " + prev_tensor->size.name + " * " + std::to_string(size);
+    const auto &cur_var_name = t.que_share_offset.name + "_part_" + std::to_string(i);
+    decltype(t.que_share_offset) offset_var(cur_var_name);
+    ss << offset_var.DefineConst(std::move(var_size)) << std::endl;
+  }
+  return ge::SUCCESS;
+}
+
 BoolType ApiCall::AllocShareOutputs(const TPipe &tpipe, const ApiTensor &out, const Tensor t,
                                     std::stringstream &ss) const {
   std::string relative_offset;
@@ -1914,13 +1949,25 @@ BoolType ApiCall::AllocShareOutputs(const TPipe &tpipe, const ApiTensor &out, co
         ss << t_que->AllocBuf();
       }
     }
-    if (!IsFirstShare(out)) {
-      auto tensor_ptr = tpipe.GetTensor(out.share_prev->id);
-      GE_CHK_BOOL_RET_SPECIAL_STATUS(tensor_ptr == nullptr, BoolType::FAILED, "Check[Param] tensor_ptr is nullptr");
-      auto prev_tensor = *tensor_ptr;
-      auto size = ge::GetSizeByDataType(prev_tensor.dtype);
-      relative_offset = t.que_share_offset.name + " + " + prev_tensor.size.name + " * " + std::to_string(size);
-      ss << t.que_share_offset.Assign(relative_offset);
+    if (out.share_order == -1) {
+      if (!IsFirstShare(out)) {
+        auto tensor_ptr = tpipe.GetTensor(out.share_prev->id);
+        GE_CHK_BOOL_RET_SPECIAL_STATUS(tensor_ptr == nullptr, BoolType::FAILED, "Check[Param] tensor_ptr is nullptr");
+        auto prev_tensor = *tensor_ptr;
+        auto size = ge::GetSizeByDataType(prev_tensor.dtype);
+        relative_offset = t.que_share_offset.name + " + " + prev_tensor.size.name + " * " + std::to_string(size);
+        ss << t.que_share_offset.Assign(relative_offset);
+        ss << std::endl;
+      }
+    } else {
+      // 需要按给定顺序计算offset
+      GE_CHK_BOOL_RET_SPECIAL_STATUS(DefineShareOffsets(tpipe, out, t, ss), BoolType::FAILED);
+      auto cur_var_name = t.que_share_offset.name;
+      std::string offset = "0";
+      if (out.share_order > 0) {
+        offset = t.que_share_offset.name + "_part_" + std::to_string(out.share_order);
+      }
+      ss << t.que_share_offset.Assign(offset);
       ss << std::endl;
     }
     return BoolType::TRUE;
@@ -2430,6 +2477,8 @@ Status Loop::ConstructFromNodes(ascir::NodeViewVisitorConst nodes, const Tiler &
     call->axis = current_loop->axis_id;
     call->depth = current_axis.size();
     InitApiCallContext(node, tpipe, call, lifecycle_edge);
+    const auto is_cont_buf_required = call->IsContiguousBufRequired();
+    int32_t input_index = 0;
     for (auto in : node->inputs()) {
       if (in == nullptr) {
         call->inputs.emplace_back(nullptr);
@@ -2443,10 +2492,14 @@ Status Loop::ConstructFromNodes(ascir::NodeViewVisitorConst nodes, const Tiler &
 
       auto in_index = ge::ascir::AscTensorUtils::Index(*in);
       auto in_tensor = &in_call->second->outputs[in_index];
+      if (is_cont_buf_required) {
+        in_tensor->share_order = input_index;
+      }
       in_tensor->reads.push_back(call);
       call->inputs.emplace_back(in_tensor);
       GELOGI("node[%s] input tensor id[%ld] from call type[%s] outputs[%d], read by call type[%s]", node->GetNamePtr(),
              in->attr.mem.tensor_id, in_call->second->type.c_str(), in_index, call->type.c_str());
+      ++input_index;
     }
 
     if (IsOps<Output>(node)) {

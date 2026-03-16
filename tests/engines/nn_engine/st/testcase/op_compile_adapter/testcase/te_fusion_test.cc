@@ -3942,11 +3942,7 @@ TEST(TEST_TEFUSION_ST, AssembleOpPrivateAttrs)
 
 TEST(TEST_TEFUSION_ST, UpdateInhibitionInfoForLog)
 {
-    uint64_t graphId = 100;
-    const std::time_t now = std::time(nullptr);
-    LogInhibitionInfo logInhibitionInfo = {0, 0, now};
-    te::fusion::TeFusionManager::GetInstance()->taskStatistics_[graphId] = logInhibitionInfo;
-    bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog(graphId);
+    bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog();
     EXPECT_EQ(res, false);
 }
 

@@ -348,7 +348,7 @@ TEST_F(STEST_st_check_graph_cycle, check_graph_cycle_pass_success) {
   FusionPassRegistry::PassDesc pass_desc = {0, create_func};
   fe::FusionPassOrRule pass_or_rule("PaddDepthwiseConv2dFusionPass", 0, PASS_METHOD, BUILT_IN_PASS_PRIORITY_MIN,
                                     pass_desc);
-  Status status = graphFusion.RunOnePassFusion(*graph_out, pass_or_rule);
+  Status status = graphFusion.RunOnePassFusion(*graph_out, pass_or_rule, {});
 
   EXPECT_EQ(status, fe::SUCCESS);
 }

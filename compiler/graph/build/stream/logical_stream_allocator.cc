@@ -21,6 +21,7 @@
 namespace {
 constexpr const char_t *kHcomParallelGroupName = "-1";
 constexpr const char_t kNewStreamId[] = "NewStreamId";
+constexpr const char_t *kDisableIneffectiveMultiStreamOptimize = "DISABLE_INEFFECTIVE_MULTI_STREAM_OPTIMIZE";
 constexpr int64_t kMainStreamId = 0;
 constexpr uint32_t kWhileBodyIndex = 1;
 
@@ -48,6 +49,85 @@ bool IsDynamicWhileBodyNetOutput(const ge::NodePtr &node) {
         return true;
       }
     }
+  }
+  return false;
+}
+
+bool HasSameStreamId(const ge::Node::Vistor<ge::NodePtr> &nodes, int64_t stream_id) {
+  for (const auto &node : nodes) {
+    auto op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    if (op_desc->GetStreamId() == stream_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief 收集当前节点的输入输出里是相同stream id且与当前节点在拓扑序上最接近的输入输出节点
+ *
+ * @param node 当前节点
+ * @param stream_id_to_io_nodes 输出参数，键为stream id，值为该stream id在当前节点输入输出方向上拓扑序最接近的一对节点
+ *                             第一个元素为输入节点，第二个元素为输出节点
+ * @return ge::Status 成功返回SUCCESS
+ *
+ * 该函数会遍历当前节点的所有输入和输出节点，对于每一个有效的stream id，
+ * 在输入方向上寻找拓扑序最大的节点（即最靠近当前节点），在输出方向上寻找拓扑序最小的节点（即最靠近当前节点）。
+ * 最终将这些信息存储在stream_id_to_io_nodes映射中。
+ */
+ge::Status CollectStreamIdToIoNodes(const ge::NodePtr &node,
+                                    std::map<int64_t, std::pair<ge::NodePtr, ge::NodePtr>> &stream_id_to_io_nodes) {
+  const auto &in_nodes = node->GetInNodes();
+  const auto &out_nodes = node->GetOutNodes();
+  for (const auto &input : in_nodes) {
+    auto input_op_desc = input->GetOpDesc();
+    GE_ASSERT_NOTNULL(input_op_desc);
+    auto input_stream_id = input_op_desc->GetStreamId();
+    if (input_stream_id == ge::kInvalidStream) {
+      continue;
+    }
+    auto iter = stream_id_to_io_nodes.find(input_stream_id);
+    if (iter == stream_id_to_io_nodes.end()) {
+      stream_id_to_io_nodes[input_stream_id] = {input, nullptr};
+    } else {
+      const auto &io_nodes = iter->second;
+      if ((io_nodes.first == nullptr) || (input->GetOpDesc()->GetId() > io_nodes.first->GetOpDesc()->GetId())) {
+        iter->second.first = input;
+      }
+    }
+  }
+  for (const auto &output : out_nodes) {
+    auto output_op_desc = output->GetOpDesc();
+    GE_ASSERT_NOTNULL(output_op_desc);
+    auto output_stream_id = output_op_desc->GetStreamId();
+    if (output_stream_id == ge::kInvalidStream) {
+      continue;
+    }
+    auto iter = stream_id_to_io_nodes.find(output_stream_id);
+    if (iter == stream_id_to_io_nodes.end()) {
+      stream_id_to_io_nodes[output_stream_id] = {nullptr, output};
+    } else {
+      const auto &io_nodes = iter->second;
+      if ((io_nodes.second == nullptr) || (output->GetOpDesc()->GetId() < io_nodes.second->GetOpDesc()->GetId())) {
+        iter->second.second = output;
+      }
+    }
+  }
+  return ge::SUCCESS;
+}
+
+bool HasOtherNodeBetweenIOInThisStream(const std::pair<ge::NodePtr, ge::NodePtr> &io_nodes, const std::set<int64_t> &ordered_node_ids) {
+  if ((io_nodes.first == nullptr) || (io_nodes.second == nullptr)) {
+    return true;
+  }
+  auto input_node_id = io_nodes.first->GetOpDesc()->GetId();
+  auto output_node_id = io_nodes.second->GetOpDesc()->GetId();
+  auto iter = ordered_node_ids.find(input_node_id);
+  GE_ASSERT_TRUE(iter != ordered_node_ids.end());
+  auto next_node_id = *(++iter);
+  if (next_node_id != output_node_id) {
+    return true;
   }
   return false;
 }
@@ -808,7 +888,72 @@ Status LogicalStreamAllocator::DoAssign(const ComputeGraphPtr &graph, const Grap
     }
   }
 
-  return RunPasses(graph, subgraphs);
+  GE_ASSERT_SUCCESS(RunPasses(graph, subgraphs));
+  GE_ASSERT_SUCCESS(RunOptimizeByTopoPasses(graph));
+  return SUCCESS;
+}
+
+Status OptimizeIneffectiveMultiStreamPass::Run(const ComputeGraphPtr &graph) {
+  char disable_flag_str[MMPA_MAX_PATH] = {"0"};
+  mmGetEnv(kDisableIneffectiveMultiStreamOptimize, &disable_flag_str[0], static_cast<uint32_t>(MMPA_MAX_PATH));
+  int32_t disable_flag;
+  GE_ASSERT_SUCCESS(ge::ConvertToInt32(std::string(disable_flag_str), disable_flag));
+  if (disable_flag == 1) {
+    GELOGI("Disable optimize ineffective multi stream");
+    return NOT_CHANGED;
+  }
+  std::map<int64_t, std::set<int64_t>> stream_id_to_node_ids;
+  std::set<int64_t> stream_label_stream_ids;
+  bool changed = false;
+  for (const auto &node : graph->GetDirectNode()) {
+    auto op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    auto stream_id = op_desc->GetStreamId();
+    if (stream_id == kInvalidStream) {
+      continue;
+    }
+    if (StreamUtils::HasStreamLabelOrUserStreamLabel(node)) {
+      stream_label_stream_ids.insert(stream_id);
+    }
+    stream_id_to_node_ids[stream_id].insert(op_desc->GetId());
+  }
+  for (const auto &node : graph->GetDirectNode()) {
+    auto op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    auto cur_stream_id = op_desc->GetStreamId();
+    // 如下情况不根据图结构关系重新分流： 1. 通过StreamLabel指定分流 2. 带kNewStreamId属性(UpdateForMdeGroupPass) 3. 带ATTR_NAME_PARALLEL_GROUP属性(UpdateForParallelGroupPass)
+    if (StreamUtils::HasStreamLabelOrUserStreamLabel(node) || op_desc->HasAttr(kNewStreamId) || op_desc->
+        HasAttr(ATTR_NAME_PARALLEL_GROUP) || (cur_stream_id == kInvalidStream)) {
+      continue;
+    }
+    const auto &in_nodes = node->GetInNodes();
+    const auto &out_nodes = node->GetOutNodes();
+    // 如果输入或者输出节点中存在节点与当前node是同一条流，那么这个node挪到别的流上也会与当前流之间插入event，并不会减少整体的event数量
+    if (HasSameStreamId(in_nodes, cur_stream_id) || HasSameStreamId(out_nodes, cur_stream_id)) {
+      continue;
+    }
+    std::map<int64_t, std::pair<ge::NodePtr, ge::NodePtr>> stream_id_to_io_nodes;
+    GE_ASSERT_SUCCESS(CollectStreamIdToIoNodes(node, stream_id_to_io_nodes));
+    for (const auto &iter : stream_id_to_io_nodes) {
+      auto io_stream_id = iter.first;
+      // 如果是stream_label分配的流，则不能将当前节点挪过去
+      if (stream_label_stream_ids.find(io_stream_id) != stream_label_stream_ids.end()) {
+        continue;
+      }
+      const auto &io_nodes = iter.second;
+      auto node_ids_iter = stream_id_to_node_ids.find(io_stream_id);
+      GE_ASSERT_TRUE(node_ids_iter != stream_id_to_node_ids.end(), "node %s io's stream id %ld cannot found",
+                     op_desc->GetNamePtr(), io_stream_id);
+      // 如果输入输出节点之间在这条流上没有别的节点，则可以挪过去
+      if (!HasOtherNodeBetweenIOInThisStream(io_nodes, node_ids_iter->second)) {
+        op_desc->SetStreamId(io_stream_id);
+        GE_STREAM_PASS_LOGI("node %s optimize ineffective multi stream , set stream id from %ld to %ld",
+                            op_desc->GetNamePtr(), cur_stream_id, io_stream_id);
+        changed = true;
+      }
+    }
+  }
+  return changed ? SUCCESS : NOT_CHANGED;
 }
 
 Status LogicalStreamAllocator::RunPasses(const ComputeGraphPtr &graph, const std::vector<SubgraphPtr> &subgraphs) {
@@ -846,6 +991,31 @@ Status LogicalStreamAllocator::RunPasses(const ComputeGraphPtr &graph, const std
   return SUCCESS;
 }
 
+Status LogicalStreamAllocator::RunOptimizeByTopoPasses(const ComputeGraphPtr &graph) {
+  if (context_.enable_single_stream) {
+    return SUCCESS;
+  }
+  std::vector<OptimizeByTopoPassPtr> passes;
+  passes.emplace_back(MakeShared<OptimizeIneffectiveMultiStreamPass>());
+
+  for (auto &pass : passes) {
+    GE_CHECK_NOTNULL(pass);
+
+    Status status = pass->Run(graph);
+    if (status == SUCCESS) {
+      GELOGI("[Show][Status]Stream pass %s return SUCCESS.", pass->GetName().c_str());
+    } else if (status == NOT_CHANGED) {
+      GELOGI("[Show][Status]Stream pass %s return NOT_CHANGED.", pass->GetName().c_str());
+    } else {
+      REPORT_INNER_ERR_MSG("E19999", "The %s of stream pass run failed.", pass->GetName().c_str());
+      GELOGE(status, "[Call][Run] The %s of stream pass run failed.", pass->GetName().c_str());
+      return status;
+    }
+  }
+  return SUCCESS;
+}
+
+
 void LogicalStreamAllocator::RefreshContinuousStreams(const ComputeGraphPtr &graph) {
   int64_t stream_num = context_.next_stream;
   std::vector<bool> stream_has_node(stream_num);
@@ -878,5 +1048,11 @@ void LogicalStreamAllocator::RefreshContinuousStreams(const ComputeGraphPtr &gra
       }
     }
   }
+}
+
+OptimizeByTopoPass::OptimizeByTopoPass(const std::string &name) : name_(name) {}
+
+const std::string &OptimizeByTopoPass::GetName() const {
+  return name_;
 }
 }  // namespace ge

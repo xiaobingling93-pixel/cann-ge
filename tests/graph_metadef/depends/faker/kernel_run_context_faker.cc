@@ -540,6 +540,11 @@ EagerOpExecutionContextFaker &EagerOpExecutionContextFaker::Allocator(void *allo
   return *this;
 }
 
+EagerOpExecutionContextFaker &EagerOpExecutionContextFaker::OpDesc(ge::OpDesc *op) {
+  op_desc_ = op;
+  return *this;
+}
+
 EagerOpExecutionContextFaker &EagerOpExecutionContextFaker::Stream(void *stream) {
   stream_ = stream;
   return *this;
@@ -557,6 +562,7 @@ void EagerOpExecutionContextFaker::UpdateInputs() {
   }
   inputs.push_back(allocator_);
   inputs.push_back(stream_);
+  inputs.push_back(op_desc_);
   inputs.push_back(execute_func_);
   base_faker_.Inputs(std::move(inputs));
 }

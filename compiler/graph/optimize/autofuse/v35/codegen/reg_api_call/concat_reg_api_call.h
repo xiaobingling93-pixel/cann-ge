@@ -24,6 +24,7 @@ class ConcatRegApiCall : public ConcatApiCall {
                   const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                   const std::vector<std::reference_wrapper<const Tensor>> &outputs,
                   std::string &result) const override;
+  bool IsContiguousBufRequired() const override;
 
  protected:
   Status ParseAttr(const ascir::NodeView &node) override;
@@ -52,6 +53,7 @@ class ConcatRegApiCall : public ConcatApiCall {
   static Status GenerateForOneAxis(const vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y,
                                    std::stringstream &ss);
   static bool CanConcatOneAxis(const std::vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y);
+  bool IsShareInputs() const;
 
   ascir::NodeView node_ = nullptr;
 };

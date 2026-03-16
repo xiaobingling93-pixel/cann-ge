@@ -37,6 +37,7 @@ extern std::string g_runtime_stub_mock;
 using namespace std;
 using namespace ge;
 namespace {
+constexpr const char_t *kDisableIneffectiveMultiStreamOptimize = "DISABLE_INEFFECTIVE_MULTI_STREAM_OPTIMIZE";
 /**
  *    Const   Const     Data      Const   Const
  *       \     /       /    \        \     /
@@ -256,7 +257,9 @@ Graph BuildParallelGroupTagGraph() {
  *        |                  |
  *     700Relu   ==>>  PartitionedCall
  *        |                  |
- *   sub_output1         NetOutput
+ *   HcomAllReduce        NetOutput
+ *        |
+ *   sub_output1
  */
 Graph BuildPartitionedCallGraph() {
   DEF_GRAPH(sub) {
@@ -345,6 +348,99 @@ Graph BuildStaticFftsGraph() {
   sgt1->SetGraphUnknownFlag(false);
 
   return ToGeGraph(root);
+}
+
+/**
+ *      Data
+ *       |
+ *     relu1
+ *       |    \
+ *     relu2     HcomAllReduce
+ *       |         |
+ *     relu3       |
+ *       |       /
+ *     netoutput
+ */
+Graph BuildGraphWithAicoreHcclParallel() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("Data", DATA)->NODE("relu1", RELU)->NODE("relu2", RELU)->NODE("relu3", RELU)->NODE("output", NETOUTPUT));
+    CHAIN(NODE("relu1")->NODE("HcomAllReduce", HCOMALLREDUCE)->EDGE(0, 1)->NODE("relu3"));
+  };
+  return ToGeGraph(g1);
+}
+
+/**
+ *      Data
+ *       |
+ *     relu1
+ *       |
+ *    HcomAllReduce
+ *       |
+ *     relu2
+ *       |
+ *     relu3
+ *       |
+ *   netoutput
+ */
+Graph BuildGraphWithAicoreHcclSerial() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("Data", DATA)
+              ->NODE("relu1", RELU)
+              ->NODE("HcomAllReduce", HCOMALLREDUCE)
+              ->NODE("relu2", RELU)
+              ->NODE("relu3", RELU)
+              ->NODE("output", NETOUTPUT));
+  };
+  return ToGeGraph(g1);
+}
+
+/**
+ *      Data
+ *       |
+ *     relu1
+ *       |
+ *    HcomAllReduce1
+ *       |       \
+ *     relu2    HcomAllReduce2
+ *       |         /
+ *       relu3    /
+ *       |       /
+ *       netoutput
+ */
+Graph BuildGraphWithAicoreHcclSerialAndMultiHcclSerial() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("Data", DATA)
+        ->NODE("relu1", RELU)
+        ->NODE("HcomAllReduce1", HCOMALLREDUCE)
+        ->CTRL_EDGE()
+        ->NODE("relu2", RELU)
+        ->NODE("relu3", RELU)
+        ->NODE("output", NETOUTPUT));
+    CHAIN(NODE("HcomAllReduce1")
+        ->NODE("HcomAllReduce2", HCOMALLREDUCE)
+        ->NODE("output"));
+  };
+  return ToGeGraph(g1);
+}
+
+/**
+ *      data1
+ *        |
+ *  trans1 (USER_STREAM_LABEL)
+ *        |
+ *      relu
+ *        |
+ *  trans2 (USER_STREAM_LABEL)
+ *        |
+ *   netoutput
+ */
+Graph BuildGraphWithStreamLabelAndIneffectiveMultiStream() {
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("data1", DATA)->NODE("trans1", TRANSDATA)->NODE("relu", RELU)->NODE("trans2", TRANSDATA)->NODE("output",
+      NETOUTPUT));
+  };
+  auto graph = ToGeGraph(g1);
+  return graph;
 }
 
 Graph BuildGraphWithBigSqeNum() {
@@ -1363,7 +1459,7 @@ TEST_F(STEST_stream_allocator, partitionedcall_with_subgraph) {
     EXPECT_EQ(stream_id, 0);
     std::vector<int64_t> active_stream_list;
     AttrUtils::GetListInt(active1->GetOpDesc(), "active_stream_list", active_stream_list);
-    EXPECT_EQ(active_stream_list.size(), 3);
+    EXPECT_EQ(active_stream_list.size(), 2);
     EXPECT_EQ(active_stream_list[0], 1);
     EXPECT_EQ(active_stream_list[1], 2);
   };
@@ -1527,9 +1623,132 @@ TEST_F(STEST_stream_allocator, PartitionedcallWithSubgraph_Success_EnableNotify)
     EXPECT_EQ(stream_id, 0);
     std::vector<int64_t> active_stream_list;
     AttrUtils::GetListInt(active1->GetOpDesc(), "active_stream_list", active_stream_list);
-    EXPECT_EQ(active_stream_list.size(), 3);
+    EXPECT_EQ(active_stream_list.size(), 2);
     EXPECT_EQ(active_stream_list[0], 1);
     EXPECT_EQ(active_stream_list[1], 2);
+  };
+}
+
+TEST_F(STEST_stream_allocator, AicoreHcclParallel) {
+  auto graph =  BuildGraphWithAicoreHcclParallel();
+  std::map<string, string> options;
+  Session session(options);
+  auto ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  std::vector<InputTensorInfo> inputs;
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto all_reduce = graph->FindNode("HcomAllReduce");
+    ASSERT_NE(all_reduce, nullptr);
+    EXPECT_EQ(all_reduce->GetOpDesc()->GetStreamId(), 0);
+    auto relu2 = graph->FindNode("relu2");
+    ASSERT_NE(relu2, nullptr);
+    EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 1);
+  };
+}
+
+TEST_F(STEST_stream_allocator, AicoreHcclSerial) {
+  auto graph =  BuildGraphWithAicoreHcclSerial();
+  std::map<string, string> options;
+  Session session(options);
+  auto ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  std::vector<InputTensorInfo> inputs;
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto all_reduce = graph->FindNode("HcomAllReduce");
+    ASSERT_NE(all_reduce, nullptr);
+    EXPECT_EQ(all_reduce->GetOpDesc()->GetStreamId(), 0);
+    auto relu2 = graph->FindNode("relu2");
+    ASSERT_NE(relu2, nullptr);
+    EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 0);
+  };
+}
+
+TEST_F(STEST_stream_allocator, AicoreHcclSerialAndMultiHcclSerial) {
+  auto graph =  BuildGraphWithAicoreHcclSerialAndMultiHcclSerial();
+  std::map<string, string> options;
+  Session session(options);
+  auto ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  std::vector<InputTensorInfo> inputs;
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto all_reduce1 = graph->FindNode("HcomAllReduce1");
+    ASSERT_NE(all_reduce1, nullptr);
+    EXPECT_EQ(all_reduce1->GetOpDesc()->GetStreamId(), 0);
+    auto all_reduce2 = graph->FindNode("HcomAllReduce2");
+    ASSERT_NE(all_reduce2, nullptr);
+    EXPECT_EQ(all_reduce2->GetOpDesc()->GetStreamId(), 0);
+    auto relu2 = graph->FindNode("relu2");
+    ASSERT_NE(relu2, nullptr);
+    EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 1);
+  };
+}
+
+TEST_F(STEST_stream_allocator, DisableOptimizeIneffectiveMultiStream) {
+  mmSetEnv(kDisableIneffectiveMultiStreamOptimize, "1", 1);
+  auto graph =  BuildGraphWithAicoreHcclSerial();
+  std::map<string, string> options;
+  Session session(options);
+  auto ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  std::vector<InputTensorInfo> inputs;
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto all_reduce = graph->FindNode("HcomAllReduce");
+    ASSERT_NE(all_reduce, nullptr);
+    EXPECT_EQ(all_reduce->GetOpDesc()->GetStreamId(), 0);
+    auto relu2 = graph->FindNode("relu2");
+    ASSERT_NE(relu2, nullptr);
+    EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 1);
+  };
+  mmSetEnv(kDisableIneffectiveMultiStreamOptimize, "0", 1);
+}
+
+TEST_F(STEST_stream_allocator, optimize_ineffective_multi_stream_not_move_to_stream_label) {
+  GeRunningEnvFaker().InstallDefault();
+  auto graph = BuildGraphWithStreamLabelAndIneffectiveMultiStream();
+  auto compute_graph = GraphUtilsEx::GetComputeGraph(graph);
+  auto trans1 = compute_graph->FindNode("trans1");
+  auto trans2 = compute_graph->FindNode("trans2");
+  AttrUtils::SetStr(trans1->GetOpDesc(), public_attr::USER_STREAM_LABEL, "stream_label_test");
+  AttrUtils::SetStr(trans2->GetOpDesc(), public_attr::USER_STREAM_LABEL, "stream_label_test");
+
+
+  map<string, string> options;
+  Status ret = ge::GELib::Initialize(options);
+  EXPECT_EQ(ret, SUCCESS);
+
+  Session session(options);
+  ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  std::vector<InputTensorInfo> inputs;
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto trans1_node = graph->FindNode("trans1");
+    ASSERT_NE(trans1_node, nullptr);
+    auto relu_node = graph->FindNode("relu");
+    ASSERT_NE(relu_node, nullptr);
+    auto trans2_node = graph->FindNode("trans2");
+    ASSERT_NE(trans2_node, nullptr);
+
+    auto trans1_stream_id = trans1_node->GetOpDesc()->GetStreamId();
+    auto trans2_stream_id = trans2_node->GetOpDesc()->GetStreamId();
+    auto relu_stream_id = relu_node->GetOpDesc()->GetStreamId();
+
+    EXPECT_EQ(trans1_stream_id, trans2_stream_id);
+    EXPECT_NE(trans1_stream_id, relu_stream_id);
   };
 }
 

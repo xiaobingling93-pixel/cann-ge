@@ -94,7 +94,7 @@ class AddCustom : public EagerExecuteOp {
     size_t tensor_size = input_x->GetSize();
     DataType data_type = input_x->GetDataType();
     const gert::StorageFormat &format = input_x->GetFormat();
-    gert::Tensor *output_z = ctx->MallocOutputTensor(0, output_shape, format, data_type, tensor_size);
+    gert::Tensor *output_z = ctx->MallocOutputTensor(0, output_shape, format, data_type);
     void *z_addr = output_z->GetAddr();
 
     // 获取需处理的元素个数和 grid

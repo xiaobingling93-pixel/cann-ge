@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <condition_variable>
@@ -19,11 +20,12 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/tensor_utils.h"
-#include "graph/load/model_manager/davinci_model.h"
-
+#include "graph/ge_local_context.h"
 #include "ge_graph_dsl/graph_dsl.h"
 #include "ge_graph_dsl/assert/graph_assert.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
+#include "flow_graph/data_flow.h"
+#include "common/env_path.h"
 #include "depends/mmpa/src/mmpa_stub.h"
 #include "framework/common/runtime_tensor_desc.h"
 #include "dflow/compiler/pne/udf/udf_process_node_engine.h"
@@ -43,27 +45,6 @@
 using namespace testing;
 using namespace std;
 using namespace ge;
-rtError_t rtMemQueueDeQueueBuff(int32_t device, uint32_t qid, rtMemQueueBuff_t *outBuf, int32_t timeout) {
-  RuntimeTensorDesc mbuf_tensor_desc;
-  mbuf_tensor_desc.shape[0] = 4;
-  mbuf_tensor_desc.shape[1] = 1;
-  mbuf_tensor_desc.shape[2] = 1;
-  mbuf_tensor_desc.shape[3] = 224;
-  mbuf_tensor_desc.shape[4] = 224;
-  mbuf_tensor_desc.dtype = static_cast<int64_t>(DT_INT64);
-  mbuf_tensor_desc.data_addr = static_cast<int64_t>(reinterpret_cast<intptr_t>(outBuf->buffInfo->addr));
-  if (memcpy_s(outBuf->buffInfo->addr, sizeof(RuntimeTensorDesc), &mbuf_tensor_desc, sizeof(RuntimeTensorDesc)) !=
-      EOK) {
-    printf("Failed to copy mbuf data, dst size:%zu, src size:%zu\n", outBuf->buffInfo->len, sizeof(RuntimeTensorDesc));
-    return -1;
-  }
-  return 0;
-}
-
-rtError_t rtMemQueuePeek(int32_t device, uint32_t qid, size_t *bufLen, int32_t timeout) {
-  *bufLen = sizeof(RuntimeTensorDesc) + 224U * 224U;
-  return 0;
-}
 namespace ge {
 enum class BatchType {
   kTimeBatch = 0,

@@ -144,6 +144,13 @@ bool StreamUtils::HasStreamLabel(const Subgraph &subgraph) { return !subgraph.su
 
 bool StreamUtils::HasUserStreamLabel(const Subgraph &subgraph) { return !subgraph.subgraph_info.GetUserStreamLabel().empty(); }
 
+bool StreamUtils::HasStreamLabelOrUserStreamLabel(const ge::NodePtr &node) {
+  auto op_desc = node->GetOpDesc();
+  GE_ASSERT_NOTNULL(op_desc);
+  return AttrUtils::HasAttr(op_desc, ATTR_NAME_STREAM_LABEL) ||
+         AttrUtils::HasAttr(op_desc, public_attr::USER_STREAM_LABEL);
+}
+
 bool StreamUtils::HasAssignedStream(const Subgraph &subgraph) { return subgraph.stream_id != kInvalidStream; }
 
 bool StreamUtils::HasAssignedUserStream(const Subgraph &subgraph) {

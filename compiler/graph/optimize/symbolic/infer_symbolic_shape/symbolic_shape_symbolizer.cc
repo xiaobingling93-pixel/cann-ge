@@ -281,9 +281,8 @@ Status HandleUnknownDimNum(const GeShape& input_origin_shape, const OpDesc *op_d
 }
 
 Status SymbolizeShape(const DataSymbolizeInfo &info, const OpDesc *op_desc, ShapeEnvAttr *shape_env_attr,
-  SymbolicDescAttr *symbolic_desc_attr) {
+  SymbolicDescAttr *symbolic_desc_attr, GeShape &ge_shape) {
   const auto &input_origin_shape = info.inputShape;
-  const auto &ge_shape = info.dataShape;
   const auto &data_index = info.dataIndex;
 
   GE_ASSERT_TRUE(ge_shape.GetDimNum() == input_origin_shape.GetDimNum(),
@@ -329,12 +328,15 @@ Status SymbolizeRootGraph(const ComputeGraphPtr &graph, const std::vector<GeTens
     const auto &data_index = info.dataIndex;
     const auto &input_origin_shape = info.inputShape;
     // 如果shape是[-2], 即不知道dims
+    GeShape ge_shape;    
     if (info.dataShape.IsUnknownDimNum()) {
       GE_ASSERT_SUCCESS(HandleUnknownDimNum(input_origin_shape , op_desc, shape_env_attr,
-        data_index, info.dataShape), "symbolize unknown rank node %s failed", op_desc->GetName().c_str());
+        data_index, ge_shape), "symbolize unknown rank node %s failed", op_desc->GetName().c_str());
+    } else {
+      ge_shape = info.dataShape;
     }
     const auto symbolic_desc_attr = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>();
-    GE_ASSERT_SUCCESS(SymbolizeShape(info, op_desc, shape_env_attr, symbolic_desc_attr));
+    GE_ASSERT_SUCCESS(SymbolizeShape(info, op_desc, shape_env_attr, symbolic_desc_attr, ge_shape));
 
     int64_t symbolize_value_type = SYMBOLIZE_VALUE_TYPE_NONE;
     const auto &tensor = graph_inputs.at(data_index);

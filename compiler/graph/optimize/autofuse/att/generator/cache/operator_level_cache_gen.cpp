@@ -127,10 +127,12 @@ ge::Status OperatorLevelCacheGen::GenSaveCacheCalls(ge::CodePrinter &code_printe
            tiling_model_info[0].graph_name.c_str());
     code_printer.AddLine("  // 静态Shape场景：使用空key缓存");
     code_printer.AddLine("  std::array<uint32_t, kInputShapeSize> empty_shapes = {};");
-    code_printer.AddLine("  ret |= TilingCacheContext::SaveOperatorCache(empty_shapes, tiling_data);");
+    // 缓存保存失败不影响GetTiling的整体结果，所以直接调用而不使用ret |=
+    code_printer.AddLine("  (void)TilingCacheContext::SaveOperatorCache(empty_shapes, tiling_data);");
     return ge::SUCCESS;
   }
-  code_printer.AddLine("  ret |= TilingCacheContext::SaveOperatorCache(input_shapes, tiling_data);");
+  // 缓存保存失败不影响GetTiling的整体结果，所以直接调用而不使用ret |=
+  code_printer.AddLine("  (void)TilingCacheContext::SaveOperatorCache(input_shapes, tiling_data);");
   return ge::SUCCESS;
 }
 

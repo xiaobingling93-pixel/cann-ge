@@ -15,6 +15,7 @@
 #include "macro_utils/dt_public_scope.h"
 #include "graph/manager/graph_manager_utils.h"
 #include "api/gelib/gelib.h"
+#include "graph/build/stream/logical_stream_allocator.h"
 #include "macro_utils/dt_public_unscope.h"
 
 #include "graph/build/stream/logical_stream_allocator.h"
@@ -27,10 +28,70 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "common/share_graph.h"
+#include "ge_graph_dsl/graph_dsl.h"
 #include "depends/mmpa/src/mmpa_stub.h"
 using namespace std;
 
 namespace ge {
+namespace {
+/**
+ *      Data
+ *       |
+ *     relu1
+ *       |
+ *    HcomAllReduce
+ *       |
+ *     relu2
+ *       |
+ *     relu3
+ *       |
+ *   netoutput
+ */
+ComputeGraphPtr BuildGraphWithAicoreStreamLabelAndHcclSerial() {
+  auto relu1 = OP_CFG(RELU).StreamId(0).Attr(public_attr::USER_STREAM_LABEL, "111");
+  auto relu2 = OP_CFG(RELU).StreamId(0).Attr(public_attr::USER_STREAM_LABEL, "111");
+  auto relu3 = OP_CFG(RELU).StreamId(0).Attr(public_attr::USER_STREAM_LABEL, "111");
+  auto all_reduce = OP_CFG(HCOMALLREDUCE).StreamId(1);
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("Data", DATA)
+              ->NODE("relu1", relu1)
+              ->NODE("HcomAllReduce", all_reduce)
+              ->NODE("relu2", relu2)
+              ->NODE("relu3", relu3)
+              ->NODE("output", NETOUTPUT));
+  };
+  return ToComputeGraph(g1);
+}
+
+/**
+ *      Data
+ *       |
+ *     relu1
+ *       |
+ *    HcomAllReduce
+ *       |
+ *     relu2
+ *       |
+ *     relu3
+ *       |
+ *   netoutput
+ */
+ComputeGraphPtr BuildGraphWithAicoreHcclSerial() {
+  auto relu1 = OP_CFG(RELU).StreamId(0);
+  auto relu2 = OP_CFG(RELU).StreamId(0);
+  auto relu3 = OP_CFG(RELU).StreamId(0);
+  auto all_reduce = OP_CFG(HCOMALLREDUCE).StreamId(1);
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("Data", DATA)
+              ->NODE("relu1", relu1)
+              ->NODE("HcomAllReduce", all_reduce)
+              ->NODE("relu2", relu2)
+              ->NODE("relu3", relu3)
+              ->NODE("output", NETOUTPUT));
+  };
+  return ToComputeGraph(g1);
+}
+}
 class UtestLogicalStreamAllocator : public testing::Test {
  protected:
   void SetUp() {
@@ -1284,5 +1345,31 @@ TEST_F(UtestLogicalStreamAllocator, test_parallel_group_with_mde_topo) {
     new_stream_id++;
   }
   MmpaStub::GetInstance().Reset();
+}
+
+TEST_F(UtestLogicalStreamAllocator, StreamLabelAndHcclSerial_AssignDiffStream) {
+  const auto graph = BuildGraphWithAicoreStreamLabelAndHcclSerial();
+  const std::map<std::string, int32_t> max_parallel_num;
+  LogicalStreamAllocator allocator(max_parallel_num);
+  ASSERT_EQ(allocator.RunOptimizeByTopoPasses(graph), SUCCESS);
+  auto all_reduce = graph->FindNode("HcomAllReduce");
+  ASSERT_NE(all_reduce, nullptr);
+  EXPECT_EQ(all_reduce->GetOpDesc()->GetStreamId(), 1);
+  auto relu2 = graph->FindNode("relu2");
+  ASSERT_NE(relu2, nullptr);
+  EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 0);
+}
+
+TEST_F(UtestLogicalStreamAllocator, AicoreHcclSerial_AssignSameStream) {
+  const auto graph = BuildGraphWithAicoreHcclSerial();
+  const std::map<std::string, int32_t> max_parallel_num;
+  LogicalStreamAllocator allocator(max_parallel_num);
+  ASSERT_EQ(allocator.RunOptimizeByTopoPasses(graph), SUCCESS);
+  auto all_reduce = graph->FindNode("HcomAllReduce");
+  ASSERT_NE(all_reduce, nullptr);
+  EXPECT_EQ(all_reduce->GetOpDesc()->GetStreamId(), 0);
+  auto relu2 = graph->FindNode("relu2");
+  ASSERT_NE(relu2, nullptr);
+  EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 0);
 }
 }  // namespace ge

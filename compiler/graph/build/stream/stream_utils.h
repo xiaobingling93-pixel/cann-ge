@@ -60,6 +60,7 @@ class StreamUtils {
   static bool IsEngineIndependent(const Subgraph &subgraph);
   static bool HasStreamLabel(const Subgraph &subgraph);
   static bool HasUserStreamLabel(const Subgraph &subgraph);
+  static bool HasStreamLabelOrUserStreamLabel(const NodePtr &node);
   static bool HasAssignedStream(const Subgraph &subgraph);
   static bool HasAssignedUserStream(const Subgraph &subgraph);
   static bool IsEventWaitNode(const ge::NodePtr &node);

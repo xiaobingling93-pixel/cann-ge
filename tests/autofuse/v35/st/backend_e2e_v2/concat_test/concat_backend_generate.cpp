@@ -61,6 +61,23 @@ class TestBackendConcatE2e : public testing::Test {
     return graph;
   }
 
+  static ge::AscGraph CreateConcatAscGraphInputReverted(const std::vector<std::string> &dims, ge::DataType dtype) {
+    auto s0 = ParseDim(dims[0]);
+    auto s1 = ParseDim(dims[1]);
+    auto s2 = s1 + s1;
+    auto graph = ge::testing::AscGraphBuilder("test_graph")
+                     .Loops({s0, s2})
+                     .Data("data1", 1, dtype)
+                     .Load("load1", "data1", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                     .Data("data0", 0, dtype)
+                     .Load("load0", "data0", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                     .Concat("concat", {"load0", "load1"})
+                     .Store("store", "concat")
+                     .Output("out", "store")
+                     .Build();
+    return graph;
+  }
+
   static ge::AscGraph CreateOneAxisConcatAscGraph(const std::vector<std::string> &dims, ge::DataType dtype) {
     auto s0 = ParseDim(dims[0]);
     auto s1 = ParseDim(dims[1]);
@@ -163,7 +180,7 @@ TEST_F(TestBackendConcatE2e, ConcatNotAllAligned_B64) {
 
     std::string expected = "const concat::ConcatTiling<2> concat_tiling {\n";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
-    expected = "concat::ConcatExtend<uint32_t, 2>((uint32_t *)";
+    expected = "concat::ConcatExtendDyn<uint32_t, 2>((uint32_t *)";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
   }
   catch (...) {
@@ -175,7 +192,7 @@ TEST_F(TestBackendConcatE2e, ConcatNotAllAligned_B64) {
 
 TEST_F(TestBackendConcatE2e, ConcatNotAllAligned_B8) {
   bool gen_success = true;
-  ge::AscGraph graph = CreateConcatAscGraph({"s0", "s1"}, ge::DT_INT8);
+  ge::AscGraph graph = CreateConcatAscGraphInputReverted({"s0", "s1"}, ge::DT_INT8);
   std::map<std::string, std::string> shape_info(
       {{"s0", "stub_s0"}, {"s1", "stub_s1"}}
   );
@@ -192,7 +209,7 @@ TEST_F(TestBackendConcatE2e, ConcatNotAllAligned_B8) {
     const auto &kernel = RemoveSubDirInclude(result.kernel);
     std::string expected = "const concat::ConcatTiling<2> concat_tiling {\n";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
-    expected = "concat::ConcatExtend<int8_t, 2>((int8_t *)";
+    expected = "concat::ConcatExtendDyn<int8_t, 2>((int8_t *)";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
   }
   catch (...) {

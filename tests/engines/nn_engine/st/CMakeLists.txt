@@ -199,6 +199,7 @@ target_include_directories(fe_st PRIVATE
         ${AIR_CODE_DIR}/compiler/opcompiler/inc
         ${AIR_CODE_DIR}/base
 
+        ${AIR_CODE_DIR}/compiler/graph/fusion/pass
         ${AIR_CODE_DIR}/compiler/engines/ffts_engine
         ${AIR_CODE_DIR}/compiler/engines/ffts_engine/inc
         ${AIR_CODE_DIR}/tests/engines/nn_engine/depends

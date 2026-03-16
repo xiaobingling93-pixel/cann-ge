@@ -4507,11 +4507,7 @@ TEST(TeFusionUTest, check_op_impl_mode_not_supported)
 
 TEST(TeFusionUTest, UpdateInhibitionInfoForLog)
 {
-    uint64_t graphId = 100;
-    const std::time_t now = std::time(nullptr);
-    LogInhibitionInfo logInhibitionInfo = {0, 0, now};
-    te::fusion::TeFusionManager::GetInstance()->taskStatistics_[graphId] = logInhibitionInfo;
-    bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog(graphId);
+    bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog();
     EXPECT_EQ(res, false);
 }
 

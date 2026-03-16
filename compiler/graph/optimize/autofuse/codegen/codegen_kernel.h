@@ -377,6 +377,7 @@ struct ApiTensor {
   struct ApiTensor* reuse_next;
   struct ApiTensor* share_prev;
   struct ApiTensor* share_next;
+  int32_t share_order;
   const ApiCall* write;
   std::vector<const ApiCall*> reads;
 
@@ -432,6 +433,9 @@ class ApiCall {
   virtual Status Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                           std::string &result) const;
   virtual Status GenerateMacro(std::string &result) const;
+  virtual bool IsContiguousBufRequired() const {
+    return false;
+  };
 
   bool FreeInputs(const TPipe &tpipe, std::stringstream &ss) const;
   bool FreeUnusedOutputs(const TPipe &tpipe, std::stringstream &ss) const;
