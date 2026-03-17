@@ -539,6 +539,9 @@ void AclRuntimeStubImpl::Clear() {
   rt_memcpy_args_.clear();
   rt_memcpy_sync_args_.clear();
   all_launch_sqe_update_records_.clear();
+  stream_res_limit_records_.clear();
+  use_stream_res_records_.clear();
+  not_use_stream_res_records_.clear();
   events_to_record_records_.clear();
 }
 
@@ -722,6 +725,24 @@ aclError AclRuntimeStubImpl::aclrtGetStreamAvailableNum(uint32_t *streamCount) {
   }
   *streamCount = 2048;
   return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStubImpl::aclrtSetStreamResLimit(aclrtStream stream, aclrtDevResLimitType type, uint32_t value) {
+  const std::lock_guard<std::mutex> lk(mtx_);
+  stream_res_limit_records_.push_back(StreamResLimitRecord{stream, type, value});
+  return AclRuntimeStub::aclrtSetStreamResLimit(stream, type, value);
+}
+
+aclError AclRuntimeStubImpl::aclrtUseStreamResInCurrentThread(aclrtStream stream) {
+  const std::lock_guard<std::mutex> lk(mtx_);
+  use_stream_res_records_.push_back(stream);
+  return AclRuntimeStub::aclrtUseStreamResInCurrentThread(stream);
+}
+
+aclError AclRuntimeStubImpl::aclrtUnuseStreamResInCurrentThread(aclrtStream stream) {
+  const std::lock_guard<std::mutex> lk(mtx_);
+  not_use_stream_res_records_.push_back(stream);
+  return AclRuntimeStub::aclrtUnuseStreamResInCurrentThread(stream);
 }
 
 aclError AclRuntimeStubImpl::aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind) {

@@ -13,6 +13,8 @@
 #include "core/executor/multi_thread_topological/executor/schedule/task/exec_task.h"
 #include "common/checker.h"
 #include "core/executor_error_code.h"
+#include "core/utils/executor_utils.h"
+#include "acl/acl_rt.h"
 #include "securectype.h"
 #include "runtime/subscriber/global_profiler.h"
 
@@ -122,11 +124,55 @@ ge::graphStatus TaskScheduler::Prepare(const ScheduleData &data) {
   GE_ASSERT_TRUE(data.execution_data != nullptr);
   GE_ASSERT_TRUE(data.schedule_limit > 0);
 
+  execution_data_ = static_cast<const ExecutionData *>(data.execution_data);
   GE_ASSERT_SUCCESS(task_producer_->Prepare(data.execution_data));
   GE_ASSERT_SUCCESS(LaunchWorkers());
 
   schedule_limit_ = data.schedule_limit;
   return ge::GRAPH_SUCCESS;
+}
+
+aclrtStream TaskScheduler::GetExecuteMainStream() const {
+  if (execution_data_ == nullptr) {
+    return nullptr;
+  }
+  if (execution_data_->base_ed.input_num < static_cast<size_t>(ExecuteArgIndex::kNum)) {
+    GELOGW("Invalid input num %zu, less than execute arg count %zu.", execution_data_->base_ed.input_num,
+           static_cast<size_t>(ExecuteArgIndex::kNum));
+    return nullptr;
+  }
+  const auto stream_idx = CalcArgIndex(execution_data_->base_ed.input_num, ExecuteArgIndex::kStream);
+  if (stream_idx >= execution_data_->base_ed.input_num) {
+    GELOGW("Invalid stream arg index %zu from input num %zu.", stream_idx, execution_data_->base_ed.input_num);
+    return nullptr;
+  }
+  auto stream_chain = reinterpret_cast<Chain *>(execution_data_->base_ed.input_values[stream_idx]);
+  if (stream_chain == nullptr) {
+    GELOGW("Stream chain is nullptr at input index %zu.", stream_idx);
+    return nullptr;
+  }
+  auto rt_streams = stream_chain->GetValue<ContinuousVector *>();
+  if (rt_streams == nullptr) {
+    GELOGW("Stream vector is nullptr at input index %zu.", stream_idx);
+    return nullptr;
+  }
+  if (rt_streams->GetSize() == 0U) {
+    GELOGW("Stream vector is empty at input index %zu.", stream_idx);
+    return nullptr;
+  }
+  return *(reinterpret_cast<aclrtStream *>(rt_streams->MutableData()) + 0U);
+}
+
+void TaskScheduler::SetExecuteStreamForWorkers() {
+  const auto stream = GetExecuteMainStream();
+  int32_t stream_id = -1;
+  if (stream != nullptr) {
+    (void)aclrtStreamGetId(stream, &stream_id);
+  }
+  GELOGI("Scheduler dispatch stream %p (id=%d) to %zu worker groups.", stream, stream_id, worker_groups_.size());
+  for (auto &worker_group : worker_groups_) {
+    worker_group.SetExecuteStream(stream);
+  }
 }
 
 void TaskScheduler::RecycleTaskWhenExecuteFailed() {
@@ -144,6 +190,7 @@ void TaskScheduler::RecycleTaskWhenExecuteFailed() {
 
 KernelStatus TaskScheduler::Schedule() {
   GE_ASSERT_SUCCESS(StartUp());
+  SetExecuteStreamForWorkers();
 
   TaskWorkerId exec_worker_group_ids[static_cast<size_t>(ExecTaskType::MAX)] = {0};
 
@@ -166,6 +213,7 @@ KernelStatus TaskScheduler::Schedule(int sub_graph_type, ExecutorSubscriber *es)
   GE_ASSERT_NOTNULL(es);
   GE_ASSERT_NOTNULL(es->callback);
   GE_ASSERT_SUCCESS(StartUp());
+  SetExecuteStreamForWorkers();
   for (auto &workerGroup : worker_groups_) {
     workerGroup.SetSubscriber(sub_graph_type, es);
   }

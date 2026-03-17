@@ -71,6 +71,15 @@ void TaskWorkerGroup::SleepWorkers() {
   }
 }
 
+void TaskWorkerGroup::SetExecuteStream(aclrtStream stream) {
+  if (!has_launched_) {
+    return;
+  }
+  for (auto &worker : workers_) {
+    worker->SetExecuteStream(stream);
+  }
+}
+
 void TaskWorkerGroup::GetAllThreadId(std::vector<uint32_t> &all_thread_id) const {
   for (const auto &worker : workers_) {
     worker->GetAllThreadId(all_thread_id);

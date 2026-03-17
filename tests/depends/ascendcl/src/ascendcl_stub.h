@@ -21,6 +21,7 @@
 #include "acl/acl.h"
 #include "acl/acl_base.h"
 #include "acl/acl_dump.h"
+#include "acl/acl_rt.h"
 #include "common/ge_common/ge_types.h"
 #include "graph/small_vector.h"
 #include "graph/any_value.h"
@@ -141,6 +142,9 @@ public:
   virtual aclError aclrtSetOpExecuteTimeOutWithMs(uint32_t timeout);
   virtual aclError aclrtSetOpExecuteTimeOutV2(uint64_t timeout, uint64_t *actualTimeout);
   virtual aclError aclrtGetStreamAvailableNum(uint32_t *streamCount);
+  virtual aclError aclrtSetStreamResLimit(aclrtStream stream, aclrtDevResLimitType type, uint32_t value);
+  virtual aclError aclrtUseStreamResInCurrentThread(aclrtStream stream);
+  virtual aclError aclrtUnuseStreamResInCurrentThread(aclrtStream stream);
   virtual aclError aclrtGetEventId(aclrtEvent event, uint32_t *eventId);
   virtual aclError aclrtCreateEventExWithFlag(aclrtEvent *event, uint32_t flag);
   virtual aclError aclrtGetEventAvailNum(uint32_t *eventCount);

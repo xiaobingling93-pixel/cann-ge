@@ -1553,7 +1553,6 @@ rtError_t rtsUseStreamResInCurrentThread(const rtStream_t stm) {
   return ge::RuntimeStub::GetInstance()->rtsUseStreamResInCurrentThread(stm);
 }
 
-
 rtError_t rtsGetThreadLastTaskId(uint32_t *taskId)
 {
   if (std::string(__FUNCTION__) == g_runtime_stub_mock) {

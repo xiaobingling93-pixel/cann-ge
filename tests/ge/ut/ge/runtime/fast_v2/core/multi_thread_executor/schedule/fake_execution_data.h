@@ -16,6 +16,10 @@
 #include "exe_graph/runtime/extended_kernel_context.h"
 #include "core/executor/multi_thread_topological/executor/schedule/task/exec_task.h"
 #include "common/fake_node_helper.h"
+#include "faker/continuous_vector_builder.h"
+#include "faker/kernel_run_context_facker.h"
+#include "acl/acl_rt.h"
+#include "runtime/model_v2_executor.h"
 #include <array>
 #include <mutex>
 #include <map>
@@ -111,6 +115,16 @@ struct FakeExecutionData {
     return *this;
   }
 
+  FakeExecutionData &ExecuteStream(aclrtStream stream) {
+    execute_stream_holder = ContinuousVectorBuilder::Create<aclrtStream>({stream});
+    execute_stream_value.Set(execute_stream_holder.get(), nullptr);
+    input_values.fill(nullptr);
+    input_values[0] = reinterpret_cast<AsyncAnyValue *>(&execute_stream_value);
+    executionData.base_ed.input_num = static_cast<size_t>(ExecuteArgIndex::kNum);
+    executionData.base_ed.input_values = input_values.data();
+    return *this;
+  }
+
   ExecutionData *Data() {
     return &executionData;
   }
@@ -142,7 +156,7 @@ struct FakeExecutionData {
     node.context.kernel_extend_info = nullptr;
   }
 
-  ExecutionData executionData;
+  ExecutionData executionData{};
   std::array<KernelRunContextHolder, MAX_NODE_SIZE> context_holders;
   std::array<::Node, MAX_NODE_SIZE> kernel_nodes;
   std::array<::Node *, MAX_NODE_SIZE> kernel_ptrs;
@@ -151,6 +165,9 @@ struct FakeExecutionData {
   std::array<::Watcher *, MAX_NODE_SIZE> watchers_ptrs;
   std::array<int64_t, MAX_NODE_SIZE> node_indegrees;
   std::array<int64_t, MAX_NODE_SIZE> node_indegrees_backup;
+  std::unique_ptr<uint8_t[]> execute_stream_holder;
+  ::gert::Chain execute_stream_value{};
+  std::array<AsyncAnyValue *, static_cast<size_t>(ExecuteArgIndex::kNum)> input_values{};
   size_t node_size;
 };
 

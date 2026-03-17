@@ -132,7 +132,6 @@ class RuntimeStubImpl : public ge::RuntimeStub {
   const std::list<ge::GeLaunchSqeUpdateTaskArgs> &GetLaunchSqeUpdateTaskArgs() const {
     return all_launch_sqe_update_records_;
   }
-
   const std::vector<uintptr_t> &GetLiteEceptionArgs() const {
     return lite_exception_args_;
   }

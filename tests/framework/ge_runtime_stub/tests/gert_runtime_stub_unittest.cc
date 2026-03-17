@@ -9,6 +9,7 @@
  */
 
 #include <gtest/gtest.h>
+#include "acl/acl_rt.h"
 #include "stub/gert_runtime_stub.h"
 #include "runtime/rt.h"
 
@@ -47,6 +48,13 @@ TEST_F(GertRuntimeStubUT, test_rt_kernel_launch_with_flag_success) {
   rtSmDesc_t smDesc;
 
   ASSERT_EQ(rtKernelLaunchWithFlag(stubFunc, 0, &args, &smDesc, stream, 0), RT_ERROR_NONE);
+}
+
+TEST_F(GertRuntimeStubUT, test_aclrt_unuse_stream_res_in_current_thread_success) {
+  GertRuntimeStub runtime;
+  aclrtStream stream = nullptr;
+
+  ASSERT_EQ(aclrtUnuseStreamResInCurrentThread(stream), ACL_SUCCESS);
 }
 
 TEST_F(GertRuntimeStubUT, test_stub_kernel_launch_with_handle_return_failed) {
