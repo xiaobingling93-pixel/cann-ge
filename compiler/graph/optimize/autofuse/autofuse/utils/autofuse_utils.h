@@ -183,6 +183,17 @@ class AutofuseUtils {
 
   static std::vector<const ge::Node *> GetComputeOps(const std::vector<const ge::Node *> &nodes);
 
+  /**
+  * @brief 处理node_name的核心接口
+  * 支持两种格式的node_name处理：
+  * 1. autofuse_fused_数字_xxx 格式（包含concat分割）
+  * 2. autofuse_数字_xxx 格式（直接统计）
+  * 支持多次调用的累加统计
+  * @param node_name 输入的节点名称，格式：autofuse_xx_数字_type1_type2_type3...
+  * @return 处理后的节点名称（去重统计后）
+  */
+  static std::string SimplifyNodeName(const std::string &node_name);
+
  private:
   static NodePtr ConvertAscBackendNodeToAscGraphNode(const ComputeGraphPtr compute_graph, const NodePtr &node);
 
