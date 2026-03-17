@@ -1451,8 +1451,10 @@ Status TPipe::LocalTBufAlloc(const TBuf &buf, std::string &result, const bool wi
     reuse_buf_tensors[0]->no_need_realloc = true;
     for (size_t i = 1UL; i < reuse_buf_tensors.size(); i++) {
       reuse_buf_tensors[i]->no_need_realloc = true;
-      ss << "LocalTensor<" << reuse_dtype_name << "> " << reuse_buf_tensors[i]->name << " = "
-          << reuse_buf_tensors[0]->name << ";" << std::endl;
+      if (with_define) {
+        ss << "LocalTensor<" << reuse_dtype_name << "> ";
+      }
+      ss << reuse_buf_tensors[i]->name << " = " << reuse_buf_tensors[0]->name << ";" << std::endl;
     }
   }
   result = ss.str();
