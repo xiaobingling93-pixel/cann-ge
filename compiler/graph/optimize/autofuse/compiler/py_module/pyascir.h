@@ -49,6 +49,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Ceil)             \
   OP(Cos)              \
   OP(Acos)             \
+  OP(Cosh)             \
   OP(Sqrt)             \
   OP(Rsqrt)            \
   OP(RemovePad)        \
@@ -61,6 +62,13 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Sign)             \
   OP(Tanh)             \
   OP(Sin)              \
+  OP(Acosh)            \
+  OP(Asinh)            \
+  OP(Asin)             \
+  OP(Atan)             \
+  OP(Atanh)            \
+  OP(Digamma)          \
+  OP(Erfc)             \
   OP(RShift)           \
   OP(Isnan)            \
   OP(Max)              \

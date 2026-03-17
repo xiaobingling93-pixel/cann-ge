@@ -8241,4 +8241,499 @@ ge::ComputeGraphPtr ShareGraph::BinaryApiScalarFusedGraph() {
   ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
   return compute_graph;
 }
+
+static void CreateAcoshBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data0", graph);
+  x.y.dtype = ge::DataType::DT_BF16;
+  x.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.y.dtype = ge::DataType::DT_BF16;
+  x1Local.x = x.y;
+
+  // Acosh 操作
+  ge::ascir_op::Acosh acosh("acosh");
+  acosh.x = x1Local.y;
+  acosh.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::Store acosh_store("store");
+  acosh_store.x = acosh.y;
+  acosh_store.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::Output y("output");
+  y.x = acosh_store.y;
+
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::AcoshBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("acosh_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("acosh_bf16_test");
+  CreateAcoshBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateAsinBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Asin 操作
+  ge::ascir_op::Asin asin("asin");
+  asin.x = cast.y;
+  asin.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = asin.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::AsinBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("asin_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("asin_bf16_test");
+  CreateAsinBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateAsinhBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Asinh 操作
+  ge::ascir_op::Asinh asinh("asinh");
+  asinh.x = cast.y;
+  asinh.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = asinh.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::AsinhBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("asinh_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("asinh_bf16_test");
+  CreateAsinhBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateAtanBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Atan 操作
+  ge::ascir_op::Atan atan("atan");
+  atan.x = xLocal.y;
+  atan.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = atan.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::AtanBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("atan_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("atan_bf16_test");
+  CreateAtanBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateAtanhBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Atanh 操作
+  ge::ascir_op::Atanh atanh("atanh");
+  atanh.x = cast.y;
+  atanh.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = atanh.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::AtanhBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("atanh_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("atanh_bf16_test");
+  CreateAtanhBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateCoshBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cosh 操作
+  ge::ascir_op::Cosh cosh("cosh");
+  cosh.x = cast.y;
+  cosh.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = cosh.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::CoshBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("cosh_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("cosh_bf16_test");
+  CreateCoshBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateDigammaBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Digamma 操作
+  ge::ascir_op::Digamma digamma("digamma");
+  digamma.x = cast.y;
+  digamma.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = digamma.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::DigammaBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("digamma_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("digamma_bf16_test");
+  CreateDigammaBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateErfcBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  // Data 节点
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_BF16;
+
+  // Load 节点
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  // Cast 节点 (BF16 -> FLOAT)
+  ge::ascir_op::Cast cast("cast");
+  cast.x = xLocal.y;
+  cast.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Erfc 操作
+  ge::ascir_op::Erfc erfc("erfc");
+  erfc.x = cast.y;
+  erfc.y.dtype = ge::DataType::DT_FLOAT;
+
+  // Cast 节点 (FLOAT -> BF16)
+  ge::ascir_op::Cast castBack("cast_back");
+  castBack.x = erfc.y;
+  castBack.y.dtype = ge::DataType::DT_BF16;
+
+  // Store 节点
+  ge::ascir_op::Store x_out("store");
+  x_out.x = castBack.y;
+  x_out.y.dtype = ge::DataType::DT_BF16;
+
+  // Output 节点
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DataType::DT_BF16;
+
+  // 设置维度信息
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::ErfcBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("erfc_bf16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("erfc_bf16_test");
+  CreateErfcBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
 }

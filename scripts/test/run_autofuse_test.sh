@@ -426,12 +426,6 @@ build_st_codegen() {
     return 1
   fi
 
-  METADEF_SOS=$(find ${BUILD_PATH}/graph_metadef -name *.so)
-  for METADEF_SO in ${METADEF_SOS}
-  do
-    cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}
-    echo "cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}"
-  done
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}
   cp ${BUILD_PATH}/tests/autofuse/st/codegen/codegen_st  ${OUTPUT_PATH}
   RUN_TEST_CASE=${OUTPUT_PATH}/codegen_st && ${RUN_TEST_CASE}
@@ -702,7 +696,15 @@ codegen_e2e_st() {
                       cos_bf16_test_e2e_v2 \
                       load_compare_scalar_where_store_test_e2e_v2 \
                       load_compare_where_store_test_e2e_v2 \
-                      binary_api_scalar_test_e2e_v2"
+                      binary_api_scalar_test_e2e_v2 \
+                      acosh_bf16_test_e2e_v2 \
+                      asin_bf16_test_e2e_v2 \
+                      asinh_bf16_test_e2e_v2 \
+                      atan_bf16_test_e2e_v2 \
+                      atanh_bf16_test_e2e_v2 \
+                      cosh_bf16_test_e2e_v2 \
+                      digamma_bf16_test_e2e_v2 \
+                      erfc_bf16_test_e2e_v2"
   fi
   make -j${THREAD_NUM} $MAKE_TARGET_LIST
   if [ $? -ne 0 ]
@@ -944,12 +946,6 @@ build_ut_att() {
   fi
 
   cp ${BUILD_PATH}/tests/autofuse/ut/att/att_ut  ${OUTPUT_PATH}
-  METADEF_SOS=$(find ${BUILD_PATH}/graph_metadef -name *.so)
-  for METADEF_SO in ${METADEF_SOS}
-  do
-    cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}
-    echo "cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}"
-  done
   ldd -r ${OUTPUT_PATH}/att_ut
   RUN_TEST_CASE=${OUTPUT_PATH}/att_ut && ${RUN_TEST_CASE}
 
@@ -1118,6 +1114,13 @@ main() {
   echo "---------------- build third party packages finished ----------------"
 
   build_ascgen-dev || { echo "ascgen-dev build failed."; exit 1; }
+
+  METADEF_SOS=$(find ${BUILD_PATH}/graph_metadef -name *.so)
+  for METADEF_SO in ${METADEF_SOS}
+  do
+    cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}
+    echo "cp -rf ${METADEF_SO} ${METADEF_LIB_PATH}"
+  done
 
   if [[ "X$ENABLE_UT" = "Xon" ]]; then
     echo "---------------- ascgen-dev build finished ----------------"
