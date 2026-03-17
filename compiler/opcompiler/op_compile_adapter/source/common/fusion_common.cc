@@ -664,7 +664,9 @@ void GetNodeListStr(const std::vector<ge::Node *> &teGraphNode, std::string &opN
         });
         opNameStr = "";
         OriginalOpNamesSplicing(originalOpNames, opNameStr);
-        opNames = opNames + "," + opNameStr;
+        if (!opNameStr.empty()) {
+            opNames = opNames + "," + opNameStr;
+        }
         nodeIdx++;
     }
 }
