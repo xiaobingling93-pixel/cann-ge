@@ -927,7 +927,7 @@ ge::Status AscendGraphParser::CheckReduceBroadcastSplitStoreConflict() {
 
 // 检查并标记轴是否为 Reduce 分核轴
 bool AscendGraphParser::CheckAndMarkReduceSplitAxis(
-    SubAxis *axis, const std::set<std::string> &reduce_axis_orig_names) {
+    SubAxis *axis, const std::set<std::string> &reduce_axis_orig_names) const {
   for (const auto &orig_name : axis->orig_axis_name) {
     if (reduce_axis_orig_names.find(orig_name) != reduce_axis_orig_names.end()) {
       axis->is_reduce_split_axis = true;
@@ -940,7 +940,7 @@ bool AscendGraphParser::CheckAndMarkReduceSplitAxis(
 
 // 检查并标记轴是否为 Broadcast 分核轴
 bool AscendGraphParser::CheckAndMarkBroadcastSplitAxis(
-    SubAxis *axis, const std::set<std::string> &broadcast_axis_orig_names) {
+    SubAxis *axis, const std::set<std::string> &broadcast_axis_orig_names) const {
   for (const auto &orig_name : axis->orig_axis_name) {
     if (broadcast_axis_orig_names.find(orig_name) != broadcast_axis_orig_names.end()) {
       axis->is_broadcast_split_axis = true;

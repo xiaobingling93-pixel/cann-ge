@@ -92,7 +92,7 @@ bool ArgListReorder::CheckReduce(const SubAxis *dim, const Expr &repeat, const E
 }
 
 bool ArgListReorder::IsReduceAxisBlockSplit(const std::vector<SubAxisPtr> &all_axes,
-                                            const std::set<std::string> &reduce_axis_ori_axes_set) {
+                                            const std::set<std::string> &reduce_axis_ori_axes_set) const {
   for (const auto &axis : all_axes) {
     if (!axis->is_bind_multi_core) {
       continue;
@@ -108,7 +108,7 @@ bool ArgListReorder::IsReduceAxisBlockSplit(const std::vector<SubAxisPtr> &all_a
   return false;
 }
 
-void ArgListReorder::SaveReduceAxisOrig(SubAxis *reduce_axis, std::set<std::string> &reduce_axis_ori_axes_set) const {
+void ArgListReorder::SaveReduceAxisOrig(const SubAxis *reduce_axis, std::set<std::string> &reduce_axis_ori_axes_set) const {
   for (SubAxis *ori_axis : reduce_axis->orig_axis) {
     GELOGI("reduce axis ori set add: [%s]", ori_axis->name.c_str());
     reduce_axis_ori_axes_set.insert(ori_axis->name);

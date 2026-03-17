@@ -211,8 +211,8 @@ class ArgListReorder {
                          const std::vector<TensorPtr> &output_tensors, AxisProperty property);
   void FindSpecialArgs();
   ge::Status AddEdgeGroups(const std::vector<std::string> &from_axes_group, const std::vector<std::string> &to_axes_group);
-  bool IsReduceAxisBlockSplit(const std::vector<SubAxisPtr> &all_axes, const std::set<std::string> &reduce_axis_ori_axes_set);
-  void SaveReduceAxisOrig(SubAxis *reduce_axis, std::set<std::string> &reduce_axis_ori_axes_set) const;
+  bool IsReduceAxisBlockSplit(const std::vector<SubAxisPtr> &all_axes, const std::set<std::string> &reduce_axis_ori_axes_set) const;
+  void SaveReduceAxisOrig(const SubAxis *reduce_axis, std::set<std::string> &reduce_axis_ori_axes_set) const;
   AxisCategories CategorizeAxesByProperty(const vector<AttAxisPtr> &arg_list);
   ge::Status ApplyPriorityRules(bool tiling_R, const AxisCategories &categories);
   std::vector<AttAxisPtr> GetNewArgList(const std::vector<size_t> &topo_order,

@@ -246,7 +246,7 @@ Status VfCall::ParseAttr(const ascir::NodeView &node) {
   return ParseSubGraph(node, sub_graph);
 }
 
-bool VfCall::ShouldInitAsMaskReg(const ascir::NodeView &node, ge::AscTensor *output) const {
+bool VfCall::ShouldInitAsMaskReg(const ascir::NodeView &node, const ge::AscTensor *output) const {
   // compare的输出需要初始化为mask_reg, where的第一个输入对应的输出需要初始化为mask_reg
   if (IsOps<Ge>(node) || IsOps<Eq>(node) || IsOps<Le>(node) || IsOps<Ne>(node) || IsOps<Gt>(node) || IsOps<Lt>(node)) {
     return true;

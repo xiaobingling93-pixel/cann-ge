@@ -10,12 +10,13 @@
 #ifndef __ASCIR_H__
 #define __ASCIR_H__
 
-#include "graph/graph.h"
+#include <cstdint>
+#include <memory>
+#include <vector>
 
-#include "graph_utils_ex.h"
-#include "ascendc_ir.h"
-
-//using namespace ge::ascir_op;
+#include "graph/ascendc_ir/ascendc_ir_core/ascendc_ir_def.h"
+#include "graph/ascendc_ir/ascendc_ir_core/ascendc_ir.h"
+#include "graph/symbolizer/symbolic.h"
 
 namespace ascir {
   using Graph = ge::AscGraph;

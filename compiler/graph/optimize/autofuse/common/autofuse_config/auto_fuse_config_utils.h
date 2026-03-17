@@ -16,7 +16,6 @@
 #include <iostream>
 #include <memory>
 #include "common/checker.h"
-#include "ge_common/ge_api_types.h"
 
 namespace ge {
 // 解析结果结构体

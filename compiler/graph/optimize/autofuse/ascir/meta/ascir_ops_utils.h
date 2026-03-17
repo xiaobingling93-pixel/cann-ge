@@ -10,6 +10,8 @@
 #ifndef AUTOFUSE_ASCIR_OPS_UTILS_H
 #define AUTOFUSE_ASCIR_OPS_UTILS_H
 
+#include <memory>
+
 #include "graph/node.h"
 #include "graph/symbolizer/symbolic.h"
 
