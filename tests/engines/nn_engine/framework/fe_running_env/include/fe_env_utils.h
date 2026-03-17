@@ -63,7 +63,7 @@ class FeEnvUtils {
     std::ifstream ifs;
     ifs.open(task_def_path, std::ios::in);
     if (!ifs.is_open()) {
-      std::cout << "open task_context filed!" << std::endl;
+      std::cout << "open task_context failed!" << std::endl;
     }
     std::string task_def_str;
     std::ostringstream oss;

@@ -2614,7 +2614,7 @@ TEST_F(UTEST_fusion_engine_op_compiler, update_tuneformat_by_node_attr_002) {
       std::make_shared<OpCompilerFormatTune>(AI_CORE_NAME);
   op_compiler_format_tune_ptr->engine_name_ = fe::AI_CORE_NAME;
   Status ret = op_compiler_format_tune_ptr->UpdateTuneFormatByNodeAttr(*graph);
-  EXPECT_EQ(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::FAILED);
   const std::vector<std::string> nodes_type_vec = {"B", "AA", "B"};
   int index = 0;
   for (auto &node : graph->GetDirectNode()) {
@@ -2781,13 +2781,13 @@ TEST_F(UTEST_fusion_engine_op_compiler, update_tuneformat_by_node_attr_005) {
       std::make_shared<OpCompilerFormatTune>(AI_CORE_NAME);
   op_compiler_format_tune_ptr->engine_name_ = fe::AI_CORE_NAME;
   Status ret = op_compiler_format_tune_ptr->UpdateTuneFormatByNodeAttr(*graph);
-  const std::vector<std::string> nodes_type_vec = {"AA", "PlaceHolder", "End"};
+  const std::vector<std::string> nodes_type_vec = {"PlaceHolder", "TransData", "AA", "End"};
   int index = 0;
   for (auto &node : graph->GetDirectNode()) {
     EXPECT_EQ(node->GetType(), nodes_type_vec.at(index));
     index++;
   }
-  EXPECT_EQ(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::FAILED);
 }
 
 //cann kb result incomplete

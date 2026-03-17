@@ -621,6 +621,7 @@ TEST_F(fusion_rule_manager_uttest, test_init_graph_rules_aicore)
     if (!ifs.is_open()) {
         printf("open json[%s] failed, %s", ori_json_path.c_str(), strerror(errno));
     }
+    ASSERT_TRUE(ifs.is_open());
     nlohmann::json ori_json_value;
     ifs >> ori_json_value;
     CreateFileAndFillContent(fileName, ori_json_value, true);

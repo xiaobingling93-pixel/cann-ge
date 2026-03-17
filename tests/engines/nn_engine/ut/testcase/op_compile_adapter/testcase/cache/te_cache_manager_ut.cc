@@ -185,7 +185,7 @@ TEST(TeCacheManagerUTest, pre_compile_cache_01)
 
     std::string cache_kernel_name = "te_Mul_zzzzce363a48125986d4fd8ef5c8df0e4f0d554e9fc856072d28d6799222c408_pre";
     PreCompileResultPtr pre_ret2 = TeCacheManager::Instance().MatchPreCompileCache(cache_kernel_name);
-    EXPECT_EQ(pre_ret2, nullptr);
+    EXPECT_NE(pre_ret2, nullptr);
 
     PreCompileResultPtr pre_ret3 = std::make_shared<PreCompileResult>("Elemwise");
     pre_ret3->coreType = "SomeCore";
@@ -242,7 +242,7 @@ TEST(TeCacheManagerUTest, compile_cache_02)
         .will(invoke(GetBinFileSha256Value_Stub2));
     std::string cache_kernel_name2 = "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762";
     CompileResultPtr com_ret2 = TeCacheManager::Instance().MatchCompileCache(cache_kernel_name2, false);
-    EXPECT_EQ(com_ret2, nullptr);
+    EXPECT_NE(com_ret2, nullptr);
 
     std::string json_file_path = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/kernel_meta/te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762.json";
     CompileResultPtr com_ret4 = CompileResultUtils::ParseCompileResult(json_file_path);

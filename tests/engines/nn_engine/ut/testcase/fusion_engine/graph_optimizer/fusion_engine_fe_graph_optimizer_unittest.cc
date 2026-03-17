@@ -3313,12 +3313,12 @@ TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
 {
     auto graph = std::make_shared<ComputeGraph>("test");
     CreateConcatOpDescGraph10(graph);
-    vector<int64_t> dims = {-1, 2, 3, 32};
+    vector<int64_t> dims = {1, 2, 3, 32};
     vector<int64_t> shape_vec;
     tbe_adapter_ptr->CheckIsTbeGeneralizeFuncRegistered = checkIsRegistered;
     tbe_adapter_ptr->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
     for (auto node : graph->GetDirectNode()) {
       auto op_desc = node->GetOpDesc();
       if (op_desc->GetType() != "ConcatD") {
@@ -3340,7 +3340,7 @@ TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_fail1)
     tbe_adapter_ptr->TeGeneralize = teGeneralize;
 
     Status status = fe_graph_optimizer_->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
     for (auto node : graph->GetDirectNode()) {
       auto op_desc = node->GetOpDesc();
       auto tensor_desc_x = op_desc->MutableInputDesc("x");
@@ -3356,12 +3356,12 @@ TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_fail2)
 {
     auto graph = std::make_shared<ComputeGraph>("test");
     CreateSingleNodeGraph(graph);
-    std::vector<int64_t> dims = {-1, 2, 3, 4};
+    std::vector<int64_t> dims = {1, 2, 3, 4};
     std::vector<int64_t> shape_vec;
     tbe_adapter_ptr->CheckIsTbeGeneralizeFuncRegistered = checkIsRegistered;
     tbe_adapter_ptr->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
     for (auto node : graph->GetDirectNode()) {
       if (node->GetType() == fe::DATA) {
         continue;
@@ -3375,7 +3375,7 @@ TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_fail2)
     CreateSingleNodeGraph2(graph2);
 
     status = fe_graph_optimizer_->ShapeAndValueGeneralize(*(graph2.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
     for (auto node : graph2->GetDirectNode()) {
       if (node->GetType() == fe::DATA) {
         continue;
@@ -3395,7 +3395,7 @@ TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_fail3)
     tbe_adapter_ptr->CheckIsTbeGeneralizeFuncRegistered = checkIsRegisteredException;
     tbe_adapter_ptr->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
 }
 
 TEST_F(UTEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_fail4)

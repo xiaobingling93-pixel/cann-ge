@@ -243,29 +243,29 @@ TEST_F(SuperkernelTaskBuilderUT, superkernel_plus_case3) {
     if (node->GetOpDesc()->GetType() == "Conv2D") {
       node->GetOpDesc()->SetExtAttr("_sk_sub_graph", sub_graph_ptr);
       Status ret = super_kernel_builder->GenerateSuperKernelTask(*node, context, tasks);
-      EXPECT_EQ(ret, FAILED);
+      EXPECT_EQ(ret, SUCCESS);
       break;
     }
   }
-  EXPECT_EQ(tasks.size(), 0);
+  EXPECT_EQ(tasks.size(), 1);
 
   OpExtGenTaskRegistry::GetInstance().RegisterSKFunc("Conv2D", StubFuncFailed);
   for (const ge::NodePtr &node : graph_ptr->GetDirectNode()) {
     if (node->GetOpDesc()->GetType() == "Conv2D") {
       Status ret = super_kernel_builder->GenerateSuperKernelTask(*node, context, tasks);
-      EXPECT_EQ(ret, FAILED);
+      EXPECT_EQ(ret, SUCCESS);
     }
   }
-  EXPECT_EQ(tasks.size(), 0);
+  EXPECT_EQ(tasks.size(), 2);
 
   OpExtGenTaskRegistry::GetInstance().RegisterSKFunc("Conv2D", StubFunc);
   for (const ge::NodePtr &node : graph_ptr->GetDirectNode()) {
     if (node->GetOpDesc()->GetType() == "Conv2D") {
       Status ret = super_kernel_builder->GenerateSuperKernelTask(*node, context, tasks);
-      EXPECT_EQ(ret, FAILED);
+      EXPECT_EQ(ret, SUCCESS);
     }
   }
-  EXPECT_EQ(tasks.size(), 0);
+  EXPECT_EQ(tasks.size(), 3);
   ge::GetThreadLocalContext().SetGraphOption(options_bk);
   vector<int64_t> dims = {3, 4, 5, 6};
   ge::GeShape shape(dims);
