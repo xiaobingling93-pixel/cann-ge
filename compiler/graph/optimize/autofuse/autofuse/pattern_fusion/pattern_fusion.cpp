@@ -23,6 +23,7 @@
 #include "slice_forward_fusion_pass.h"
 #include "transpose_with_broadcast_eliminate_pass.h"
 #include "cast_remove_pass.h"
+#include "redundant_control_edge_remove_pass.h"
 
 namespace ge {
 constexpr uint32_t kMaxIterations = 3U;
@@ -41,6 +42,7 @@ graphStatus PatternFusion::RunEarlyPasses(const ComputeGraphPtr &graph, const Gr
     GE_ASSERT_GRAPH_SUCCESS(CascadeReshapeRemovePass().Run(graph, changed));
     GE_ASSERT_GRAPH_SUCCESS(TransposeWithBroadcastEliminatePass().Run(graph, changed));
     GE_ASSERT_GRAPH_SUCCESS(CastRemovePass().Run(graph, changed));
+    GE_ASSERT_GRAPH_SUCCESS(RedundantControlEdgeRemovePass().Run(graph, changed));
     GE_ASSERT_GRAPH_SUCCESS(ConcatSliceSimplificationPass().Run(graph, graph_passes, changed));
   }
   GE_ASSERT_GRAPH_SUCCESS(graph->TopologicalSorting());
