@@ -626,7 +626,7 @@ int OpsOperatorOutput::SetRepeats(PyObject *self, PyObject *value, void *closure
     auto repeats = PyList_GetItem(value, i);
     if (PyObject_IsInstance(repeats, ge::PtrToPtr<PyTypeObject, PyObject>(&SizeExpr::type)) == 0 &&
         PyLong_Check(repeats) == 0) {
-      PyErr_Format(PyExc_ValueError, "strides on %d is not SizeExpr or long type.", i);
+      PyErr_Format(PyExc_ValueError, "repeats on %d is not SizeExpr or long type.", i);
       return -1;
     }
     operator_output->attr_holder->repeats.push_back(SizeExpr::AsSizeExpr(repeats));

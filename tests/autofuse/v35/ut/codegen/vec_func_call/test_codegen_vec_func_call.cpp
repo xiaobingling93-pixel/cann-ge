@@ -19,6 +19,7 @@
 #include "utils/api_call_factory.h"
 #include "vec_func_call.h"
 #include "../common.h"
+#include "codegen_graph_check.h"
 
 using namespace std;
 using namespace ge;
@@ -161,7 +162,7 @@ TEST(CodegenKernel, VfCall_TwoDimLoad) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
@@ -327,7 +328,7 @@ TEST(CodegenKernel, VfCall_TwoDimLoad_VFLoop) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
@@ -484,7 +485,7 @@ TEST(CodegenKernel, VfCall_TwoDim_Scalar) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
@@ -655,7 +656,7 @@ TEST(CodegenKernel, VfCall_ThreeDimLoad) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
@@ -828,7 +829,7 @@ TEST(CodegenKernel, VfCall_FiveDimLoad) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
@@ -1002,7 +1003,7 @@ TEST(CodegenKernel, VfCall_OneDim_NoOptimization) {
   store->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   codegen::Kernel kernel("test_kernel");
-  EXPECT_EQ(kernel.IsDataTypeSupported(graph), 0);
+  EXPECT_EQ(IsDataTypeSupported(graph), 0);
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);

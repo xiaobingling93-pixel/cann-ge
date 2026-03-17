@@ -599,7 +599,6 @@ class Kernel {
   Status GenerateKernelByNode(const ascir::ImplGraph &graph, std::stringstream &ss,
                               std::unordered_set<const std::string *> &kernel_file_ptr);
   Status GenerateMacro(std::stringstream &ss);
-  Status IsDataTypeSupported(const ascir::ImplGraph &graph) const;
   Status GenerateSubGraphFuncDef(const Loop *loop, std::stringstream &ss) const;
   void SetUsingAttCalcQBTSizeConfig(bool using_att_calc_qbt_size);
   void SetEnableParallelCompile(bool enable_parallel_compile);
@@ -631,14 +630,6 @@ class Kernel {
                               std::set<int64_t> &output_indices,
                               const std::unordered_map<ascir::TensorId, size_t> &output_tensorid_to_index,
                               const std::map<size_t, std::string> output_index_to_name);
-  bool ProcessRequiredInput(const ge::AscNodePtr &node, size_t index, size_t count,
-                                    std::vector<ge::DataType> &input_dtypes) const;
-  bool ProcessDynamicInput(const ge::AscNodePtr &node, size_t index, size_t count,
-                                   std::vector<ge::DataType> &input_dtypes) const;
-  bool CollectInputDtypesForOutput(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const;
-  bool CollectInputDtypesForWorkspace(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const;
-  bool CollectInputDtypes(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const;
-  bool CollectOutputDtypes(const ascir::NodeView &node, std::vector<ge::DataType> &output_dtypes) const;
   static Status GenSingleGroupKernelWithRegTilingKey(const ascir::FusedScheduledResult &fused_schedule_result,
                                                      const CodegenConfig& config, std::stringstream &ss,
                                                      std::stringstream &ss1, bool use_list_tensor);
