@@ -398,7 +398,8 @@ Status AscBackendFusionDecider::UpdateNewNodeAttr(const OpDescPtr op, const Node
       MergeFuseType(GetInterAttrs(autofuse_attr1).fuse_type, GetInterAttrs(autofuse_attr2).fuse_type);
   attr->SetAscGraph(BackendUtils::GetNodeFusedAscGraph(node1), autofuse_attr1->GetFuseType());
   GetInterAttrs(attr).fuse_type = fuse_type;
-
+  BackendUtils::SetReduceOriginalAxisInfo(GetInterAttrs(attr), GetInterAttrs(autofuse_attr1),
+                                          GetInterAttrs(autofuse_attr2));
   return SUCCESS;
 }
 

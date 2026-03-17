@@ -3169,4 +3169,20 @@ bool BackendUtils::OnlyHasTypesInAscgraph(const NodePtr &node, const std::vector
   }
   return true;
 }
+
+void BackendUtils::SetReduceOriginalAxisInfo(AutofuseInnerAttrs &attr_new, const AutofuseInnerAttrs &attr1,
+                                             const AutofuseInnerAttrs &attr2) {
+  // 目前业界暂不支持融合reduce和reduce，即融合的两个节点只有一个是reduce，后期如果要融合两个reduce则需要根据reduce节点名字保存对应的原始轴信息
+  if (!attr1.reduce_original_axis.empty()) {
+    attr_new.reduce_original_axis = attr1.reduce_original_axis;
+  } else {
+    attr_new.reduce_original_axis = attr2.reduce_original_axis;
+  }
+  if (!attr1.reduce_original_repeats.empty()) {
+    attr_new.reduce_original_repeats = attr1.reduce_original_repeats;
+  } else {
+    attr_new.reduce_original_repeats = attr2.reduce_original_repeats;
+  }
+}
+
 }  // namespace ge

@@ -72,7 +72,52 @@ inline Status InsertBroadcastBeforeNode(AscGraph &asc_graph, const NodePtr &node
   return SUCCESS;
 }
 
-inline Status OptimizedBackSteppingPro(AscGraph &asc_graph, const NodePtr &cur_node) {
+inline Status UpdateReduceNodeRepeats(const NodePtr &asc_node, TensorAttrInfo &temp_cur_attr) {
+  auto reduce_attrs = BackendUtils::GetNodeAutoFuseAttr(asc_node);
+  if (reduce_attrs == nullptr) {
+    return SUCCESS;
+  }
+
+  const auto &original_axis = reduce_attrs->GetReduceOriginalAxis();
+  const auto &original_repeats = reduce_attrs->GetReduceOriginalRepeats();
+
+  if (original_axis.empty() || original_repeats.empty()) {
+    return SUCCESS;
+  }
+
+  std::unordered_map<int64_t, size_t> original_axis_to_index;
+  for (size_t i = 0U; i < original_axis.size(); ++i) {
+    original_axis_to_index[original_axis[i]] = i;
+  }
+
+  for (size_t i = 0U; i < temp_cur_attr.axis.size(); ++i) {
+    auto it = original_axis_to_index.find(temp_cur_attr.axis[i]);
+    if (it != original_axis_to_index.end()) {
+      size_t original_index = it->second;
+      temp_cur_attr.repeats[i] = original_repeats[original_index];
+    }
+  }
+
+  return SUCCESS;
+}
+
+inline Status GetBroadcastInfoForNode(const NodePtr &cur_node, TensorAttrInfo &temp_cur_attr,
+                                      const NodePtr &peer_out_node, ViewOpAttrInfo &attr_info,
+                                      const NodePtr &asc_node) {
+  attr_info.broadcast_info.clear();
+
+  if (IsReduceNode(cur_node)) {
+    GE_ASSERT_SUCCESS(UpdateReduceNodeRepeats(asc_node, temp_cur_attr));
+  }
+
+  TensorAttrInfo temp_peer_out_attr;
+  GE_ASSERT_SUCCESS(BackendUtils::GetNodeTensorAttrInfo(peer_out_node, temp_peer_out_attr));
+  GE_ASSERT_SUCCESS(BackendUtils::FusedBackSteppingViewOpBroadcast(temp_cur_attr, temp_peer_out_attr, attr_info));
+
+  return SUCCESS;
+}
+
+inline Status OptimizedBackSteppingPro(AscGraph &asc_graph, const NodePtr &cur_node, const NodePtr &asc_node) {
   TensorAttrInfo temp_cur_attr;
   GE_ASSERT_SUCCESS(BackendUtils::GetNodeTensorAttrInfo(cur_node, temp_cur_attr));
   std::vector<NodePtr> peer_out_nodes;
@@ -82,8 +127,7 @@ inline Status OptimizedBackSteppingPro(AscGraph &asc_graph, const NodePtr &cur_n
     TensorAttrInfo temp_peer_out_attr;
     GE_ASSERT_SUCCESS(BackendUtils::GetNodeTensorAttrInfo(peer_out_node, temp_peer_out_attr));
     ViewOpAttrInfo attr_info;
-    // 不存在broadcast直连reduce并且对同一根轴做view操作的场景，即temp_peer_out_attr和temp_cur_attr的repeat比较必能推出broadcast
-    GE_ASSERT_SUCCESS(BackendUtils::FusedBackSteppingViewOpBroadcast(temp_cur_attr, temp_peer_out_attr, attr_info));
+    GE_ASSERT_SUCCESS(GetBroadcastInfoForNode(cur_node, temp_cur_attr, peer_out_node, attr_info, asc_node));
 
     if (!attr_info.broadcast_info.empty()) {
       std::pair<int32_t, ViewOpAttrInfo> input_index_to_view_info(index, attr_info);
@@ -126,7 +170,7 @@ inline Status OptimizedFallbackPro(AscGraph &asc_graph, [[maybe_unused]] const N
     // 2.1、考虑当前节点多输入，要根据输入index来区分是哪一个输入需要插入broadcast
     // 3、在当前节点前面插入1个或多个broadcast
     // 4、依赖cse消除输出多引用插入的多与broadcast，后续的scalar反推可以删除了
-    GE_ASSERT_SUCCESS(OptimizedBackSteppingPro(asc_graph, node));
+    GE_ASSERT_SUCCESS(OptimizedBackSteppingPro(asc_graph, node, asc_node));
   }
   // 5、 给ascGraph的节点按照topo id排序，补轴以及后端依赖排序后的节点顺序
   asc_adapt::TopologicalSorting(AscGraphUtils::GetComputeGraph(asc_graph));

@@ -32,6 +32,7 @@ struct TensorInfo {
 };
 
 using AdapterFunc = std::function<Status(AscGraph &, const NodePtr &)>;
+const std::set<std::string> kReduceNodeTypes = {"Sum", "Mean", "Max", "Min", "Prod", "Any", "All"};
 
 inline bool IsGeType() {
   const auto &config = autofuse::AutoFuseConfig::Config().GetFusionStrategySolver();
@@ -514,6 +515,41 @@ inline bool IsCubeRelatedAscNode(const NodePtr &node) {
     }
   }
   return false;
+}
+
+inline bool IsReduceNode(const NodePtr &node) {
+  return kReduceNodeTypes.find(node->GetType()) != kReduceNodeTypes.end();
+}
+
+inline Status SaveReduceOriginalAxisToFuseAttrPro(AscGraph &asc_graph, [[maybe_unused]] const NodePtr &asc_node) {
+  auto autofuse_attr = BackendUtils::GetNodeAutoFuseAttr(asc_node);
+  GE_ASSERT_NOTNULL(autofuse_attr);
+  if (!autofuse_attr->HasFuseType(loop::FuseType::kReduction)) {
+    GELOGI("graph %s fuse type is not reduce, don't need to save axis between broadcast reduce .",
+           asc_graph.GetName().c_str());
+    return SUCCESS;
+  }
+  for (const auto &node : asc_graph.GetAllNodes()) {
+    if (IsReduceNode(node)) {
+      NodePtr reduce_input_node;
+      GE_ASSERT_SUCCESS(asc_adapt::GetPeerOutNode(node, reduce_input_node, 0));
+      TensorAttrInfo reduce_input_node_attr;
+      GE_ASSERT_SUCCESS(BackendUtils::GetNodeTensorAttrInfo(reduce_input_node, reduce_input_node_attr));
+      autofuse_attr->SetReduceOriginalAxis(reduce_input_node_attr.axis);
+      autofuse_attr->SetReduceOriginalRepeats(reduce_input_node_attr.repeats);
+      GELOGI("graph %s has broadcast linkto reduce, save axis(axis:%s repeat:%s) between broadcast reduce .",
+             asc_graph.GetName().c_str(), AutofuseUtils::VectorToStr(autofuse_attr->GetReduceOriginalAxis()).c_str(),
+             AutofuseUtils::VectorToStr(autofuse_attr->GetReduceOriginalRepeats()).c_str());
+    }
+  }
+  return SUCCESS;
+}
+
+// 如果broadcast直连reduce，需要保存reduce前的轴信息，用于后处理反推broadcast
+inline Status SaveReduceOriginalAxisToFuseAttr(const ComputeGraphPtr &graph) {
+  GE_ASSERT_SUCCESS(
+      ProcessAscBackendNodes(graph, SaveReduceOriginalAxisToFuseAttrPro, "save_axis_between_broadcast_reduce"));
+  return SUCCESS;
 }
 }  // namespace asc_adapt
 }  // namespace ge

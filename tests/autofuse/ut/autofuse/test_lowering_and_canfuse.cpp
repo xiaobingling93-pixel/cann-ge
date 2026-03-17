@@ -1165,4 +1165,169 @@ TEST_F(LoweringAndCanfuseUT, SliceAndElemAndConcat) {
   EXPECT_EQ(post_processor.Do(cg), SUCCESS);
   SetCurShapeEnvContext(nullptr);
 }
+
+void VerifyBroadcastNode(const NodePtr &broadcast_node, const Symbol &s0, const Symbol &s1, const Symbol &s2) {
+  NodePtr broadcast_input_node;
+  ASSERT_EQ(asc_adapt::GetPeerOutNode(broadcast_node, broadcast_input_node, 0), SUCCESS);
+  ASSERT_EQ(broadcast_input_node->GetType(), "Broadcast");
+
+  GeTensorDescPtr broadcast_tensor_desc;
+  ASSERT_EQ(asc_adapt::GetOutputTensorDesc(broadcast_node, broadcast_tensor_desc), SUCCESS);
+  auto broadcast_attr = broadcast_tensor_desc->GetOrCreateAttrsGroup<AscTensorAttr>();
+  ASSERT_NE(broadcast_attr, nullptr);
+  ASSERT_EQ(broadcast_attr->repeats.size(), 3);
+  ASSERT_EQ(broadcast_attr->repeats[0], s0);
+  ASSERT_EQ(broadcast_attr->repeats[1], s1);
+  ASSERT_EQ(broadcast_attr->repeats[2], s2);
+}
+
+void VerifyReduceNode(const NodePtr &reduce_node, const Symbol &ONE, const Symbol &s1, const Symbol &s2) {
+  NodePtr reduce_input_node;
+  ASSERT_EQ(asc_adapt::GetPeerOutNode(reduce_node, reduce_input_node, 0), SUCCESS);
+  ASSERT_EQ(reduce_input_node->GetType(), "Broadcast");
+
+  GeTensorDescPtr reduce_tensor_desc;
+  ASSERT_EQ(asc_adapt::GetOutputTensorDesc(reduce_node, reduce_tensor_desc), SUCCESS);
+  auto reduce_attr = reduce_tensor_desc->GetOrCreateAttrsGroup<AscTensorAttr>();
+  ASSERT_NE(reduce_attr, nullptr);
+  ASSERT_EQ(reduce_attr->repeats.size(), 3);
+  ASSERT_EQ(reduce_attr->repeats[0], ONE);
+  ASSERT_EQ(reduce_attr->repeats[1], s1);
+  ASSERT_EQ(reduce_attr->repeats[2], s2);
+}
+
+void VerifyAscBackendNode(const NodePtr &node, size_t &broadcast_cnt, bool &found_reduce, 
+                          NodePtr &reduce_node, NodePtr &broadcast_node) {
+  cout << kAscBackendType << "    " << node->GetName() << endl;
+  const auto &op_desc = node->GetOpDesc();
+  EXPECT_NE(op_desc, nullptr);
+  const auto attr = op_desc->GetAttrsGroup<AutoFuseAttrs>();
+  EXPECT_NE(attr, nullptr);
+  EXPECT_NE(attr->GetAscGraph(), nullptr);
+  for (auto asc_node : AscGraphUtils::GetComputeGraph(*(attr->GetAscGraph()))->GetDirectNode()) {
+    asc_adapt::TensorInfo tensor_desc;
+    ASSERT_EQ(asc_adapt::GetTensorInfo(asc_node, tensor_desc), SUCCESS);
+    cout << "ascgraph node: " << asc_node->GetName() << AutofuseUtils::VectorToStr(tensor_desc.repeats).c_str() << endl;
+    if (asc_node->GetType() == "Sum") {
+      found_reduce = true;
+      reduce_node = asc_node;
+    }
+    if (asc_node->GetType() == "Broadcast") {
+      broadcast_cnt++;
+      broadcast_node = asc_node;
+    }
+  }
+}
+
+void VerifyBroadcastAndReduceNodes(const ComputeGraphPtr &cg, const Symbol &s0, const Symbol &s1, const Symbol &s2,
+                                     const Symbol &ONE) {
+  size_t broadcast_cnt = 0;
+  bool found_reduce = false;
+  NodePtr reduce_node = nullptr;
+  NodePtr broadcast_node = nullptr;
+
+  for (const auto &node : cg->GetDirectNode()) {
+    cout << node->GetName() << endl;
+    if (node->GetType() == kAscBackendType) {
+      VerifyAscBackendNode(node, broadcast_cnt, found_reduce, reduce_node, broadcast_node);
+
+      ASSERT_TRUE(found_reduce);
+      ASSERT_EQ(broadcast_cnt, 3);
+      ASSERT_NE(broadcast_node, nullptr);
+
+      VerifyBroadcastNode(broadcast_node, s0, s1, s2);
+      VerifyReduceNode(reduce_node, ONE, s1, s2);
+    }
+  }
+}
+
+void RunCommonProcessing(const ComputeGraphPtr &cg) {
+  ge::AscIrLowerer lowerer;
+  ASSERT_EQ(lowerer.Lowering(cg), GRAPH_SUCCESS);
+  ASSERT_EQ(asc_adapt::GeFallback(cg), GRAPH_SUCCESS);
+  ASSERT_EQ(asc_adapt::SaveReduceOriginalAxisToFuseAttr(cg), GRAPH_SUCCESS);
+  FusionStrategySolver fusion_strategy_solver;
+  FusionDeciderRegistry::Instance().Register(std::unique_ptr<FusionDecider>(new AscBackendFusionDecider()));
+  EXPECT_EQ(fusion_strategy_solver.Fuse(cg), SUCCESS);
+  ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
+  AscBackendPostProcessor post_processor;
+  EXPECT_EQ(post_processor.Do(cg), SUCCESS);
+}
+
+// reduce不支持后融合带broadcast的elewise,不经过canfuse融合更新Fuseattr的reduce前的轴信息验证
+TEST_F(LoweringAndCanfuseUT, BroadcastWithReduceInSameAxis) {
+  [this]() {
+    auto data0 = es_graph_->CreateInput(0, "data0", nullptr);
+    data0.SetSymbolShape({"1", "1", "1"});
+    auto data1 = es_graph_->CreateInput(1, "data1", nullptr);
+    data1.SetSymbolShape({"s0", "s1", "s2"});
+    auto broadcast = es::BroadcastTo(data0, data1);
+    broadcast.SetSymbolShape({"s0", "s1", "s2"});
+    auto reduce = es::ReduceSumD(broadcast, {0}, true);
+    reduce.SetSymbolShape({"1", "s1", "s2"});
+    auto add = es::Add(reduce, data1);
+    add.SetSymbolShape({"s0", "s1", "s2"});
+    es_graph_->SetOutput(add, 0);
+  }();
+  auto shape_env = ShapeEnvAttr(ShapeEnvSetting(false, DynamicMode::kDynamic));
+  SetCurShapeEnvContext(&shape_env);
+  auto s0 = shape_env.CreateSymbol(16, MakeShared<GraphInputShapeSourceStub>(0, 0));
+  auto s1 = shape_env.CreateSymbol(32, MakeShared<GraphInputShapeSourceStub>(0, 1));
+  auto s2 = shape_env.CreateSymbol(64, MakeShared<GraphInputShapeSourceStub>(0, 2));
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  RunCommonProcessing(cg);
+  SetCurShapeEnvContext(nullptr);
+  auto ONE = Symbol(1);
+  auto ZERO = Symbol(0);
+
+  VerifyBroadcastAndReduceNodes(cg, s0, s1, s2, ONE);
+}
+
+// reduce后融合纯elewise（不带broadcast）在canfuse做融合后的Fuseattr是否有reduce前的轴信息保存验证
+TEST_F(LoweringAndCanfuseUT, BroadcastWithReduceInSameAxis2) {
+  [this]() {
+    auto data0 = es_graph_->CreateInput(0, "data0", nullptr);
+    data0.SetSymbolShape({"1", "1", "1"});
+    auto data1 = es_graph_->CreateInput(1, "data1", nullptr);
+    data1.SetSymbolShape({"s0", "s1", "s2"});
+    auto data2 = es_graph_->CreateInput(2, "data2", nullptr);
+    data2.SetSymbolShape({"1", "s1", "s2"});
+    auto broadcast = es::BroadcastTo(data0, data1);
+    broadcast.SetSymbolShape({"s0", "s1", "s2"});
+    auto reduce = es::ReduceSumD(broadcast, {0}, true);
+    reduce.SetSymbolShape({"1", "s1", "s2"});
+    auto add = es::Add(reduce, data2);
+    add.SetSymbolShape({"1", "s1", "s2"});
+    es_graph_->SetOutput(add, 0);
+  }();
+  auto shape_env = ShapeEnvAttr(ShapeEnvSetting(false, DynamicMode::kDynamic));
+  SetCurShapeEnvContext(&shape_env);
+  auto s0 = shape_env.CreateSymbol(16, MakeShared<GraphInputShapeSourceStub>(0, 0));
+  auto s1 = shape_env.CreateSymbol(32, MakeShared<GraphInputShapeSourceStub>(0, 1));
+  auto s2 = shape_env.CreateSymbol(64, MakeShared<GraphInputShapeSourceStub>(0, 2));
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  ge::AscIrLowerer lowerer;
+  ASSERT_EQ(lowerer.Lowering(cg), GRAPH_SUCCESS);
+  for (const auto &node : cg->GetDirectNode()) {
+    cout << "lowering:" << node->GetName() << endl;
+  }
+  ASSERT_EQ(asc_adapt::GeFallback(cg), GRAPH_SUCCESS);
+  ASSERT_EQ(asc_adapt::SaveReduceOriginalAxisToFuseAttr(cg), GRAPH_SUCCESS);
+  FusionStrategySolver fusion_strategy_solver;
+  FusionDeciderRegistry::Instance().Register(std::unique_ptr<FusionDecider>(new AscBackendFusionDecider()));
+  EXPECT_EQ(fusion_strategy_solver.Fuse(cg), SUCCESS);
+  ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
+  AscBackendPostProcessor post_processor;
+  EXPECT_EQ(post_processor.Do(cg), SUCCESS);
+  SetCurShapeEnvContext(nullptr);
+  auto ONE = Symbol(1);
+  auto ZERO = Symbol(0);
+
+  VerifyBroadcastAndReduceNodes(cg, s0, s1, s2, ONE);
+}
+
 }  // namespace ge

@@ -147,11 +147,13 @@ ge::Status Autofuser::Fuse(const ge::ComputeGraphPtr &graph) const {
           std::chrono::duration_cast<std::chrono::microseconds>(end_lowering - start_lowering).count());
   GE_DUMP(graph, "AutoFuser_AfterLowering");
 
+  AutofuseUtils::ClearUniqueNumber();
+  // fuse前做反推，保证反推后的ascgraph跟torch一致
   GE_ASSERT_SUCCESS(asc_adapt::GeFallback(graph));
+  GE_ASSERT_SUCCESS(asc_adapt::SaveReduceOriginalAxisToFuseAttr(graph));
   bool disable_can_fuse = HasUnsupportedControlOp(graph);
   if (!disable_can_fuse) {
     ge::FusionStrategySolver fusion_strategy_solver(counter_);
-    // fuse前做反推，保证反推后的ascgraph跟torch一致，参照torch实现反推transpose和broadcast
     GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(graph));
     GE_DUMP(graph, "AutoFuser_AfterFusionStrategySolve");
   } else {
@@ -180,6 +182,8 @@ ge::Status Autofuser::FuseLite(const ge::ComputeGraphPtr &graph) const {
       std::numeric_limits<uint32_t>::max();
   // torch fusegraph 没有输入输出信息，后端融合需要使用，此处补填
   GE_ASSERT_SUCCESS(InitFuseGraphOpTensor(graph));
+  AutofuseUtils::ClearUniqueNumber();
+  GE_ASSERT_SUCCESS(asc_adapt::SaveReduceOriginalAxisToFuseAttr(graph));
   ge::FusionStrategySolver fusion_strategy_solver;
   GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(graph));
   GE_DUMP(graph, "AutoFuser_AfterFusionStrategySolve");
