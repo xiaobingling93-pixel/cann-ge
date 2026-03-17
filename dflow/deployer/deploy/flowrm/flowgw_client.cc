@@ -155,7 +155,7 @@ Status FlowGwClient::ToVisibleDeviceId(const std::vector<int32_t> &logical_devic
                                        std::vector<int32_t> &visible_device_ids) {
   for (auto logical_device_id : logical_device_ids) {
     int32_t visible_device_id = logical_device_id;
-    DF_CHK_ACL_RET(aclrtGetUserDevIdByLogicDevId(logical_device_id, &visible_device_id));
+    DF_CHK_ACL_RET(aclrtGetLogicDevIdByUserDevId(logical_device_id, &visible_device_id));
     visible_device_ids.emplace_back(visible_device_id);
   }
   return SUCCESS;

@@ -114,6 +114,7 @@ public:
   virtual uint32_t aclrtGetDeviceIdFromExceptionInfo(const aclrtExceptionInfo *info);
   virtual uint32_t aclrtGetErrorCodeFromExceptionInfo(const aclrtExceptionInfo *info);
   virtual aclError aclrtGetUserDevIdByLogicDevId(const int32_t logicDevId, int32_t *const userDevid);
+  virtual aclError aclrtGetLogicDevIdByUserDevId(const int32_t userDevid, int32_t *const logicDevId);
   virtual aclError aclrtSetTsDevice(aclrtTsId tsId);
   virtual aclError aclrtGetDeviceCount(uint32_t *count);
   virtual aclError aclrtGetDeviceCapability(int32_t deviceId, aclrtDevFeatureType devFeatureType, int32_t *value);
