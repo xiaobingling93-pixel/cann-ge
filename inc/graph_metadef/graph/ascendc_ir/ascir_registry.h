@@ -176,6 +176,11 @@ class AscIrCodegen {
     }
     return conversion_dtype;
   }
+
+  virtual bool IsNodeValid(const ge::AscNode &node) const {
+    (void)node;
+    return true;
+  }
 };
 
 class AscIrAtt {

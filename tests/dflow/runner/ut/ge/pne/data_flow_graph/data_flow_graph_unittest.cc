@@ -26,7 +26,7 @@ using namespace testing;
 namespace ge {
 class DataFlowGraphTest : public Test {
  protected:
-  void SetUp() override {
+  static void SetUpTestSuite() {
     std::string cmd = "mkdir -p temp; cd temp; touch libtest.so";
     (void) system(cmd.c_str());
     std::ofstream cmakefile("./temp/CMakeLists.txt");
@@ -43,6 +43,12 @@ class DataFlowGraphTest : public Test {
       cmakefile << "unset(CMAKE_C_COMPILER_FORCED)\n";
       cmakefile << "unset(CMAKE_CXX_COMPILER_FORCED)\n";
     }
+  }
+  static void TearDownTestSuite() {
+    std::string cmd = "rm -rf temp";
+    (void) system(cmd.c_str());
+  }
+  void SetUp() override {
     {
       auto &global_options_mutex = GetGlobalOptionsMutex();
       const std::lock_guard<std::mutex> lock(global_options_mutex);
@@ -52,8 +58,6 @@ class DataFlowGraphTest : public Test {
     }
   }
   void TearDown() override {
-    std::string cmd = "rm -rf temp";
-    (void) system(cmd.c_str());
   }
 };
 

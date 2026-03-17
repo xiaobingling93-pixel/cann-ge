@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   // Init running dir env
   DirEnv::GetInstance().InitDir();
 
-  ReInitGe();
+  InitGe();
 
   EG_NS::GraphEasyExecutor executor;
   EG_NS::GraphLayout::GetInstance().Config(executor, nullptr);

@@ -1116,7 +1116,7 @@ cd -
     (void) system(cmd.c_str());
     (void)system("rm -fr ./temp_host_udf");
     (void)system("rm -fr ./build_cache_dir");
-    GEFinalize();
+    dflow::DFlowFinalize();
     unsetenv("RESOURCE_CONFIG_PATH");
   }
 

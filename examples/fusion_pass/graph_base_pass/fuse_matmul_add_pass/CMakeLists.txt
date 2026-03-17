@@ -59,9 +59,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ge_compiler
     -Wl,--as-needed
 )
-set(PASS_SO_DIR fusion_passes) # 可根据实际修改
+set(FUSION_PASS_DIR fusion_passes) # 可根据实际修改
 
 install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${ASCEND_PATH}/opp/vendors/${PASS_SO_DIR}/custom_fusion_passes
+    LIBRARY DESTINATION ${ASCEND_PATH}/opp/vendors/${FUSION_PASS_DIR}/custom_fusion_passes
 )
 install(CODE "message(STATUS \"so file of ${PROJECT_NAME} is ready！\")")

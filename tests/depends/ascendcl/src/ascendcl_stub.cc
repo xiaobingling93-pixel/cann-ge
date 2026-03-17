@@ -765,6 +765,11 @@ aclError AclRuntimeStub::aclrtGetUserDevIdByLogicDevId(const int32_t logicDevId,
   return ACL_ERROR_NONE;
 }
 
+aclError AclRuntimeStub::aclrtGetLogicDevIdByUserDevId(const int32_t userDevid, int32_t *const logicDevId) {
+  *logicDevId = 0;
+  return ACL_ERROR_NONE;
+}
+
 aclError AclRuntimeStub::aclrtGetDeviceCount(uint32_t *count) {
   *count = 1U;
   return ACL_SUCCESS;
@@ -1543,6 +1548,10 @@ uint32_t aclrtGetErrorCodeFromExceptionInfo(const aclrtExceptionInfo *info) {
 
 aclError aclrtGetUserDevIdByLogicDevId(const int32_t logicDevId, int32_t *const userDevid) {
   return ge::AclRuntimeStub::GetInstance()->aclrtGetUserDevIdByLogicDevId(logicDevId, userDevid);
+}
+
+aclError aclrtGetLogicDevIdByUserDevId(const int32_t userDevid, int32_t *const logicDevId) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtGetLogicDevIdByUserDevId(userDevid, logicDevId);
 }
 
 aclError aclrtSetOpExecuteTimeOutWithMs(uint32_t timeout) {

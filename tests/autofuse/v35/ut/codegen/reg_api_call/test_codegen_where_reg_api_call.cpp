@@ -919,7 +919,7 @@ TEST(WhereRegApiCallTest, WhereRegApiCall_Scalar_x2x3_throwfor) {
     EXPECT_EQ(call.Generate(tpipe, current_axis, result), 0);
     std::cout << result << std::endl;
     EXPECT_EQ(result, std::string{
-      "Where<true, true, 2>(local_3[0], local_0[0], local_blk_tensor_of_local_1[0], local_blk_tensor_of_local_2[0], {static_cast<uint16_t>(t->s1), static_cast<uint16_t>(t->s2)}, {static_cast<uint16_t>(t->s2), static_cast<uint16_t>(1)}, {static_cast<uint16_t>((2 * t->s2)), static_cast<uint16_t>(1)}, {static_cast<uint16_t>(t->s2), static_cast<uint16_t>(1)});\n"
+      "Where<true, true>(local_3[0], local_0[0], local_blk_tensor_of_local_1[0], local_blk_tensor_of_local_2[0], {static_cast<uint16_t>(t->s1), static_cast<uint16_t>(t->s2)}, {static_cast<uint16_t>(t->s2), static_cast<uint16_t>(1)}, {static_cast<uint16_t>((2 * t->s2)), static_cast<uint16_t>(1)}, {static_cast<uint16_t>(t->s2), static_cast<uint16_t>(1)});\n"
     });
 }
 

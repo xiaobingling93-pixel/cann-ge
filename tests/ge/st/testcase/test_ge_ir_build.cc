@@ -1902,7 +1902,7 @@ TEST_F(GeIrBuildTest, TestSocVersionCheck_ok) {
   std::map<AscendString, AscendString> init_options;
   init_options[ge::OPTION_HOST_ENV_OS] = "linux";
   init_options[ge::OPTION_HOST_ENV_CPU] = "x86_64";
-  init_options[ge::configure_option::SOC_VERSION] = "Ascend910";
+  init_options[ge::configure_option::SOC_VERSION] = "";
   EXPECT_EQ(aclgrphBuildInitialize(init_options), SUCCESS);
 
   auto graph = GraphFactory::SingeOpGraph2();
@@ -1923,7 +1923,7 @@ TEST_F(GeIrBuildTest, TestSocVersionCheck_ok) {
   std::string arch_type;
   AttrUtils::GetStr(*ge_model, "soc_version", soc_version);
   AttrUtils::GetStr(*ge_model, "arch_type", arch_type);
-  EXPECT_EQ(soc_version, "Ascend910");
+  EXPECT_EQ(soc_version, "");
   EXPECT_EQ(arch_type, "0");
   ReInitGe();
   dlog_setlevel(GE_MODULE_NAME, 3, 0);

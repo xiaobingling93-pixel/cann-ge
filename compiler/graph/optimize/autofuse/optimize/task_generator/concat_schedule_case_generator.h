@@ -80,6 +80,7 @@ class ConcatFusionCaseGenerator : public FusionCaseGenerator {
   static bool IsSmallBlock(const ge::AscNodePtr &concat_node, size_t concat_dim);
   static Status ReconnectIfShareSameAncestor(const std::unordered_map<std::string, ge::NodePtr> &name_to_node, const ge::InDataAnchorPtr &in_anchor);
   static Status AddExtraShapeEnv(const ge::AscNodePtr &concat_node, size_t concat_dim);
+  Status PrepareForModifyingGraph(const ge::AscNodePtr &concat_node);
 
   std::vector<ge::AscNodePtr> post_concat_nodes_;
   std::set<ge::AscNodePtr> reachable_load_nodes_;;

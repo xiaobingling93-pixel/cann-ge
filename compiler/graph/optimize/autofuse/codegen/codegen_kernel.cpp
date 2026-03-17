@@ -27,6 +27,7 @@
 #include "ascendc_api_registry.h"
 #include "optimize/platform/platform_factory.h"
 #include "common/platform_context.h"
+#include "codegen_graph_check.h"
 
 using namespace std;
 using namespace ge::ops;
@@ -223,13 +224,8 @@ Status Tensor::GenDuplicateValueOfUbScalar(std::string &result) const {
 
   std::string event_id = this->name + "_event_id";
   ss << "AscendC::PipeBarrier<PIPE_ALL>();" << std::endl;
-  if (this->need_alloc_local_blk_tensor_from_tbuf) {
-    ss << "Duplicate(" <<  this->name << "_1" << "[0], "
-       << ub_scalar_name << ", " << "32/sizeof(" << dtype_name <<"));" << std::endl;
-  } else {
-    ss << "Duplicate(" <<  this->name << "[0], "
-       << ub_scalar_name << ", " << "32/sizeof(" << dtype_name <<"));" << std::endl;
-  }
+  ss << "Duplicate(" <<  this->name << "[0], "
+     << ub_scalar_name << ", " << "32/sizeof(" << dtype_name <<"));" << std::endl;
   ss << "AscendC::PipeBarrier<PIPE_V>();" << std::endl;
   result = ss.str();
   return ge::SUCCESS;
@@ -995,19 +991,8 @@ static bool IsOutputOnlyLink2VFNode(const ascir::TensorView &tensor) {
   return true;
 }
 
-Status Kernel::ParseOptimizeInfo(const ascir::NodeView &node, const ascir::TensorView &tensor) {
-  // 如果是reduce节点，强制设置是非ub_scalar场景
-  std::set<std::string> force_non_ub_scalar = {Max::Type,  Sum::Type, Min::Type, Mean::Type,
-                                               Prod::Type, Any::Type, All::Type};
-  ascir::TensorId id = tensor.attr.mem.tensor_id;
-  auto tensor_ptr = this->tpipe.GetTensor(id);
-  GE_CHK_BOOL_RET_STATUS(tensor_ptr != nullptr, ge::FAILED, "Check[Param] tensor_ptr is nullptr");
-  auto &t = *tensor_ptr;
-  t.is_ub_scalar = (force_non_ub_scalar.count(node->GetType()) > 0U) ? false : t.is_ub_scalar;
-  // 遍历下游节点不是白名单, 则返回, 下游节点是白名单
-  GELOGD("node:%s, tensor_id:%d, is_ub_scalar:%d", node->GetNamePtr(), static_cast<int32_t>(id),
-         static_cast<int32_t>(t.is_ub_scalar));
-  bool is_all_link_vf = IsOutputOnlyLink2VFNode(tensor);
+Status Kernel::ParseUbScalarOptimizationInfo(const ascir::NodeView& node, Tensor& t, ascir::TensorId id,
+                                             bool is_all_link_vf) {
   if (t.is_ub_scalar && !ge::ops::IsOps<ge::ascir_op::Scalar>(node) && !is_all_link_vf) {
     // 下游节点有其中之一输出tensor不是ub_scalar, 且下游节点支持scalar输入, 则本tensor需要生成get value
     bool a_tenor_of_next_node_is_not_ub_scalar = false;
@@ -1020,7 +1005,6 @@ Status Kernel::ParseOptimizeInfo(const ascir::NodeView &node, const ascir::Tenso
         auto next_node = std::dynamic_pointer_cast<ge::AscNode>(peer_input->GetOwnerNode());
         t.need_duplicate_value_of_ub_scalar = IsSupportBlkTensorInput(next_node) ?
           true : t.need_duplicate_value_of_ub_scalar;
-        t.need_alloc_local_blk_tensor_from_tbuf = IsOps<Load>(node) ? true : t.need_alloc_local_blk_tensor_from_tbuf;
         bool is_ub_scalar;
         GE_CHK_STATUS_RET(OutputTensorIsUbScalar(next_node, is_ub_scalar));
         if (!is_ub_scalar) {
@@ -1034,14 +1018,15 @@ Status Kernel::ParseOptimizeInfo(const ascir::NodeView &node, const ascir::Tenso
         break;
       }
     }
-    if (t.need_alloc_local_blk_tensor_from_tbuf) {
-      this->tpipe.need_alloc_local_blk_tensor_tensors.emplace_back(id);
-    }
     t.need_gen_get_value_of_ub_scalar = a_tenor_of_next_node_is_not_ub_scalar && is_next_node_support_ub_scalar;
     GELOGD("node:%s, tensor_id:%d, is_ub_scalar:%d, need_gen_get_value_of_ub_scalar:%d", node->GetNamePtr(),
            static_cast<int32_t>(id), static_cast<int32_t>(t.is_ub_scalar),
            static_cast<int32_t>(t.need_gen_get_value_of_ub_scalar));
   }
+  return ge::SUCCESS;
+}
+
+Status Kernel::JudgeIsLoadLinkStoreAndVec(const ascir::NodeView& node, Tensor& t, ascir::TensorId id) {
   // todo: 解决load多引用场景，被store, vec 同时引用的缺少mte3到mte2的同步的问题,
   // 临时方案，从这里解析下是否该场景
   if ((node->attr.api.compute_type == ascir::ComputeType::kComputeLoad) && (!IsOps<Gather>(node))) {
@@ -1059,7 +1044,26 @@ Status Kernel::ParseOptimizeInfo(const ascir::NodeView &node, const ascir::Tenso
     GELOGD("node:%s, tensor_id:%d, is_load_link_store_and_vec:%d", node->GetNamePtr(), static_cast<int32_t>(id),
            static_cast<int32_t>(t.is_load_link_store_and_vec));
   }
+  return ge::SUCCESS;
+}
+
+Status Kernel::ParseOptimizeInfo(const ascir::NodeView &node, const ascir::TensorView &tensor) {
+  // 如果是reduce节点，强制设置是非ub_scalar场景
+  std::set<std::string> force_non_ub_scalar = {Max::Type,  Sum::Type, Min::Type, Mean::Type,
+                                               Prod::Type, Any::Type, All::Type};
+  ascir::TensorId id = tensor.attr.mem.tensor_id;
+  auto tensor_ptr = this->tpipe.GetTensor(id);
+  GE_CHK_BOOL_RET_STATUS(tensor_ptr != nullptr, ge::FAILED, "Check[Param] tensor_ptr is nullptr");
+  auto &t = *tensor_ptr;
+  t.is_ub_scalar = (force_non_ub_scalar.count(node->GetType()) > 0U) ? false : t.is_ub_scalar;
+  // 遍历下游节点不是白名单, 则返回, 下游节点是白名单
+  GELOGD("node:%s, tensor_id:%d, is_ub_scalar:%d", node->GetNamePtr(), static_cast<int32_t>(id),
+         static_cast<int32_t>(t.is_ub_scalar));
+  bool is_all_link_vf = IsOutputOnlyLink2VFNode(tensor);
+  GE_CHK_STATUS_RET(ParseUbScalarOptimizationInfo(node, t, id, is_all_link_vf));
+  GE_CHK_STATUS_RET(JudgeIsLoadLinkStoreAndVec(node, t, id));
   ParseScalarNeedGenBlkTensors(node, id);
+
   return ge::SUCCESS;
 }
 
@@ -1391,19 +1395,6 @@ Status TPipe::BlkTensorAllocAndInit(std::string &result) const {
        << "sizeof(" << tensor_ptr->type << ")));" << std::endl;
     ss << "AscendC::PipeBarrier<PIPE_V>();" << std::endl;
   }
-  // 新增 tbuf:xx_tbuf_1，覆盖 load + ubscalar 场景，作为 duplicate 的入参
-  for (auto &id : this->need_alloc_local_blk_tensor_tensors) {
-    auto tensor_ptr = this->GetTensor(id);
-    std::string dtype_name;
-    GE_CHK_STATUS_RET(Tensor::DtypeName(tensor_ptr->dtype, dtype_name), "Codegen get data type:%d failed",
-                      static_cast<int32_t>(tensor_ptr->dtype));
-    GE_CHK_BOOL_RET_STATUS(tensor_ptr != nullptr, ge::FAILED, "BlkTensorAllocAndInit need_alloc_local_blk_tensor_tensors failed");
-    std::string ubscalar_load_tbuf_name = tensor_ptr->name + "_tbuf_1";
-    std::string scalar_local_blk_tensor_name =  tensor_ptr->name + "_1";
-    ss << "TBuf<TPosition::VECCALC> " << ubscalar_load_tbuf_name << ";" << std::endl;
-    ss << "tpipe.InitBuffer(" << ubscalar_load_tbuf_name << ", 32);" << std::endl;
-    ss << tensor_ptr->type << scalar_local_blk_tensor_name << " = " << ubscalar_load_tbuf_name << ".Get<" << dtype_name << ">();" << std::endl;
-  }
   result = ss.str();
   return ge::SUCCESS;
 }
@@ -1704,13 +1695,20 @@ Status ApiCall::PreProcess(const TPipe &tpipe, const std::vector<ascir::AxisId> 
                            const std::vector<std::reference_wrapper<const Tensor>> &outputs,
                            std::string &result) const {
   stringstream ss;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    const auto &ub = outputs[i].get();
-    if (ub.is_ub_scalar && !current_axis.empty()) {
-      const auto loop_axis = tpipe.tiler.GetAxis(current_axis.back());
-      GELOGD("t_name:%s, loop_axis_name:%s", ub.Str().c_str(), loop_axis.Str().c_str());
+  bool is_all_outputs_ub_scalar = std::all_of(outputs.begin(), outputs.end(),
+      [](const std::reference_wrapper<const Tensor> &t) { return t.get().is_ub_scalar; });
+  bool is_any_output_need_two_loop = std::any_of(outputs.begin(), outputs.end(),
+      [](const std::reference_wrapper<const Tensor> &t) { return t.get().alloc_type == ge::AllocType::kAllocTypeQueue &&
+          t.get().que_buf_num_value == 2 && t.get().need_gen_get_value_of_ub_scalar; });
+  if (is_all_outputs_ub_scalar && !current_axis.empty()) {
+    const auto loop_axis = tpipe.tiler.GetAxis(current_axis.back());
+    // 如果当前节点输出tensor是ub_scalar，且ub的queue buffer num是2，且需要生成ub_scalar的get value代码
+    // 则代表存在一个输出节点的输出tensor不是ub_scalar，此时下一个节点的计算不在if (loop_axis < 1)的逻辑包含中
+    // 而下一个节点依赖当前节点的输出tensor，因此需要改成if (loop_axis < 2)，保证DOUBLE_BUFFER流程中两个buffer都被计算
+    if (is_any_output_need_two_loop) {
+      ss << "if (" << loop_axis << " < 2) {" << std::endl;
+    } else {
       ss << "if (" << loop_axis << " < 1) {" << std::endl;
-      break;
     }
   }
 
@@ -1723,7 +1721,8 @@ Status ApiCall::PostProcess(const TPipe &tpipe, const std::vector<ascir::AxisId>
                             std::string &result) const {
   (void)tpipe;
   stringstream ss;
-  bool first_ub_scalar = true;
+  bool is_all_outputs_ub_scalar = std::all_of(outputs.begin(), outputs.end(),
+      [](const std::reference_wrapper<const Tensor> &t) { return t.get().is_ub_scalar; });
   bool first_gen_get_value = true;
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &ub = outputs[i].get();
@@ -1756,9 +1755,8 @@ Status ApiCall::PostProcess(const TPipe &tpipe, const std::vector<ascir::AxisId>
           ss << tmp;
         }
       }
-      if (first_ub_scalar) {
+      if (is_all_outputs_ub_scalar) {
         ss << "}" << std::endl;
-        first_ub_scalar = false;
       }
     }
   }
@@ -3159,157 +3157,14 @@ Status Kernel::ParseWorkspaceTensor(const ascir::TensorAttr *tensor,
   return ge::SUCCESS;
 }
 
-bool Kernel::ProcessRequiredInput(const ge::AscNodePtr &node, size_t index, size_t count,
-                                  std::vector<ge::DataType> &input_dtypes) const {
-  GE_ASSERT_EQ(count, 1U);
-  GE_ASSERT_TRUE(static_cast<uint32_t>(index) < node->inputs.Size());
-  const auto &tensor = node->inputs[index];
-  input_dtypes.push_back(tensor.attr.dtype);
-  return true;
-}
-
-bool Kernel::ProcessDynamicInput(const ge::AscNodePtr &node, size_t index, size_t count,
-                                 std::vector<ge::DataType> &input_dtypes) const {
-  std::set<ge::DataType> unique_dtypes;
-  for (size_t i = index; i < index + count; ++i) {
-    GE_ASSERT_TRUE(static_cast<uint32_t>(i) < node->inputs.Size());
-    unique_dtypes.insert(node->inputs[i].attr.dtype);
-  }
-  GE_ASSERT_TRUE(unique_dtypes.size() == 1U, "%s dynamic_input should have uniform dtypes", node->GetOpDesc()->GetNamePtr());
-  input_dtypes.push_back(*unique_dtypes.begin());
-  return true;
-}
-
-bool Kernel::CollectInputDtypesForOutput(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const {
-  std::set<ge::DataType> unique_dtypes;
-  for (const auto input : node->inputs()) {
-    unique_dtypes.insert(input->attr.dtype);
-  }
-  GE_ASSERT_TRUE(unique_dtypes.size() == 1U, "%s %s should have uniform dtypes", node->GetNamePtr(), node->GetTypePtr());
-  input_dtypes.push_back(*unique_dtypes.begin());
-  return true;
-}
-
-bool Kernel::CollectInputDtypesForWorkspace(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const {
-  std::set<ge::DataType> unique_dtypes;
-  if (node->inputs().size() != 0) {
-    for (const auto input : node->inputs()) {
-      unique_dtypes.insert(input->attr.dtype);
-    }
-  } else {
-    unique_dtypes.insert(node->outputs()[0]->attr.dtype);
-  }
-
-  GE_ASSERT_TRUE(unique_dtypes.size() == 1U, "%s %s should have uniform dtypes", node->GetNamePtr(), node->GetTypePtr());
-  input_dtypes.push_back(*unique_dtypes.begin());
-  return true;
-}
-
-bool Kernel::CollectInputDtypes(const ascir::NodeView &node, std::vector<ge::DataType> &input_dtypes) const {
-  if (node->GetType() == ge::ascir_op::Output::Type) {
-    // Output因为前面做了一个可变ir的操作，即ir是必选输入，但是实际行为支持是动态输入或者必选两种，因此特殊处理一下
-    return CollectInputDtypesForOutput(node, input_dtypes);
-  }
-  if (node->GetType() == ge::ascir_op::Workspace::Type) {
-    // Workspace连接两张子图时，后一张子图的输入是没有显示指定的，因此输入数据的类型按照输出数据类型特殊处理一下
-    return CollectInputDtypesForWorkspace(node, input_dtypes);
-  }
-  const auto op_desc = node->GetOpDesc();
-  GE_ASSERT_NOTNULL(op_desc, "op_desc is nullptr!");
-
-  const auto &ir_inputs = op_desc->GetIrInputs();
-  std::map<size_t, std::pair<size_t, size_t>> ir_input_2_range;
-  GE_ASSERT_GRAPH_SUCCESS(ge::OpDescUtils::GetIrInputRawDescRange(op_desc, ir_input_2_range),
-                          "op %s %s has invalid ir desc", op_desc->GetNamePtr(), op_desc->GetTypePtr());
-
-  size_t index = 0;
-  for (size_t ir_input_index = 0; ir_input_index < ir_inputs.size(); ++ir_input_index) {
-    const auto &range_iter = ir_input_2_range.find(ir_input_index);
-    GE_ASSERT_TRUE(range_iter != ir_input_2_range.end(), "Invalid ir_input_index: %zu", ir_input_index);
-
-    const auto &start_and_count = range_iter->second;
-    const auto count = start_and_count.second;
-    const auto &ir_input_type = ir_inputs[ir_input_index].second;
-
-    switch (ir_input_type) {
-      case ge::IrInputType::kIrInputRequired:
-        GE_ASSERT_TRUE(ProcessRequiredInput(node, index, count, input_dtypes), "ProcessRequiredInput failed, node = %s",
-                       node->GetNamePtr());
-        break;
-      case ge::IrInputType::kIrInputDynamic:
-        GE_ASSERT_TRUE(ProcessDynamicInput(node, index, count, input_dtypes), "ProcessDynamicInput failed, node = %s",
-                       node->GetNamePtr());
-        break;
-      default:
-        GELOGE(ge::FAILED, "%s %s unsupported input type %ld at ir index %zu", op_desc->GetNamePtr(),
-               op_desc->GetTypePtr(), static_cast<int64_t>(ir_input_type), ir_input_index);
-        return false;
-    }
-    index += count;
-  }
-  return true;
-}
-
-bool Kernel::CollectOutputDtypes(const ascir::NodeView &node, std::vector<ge::DataType> &output_dtypes) const {
-  // 由于目前schedule在某些场景下会丢失Output节点输出tensor的数据类型，这里暂时按照输入tensor的数据类型收集，schedule解决后删除.
-  if (node->GetType() == ge::ascir_op::Output::Type) {
-    output_dtypes.emplace_back(node->inputs()[0]->attr.dtype);
-    return true;
-  }
-  std::set<ge::DataType> unique_dtypes;
-  for (auto output : node->outputs()) {
-    if (output->attr.dtype == ge::DT_UNDEFINED) {
-      return true;
-    }
-    unique_dtypes.insert(output->attr.dtype);
-  }
-  GE_ASSERT_TRUE(unique_dtypes.size() == 1U, "%s dynamic_input should have uniform dtypes", node->GetOpDesc()->GetNamePtr());
-  output_dtypes.push_back(*unique_dtypes.begin());
-  return true;
-}
-
-Status Kernel::IsDataTypeSupported(const ascir::ImplGraph &graph) const {
-  std::set<string> ignore_node_type = {"Ge", "Eq", "Ne", "Gt", "Le", "Broadcast", "Nop", "Sign", "LogicalNot",
-                                       "LogicalOr", "LogicalAnd", "Concat", "Select", "Where", "Ub2ub", "BitwiseAnd", "Split"};
-  for (const auto &node : graph.GetAllNodes()) {
-    // 对于动态输入和动态输出的节点，不进行类型检测
-    const auto &ir_inputs = node->GetOpDescBarePtr()->GetIrInputs();
-    const auto &ir_outputs = node->GetOpDescBarePtr()->GetIrOutputs();
-    if (ir_inputs.size() != 0 && ir_inputs[0].second == ge::IrInputType::kIrInputDynamic && ir_outputs.size() != 0 &&
-        ir_outputs[0].second == ge::IrOutputType::kIrOutputDynamic) {
-      continue;
-    }
-    std::vector<ge::DataType> input_dtypes;
-    std::vector<ge::DataType> output_dtypes;
-    GE_ASSERT_TRUE(CollectInputDtypes(node, input_dtypes), "Collect input dtypes failed, node = %s",
-                   node->GetNamePtr());
-    GE_ASSERT_TRUE(CollectOutputDtypes(node, output_dtypes), "Collect output dtypes failed, node = %s",
-                   node->GetNamePtr());
-    // 一些api暂不支持int64输入，但是有一些存量st，因此临时屏蔽这些api的int64类型检测，ascir支持后放开.
-    if ((ignore_node_type.find(node->GetType()) != ignore_node_type.end() &&
-         std::find(input_dtypes.begin(), input_dtypes.end(), ge::DT_INT64) != input_dtypes.end())) {
-      continue;
-    }
-    std::string npu_arch;
-    GE_ASSERT_SUCCESS(ge::PlatformContext::GetInstance().GetCurrentPlatformString(npu_arch));
-    if (ge::ascir::CommonInferDtype(node->GetType(), input_dtypes, output_dtypes, npu_arch) != ge::SUCCESS) {
-      GELOGE(ge::FAILED, "ASCIR(%s) not support dtypes(input dtype:%s, output dtype:%s), node:%s", node->GetTypePtr(),
-             VectorToStr(input_dtypes).c_str(), VectorToStr(output_dtypes).c_str(), node->GetNamePtr());
-      return ge::FAILED;
-    }
-  }
-  return ge::SUCCESS;
-}
-
 Status Kernel::ParseGraph(const ascir::ImplGraph &graph, const ascir::FusedScheduledResult &fused_schedule_result,
                           Kernel &kernel) {
   // Parse kernel input output
+  GE_CHK_STATUS_RET(CheckGraphValidity(graph), "Graph: %s is invalid", graph.GetName().c_str());
   std::map<size_t, std::string> input_index_to_name;
   std::map<size_t, std::string> output_index_to_name;
   std::unordered_map<ascir::TensorId, size_t> output_tensorid_to_index;
-  if (kernel.IsDataTypeSupported(graph)) {
-    return ge::FAILED;
-  }
+
   for (size_t i = 0U; i < fused_schedule_result.input_nodes.size(); ++i) {
     const auto &input = fused_schedule_result.input_nodes[i];
     GE_ASSERT_TRUE(IsOps<Data>(input), "Codegen unsupported input[%s] type[%s]", input->GetName().c_str(),
@@ -4708,18 +4563,6 @@ Status TPipe::BlkTensorDefine(std::string &result) const {
     ss << "    TBuf<TPosition::VECCALC> " << scalar_t_buf_name << ";" << std::endl;
     ss << "    LocalTensor<" << tensor_ptr->type << "> " << scalar_local_blk_tensor_name << ";" << std::endl;
   }
-  // 新增 tbuf:xx_tbuf_1，覆盖 load + ubscalar 场景，作为 duplicate 的入参
-  for (auto &id : this->need_alloc_local_blk_tensor_tensors) {
-    auto tensor_ptr = this->GetTensor(id);
-    std::string dtype_name;
-    GE_CHK_STATUS_RET(Tensor::DtypeName(tensor_ptr->dtype, dtype_name), "Codegen get data type:%d failed",
-                      static_cast<int32_t>(tensor_ptr->dtype));
-    GE_CHK_BOOL_RET_STATUS(tensor_ptr != nullptr, ge::FAILED, "BlkTensorAllocAndInit need_alloc_local_blk_tensor_tensors failed");
-    std::string ubscalar_load_tbuf_name = tensor_ptr->name + "_tbuf_1";
-    std::string scalar_local_blk_tensor_name =  tensor_ptr->name + "_1";
-    ss << "    TBuf<TPosition::VECCALC> " << ubscalar_load_tbuf_name << ";" << std::endl;
-    ss << "    " << tensor_ptr->type << " " << scalar_local_blk_tensor_name << ";" << std::endl;
-  }
   ss << std::endl;
   result = ss.str();
   return ge::SUCCESS;
@@ -4740,18 +4583,6 @@ Status TPipe::BlkTensorAssign(std::string &result) const {
        << ">(" << tensor_ptr->const_value << "), static_cast<uint64_t>(32/"
        << "sizeof(" << tensor_ptr->type << ")));" << std::endl;
     ss << "AscendC::PipeBarrier<PIPE_V>();" << std::endl;
-  }
-  // 新增 tbuf:xx_tbuf_1，覆盖 load + ubscalar 场景，作为 duplicate 的入参
-  for (auto &id : this->need_alloc_local_blk_tensor_tensors) {
-    auto tensor_ptr = this->GetTensor(id);
-    std::string dtype_name;
-    GE_CHK_STATUS_RET(Tensor::DtypeName(tensor_ptr->dtype, dtype_name), "Codegen get data type:%d failed",
-                      static_cast<int32_t>(tensor_ptr->dtype));
-    GE_CHK_BOOL_RET_STATUS(tensor_ptr != nullptr, ge::FAILED, "BlkTensorAllocAndInit need_alloc_local_blk_tensor_tensors failed");
-    std::string ubscalar_load_tbuf_name = tensor_ptr->name + "_tbuf_1";
-    std::string scalar_local_blk_tensor_name =  tensor_ptr->name + "_1";
-    ss << "tpipe.InitBuffer(" << ubscalar_load_tbuf_name << ", 32);" << std::endl;
-    ss << scalar_local_blk_tensor_name << " = " << ubscalar_load_tbuf_name << ".Get<" << dtype_name << ">();" << std::endl;
   }
   ss << std::endl;
   result = ss.str();

@@ -13,6 +13,7 @@
 #include "common/debug/log.h"
 #include "graph/ge_local_context.h"
 #include "framework/common/util.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 namespace {
@@ -20,9 +21,9 @@ constexpr MemSize kDeviceTotalMemorySizeLevel[MEMORY_SPECIFICATION_LEVEL_MAX] = 
 
 ge::Status GetDeviceTotalMemorySize(size_t &total_mem_size) {
   size_t free_mem;
-  GE_CHK_RT_RET(rtMemGetInfoEx(RT_MEMORYINFO_HBM, &free_mem, &total_mem_size));
+  GE_CHK_RT_RET(aclrtGetMemInfo(ACL_HBM_MEM, &free_mem, &total_mem_size));
   if (total_mem_size == 0U) {
-    GE_CHK_RT_RET(rtMemGetInfoEx(RT_MEMORYINFO_DDR, &free_mem, &total_mem_size));
+    GE_CHK_RT_RET(aclrtGetMemInfo(ACL_DDR_MEM, &free_mem, &total_mem_size));
   }
   (void)free_mem;
   return ge::SUCCESS;

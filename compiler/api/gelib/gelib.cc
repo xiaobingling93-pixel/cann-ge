@@ -35,7 +35,6 @@
 namespace ge {
 namespace {
 const int32_t kDecimal = 10;
-const int32_t kSocVersionLen = 50;
 const int32_t kDefaultDeviceIdForTrain = 0;
 const int32_t kDefaultDeviceIdForInfer = -1;
 const char *const kGlobalOptionFpCeilingModeDefault = "2";
@@ -324,11 +323,10 @@ Status GELib::SetRTSocVersion(std::map<std::string, std::string> &new_options) c
     GE_CHK_RT_RET(rtSetSocVersion(it->second.c_str()));
     GELOGI("Succeeded in setting SOC_VERSION[%s] to runtime.", it->second.c_str());
   } else {
-    char version[kSocVersionLen] = {0};
-    rtError_t rt_ret = rtGetSocVersion(version, kSocVersionLen);
-    GE_IF_BOOL_EXEC(rt_ret != RT_ERROR_NONE,
-        REPORT_INNER_ERR_MSG("E19999", "rtGetSocVersion failed.");
-        GELOGE(rt_ret, "[Get][SocVersion]rtGetSocVersion failed");
+    const char *version = aclrtGetSocName();
+    GE_IF_BOOL_EXEC(version == nullptr,
+        REPORT_INNER_ERR_MSG("E19999", "aclrtGetSocName failed.");
+        GELOGE(FAILED, "[Get][SocVersion]aclrtGetSocName failed");
         return FAILED;)
     GELOGI("Succeeded in getting SOC_VERSION[%s] from runtime.", version);
     new_options.insert(std::make_pair(ge::SOC_VERSION, version));

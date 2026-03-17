@@ -48,6 +48,7 @@
 #include "base/registry/op_impl_space_registry_v2.h"
 #include "runtime/dev.h"
 #include "register/core_num_utils.h"
+#include "acl/acl_rt.h"
 
 namespace optiling {
 class TilingSymbolEvalContext;
@@ -516,7 +517,14 @@ ge::graphStatus RtParseAndTiling(const ge::Operator &op, const char_t * const co
   }
 
   std::array<char_t, static_cast<size_t>(kSocVersionLen)> soc_version{};
-  GE_CHK_RT_RET(rtGetSocVersion(soc_version.data(), static_cast<uint32_t>(kSocVersionLen)));
+  const char* soc_name = aclrtGetSocName();
+  if (soc_name == nullptr) {
+    GE_CHK_RT_RET(ACL_ERROR_FAILURE);
+  }
+  const auto ret = strncpy_s(soc_version.data(), kSocVersionLen, soc_name, static_cast<uint32_t>(kSocVersionLen) - 1);
+  if (ret != 0) {
+    GE_CHK_RT_RET(ACL_ERROR_FAILURE);
+  }
 
   fe::PlatformInfo platform_info;
   GE_ASSERT_SUCCESS(ge::CoreNumUtils::GetGeDefaultPlatformInfo(soc_version.data(), platform_info));

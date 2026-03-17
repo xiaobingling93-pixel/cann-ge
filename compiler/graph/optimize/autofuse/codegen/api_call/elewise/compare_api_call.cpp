@@ -73,7 +73,7 @@ Status CompareApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axi
     GE_ASSERT_TRUE(status, "GenerateVectorizedAxisMergeStatus failed");
     SaveApiLoopAxisParams(merge_info, param);
     std::string scalar_local_blk_tensor_name_x2 = x2.IsConstScalar() ? "local_blk_tensor_of_" + x2.name : x2.name;
-    scalar_local_blk_tensor_name_x2 = x2.need_alloc_local_blk_tensor_from_tbuf ? scalar_local_blk_tensor_name_x2 + "_1" : scalar_local_blk_tensor_name_x2;
+    scalar_local_blk_tensor_name_x2 = scalar_local_blk_tensor_name_x2;
     size_t outer_repeats_size = param.outer_repeats.size();
     if (outer_repeats_size == 0U) {
       ss << "CompareScalarExtend" << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "

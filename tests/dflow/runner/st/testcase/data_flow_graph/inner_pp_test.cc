@@ -303,7 +303,7 @@ protected:
   static void TearDownTestSuite() {
     ExecutionRuntime::instance_ = nullptr;
     system("rm -fr model_pp_udf");
-    GEFinalize();
+    dflow::DFlowFinalize();
     unsetenv("RESOURCE_CONFIG_PATH");
   }
   void SetUp() {

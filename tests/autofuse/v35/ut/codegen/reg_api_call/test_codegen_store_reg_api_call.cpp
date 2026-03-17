@@ -223,7 +223,6 @@ TEST(CodegenKernel, StoreRegApiCall_NeetMte3SyncMte2) {
   EXPECT_EQ(kernel.tpipe.AddTensor(load->outputs[0]), 0);
   auto tensor_ptr = kernel.tpipe.GetTensor(load->outputs[0].attr.mem.tensor_id);
   auto &t = *tensor_ptr;
-  t.need_alloc_local_blk_tensor_from_tbuf = true;
   t.is_ub_scalar = true;
   EXPECT_EQ(kernel.ParseOptimizeInfo(load, load->outputs[0]), 0);
   EXPECT_EQ(kernel.tpipe.AddTensor(abs_1->outputs[0]), 0);

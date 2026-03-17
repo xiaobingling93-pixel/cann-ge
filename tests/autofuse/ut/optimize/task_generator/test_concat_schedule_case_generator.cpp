@@ -1,13 +1,14 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include "asc_graph_builder.h"
 #include "gtest/gtest.h"
 #include "ascendc_ir.h"
 #include "ascir_ops_utils.h"
@@ -1347,5 +1348,48 @@ TEST_F(ConcatScheduleCaseGeneratorTest, RecomputeSingeItemGroups) {
   optimize::ConcatGroupPartitioner partitioner(concat_node, 1);
   EXPECT_EQ(partitioner.RecomputeDiffAxes(), SUCCESS);
   EXPECT_TRUE(partitioner.HasRecompute());
+}
+
+TEST_F(ConcatScheduleCaseGeneratorTest, BackwardFusionAndRecompute) {
+  auto s0 = ge::Symbol(2);
+  auto s1 = ge::Symbol(4);
+  auto s2 = ge::Symbol(32);
+  auto s3_0 = ge::Symbol(128);
+  auto s3_1 = ge::Symbol(1);
+  auto s3 = s3_0 + s3_1;
+  std::vector<Expression> strides_0 = {s1 * s2 * s3_0, s2 * s3_0, s3_0, ge::sym::kSymbolOne};
+  std::vector<Expression> strides_1 = {s1 * s2 * s3_0, s2 * s3_0, s3_1, ge::sym::kSymbolOne};
+  auto graph = ge::testing::AscGraphBuilder("test_graph")
+                   .Loops({s0, s1, s2, s3})
+                   .Data("data0", 0, DT_FLOAT)
+                   .Load("load0", "data0", {s0, s1, s2, s3_0}, strides_0)
+                   .Data("data1", 1, DT_FLOAT)
+                   .Load("load1", "data1", {s0, s1, s2, s3_1}, strides_1)
+                   .Data("data2", 2, DT_FLOAT)
+                   .Load("load2", "data2", {s0, s1, s2, s3_1}, strides_1)
+                   .Broadcast("brc0", "load2", {1, 1, 1, 128})
+                   .Broadcast("brc1", "load2", {1, 1, 1, 129})
+                   .Add("Ne", "load1", "brc0")
+                   .Add("add0", "load0", "Ne")
+                   .Add("Max0", "add0", "brc0")
+                   .Concat("concat0", {"Max0", "load2"})
+                   .Add("Ge", "concat0", "brc1")
+                   .Add("Where", "Ge", "concat0")
+                   .Store("store", "Where")
+                   .Output("out", "store")
+                   .Build();
+  auto compute_graph = ge::AscGraphUtils::GetComputeGraph(graph);
+
+  optimize::ConcatFusionCaseGenerator generator;
+  std::vector<AscGraph> generated_graphs;
+  std::vector<std::string> score_functions;
+  EXPECT_EQ(generator.Generate(graph, generated_graphs, score_functions), ge::SUCCESS);
+  EXPECT_EQ(generated_graphs.size(), 2);
+  const auto &converted_graph = generated_graphs[1];
+  for (const auto &node : converted_graph.GetAllNodes()) {
+    if (node->GetType() == "Load") {
+      EXPECT_NE(node->GetOutDataNodesSize(), 0);
+    }
+  }
 }
 }  // namespace schedule
