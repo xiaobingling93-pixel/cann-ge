@@ -90,7 +90,7 @@ void StageExecutor::ExecuteEndTaskAndReleae() {
 Status StageExecutor::Start(const std::vector<TensorValue> &inputs, const std::vector<ConstGeTensorDescPtr> &input_desc,
                             const int32_t iteration_count) {
   GELOGD("[Executor: %d] thread start", id_);
-  GE_CHK_RT_RET(rtCtxSetCurrent(context_.rt_context));
+  GE_CHK_RT_RET(aclrtSetCurrentContext(context_.rt_context));
   int32_t num_loops = iteration_count / pipe_config_->num_executors;
   if (id_ < (iteration_count % iteration_count)) {
     num_loops += 1;
@@ -255,7 +255,7 @@ HybridModelPipelineExecutor::HybridModelPipelineExecutor(HybridModel *const mode
 }
 
 Status StageExecutor::InitExecutionContext() {
-  GE_CHK_RT_RET(rtCtxSetCurrent(context_.rt_context));
+  GE_CHK_RT_RET(aclrtSetCurrentContext(context_.rt_context));
 
   context_.model = model_;
   context_.session_id = ::ge::GetContext().SessionId();
@@ -296,7 +296,7 @@ Status HybridModelPipelineExecutor::Init(CallbackManager *const callback_manager
   GE_CHK_STATUS_RET_NOLOG(context_.InitProfiler());
   model_id_ = model_->GetModelId();
   GELOGD("Number of stages = %d, number of executors = %d", config_.num_stages, config_.num_executors);
-  GE_CHK_RT_RET(rtCtxGetCurrent(&config_.rt_context));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&config_.rt_context));
   GE_CHK_STATUS_RET_NOLOG(InitStageExecutors());
   GE_CHK_STATUS_RET(InitInputDesc(), "[Init][InputDesc] failed, model_id:%u.", model_->GetModelId());
   return SUCCESS;

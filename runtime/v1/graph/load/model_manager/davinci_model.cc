@@ -377,8 +377,8 @@ void DavinciModel::DestroyResources() {
   op_list_.clear();
   operator_list_.clear();
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) == RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) == ACL_SUCCESS) {
     for (size_t i = 0U; i < label_list_.size(); ++i) {
       if (label_list_[i] != nullptr) {
         GE_LOGW_IF(aclrtDestroyLabel(label_list_[i]) != ACL_SUCCESS, "Destroy label failed, index: %zu.", i);
@@ -1493,7 +1493,7 @@ Status DavinciModel::InitSupplyResource() {
   GE_CHK_STATUS_RET(OpDebugRegister(), "[Call][OpDebugRegister] failed, model_id: %u.", model_id_);
 
   // malloc mem for overflow detetcion
-  GE_CHK_RT_RET(rtCtxGetOverflowAddr(&globalworkspace_overflow_addr_));
+  GE_CHK_RT_RET(aclrtCtxGetFloatOverflowAddr(&globalworkspace_overflow_addr_));
   return SUCCESS;
 }
 
@@ -5687,8 +5687,8 @@ Status DavinciModel::ModelRunStop() {
 void DavinciModel::UnbindTaskSinkStream() {
   GELOGD("Npu model: %u start to unbind streams.", model_id_);
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) != RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) != ACL_SUCCESS) {
     return;
   }
 
@@ -5723,8 +5723,8 @@ void DavinciModel::UnbindTaskSinkStream() {
 void DavinciModel::DestroyStream() {
   GELOGD("Npu model: %u start to destroy stream.", model_id_);
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) != RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) != ACL_SUCCESS) {
     return;
   }
   for (size_t i = 0U; i < all_hccl_stream_list_.size(); ++i) {

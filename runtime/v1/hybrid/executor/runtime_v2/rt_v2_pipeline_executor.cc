@@ -21,7 +21,7 @@
 #include "graph/ge_local_context.h"
 #include "runtime/model_v2_executor.h"
 #include "lowering/model_converter.h"
-
+#include "acl/acl_rt.h"
 #include <thread>
 #include <chrono>
 
@@ -327,11 +327,11 @@ ge::Status RtV2PipelineExecutor::Load(const gert::ModelExecuteArg &arg, const ge
   GE_ASSERT(!stage_executors_.empty());
   GELOGI("Load stage state %s", stage_executors_.front()->Id().c_str());
   stage_executors_.front()->Load(arg, load_arg);
-  rtContext_t ctx = nullptr;
-  GE_ASSERT_RT_OK(rtCtxGetCurrent(&ctx));
+  aclrtContext ctx = nullptr;
+  GE_ASSERT_RT_OK(aclrtGetCurrentContext(&ctx));
   StageState::CtxInitializer ctx_initializer = [ctx]() {
     GELOGI("Initialize stage state worker thread runtime ctx");
-    (void)rtCtxSetCurrent(ctx);
+    (void)aclrtSetCurrentContext(ctx);
   };
   for (size_t i = 1U; i < stage_executors_.size(); i++) {
     notifications_.emplace_back(nullptr);

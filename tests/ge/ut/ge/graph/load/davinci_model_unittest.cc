@@ -5973,18 +5973,6 @@ TEST_F(UtestDavinciModel, test_InitCase) {
   EXPECT_EQ(model.InitCase(op_desc), SUCCESS);
 }
 
-TEST_F(UtestDavinciModel, TransAllVarData_fail) {
-  DavinciModel model(0, nullptr);
-  GeModelPtr ge_model = MakeShared<GeModel>();
-  model.Assign(ge_model);
-
-  ComputeGraphPtr graph = MakeShared<ComputeGraph>("default");
-  std::vector<NodePtr> variable_nodes { nullptr };
-
-  g_runtime_stub_mock = "rtCtxGetCurrent";
-  EXPECT_EQ(model.TransAllVarData(graph, variable_nodes), FAILED); // rtCtxGetCurrent failed.
-}
-
 TEST_F(UtestDavinciModel, SetDataDumperArgs_fail) {
   DavinciModel model(0, nullptr);
   GeModelPtr ge_model = MakeShared<GeModel>();

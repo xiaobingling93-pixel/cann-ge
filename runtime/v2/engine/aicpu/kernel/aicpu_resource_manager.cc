@@ -170,7 +170,7 @@ void AicpuResourceManager::ClearTensors() {
 ge::graphStatus AicpuResourceManager::HasLoadedCustAicpuSo(const std::string &so_name, bool &loaded) {
   // get current context
   rtContext_t rt_current_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&rt_current_ctx));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&rt_current_ctx));
  
   // use current context as resource key
   const std::lock_guard<std::mutex> lk(cust_aicpu_so_mutex_);

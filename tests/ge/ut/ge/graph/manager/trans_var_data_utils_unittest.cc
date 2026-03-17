@@ -23,6 +23,8 @@
 #include "mmpa/mmpa_api.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "graph/build/memory/var_mem_assign_util.h"
+#include "depends/ascendcl/src/ascendcl_stub.h"
+
 namespace ge {
 class UtestTransVarDataTest : public testing::Test {
  protected:
@@ -178,10 +180,20 @@ TEST_F(UtestTransVarDataTest, TransAllVarData_failed) {
   const std::string fail_collect_path = (std::string(&npu_collect_path[0U]) + "/mock_fail");
   mmSetEnv(kEnvValue, fail_collect_path.c_str(), 1);
 
+  class MockAclRuntimeStub : public AclRuntimeStub {
+  public:
+    aclError aclrtSetCurrentContext(aclrtContext context) override {
+      return -1;
+    }
+  };
+  auto mock_acl_runtime = std::make_shared<MockAclRuntimeStub>();
+  ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
+
   EXPECT_EQ(TransVarDataUtils::TransAllVarData(variable_nodes, session_id, graph_id, device_id), FAILED);
 
   // 清理环境变量
   mmSetEnv(kEnvValue, "", 1);
+  ge::AclRuntimeStub::Reset();
 }
 
 } // namespace ge

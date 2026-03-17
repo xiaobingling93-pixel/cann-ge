@@ -40,6 +40,7 @@
 #include "runtime/rts/rts_stream.h"
 #include "runtime/rts/rts_kernel.h"
 #include "aprof_pub.h"
+#include "acl/acl_rt.h"
 
 using namespace ge;
 
@@ -255,7 +256,7 @@ ge::graphStatus UpdateOverflowAddr(RtKernelLaunchArgsEx &args) {
         (args.GetBase()->tilingAddrOffset / sizeof(TensorAddress)) + (args.GetBase()->hasTiling ? 1UL : 0UL);
     auto args_host_buffer = static_cast<TensorAddress *>(args.GetBase()->args);
     void *overflow_addr = nullptr;
-    const auto rt_ret = rtCtxGetOverflowAddr(&overflow_addr);
+    const auto rt_ret = aclrtCtxGetFloatOverflowAddr(&overflow_addr);
     FE_CHK_RT_RET(rt_ret);
     *args.GetArgsPointer<TensorAddress>(RtKernelLaunchArgsEx::ArgsType::kOverflowAddr) = overflow_addr;
     args_host_buffer[overflow_offset] = overflow_addr;

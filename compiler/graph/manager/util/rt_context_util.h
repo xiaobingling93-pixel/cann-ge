@@ -17,6 +17,7 @@
 
 #include "runtime/context.h"
 #include "ge/ge_api_error_codes.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class RtContextUtil {
@@ -24,9 +25,9 @@ class RtContextUtil {
   static RtContextUtil &GetInstance();
 
   Status SetRtContext(const uint64_t session_id, const uint32_t graph_id, const int32_t device_id,
-                      const rtCtxMode_t mode, rtContext_t rt_context) const;
-  void AddRtContext(uint64_t session_id, rtContext_t context);
-  void AddRtContext(uint64_t session_id, uint32_t graph_id, rtContext_t context);
+                      const rtCtxMode_t mode, aclrtContext rt_context) const;
+  void AddRtContext(uint64_t session_id, aclrtContext context);
+  void AddRtContext(uint64_t session_id, uint32_t graph_id, aclrtContext context);
   void DestroyRtContexts(uint64_t session_id);
   void DestroyRtContexts(uint64_t session_id, uint32_t graph_id);
   void DestroyAllRtContexts();
@@ -38,9 +39,9 @@ class RtContextUtil {
   RtContextUtil() = default;
   ~RtContextUtil() {}
 
-  void DestroyRtContexts(uint64_t session_id, int64_t graph_id, std::vector<rtContext_t> &contexts) const;
+  void DestroyRtContexts(uint64_t session_id, int64_t graph_id, std::vector<aclrtContext> &contexts) const;
 
-  std::map<uint64_t, std::map<int64_t, std::vector<rtContext_t>>> rt_contexts_;
+  std::map<uint64_t, std::map<int64_t, std::vector<aclrtContext>>> rt_contexts_;
   std::mutex ctx_mutex_;
 };
 }  // namespace ge

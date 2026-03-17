@@ -21,6 +21,7 @@
 #include "graph/utils/type_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/debug/ge_attr_define.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -28,39 +29,39 @@ constexpr uint32_t kDefaultVarTransThreadNum = 16U;
 
 class RtContextSwitchGuard {
  public:
-  RtContextSwitchGuard(const rtCtxMode_t mode, const uint32_t device_id) {
-    auto ret = rtCtxGetCurrent(&last_);
-    if (ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtCtxGetCurrent failed, device_id:%u, ret:%d,",
+  RtContextSwitchGuard(const uint32_t device_id) {
+    auto ret = aclrtGetCurrentContext(&last_);
+    if (ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtGetCurrentContext failed, device_id:%u, ret:%d,",
                         device_id, ret);
-      GELOGE(RT_FAILED, "[Call][RtCtxGetCurrent] Failed to get current context, device_id:%u, ret:%d",
+      GELOGE(RT_FAILED, "[Call][aclrtGetCurrentContext] Failed to get current context, device_id:%u, ret:%d",
              device_id, ret);
       return;
     }
 
-    if (rtCtxCreate(&current_, mode, static_cast<int32_t>(device_id)) != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call CtxSetCurrent failed, device_id:%u", device_id);
-      GELOGE(RT_FAILED, "[Call][RtCtxSetCurrent] failed, device_id:%u", device_id);
+    if (aclrtCreateContext(&current_, static_cast<int32_t>(device_id)) != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtCreateContext failed, device_id:%u", device_id);
+      GELOGE(RT_FAILED, "[Call][aclrtCreateContext] failed, device_id:%u", device_id);
       return;
     }
 
-    ret = rtCtxSetCurrent(current_);
-    if (ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtCtxSetCurrent failed, device_id:%u, ret:%d", device_id, ret);
-      GELOGE(RT_FAILED, "[Call][RtCtxSetCurrent] failed, device_id:%u, ret:%d", device_id, ret);
+    ret = aclrtSetCurrentContext(current_);
+    if (ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtSetCurrentContext failed, device_id:%u, ret:%d", device_id, ret);
+      GELOGE(RT_FAILED, "[Call][aclrtSetCurrentContext] failed, device_id:%u, ret:%d", device_id, ret);
       return;
     }
-    GELOGD("Create and switch rt context %p type %d for device %u, backup last %p.", current_, mode, device_id, last_);
+    GELOGD("Create and switch rt context %p for device %u, backup last %p.", current_, device_id, last_);
   }
 
   ~RtContextSwitchGuard() {
     try {
       if (current_ != nullptr) {
-        const auto ret = rtCtxDestroy(current_);
+        const auto ret = aclrtDestroyContext(current_);
         GELOGD("Destory current context %p result %d", current_, ret);
       }
       if (last_ != nullptr) {
-        const auto ret = rtCtxSetCurrent(last_);
+        const auto ret = aclrtSetCurrentContext(last_);
         GELOGD("Recovery last context %p result %d.", last_, ret);
       }
     } catch (...) {
@@ -69,8 +70,8 @@ class RtContextSwitchGuard {
   }
 
  private:
-  rtContext_t last_ = nullptr;
-  rtContext_t current_ = nullptr;
+  aclrtContext last_ = nullptr;
+  aclrtContext current_ = nullptr;
 };
 
 int64_t CalcVarSizeInBytes(const GeTensorDesc &desc) {
@@ -415,7 +416,7 @@ Status CopyTensorFromSrcVarNode(const NodePtr &var_src,
          TypeUtils::DataTypeToSerialString(data_type).c_str());
   // Sync var data from device
   std::unique_ptr<uint8_t[]> var_src_data;
-  const RtContextSwitchGuard switch_context(RT_CTX_NORMAL_MODE, device_id);
+  const RtContextSwitchGuard switch_context(device_id);
   // copy from src_node
   auto ret = CopyVarFromDevice(session_id, var_src, var_src_data, output_desc, device_id);
   GE_IF_BOOL_EXEC(ret != SUCCESS,
@@ -454,8 +455,8 @@ Status TransVarDataUtils::TransAllVarData(const std::vector<NodePtr> &variable_n
     return SUCCESS;
   }
 
-  rtContext_t context = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&context));
+  aclrtContext context = nullptr;
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&context));
 
   ThreadPool executor("ge_vartrans", kDefaultVarTransThreadNum, true);
   std::vector<std::future<Status>> vector_future;
@@ -468,15 +469,15 @@ Status TransVarDataUtils::TransAllVarData(const std::vector<NodePtr> &variable_n
       continue;
     }
 
-    auto const trans_func = [](const NodePtr &inner_node, const uint64_t inner_session_id, rtContext_t const ctx,
+    auto const trans_func = [](const NodePtr &inner_node, const uint64_t inner_session_id, aclrtContext const ctx,
                                const uint32_t inner_graph_id, const uint32_t inner_device_id,
                                const error_message::ErrorManagerContext &error_context) -> Status {
       error_message::SetErrMgrContext(error_context);
-      const rtError_t rt_ret = rtCtxSetCurrent(ctx);
-      if (rt_ret != RT_ERROR_NONE) {
-        REPORT_INNER_ERR_MSG("E19999", "Call rtCtxSetCurrent failed, session_id:%" PRIu64 ", graph_id:%u, ret:%d.",
+      const auto rt_ret = aclrtSetCurrentContext(ctx);
+      if (rt_ret != ACL_SUCCESS) {
+        REPORT_INNER_ERR_MSG("E19999", "Call aclrtSetCurrentContext failed, session_id:%" PRIu64 ", graph_id:%u, ret:%d.",
                           inner_session_id, inner_graph_id, rt_ret);
-        GELOGE(RT_FAILED, "[Call][RtCtxSetCurrent] failed, session_id:%" PRIu64 ", graph_id:%u, ret:%d.",
+        GELOGE(RT_FAILED, "[Call][aclrtSetCurrentContext] failed, session_id:%" PRIu64 ", graph_id:%u, ret:%d.",
           inner_session_id, inner_graph_id, rt_ret);
         return RT_ERROR_TO_GE_STATUS(rt_ret);
       }

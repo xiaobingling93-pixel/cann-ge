@@ -25,23 +25,23 @@ RtContextUtil &RtContextUtil::GetInstance() {
 }
 
 Status RtContextUtil::SetRtContext(const uint64_t session_id, const uint32_t graph_id, const int32_t device_id,
-                                   const rtCtxMode_t mode, rtContext_t rt_context) const {
+                                   const rtCtxMode_t mode, aclrtContext rt_context) const {
   GELOGI("set rt_context, session id: %lu, graph id: %u, mode %d, device id:%u.", session_id,
          graph_id, static_cast<int32_t>(mode), ge::GetContext().DeviceId());
 
-  GE_CHK_STATUS_RET(rtCtxCreate(&rt_context, mode, device_id));
-  GE_CHK_RT_RET(rtCtxSetCurrent(rt_context));
+  GE_CHK_STATUS_RET(aclrtCreateContext(&rt_context, device_id));
+  GE_CHK_RT_RET(aclrtSetCurrentContext(rt_context));
   RtContextUtil::GetInstance().AddRtContext(session_id, graph_id, rt_context);
 
   return SUCCESS;
 }
 
-void RtContextUtil::AddRtContext(uint64_t session_id, rtContext_t context) {
+void RtContextUtil::AddRtContext(uint64_t session_id, aclrtContext context) {
   std::lock_guard<std::mutex> lock(ctx_mutex_);
   rt_contexts_[session_id][kDefaultGraphId].emplace_back(context);
 }
 
-void RtContextUtil::AddRtContext(uint64_t session_id, uint32_t graph_id, rtContext_t context) {
+void RtContextUtil::AddRtContext(uint64_t session_id, uint32_t graph_id, aclrtContext context) {
   std::lock_guard<std::mutex> lock(ctx_mutex_);
   rt_contexts_[session_id][static_cast<int64_t>(graph_id)].emplace_back(context);
 }
@@ -82,10 +82,10 @@ void RtContextUtil::DestroyAllRtContexts() {
 }
 
 void RtContextUtil::DestroyRtContexts(uint64_t session_id, int64_t graph_id,
-                                      std::vector<rtContext_t> &contexts) const {
+                                      std::vector<aclrtContext> &contexts) const {
   GELOGI("Destroy %zu rts contexts for graph %ld of session %lu.", contexts.size(), graph_id, session_id);
   for (auto &rtContext : contexts) {
-    (void)rtCtxDestroy(rtContext);
+    (void)aclrtDestroyContext(rtContext);
   }
   contexts.clear();
 }
