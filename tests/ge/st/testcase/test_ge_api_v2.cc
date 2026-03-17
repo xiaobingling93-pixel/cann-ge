@@ -2232,4 +2232,119 @@ TEST(FeatureQueryTest, QueryUnsupportedIr) {
   bool similarErrorFeature = IsIrRepSupport("Inference_Rule");
   EXPECT_FALSE(similarErrorFeature);
 }
+
+/*
+ * 用例描述: 测试 GEFinalizeV2 后 GeSession 不主动析构也能正常运行
+ * 预置条件：
+ * 1. GE 已初始化
+ *
+ * 测试步骤：
+ * 1. GEInitializeV2 初始化
+ * 2. 创建 GeSession
+ * 3. AddGraph, CompileGraph, LoadGraph, RunGraphWithStreamAsync
+ * 4. GEFinalizeV2
+ * 5. 不主动析构 GeSession，测试用例结束
+ *
+ * 预期结果：
+ * 1. 所有操作成功，用例正常结束
+ */
+TEST_F(GeApiV2Test, GeSessionNotDestroyedAfterGEFinalizeV2) {
+  std::map<AscendString, AscendString> options;
+  options.emplace(ge::OPTION_GRAPH_RUN_MODE, "1");
+  EXPECT_EQ(GEInitializeV2(options), SUCCESS);
+
+  GeSession *session = new GeSession(options);
+  auto graph = BuildDynamicAddGraph();
+  uint32_t graph_id = 1;
+  auto ret = session->AddGraph(graph_id, graph);
+  EXPECT_EQ(ret, SUCCESS);
+
+  ret = session->CompileGraph(graph_id);
+  EXPECT_EQ(ret, SUCCESS);
+
+  std::vector<gert::Tensor> inputs(2);
+  TensorCheckUtils::ConstructGertTensor(inputs[0]);
+  TensorCheckUtils::ConstructGertTensor(inputs[1]);
+
+  std::vector<gert::Tensor> outputs(1);
+  TensorCheckUtils::ConstructGertTensor(outputs[0]);
+
+  rtStream_t stream = nullptr;
+  rtStreamCreate(&stream, 0);
+
+  ret = session->LoadGraph(graph_id, {}, stream);
+  EXPECT_EQ(ret, SUCCESS);
+
+  ret = session->RunGraphWithStreamAsync(graph_id, stream, inputs, outputs);
+  EXPECT_EQ(ret, SUCCESS);
+  rtStreamDestroy(stream);
+
+  // 调用 GEFinalizeV2，不主动 delete session
+  EXPECT_EQ(GEFinalizeV2(), SUCCESS);
+
+  // 此时 session 仍然存在，但 inner_session_ 已被置空
+  delete session;
+
+  ReInitGe();
+}
+
+/*
+ * 用例描述: 测试 GEFinalizeV2 后继续调用 GeSession 方法会报错
+ * 预置条件：
+ * 1. GE 已初始化
+ *
+ * 测试步骤：
+ * 1. GEInitializeV2 初始化
+ * 2. 创建 GeSession
+ * 3. AddGraph, CompileGraph, LoadGraph, RunGraphWithStreamAsync
+ * 4. GEFinalizeV2
+ * 5. 再次调用 GeSession 的 AddGraph 方法
+ *
+ * 预期结果：
+ * 1. GEFinalizeV2 后调用 AddGraph 应返回错误
+ */
+TEST_F(GeApiV2Test, GeSessionAddGraphFailedAfterGEFinalizeV2) {
+  std::map<AscendString, AscendString> options;
+  options.emplace(ge::OPTION_GRAPH_RUN_MODE, "1");
+  EXPECT_EQ(GEInitializeV2(options), SUCCESS);
+
+  GeSession *session = new GeSession(options);
+  auto graph = BuildDynamicAddGraph();
+  uint32_t graph_id = 1;
+  auto ret = session->AddGraph(graph_id, graph);
+  EXPECT_EQ(ret, SUCCESS);
+
+  ret = session->CompileGraph(graph_id);
+  EXPECT_EQ(ret, SUCCESS);
+
+  std::vector<gert::Tensor> inputs(2);
+  TensorCheckUtils::ConstructGertTensor(inputs[0]);
+  TensorCheckUtils::ConstructGertTensor(inputs[1]);
+
+  std::vector<gert::Tensor> outputs(1);
+  TensorCheckUtils::ConstructGertTensor(outputs[0]);
+
+  rtStream_t stream = nullptr;
+  rtStreamCreate(&stream, 0);
+
+  ret = session->LoadGraph(graph_id, {}, stream);
+  EXPECT_EQ(ret, SUCCESS);
+
+  ret = session->RunGraphWithStreamAsync(graph_id, stream, inputs, outputs);
+  EXPECT_EQ(ret, SUCCESS);
+  rtStreamDestroy(stream);
+
+  // 调用 GEFinalizeV2
+  EXPECT_EQ(GEFinalizeV2(), SUCCESS);
+
+  // GEFinalizeV2 后再调用 AddGraph 应返回错误（因为 inner_session_ 已被置空）
+  auto graph2 = BuildDynamicAddGraph();
+  uint32_t graph_id_2 = 2;
+  ret = session->AddGraph(graph_id_2, graph2);
+  EXPECT_NE(ret, SUCCESS);
+
+  delete session;
+
+  ReInitGe();
+}
 }  // namespace ge

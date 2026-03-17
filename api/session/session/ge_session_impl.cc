@@ -28,6 +28,7 @@
 
 #include "graph/manager/session_id_manager.h"
 #include "session/session_manager.h"
+#include "session/ge_session_registry.h"
 #include <utility>
 
 namespace ge {
@@ -45,9 +46,20 @@ GeSession::Impl::Impl(const std::map<std::string, std::string> &options) {
   }
   session_id_ = next_session_id;
   inner_session_ = sessionPtr;
+  // 注册到全局 Registry，用于 GEFinalizeV2 时清理
+  auto finalize_func = [this]() {
+    if (inner_session_ != nullptr) {
+      (void)inner_session_->Finalize();
+      inner_session_.reset();
+      session_id_ = 0;
+    }
+  };
+  GeSessionRegistry::Instance().Register(this, finalize_func);
 }
 
 GeSession::Impl::~Impl() {
+  // 先从 Registry 注销，避免 GEFinalizeV2 重复清理
+  GeSessionRegistry::Instance().Unregister(this);
   if (inner_session_ == nullptr) {
     return;
   }
