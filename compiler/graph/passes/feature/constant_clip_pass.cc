@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -32,16 +32,14 @@ namespace {
   constexpr ge::float32_t HIF8_MAX_VALUE = std::pow(2, 15);
   constexpr ge::float32_t E5M2_MAX_VALUE = 1.75 * std::pow(2, 15);
   constexpr ge::float32_t E4M3FN_MAX_VALUE = 1.75 * std::pow(2, 8);
-  constexpr ge::float32_t HIF4_MAX_VALUE = 1.3125f * 262144.0f;
-  constexpr ge::float32_t HIF4_MIN_VALUE = 8.881784197e-16f;
   bool IsFloatDt(const ge::DataType &dt) {
     return (dt == ge::DT_FLOAT) || (dt == ge::DT_FLOAT16) || (dt == ge::DT_DOUBLE) || (dt == ge::DT_BF16) ||
-           (dt == ge::DT_HIFLOAT8) || (dt == ge::DT_HIFLOAT4) || (dt == ge::DT_FLOAT8_E5M2) || (dt == ge::DT_FLOAT8_E4M3FN);
+           (dt == ge::DT_HIFLOAT8) || (dt == ge::DT_FLOAT8_E5M2) || (dt == ge::DT_FLOAT8_E4M3FN);
   }
 
   ge::float32_t GetMax(const ge::DataType dt) {
     static std::map<ge::DataType, ge::float32_t> dt_max_map = {{ge::DT_FLOAT16, FP16_MAX_VALUE},
-        {ge::DT_BF16, BF16_MAX_VALUE}, {ge::DT_FLOAT, FLT_MAX}, {ge::DT_HIFLOAT8, HIF8_MAX_VALUE}, {ge::DT_HIFLOAT4, HIF4_MAX_VALUE},
+        {ge::DT_BF16, BF16_MAX_VALUE}, {ge::DT_FLOAT, FLT_MAX}, {ge::DT_HIFLOAT8, HIF8_MAX_VALUE},
         {ge::DT_FLOAT8_E5M2, E5M2_MAX_VALUE}, {ge::DT_FLOAT8_E4M3FN, E4M3FN_MAX_VALUE},
     };
     return dt_max_map[dt];
@@ -49,7 +47,7 @@ namespace {
 
   ge::float32_t GetMin(const ge::DataType dt) {
     static std::map<ge::DataType, ge::float32_t> dt_min_map = {{ge::DT_FLOAT16, FP16_MIN_VALUE},
-        {ge::DT_BF16, BF16_MIN_VALUE}, {ge::DT_FLOAT, -FLT_MAX}, {ge::DT_HIFLOAT8, -HIF8_MAX_VALUE}, {ge::DT_HIFLOAT4, HIF4_MIN_VALUE},
+        {ge::DT_BF16, BF16_MIN_VALUE}, {ge::DT_FLOAT, -FLT_MAX}, {ge::DT_HIFLOAT8, -HIF8_MAX_VALUE},
         {ge::DT_FLOAT8_E5M2, -E5M2_MAX_VALUE}, {ge::DT_FLOAT8_E4M3FN, -E4M3FN_MAX_VALUE},
     };
     return dt_min_map[dt];

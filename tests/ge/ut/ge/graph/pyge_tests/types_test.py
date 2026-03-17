@@ -3,10 +3,10 @@
 # -------------------------------------------------------------------
 # -----------------------------------------------------------------------------------------------------------
 # Copyright (c) 2025 Huawei Technologies Co., Ltd.
-# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
@@ -82,8 +82,7 @@ class TestDataType:
         assert DataType.DT_FLOAT6_E2M3 == 39
         assert DataType.DT_FLOAT4_E2M1 == 40
         assert DataType.DT_FLOAT4_E1M2 == 41
-        assert DataType.DT_HIFLOAT4 == 42
-        assert DataType.DT_MAX == 43
+        assert DataType.DT_MAX == 42
 
     def test_data_type_enum_inheritance(self):
         """测试 DataType 枚举继承"""
@@ -173,21 +172,21 @@ class TestAttrValueType:
         """测试 AttrValueType 在 AttrValue 中的使用"""
         # 这个测试验证 AttrValueType 可以用于类型检查
         from ge.graph._attr import _AttrValue as AttrValue
-
+        
         attr = AttrValue()
-
+        
         # 测试字符串类型
         attr.set_string("test")
         assert attr.get_value_type() == AttrValueType.VT_STRING
-
+        
         # 测试浮点数类型
         attr.set_float(3.14)
         assert attr.get_value_type() == AttrValueType.VT_FLOAT
-
+        
         # 测试整数类型
         attr.set_int(42)
         assert attr.get_value_type() == AttrValueType.VT_INT
-
+        
         # 测试布尔类型
         attr.set_bool(True)
         assert attr.get_value_type() == AttrValueType.VT_BOOL
@@ -195,21 +194,21 @@ class TestAttrValueType:
     def test_attr_data_type_enum_usage_in_lists(self):
         """测试 AttrValueType 在列表中的使用"""
         from ge.graph._attr import _AttrValue as AttrValue
-
+        
         attr = AttrValue()
-
+        
         # 测试浮点数列表类型
         attr.set_list_float([1.0, 2.0, 3.0])
         assert attr.get_value_type() == AttrValueType.VT_LIST_FLOAT
-
+        
         # 测试整数列表类型
         attr.set_list_int([1, 2, 3])
         assert attr.get_value_type() == AttrValueType.VT_LIST_INT
-
+        
         # 测试布尔列表类型
         attr.set_list_bool([True, False, True])
         assert attr.get_value_type() == AttrValueType.VT_LIST_BOOL
-
+        
         # 测试字符串列表类型
         attr.set_list_string(["hello", "world"])
         assert attr.get_value_type() == AttrValueType.VT_LIST_STRING

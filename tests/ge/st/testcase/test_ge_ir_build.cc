@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -2039,11 +2039,6 @@ void BuildAndCheckSimpleConstCastGraph(bool use_const, DataType dtype) {
 TEST_F(GeIrBuildTest, Fp8ConstGraph_hif8_ok) {
   BuildAndCheckSimpleConstCastGraph(true, DT_HIFLOAT8);
   BuildAndCheckSimpleConstCastGraph(false, DT_HIFLOAT8);
-}
-
-TEST_F(GeIrBuildTest, Fp4ConstGraph_hif4_ok) {
-  BuildAndCheckSimpleConstCastGraph(true, DT_HIFLOAT4);
-  BuildAndCheckSimpleConstCastGraph(false, DT_HIFLOAT4);
 }
 
 TEST_F(GeIrBuildTest, Fp8ConstGraph_fp8e5m2_ok) {
