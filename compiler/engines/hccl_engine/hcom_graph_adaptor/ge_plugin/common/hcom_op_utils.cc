@@ -646,6 +646,102 @@ HcclResult HcomOpUtils::GetAivCoreLimit(const ge::OpDescPtr &op, const std::stri
   return HCCL_SUCCESS;
 }
 
+// 对比getcountfromopdesc接口，此接口更为完善，主要区分于allreduce算子的count计算方式
+HcclResult HcomOpUtils::GetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                      HcclDataType dataType, u64 &count, u32 rankSize) {
+  u32 dataTypeSize = 0;
+  CHK_RET(SalGetDataTypeSize(dataType, dataTypeSize));
+  CHK_PRT_RET(dataTypeSize == 0, 
+      HCCL_ERROR("[%s][Get][CountFromOpDesc]dataType size is zero.", __func__), HCCL_E_PARA);
+
+  // Receive 算子不支持获取count
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_RECEIVE) {
+    HCCL_RUN_WARNING("[%s][Get][Count] op[%s] get count failed. receive op not support get count.",
+              __func__, sCollectiveType.c_str());
+    return HCCL_SUCCESS;
+  }
+
+  // ALLREDUCE 特殊处理：使用 TensorUtils::GetSize 获取大小并立即返回
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_ALLREDUCE) {
+    CHK_RET(CalcAllReduceCount(op, sCollectiveType, dataTypeSize, count));
+    return HCCL_SUCCESS;  
+  }
+
+  // 其他算子通用处理
+  CHK_RET(CalcCommonCount(op, sCollectiveType, dataTypeSize, rankSize, count));
+  return HCCL_SUCCESS;
+}
+
+// ALLREDUCE 的count专用计算
+HcclResult HcomOpUtils::CalcAllReduceCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                          u32 dataTypeSize, u64 &count) {
+  constexpr u32 alignSize = 512; // 对齐大小为512字节的倍数
+  u64 totalSize = 0;
+
+  for (u64 i = 0; i < op->GetInputsSize(); i++) {
+    int64_t tensorSize = 0;
+    CHK_PRT_RET((ge::GRAPH_SUCCESS != ge::TensorUtils::GetSize(*op->GetInputDescPtr(i), tensorSize)),
+        HCCL_ERROR("[Get][Count]errNo[0x%016llx] get workspace bytes failed. get size from TensorDesc"
+                  "failed, op : %s, input index : %llu",
+                  HCOM_ERROR_CODE(HCCL_E_PARA), sCollectiveType.c_str(), i),
+        HCCL_E_PARA);
+    
+    CHK_PRT_RET((static_cast<u64>(tensorSize) > INVALID_U64 - alignSize),
+        HCCL_ERROR("op[%s] input size[%llu] is overflow.", sCollectiveType.c_str(), static_cast<u64>(tensorSize)),
+        HCCL_E_PARA);
+
+    totalSize += ((static_cast<u64>(tensorSize) + alignSize - 1) / alignSize * alignSize);
+  }
+
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]op[%s] get count[%llu] for allreduce success.", __func__, sCollectiveType.c_str(), count);
+  return HCCL_SUCCESS;
+}
+ 	 
+// 除了allreduce算子以为的通用算子count计算
+HcclResult HcomOpUtils::CalcCommonCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                        u32 dataTypeSize, u32 rankSize, u64 &count) {
+  constexpr u32 alignSize = 512; // 对齐大小为512字节的倍数
+  u64 totalSize = 0;
+
+  for (u64 i = 0; i < op->GetInputsSize(); i++) {
+    u64 shapeSize = static_cast<u64>(op->GetInputDescPtr(i)->GetShape().GetShapeSize());
+    
+    // 溢出检查
+    CHK_PRT_RET(shapeSize > INVALID_U64 / dataTypeSize,
+        HCCL_ERROR("op[%s] input size[%llu] * dataTypeSize[%u] is overflow.",
+                  sCollectiveType.c_str(), shapeSize, dataTypeSize),
+        HCCL_E_PARA);
+
+    u64 inputSize = shapeSize * dataTypeSize;
+    HCCL_INFO("[%s]op[%s] get inputSize[%llu] with dataTypeSize[%u] for index[%llu] success.",
+              __func__, sCollectiveType.c_str(), inputSize, dataTypeSize, i);
+
+    // 根据算子类型计算 blockSize
+    u64 blockSize = 0;
+    if (sCollectiveType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
+      blockSize = (inputSize + alignSize - 1) / alignSize * alignSize;
+    } else if (sCollectiveType == HCCL_KERNEL_OP_TYPE_REDUCESCATTER) {
+      blockSize = inputSize / rankSize;
+    } else {
+      // ALLGATHER 和其他算子
+      blockSize = inputSize;
+    }
+    
+    // 溢出检查
+    CHK_PRT_RET(totalSize > INVALID_U64 - blockSize,
+        HCCL_ERROR("op[%s] totalSize[%llu] + blockSize[%llu] is overflow.",
+                  sCollectiveType.c_str(), totalSize, blockSize),
+        HCCL_E_PARA);
+
+    totalSize += blockSize;
+  }
+
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]op[%s] get count[%llu] success.", __func__, sCollectiveType.c_str(), count);
+  return HCCL_SUCCESS;
+}
+
 HcclResult HcomOpUtils::GetCountFromOpDescSuperkernel(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                                       HcclDataType dataType, u64 &count, u32 rankSize) {
   u64 totalSize = 0;

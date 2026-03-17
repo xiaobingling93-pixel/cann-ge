@@ -25,6 +25,9 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
   ge::Status GenerateTask(const ge::Node &node, ge::RunContext &runContext,
                           std::vector<domi::TaskDef> &taskDefList) override;
 
+ protected:
+  HcclResult CheckSupportedOP(const std::string &sCollectiveType) const;
+
  private:
   HcclResult HcomCalcOpRunningParam(ge::Node &node);
   HcclResult SetHcomOpParam(const ge::Node &node, HcomOpParam *hcomOpParam, std::string &sCollectiveType,
@@ -38,6 +41,21 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
   HcclResult SetOpAtomicInputIndex(ge::Node &node, const std::string &sCollectiveType) override;
   HcclResult GetCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType, HcclDataType dataType,
                                 u64 &count);
+  HcclCMDType GetOpType(const std::string &sCollectiveType) const;
+  HcclResult PrepareSuperKernelRuntimeParams(const ge::OpDescPtr &opDescPtr, const std::string &sCollectiveType,
+                                            HcclCMDType opType, HcclDataType &dataType, u64 &count,
+                                            int64_t &comm, std::string &group, u32 &rankSize, u32 &aivCoreLimit,
+                                            HcclReduceOp &reduction);
+  HcclResult CheckSuperKernelEligibility(ge::Node &node, const ge::OpDescPtr &opDescPtr,
+                                         std::string &sCollectiveType, std::string &superKernelScope,
+                                         HcclCMDType &opType, bool &needProcess);
+  HcclResult SetAivSuperKernelBinaryAttrs(const ge::OpDescPtr &opDescPtr, HcclCMDType opType, HcclDataType dataType,
+                                          const std::string &algName);
+  HcclResult SetSuperKernelBlockDim(const ge::OpDescPtr &opDescPtr, const std::string &group, HcclCMDType opType,
+                                    u64 count, HcclDataType dataType, u32 aivCoreLimit, char *algName,
+                                    u32 rankSize);
+  HcclResult SetSuperKernelScopeAttr(ge::Node &node);
+  HcclResult SKGetAlgPath(HcclCMDType opType, std::string &binaryPath);
   HcclResult GetHcomReceiveOpOutputSize(const ge::OpDescPtr &op, u32 dataTypeSize, u64 &outputSize);
   HcclResult GetRootGraphID(const ge::Node &node, uint32_t &graphId);
   HcclResult GetCommFromOpDesc(const ge::OpDescPtr &op, int64_t &hcomComm, std::string &sGroup);
@@ -66,11 +84,15 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
   HcclResult GetNeedMapRankFromDesc(const ge::OpDescPtr &op, bool &needMapRank);
   HcclResult GenerateTaskPrivateDef(const ge::Node &node, HCCL_KERNEL_INFO_PRIVATE_DEF &privateDefBuf,
                                     domi::TaskDef &taskDef, const std::string sCollectiveType);
-  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv);
+  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv, int64_t &hcomComm,
+                            std::string &sGroup, u32 &rankSize, u64 &count, HcclDataType &dataType, HcclCMDType &opType,
+                            HcclReduceOp &reduction, u32 &aivCoreLimit, char *algName);
+  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv); // 保持向后兼容
   HcclResult GetCountsFromOpDesc(const ge::Node &node, void *&counts, HcclCMDType opType);
   HcclResult SetAttachedStreamInfoList(ge::Node &node, const std::string &group);  // 设置附属从流信息
   HcclResult TaskDefSetNumBlocks(const ge::Node &node, domi::TaskDef &taskDef, const std::string sCollectiveType,
                                  const u32 aivCoreLimit);
+  int32_t optionFeatureBaseRefreshable_;
 };
 }  // namespace hccl
 #endif  // GE_OPS_KERNEL_INFO_H
