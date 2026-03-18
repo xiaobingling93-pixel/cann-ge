@@ -101,6 +101,11 @@ extract_version() {
     local input="$1"
     local ver
 
+    # 移除前缀 v 或 V
+    input=$(echo "$input" | sed 's/^[vV]//')
+    # 移除后缀（-rc, -alpha, -beta 等）
+    input=$(echo "$input" | sed 's/-.*$//')
+
     ver=$(echo "$input" | grep -oP '\d+\.\d+(\.\d+)*' | head -n1 || true)
 
     if [ -z "$ver" ]; then
@@ -330,8 +335,13 @@ else
 fi
 
 # --- libtool ---
-if check_command libtool; then
-    LIBTOOL_RAW=$(libtool --version | head -n1)
+# Ubuntu/Debian 中 libtool 包安装后，可执行文件可能叫 libtoolize 而不是 libtool，或需要额外安装 libtool-bin
+if check_command libtool || check_command libtoolize; then
+    if command -v libtool &> /dev/null; then
+        LIBTOOL_RAW=$(libtool --version | head -n1)
+    else
+        LIBTOOL_RAW=$(libtoolize --version | head -n1)
+    fi
     LIBTOOL_VER=$(extract_version "$LIBTOOL_RAW")
     log_pass "libtool $LIBTOOL_VER"
 else
@@ -372,7 +382,8 @@ fi
 ASAN_FOUND=false
 for path in /usr/lib /usr/lib64 /usr/local/lib /usr/local/lib64 \
             /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu \
-            /usr/lib/gcc/x86_64-linux-gnu/*/ /usr/lib/gcc/aarch64-linux-gnu/*/; do
+            /usr/lib/gcc/x86_64-linux-gnu/*/  /usr/lib/gcc/aarch64-linux-gnu/*/ \
+            /usr/lib/gcc/x86_64-linux-gnu/*/*/  /usr/lib/gcc/aarch64-linux-gnu/*/*/; do
     if ls "$path"/libasan.so* &>/dev/null 2>&1; then
         ASAN_FOUND=true
         ASAN_PATH="$path"
@@ -584,7 +595,7 @@ fi
 print_header "10. 系统资源 [可选]"
 
 # 磁盘
-DISK_AVAIL=$(df -BG . 2>/dev/null | tail -1 | awk '{print $4}' | tr -d 'G' || echo "0")
+DISK_AVAIL=$(df -B1 . 2>/dev/null | tail -1 | awk '{printf "%.0f", $4/1024/1024/1024}' || echo "0")
 if [ "$DISK_AVAIL" -gt 30 ] 2>/dev/null; then
     log_info "可用磁盘: ${DISK_AVAIL}GB"
 elif [ "$DISK_AVAIL" -gt 15 ] 2>/dev/null; then
