@@ -45,11 +45,11 @@ Status NddmaApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisI
     if ((gm.axis_size[second_to_last_index] == One) && (gm.axis_size[last_index] == One)) {
       ss << "const int64_t input_stride_" << ub.id << "[2] = {0, 0};" << std::endl;
       ss << "const int64_t output_stride_" << ub.id << "[2] = {curAlignN, 1};" << std::endl;
-      gm_offset = "0";
+      gm_offset = "batch_num";
     } else if (gm.axis_size[second_to_last_index] == One) {
       ss << "const int64_t input_stride_" << ub.id << "[2] = {0, 1};" << std::endl;
       ss << "const int64_t output_stride_" << ub.id << "[2] = {curAlignN, 1};" << std::endl;
-      gm_offset = "offset % shapeN";
+      gm_offset = "offset % shapeN + batch_num * shapeN";
     } else if (gm.axis_size[last_index] == One) {
       ss << "const int64_t input_stride_" << ub.id << "[2] = {1, 0};" << std::endl;
       ss << "const int64_t output_stride_" << ub.id << "[2] = {curAlignN, 1};" << std::endl;

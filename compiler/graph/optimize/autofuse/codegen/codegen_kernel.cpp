@@ -4752,15 +4752,16 @@ class AutoFusionVector {
   result << ss.str() << std::endl;
 
   result << "inline __aicore__ void auto_fusion_vector_stage1(int64_t offset, int64_t curAivM, int64_t curAivN, "
-            "int64_t shapeN, int64_t curAlignN, int64_t stageSize) {";
+            "int64_t shapeN, int64_t shapeM, int64_t curAlignN, int64_t stageSize) {";
   result << std::endl;
+  result << "int64_t batch_num = offset / shapeN / shapeM;" << std::endl;
   GE_CHK_STATUS_RET(this->root_loop.Generate(this->tiler, this->tpipe, tmp, ComputeStage::kCVFuseStage1),
                     "Codegen root loop Generate failed");
   result << tmp;
   result << "}" << std::endl;
 
   result << "inline __aicore__ void auto_fusion_vector_stage2(int64_t offset, int64_t curAivM, int64_t curAivN, "
-            "int64_t shapeN, int64_t curAlignN, int64_t stageSize) {";
+            "int64_t shapeN, int64_t shapeM, int64_t curAlignN, int64_t stageSize) {";
   result << std::endl;
   GE_CHK_STATUS_RET(this->root_loop.Generate(this->tiler, this->tpipe, tmp, ComputeStage::kCVFuseStage2),
                     "Codegen root loop Generate failed");
@@ -4768,16 +4769,16 @@ class AutoFusionVector {
   result << "}" << std::endl;
 
   result << "inline __aicore__ void operator()(int64_t offset, int64_t curAivM, int64_t curAivN, int64_t shapeN, "
-            "int64_t curAlignN, int64_t stageSize, int64_t stageOffset, uint8_t stage = 0) {"
+            "int64_t shapeM, int64_t curAlignN, int64_t stageSize, int64_t stageOffset, uint8_t stage = 0) {"
          << std::endl
          << ub_tensor->name << " = cLocal_[stageOffset].template ReinterpretCast<" << dtype_name << ">();" << std::endl
          << "if (stage == 1) {" << std::endl
-         << "  auto_fusion_vector_stage1(offset, curAivM, curAivN, shapeN, curAlignN, stageSize);" << std::endl
+         << "  auto_fusion_vector_stage1(offset, curAivM, curAivN, shapeN, shapeM, curAlignN, stageSize);" << std::endl
          << "} else if (stage == 2) {" << std::endl
-         << "  auto_fusion_vector_stage2(offset, curAivM, curAivN, shapeN, curAlignN, stageSize);" << std::endl
+         << "  auto_fusion_vector_stage2(offset, curAivM, curAivN, shapeN, shapeM, curAlignN, stageSize);" << std::endl
          << "} else {" << std::endl
-         << "  auto_fusion_vector_stage1(offset, curAivM, curAivN, shapeN, curAlignN, stageSize);" << std::endl
-         << "  auto_fusion_vector_stage2(offset, curAivM, curAivN, shapeN, curAlignN, stageSize);" << std::endl
+         << "  auto_fusion_vector_stage1(offset, curAivM, curAivN, shapeN, shapeM, curAlignN, stageSize);" << std::endl
+         << "  auto_fusion_vector_stage2(offset, curAivM, curAivN, shapeN, shapeM, curAlignN, stageSize);" << std::endl
          << "}" << std::endl
          << "}" << std::endl;
 

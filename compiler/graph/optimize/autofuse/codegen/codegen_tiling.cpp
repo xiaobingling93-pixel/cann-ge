@@ -1356,13 +1356,14 @@ extern "C" int64_t GenCVFusionTilingKey(char* config_file, int aiv_num, int ub_s
   limit.aiv_num = aiv_num;
   limit.ub_size = ub_size - 256;
   set_g_basen_basem_align(basen_basem_align);
-  OP_LOGI(OP_NAME, "basen_basem_align=%d, set_g_basen_basem_align=%d", basen_basem_align, get_g_basen_basem_align());
+  OP_LOGI(OP_NAME, "basen_basem_align=%d, basen_align=%d, set_g_basen_basem_align=%d",
+          basen_basem_align, basen_align, get_g_basen_basem_align());
   auto ret = AutofuseTilingWithConfig(config_file, &TilingDataValue, &workspace_size, &block_dim, &limit, 0);
   if (ret == -1) {
     uint32_t basen_basem_align_tmp = (uint32_t)basen_basem_align;
     // ub_size必大于 basen_basem_align_tmp
     limit.ub_size = limit.ub_size - basen_basem_align_tmp * cube_output_type_size; // 元素个数 * type_size
-    set_g_basen_basem_align(1);
+    set_g_basen_basem_align(basen_align);
     OP_LOGI(OP_NAME, "set_g_basen_basem_align=%d, ub_size=%u", get_g_basen_basem_align(), ub_size);
     ret = AutofuseTilingWithConfig(config_file, &TilingDataValue, &workspace_size, &block_dim, &limit, 1);
     if (ret == -1) {
