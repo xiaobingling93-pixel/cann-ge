@@ -4508,8 +4508,9 @@ TEST(TeFusionUTest, check_op_impl_mode_not_supported)
 
 TEST(TeFusionUTest, UpdateInhibitionInfoForLog)
 {
+    te::fusion::TeFusionManager::GetInstance()->taskStatisticsTime_ = 0;
     bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog();
-    EXPECT_EQ(res, false);
+    EXPECT_EQ(res, true);
 }
 
 TEST(TeFusionUTest, update_preops_info) {

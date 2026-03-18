@@ -3943,8 +3943,9 @@ TEST(TEST_TEFUSION_ST, AssembleOpPrivateAttrs)
 
 TEST(TEST_TEFUSION_ST, UpdateInhibitionInfoForLog)
 {
+    te::fusion::TeFusionManager::GetInstance()->taskStatisticsTime_ = 0;
     bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog();
-    EXPECT_EQ(res, false);
+    EXPECT_EQ(res, true);
 }
 
 TEST(TEST_TEFUSION_ST, update_preops_info) {

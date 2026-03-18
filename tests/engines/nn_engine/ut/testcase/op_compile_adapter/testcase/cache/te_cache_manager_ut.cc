@@ -44,7 +44,7 @@ protected:
     static void SetUpTestSuite() {
         std::cout << "TeCacheManagerUTest SetUpTestSuite" << std::endl;
         TeCacheManager::Instance().cache_mode_ = CompileCacheMode::Enable;
-        TeCacheManager::Instance().cache_dir_path_ = RealPath("./llt/atc/opcompiler/te_fusion/st/disk_cache/atc_data/kernel_cache");
+        TeCacheManager::Instance().cache_dir_path_ = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/atc_data/kernel_cache"
         if (TeCacheManager::Instance().cache_dir_path_.empty()) {
             TeCacheManager::Instance().cache_dir_path_ = RealPath("../llt/atc/opcompiler/te_fusion/st/disk_cache/atc_data/kernel_cache");
         }
@@ -168,11 +168,8 @@ TEST(TeCacheManagerUTest, pre_compile_cache_01)
 {
     TeCacheManager::Instance().cache_mode_ = CompileCacheMode::Enable;
     std::string currentFilePath = "";
-    TeCacheManager::Instance().cache_dir_path_ = RealPath("./llt/atc/opcompiler/te_fusion/st/disk_cache/atc_data/kernel_cache");
-    if (TeCacheManager::Instance().cache_dir_path_.empty()) {
-        currentFilePath = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/atc_data/kernel_cache";
-        TeCacheManager::Instance().cache_dir_path_ = RealPath(currentFilePath);
-    }
+    currentFilePath = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/atc_data/kernel_cache";
+    TeCacheManager::Instance().cache_dir_path_ = RealPath(currentFilePath);
     std::cout << "cache dir:" << TeCacheManager::Instance().cache_dir_path_ << std::endl;
     TeCacheManager::Instance().precompile_ret_cache_map_.clear();
     TeCacheManager::Instance().compile_ret_cache_map_.clear();
