@@ -187,6 +187,7 @@ target_include_directories(register_static PUBLIC
     ${AIR_CODE_DIR}/inc/graph_metadef
     ${TOP_DIR}/ace/npuruntime/runtime/platform/inc
     ${TOP_DIR}/runtime/pkg_inc
+    ${TOP_DIR}/runtime/pkg_inc/runtime
     ${TOP_DIR}/metadef/inc
     ${ASCEND_INSTALL_PATH}/include/graph
 )
