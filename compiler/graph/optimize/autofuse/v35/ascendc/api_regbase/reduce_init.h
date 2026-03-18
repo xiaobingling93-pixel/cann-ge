@@ -157,22 +157,33 @@ __simd_vf__ inline void ReduceInitUnalignImpl(__local_mem__ T* dstUb, uint32_t r
 template <typename T, int32_t ReduceType, bool isTailLast>
 __aicore__ inline void ReduceInit(const LocalTensor<T> &dstTensor, const uint32_t dim_a, const uint32_t dim_r,
                                   const uint32_t dim_r_current, const uint32_t inner_r){
-    static_assert(SupportType<T, half, float, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t>());
+    static_assert(SupportType<T, half, float, bfloat16_t, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t>());
     constexpr bool is_b64 = AscendC::Std::is_same<T, int64_t>::value || AscendC::Std::is_same<T, uint64_t>::value;
     uint16_t inner_r_upper;
     uint16_t inner_r_down;
+    uint32_t un_dim_a, un_dim_r, un_dim_r_current;
     uint32_t alignCount = 32 / sizeof(T);
     inner_r_upper = CeilDivision(inner_r, alignCount) * alignCount;
     inner_r_down = (inner_r / alignCount) * alignCount;
 
-    uint32_t blockCountOp0 = dim_a;
-    uint32_t blockCountOp1 = dim_r_current / inner_r_upper;
+    if ((dim_a == 1) && (dim_r == dim_r_current)) {
+        un_dim_a = dim_r / inner_r_upper;
+        un_dim_r = inner_r_upper;
+        un_dim_r_current = inner_r_upper;
+    } else {
+        un_dim_a = dim_a;
+        un_dim_r = dim_r;
+        un_dim_r_current = dim_r_current;
+    }
+
+    uint32_t blockCountOp0 = un_dim_a;
+    uint32_t blockCountOp1 = un_dim_r_current / inner_r_upper;
 
     constexpr uint16_t BLOCK_COUNT_PER_REPEAT = 8;
-    uint16_t outterLoopRepeat = static_cast<uint16_t>(dim_r_current / inner_r_upper);
-    uint16_t innerLoopRepeat = static_cast<uint16_t>(dim_a / BLOCK_COUNT_PER_REPEAT);
-    uint16_t tailBlockCount = dim_a % BLOCK_COUNT_PER_REPEAT;
-    uint16_t dataBlockStride = dim_r * sizeof(T) / 32;
+    uint16_t outterLoopRepeat = static_cast<uint16_t>(un_dim_r_current / inner_r_upper);
+    uint16_t innerLoopRepeat = static_cast<uint16_t>(un_dim_a / BLOCK_COUNT_PER_REPEAT);
+    uint16_t tailBlockCount = un_dim_a % BLOCK_COUNT_PER_REPEAT;
+    uint16_t dataBlockStride = un_dim_r * sizeof(T) / 32;
     uint16_t repeatStride = dataBlockStride * 8;
     T padValue = GetPaddingValue<T, ReduceType>();
 
@@ -181,14 +192,14 @@ __aicore__ inline void ReduceInit(const LocalTensor<T> &dstTensor, const uint32_
     baseOffset = baseOffset / sizeof(T);
     uint32_t sreg = inner_r - baseOffset;
     uint32_t inner_r_up = (inner_r * sizeof(T) + AscendC::ONE_BLK_SIZE - 1) / AscendC::ONE_BLK_SIZE * AscendC::ONE_BLK_SIZE / sizeof(T);
-    uint32_t inner_r_repeat_times = dim_r_current / inner_r_up;
+    uint32_t inner_r_repeat_times = un_dim_r_current / inner_r_up;
 
     // align
-    uint32_t pad_length_tail = dim_r -dim_r_current;
-    uint32_t pad_length_head = dim_r_current % inner_r_up;
+    uint32_t pad_length_tail = un_dim_r -un_dim_r_current;
+    uint32_t pad_length_head = un_dim_r_current % inner_r_up;
     uint32_t pad_length_total = pad_length_tail + pad_length_head;
     uint32_t repeatTimesAlign = pad_length_total * sizeof(T) / VECTOR_REG_WIDTH;
-    uint32_t inner_r_offset = dim_r_current / inner_r_up * inner_r_up;
+    uint32_t inner_r_offset = un_dim_r_current / inner_r_up * inner_r_up;
     uint32_t stride_element = VECTOR_REG_WIDTH / sizeof(T);
     uint32_t tail_pad_count = pad_length_total % stride_element;
     uint32_t tail_ctrl = (tail_pad_count == 0) ? 0 : 1;
@@ -201,26 +212,26 @@ __aicore__ inline void ReduceInit(const LocalTensor<T> &dstTensor, const uint32_
 #else
     maskBuf = AscendCUtils::GetTemporaryBufferAddr<uint32_t>(TMP_UB_OFFSET, 64);
 #endif
-    bool need_exec = MaskPreprocess<T>(maskBuf, dim_a, inner_r, inner_r_down);
+    bool need_exec = MaskPreprocess<T>(maskBuf, un_dim_a, inner_r, inner_r_down);
     if constexpr (is_b64) {
         if (!is_inner_r_align) {
             ReduceInitUnalignImpl<T>((__ubuf__ T*)dstTensor.GetPhyAddr(), repeatTimesAlign, pad_length_total, inner_r_offset, stride_element, 
-                tail_pad_count, tail_ctrl, padValue, dim_a, dim_r, sreg, baseOffset, inner_r_repeat_times, inner_r_up);
+                tail_pad_count, tail_ctrl, padValue, un_dim_a, un_dim_r, sreg, baseOffset, inner_r_repeat_times, inner_r_up);
         }
             ReduceInitAlignImpl<T>((__ubuf__ T*)dstTensor.GetPhyAddr(), repeatTimesAlign, pad_length_total, inner_r_offset, stride_element, 
-                tail_pad_count, tail_ctrl, padValue, dim_a, dim_r);
+                tail_pad_count, tail_ctrl, padValue, un_dim_a, un_dim_r);
             AscendC::AscendCUtils::FreeTemporaryBuffer<uint32_t>(maskBuf);
     } else {
-        if (dim_r > dim_r_current) {
+        if (un_dim_r > un_dim_r_current) {
             ReduceInitAlignImpl<T>((__ubuf__ T*)dstTensor.GetPhyAddr(), repeatTimesAlign, pad_length_total, inner_r_offset, stride_element, 
-                tail_pad_count, tail_ctrl, padValue, dim_a, dim_r);
+                tail_pad_count, tail_ctrl, padValue, un_dim_a, un_dim_r);
             AscendC::AscendCUtils::FreeTemporaryBuffer<uint32_t>(maskBuf);
         }
         if (!need_exec) {
             AscendC::AscendCUtils::FreeTemporaryBuffer<uint32_t>(maskBuf);
             return;
         } else {
-            OptImpl<T>((__ubuf__ T*)dstTensor.GetPhyAddr(), maskBuf, dim_a, dim_r, dim_r_current, outterLoopRepeat,
+            OptImpl<T>((__ubuf__ T*)dstTensor.GetPhyAddr(), maskBuf, un_dim_a, un_dim_r, un_dim_r_current, outterLoopRepeat,
                 innerLoopRepeat, tailBlockCount, dataBlockStride, repeatStride, inner_r_upper, inner_r_down, padValue);
             AscendC::AscendCUtils::FreeTemporaryBuffer<uint32_t>(maskBuf);
         }
