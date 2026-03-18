@@ -48,7 +48,7 @@ target_link_options(ut_flow_graph PRIVATE
 )
 
 target_link_libraries(ut_flow_graph PRIVATE
-        intf_pub
+        intf_llt_pub
         -lgcov
         metadef_headers
         ascend_protobuf

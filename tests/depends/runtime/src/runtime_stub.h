@@ -15,6 +15,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <string>
 #include "mmpa/mmpa_api.h"
 #include "runtime/rt.h"
 #include "runtime/rts/rts_stream.h"

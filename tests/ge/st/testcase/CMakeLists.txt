@@ -117,8 +117,6 @@ target_compile_definitions(graph_engine_test PRIVATE
 )
 
 target_compile_options(graph_engine_test PRIVATE
-    -g -O0
-    -fno-access-control
     -Wno-write-strings
     -Wno-deprecated-declarations
     -Wall -Wfloat-equal -Werror
@@ -227,7 +225,7 @@ target_include_directories(graph_engine_compile_test PRIVATE
         )
 
 target_link_libraries(graph_engine_compile_test
-        intf_pub
+        intf_llt_pub
         -Wl,-z,muldefs
         ge_compiler
         ge_runner

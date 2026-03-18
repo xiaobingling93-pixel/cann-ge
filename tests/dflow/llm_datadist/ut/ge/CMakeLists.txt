@@ -107,7 +107,7 @@ target_link_libraries(ut_llm_engine_utest
         json
         runtime_stub
         mmpa_stub2
-        intf_pub
+        intf_llt_pub
         ascendcl_stub
         llm_engine_base
         llm_engine

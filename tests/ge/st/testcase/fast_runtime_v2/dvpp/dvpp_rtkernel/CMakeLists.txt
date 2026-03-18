@@ -36,7 +36,7 @@ target_include_directories(st_dvpp_runtime2_test PRIVATE
         )
 
 target_link_libraries(st_dvpp_runtime2_test PRIVATE
-        intf_pub
+        intf_llt_pub
         ascend_dump
         gert
         -Wl,--whole-archive

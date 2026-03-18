@@ -15,7 +15,7 @@ file(GLOB_RECURSE SRCS RELATIVE ${CMAKE_CURRENT_LIST_DIR}
 add_library(parser_mmpa_stub SHARED ${SRCS})
 target_link_libraries(parser_mmpa_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         metadef_headers        
         -Wl,--no-as-needed
         ascend_protobuf

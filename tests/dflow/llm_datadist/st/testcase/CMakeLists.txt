@@ -59,7 +59,7 @@ target_link_libraries(llm_engine_test
         runtime_stub
         mmpa_stub2
         ascendcl_stub
-        intf_pub
+        intf_llt_pub
         llm_engine_base
         llm_engine
         ascend_dump

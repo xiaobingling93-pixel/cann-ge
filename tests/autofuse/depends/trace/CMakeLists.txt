@@ -21,7 +21,7 @@ target_compile_options(atrace_stub PRIVATE
 
 target_link_libraries(atrace_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         c_sec
     PUBLIC
         atrace_headers

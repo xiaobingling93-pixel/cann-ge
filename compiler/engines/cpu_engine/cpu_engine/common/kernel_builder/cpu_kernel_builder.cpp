@@ -108,7 +108,7 @@ ge::Status CpuKernelBuilder::CalcOpRunningParam(const ge::Node &node) const
 }
 
 ge::Status CpuKernelBuilder::BuildMemCopyInfo(
-    const ge::OpDescPtr &op_desc_ptr, const ge::RunContext &run_context,
+    const ge::OpDescPtr &op_desc_ptr, [[maybe_unused]] const ge::RunContext &run_context,
     domi::KernelDef *&kernel_def) const {
   kernel_def->set_kernel_ext_info_size(0);
 

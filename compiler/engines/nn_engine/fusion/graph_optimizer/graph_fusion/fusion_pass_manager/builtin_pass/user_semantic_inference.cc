@@ -113,7 +113,8 @@ Status UserSemanticInferencePass::FusionForPyPTO(const ge::NodePtr &pyptoNode) c
   return SUCCESS;
 }
 
-Status UserSemanticInferencePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr> &fusionNodes) {
+Status UserSemanticInferencePass::Fusion([[maybe_unused]] ge::ComputeGraph& graph, Mapping& mapping,
+                                         [[maybe_unused]] vector<ge::NodePtr> &fusionNodes) {
   ge::NodePtr pyptoNode = GetNodeFromMapping(PATTERN_PYPTO, mapping);
   if (pyptoNode != nullptr) {
     return FusionForPyPTO(pyptoNode);

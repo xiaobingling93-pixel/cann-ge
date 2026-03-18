@@ -81,7 +81,7 @@ target_compile_options(helper_runtime PRIVATE
 )
 
 target_link_libraries(helper_runtime PUBLIC
-    intf_pub
+    intf_llt_pub
     mmpa_headers
     slog_headers
     metadef_headers
@@ -152,7 +152,7 @@ target_compile_options(helper_runtime_no_grpc PRIVATE
         )
 
 target_link_libraries(helper_runtime_no_grpc PUBLIC
-        intf_pub
+        intf_llt_pub
         mmpa_headers
         slog_headers
         metadef_headers

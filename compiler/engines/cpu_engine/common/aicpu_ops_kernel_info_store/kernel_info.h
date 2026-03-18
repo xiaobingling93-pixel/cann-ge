@@ -53,7 +53,7 @@ class KernelInfo {
 
   ge::Status GetCustUserInfo(std::map<std::string, std::string> &cust_user_info) const;
 
-  virtual bool IsSupportedOps(const std::string &op) const {
+  virtual bool IsSupportedOps([[maybe_unused]] const std::string &op) const {
     return false;
   };
 

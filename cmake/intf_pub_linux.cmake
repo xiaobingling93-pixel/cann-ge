@@ -16,15 +16,27 @@ endif()
 ########## intf_pub_base ##########
 add_library(intf_pub_base INTERFACE)
 
+if (ENABLE_GCOV MATCHES true)
+    set(OPTIMIZE_OPTION "-O0")
+else ()
+    set(OPTIMIZE_OPTION "-O2")
+endif ()
+
 target_compile_options(intf_pub_base INTERFACE
-    -Wall
-    -fPIC
+    ${OPTIMIZE_OPTION}
+    -Werror -fno-common -Wextra -Wfloat-equal -Wall -fPIC
     -fstack-protector-strong
     -D_FORTIFY_SOURCE=2
     $<$<CONFIG:Debug>:-g>
-    $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
-        -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
-    $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage -DFUNC_VISIBILITY>
+    $<$<BOOL:${ENABLE_ASAN}>:
+        -Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak -fsanitize-recover=address,all
+        -fno-stack-protector -fno-omit-frame-pointer -g>
+    $<$<BOOL:${ENABLE_GCOV}>:
+        -g
+        --coverage -fprofile-arcs -ftest-coverage
+        -DFUNC_VISIBILITY
+        -DFMK_SUPPORT_DUMP
+        -DFWK_SUPPORT_TRAINING_TRACE>
 )
 
 target_compile_definitions(intf_pub_base INTERFACE
@@ -111,6 +123,14 @@ target_compile_options(intf_pub_cxx17 INTERFACE
 
 target_link_libraries(intf_pub_cxx17 INTERFACE
     $<BUILD_INTERFACE:intf_pub_base>
+)
+
+#  屏蔽pybind里的编译告警
+add_library(pybind_options INTERFACE)
+
+target_compile_options(pybind_options INTERFACE
+        -Wno-float-equal
+        -Wno-missing-field-initializers
 )
 
 ########## ccache ##########

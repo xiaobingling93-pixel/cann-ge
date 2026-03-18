@@ -29,7 +29,7 @@ target_compile_definitions(c_base_static PRIVATE
 
 target_link_libraries(c_base_static
     PRIVATE
-        $<BUILD_INTERFACE:intf_pub>
+        $<BUILD_INTERFACE:intf_llt_pub>
         c_sec_headers
 )
 
@@ -67,7 +67,7 @@ add_library(c_json_static STATIC
 
 target_link_libraries(c_json_static
     PRIVATE
-        $<BUILD_INTERFACE:intf_pub>
+        $<BUILD_INTERFACE:intf_llt_pub>
         c_sec_headers
 )
 

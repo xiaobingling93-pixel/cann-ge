@@ -50,7 +50,7 @@ target_compile_options(stub_for_aicpu PRIVATE
 )
 
 target_link_libraries(stub_for_aicpu PRIVATE
-    intf_pub
+    intf_llt_pub
     metadef_headers
     air_headers
     msprof_headers

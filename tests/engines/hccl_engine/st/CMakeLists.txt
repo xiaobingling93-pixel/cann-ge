@@ -194,7 +194,7 @@ find_library(REGISTER_LIB NAMES libregister.so PATH_SUFFIXES lib64)
 find_library(LIBRARY_MOCKCPP libmockcpp.a ${AIR_CODE_DIR}/tests/engines/hccl_engine/third_party/mockcpp/mockcpp-2.7/build)
 
 target_link_libraries(hcce_st_llt PRIVATE
-    intf_pub
+    intf_llt_pub
     runtime
     msprof_headers
     -Wl,--as-needed
@@ -219,7 +219,7 @@ target_link_libraries(hcce_st_llt PRIVATE
 )
 
 target_link_libraries(hccl_engine_stest PRIVATE
-    intf_pub
+    intf_llt_pub
     runtime
     msprof_headers
     -Wl,--as-needed

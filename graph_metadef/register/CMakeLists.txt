@@ -346,6 +346,7 @@ target_compile_options(stub_register PRIVATE
     -fno-common
     -Os
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_link_libraries(stub_register
@@ -375,7 +376,7 @@ if (NOT ENABLE_OPEN_SRC)
 
     add_dependencies(stub_register_static metadef_protos register_stub)
 
-    target_compile_options(stub_register_static PRIVATE -ffunction-sections -fdata-sections)
+    target_compile_options(stub_register_static PRIVATE -ffunction-sections -fdata-sections -Wno-unused-parameter)
 
     set_target_properties(stub_register_static PROPERTIES
         OUTPUT_NAME register

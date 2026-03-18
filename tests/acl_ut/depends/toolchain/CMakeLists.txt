@@ -40,7 +40,7 @@ target_include_directories(toolchain_stub PRIVATE
 )
 
 target_link_libraries(toolchain_stub PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     c_sec
     json
     GTest::gtest

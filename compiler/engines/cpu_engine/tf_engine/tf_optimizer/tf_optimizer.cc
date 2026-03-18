@@ -858,7 +858,7 @@ void LableExceptionAbortAttr(const ge::OpDescPtr &op_desc, const std::string &no
   }
 }
 
-const bool IsExceptionAbortOp(const std::string &op_type) {
+bool IsExceptionAbortOp(const std::string &op_type) {
   const std::vector<std::string> op_list = {
     "IteratorGetNext", "DynamicGetNext"
   };

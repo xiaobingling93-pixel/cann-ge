@@ -42,7 +42,7 @@ const std::string kOpsParallel = "aicpu_ops_parallel";
 
 namespace aicpu {
 ge::Status AicpuGraphOptimizer::Initialize(const map<string, string> &options,
-                                           ge::OptimizeUtility *const optimize_utility) {
+                                           [[maybe_unused]] ge::OptimizeUtility *const optimize_utility) {
   // initial optimizers
   auto iter = options.find(ge::SOC_VERSION);
   AICPU_IF_BOOL_EXEC(iter == options.end(),

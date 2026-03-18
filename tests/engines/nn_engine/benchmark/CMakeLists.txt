@@ -64,7 +64,7 @@ target_link_directories(fe_benchmark PRIVATE
 )
 
 target_link_libraries(fe_benchmark PRIVATE
-        intf_pub
+        intf_llt_pub
         benchmark::benchmark
         msprof_headers
         runtime_headers

@@ -25,7 +25,7 @@ target_compile_options(graph_tuner_stub PRIVATE
 
 target_link_libraries(graph_tuner_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         msprof_headers
         metadef_headers
         air_headers

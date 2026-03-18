@@ -21,7 +21,7 @@ namespace file_utils {
 using FileNameFilterFn = bool(const std::string &fileName);
 
 aclError ListFiles(
-    const std::string &dirName, const FileNameFilterFn filter, std::vector<std::string> &names, const int32_t maxDepth);
+    const std::string &dirName, FileNameFilterFn filter, std::vector<std::string> &names, const int32_t maxDepth);
 } // namespace file_utils
 } // namespace acl
 

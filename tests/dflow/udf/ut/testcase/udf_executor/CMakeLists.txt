@@ -77,6 +77,7 @@ target_link_libraries(ut_flow_func_executor PRIVATE
         udf_dump
         udf_profiling
         -rdynamic
+        mockcpp_static
         $<BUILD_INTERFACE:intf_llt_pub>
         $<BUILD_INTERFACE:slog_headers>
         $<BUILD_INTERFACE:mmpa_headers>

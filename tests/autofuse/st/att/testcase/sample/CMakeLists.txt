@@ -65,8 +65,6 @@ find_package(ascend_protobuf_static MODULE REQUIRED)
 find_package(unified_dlog MODULE REQUIRED)
 find_package(mmpa MODULE REQUIRED)
 find_package(atrace MODULE REQUIRED)
-include(${GE_METADEF_DIR}/cmake/intf_pub_linux.cmake)
-include(${GE_METADEF_DIR}/cmake/test_funcs.cmake)
 add_subdirectory("${TOP_DIR}/tests/depends/slog" "slog_build")
 add_subdirectory("${TOP_DIR}/tests/depends/trace" "trace_build")
 

@@ -52,7 +52,7 @@ target_link_options(ut_libgraph PRIVATE
 
 target_link_libraries(ut_libgraph
     -Wl,-z,muldefs
-    intf_pub
+    intf_llt_pub
     metadef_headers
     GTest::gtest
     GTest::gtest_main

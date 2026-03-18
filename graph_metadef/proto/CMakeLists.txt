@@ -172,6 +172,7 @@ target_compile_options(stub_op_common PRIVATE
     -Wfloat-equal
     -fno-common
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_link_libraries(stub_op_common

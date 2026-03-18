@@ -27,7 +27,7 @@ target_compile_options(hybrid_model_async_exec_test PUBLIC -g
         -fno-access-control
         )
 target_link_libraries(hybrid_model_async_exec_test PUBLIC 
-        intf_pub
+        intf_llt_pub
         flow_graph
         -Wl,-z,muldefs
         -Wl,--whole-archive

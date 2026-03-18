@@ -124,7 +124,7 @@ target_link_directories(ffts_st PRIVATE
 )
 
 target_link_libraries(ffts_st PRIVATE
-        intf_pub
+        intf_llt_pub
         slog_headers
         msprof_headers
         runtime_headers

@@ -403,6 +403,7 @@ target_compile_options(atc_stub_graph PRIVATE
     -fno-common
     -Os
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_link_libraries(atc_stub_graph
@@ -448,6 +449,7 @@ add_dependencies(fwk_stub_graph graph_stub)
 target_compile_options(fwk_stub_graph PRIVATE
     -Wfloat-equal
     -fno-common
+    -Wno-unused-parameter
 )
 
 target_include_directories(fwk_stub_graph PRIVATE

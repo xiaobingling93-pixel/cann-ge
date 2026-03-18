@@ -126,4 +126,4 @@ target_link_libraries(fe_st_whole_process PRIVATE
         mmpa_stub
         slog_stub
         fe_env_mocker
-        intf_pub)
+        intf_llt_pub)

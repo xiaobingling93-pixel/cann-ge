@@ -188,9 +188,9 @@ class KernelBuilder {
    * @param inputs_type vector store input type
    * @param outputs_type vector store output type
    */
-  virtual void GetInOutPutsDataType(const ge::OpDescPtr &op_desc_ptr,
-                                    std::vector<uint32_t> &inputs_type,
-                                    std::vector<uint32_t> &outputs_type) const {}
+  virtual void GetInOutPutsDataType([[maybe_unused]] const ge::OpDescPtr &op_desc_ptr,
+                                    [[maybe_unused]] std::vector<uint32_t> &inputs_type,
+                                    [[maybe_unused]] std::vector<uint32_t> &outputs_type) const {}
 
   ge::Status GetFftsPlusInAddrOffset(const ge::OpDescPtr &op_desc_ptr,
                                      FftsPlusInfo &ffts_info) const;

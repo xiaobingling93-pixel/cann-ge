@@ -24,7 +24,7 @@ target_compile_options(ge_runtime_stub_test PRIVATE
         -g
         )
 
-target_link_libraries(ge_runtime_stub_test PUBLIC intf_pub GTest::gtest GTest::gtest_main ge_runtime_stub gert)
+target_link_libraries(ge_runtime_stub_test PUBLIC intf_llt_pub GTest::gtest GTest::gtest_main ge_runtime_stub gert)
 
 include(CTest)
 enable_testing()

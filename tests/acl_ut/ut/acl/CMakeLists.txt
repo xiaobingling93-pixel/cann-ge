@@ -141,7 +141,7 @@ target_compile_options(ut_acl_model_src PRIVATE
 )
 
 target_link_libraries(ut_acl_model_src PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     c_sec
     json
@@ -188,7 +188,7 @@ target_compile_options(ut_acl_cblas_src PRIVATE
 )
 
 target_link_libraries(ut_acl_cblas_src PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     ut_acl_model_src
     c_sec
@@ -239,7 +239,7 @@ target_compile_options(ut_acl_op_exec_src PRIVATE
 )
 
 target_link_libraries(ut_acl_op_exec_src PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     ut_acl_model_src
     c_sec
@@ -291,7 +291,7 @@ target_compile_options(ut_acl_op_compiler_src PRIVATE
 )
 
 target_link_libraries(ut_acl_op_compiler_src PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     ut_acl_op_exec_src
     c_sec
@@ -346,7 +346,7 @@ target_compile_definitions(acl_utest PRIVATE
 )
 
 target_link_libraries(acl_utest PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     -fsanitize=address -fsanitize=leak -fsanitize-recover=address
     -Wl,--whole-archive
     c_sec

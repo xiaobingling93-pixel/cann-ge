@@ -26,23 +26,23 @@
 
 namespace {
 struct CompressParametersConv2d {
-    uint64_t weightSizeTotal;
-    size_t weightK;
-    size_t weightN;
-    size_t weightCo0;
-    size_t weightCo1;
-    size_t kbFrac;
-    size_t nbFrac;
-    size_t nRemainders;
-    size_t wDtypeSize;
-    size_t totalCompressedLength;
-    size_t dataBase;
-    size_t indexBase;
-    size_t tailBlockWeightSize;
-    size_t tailBlockSize;
-    size_t blockSize;
-    size_t firstWeightSize;
-    size_t indexUnitSize;
+    uint64_t weightSizeTotal = 0;
+    size_t weightK = 0U;
+    size_t weightN = 0U;
+    size_t weightCo0 = 0U;
+    size_t weightCo1 = 0U;
+    size_t kbFrac = 0U;
+    size_t nbFrac = 0U;
+    size_t nRemainders = 0U;
+    size_t wDtypeSize = 0U;
+    size_t totalCompressedLength = 0U;
+    size_t dataBase = 0U;
+    size_t indexBase = 0U;
+    size_t tailBlockWeightSize = 0U;
+    size_t tailBlockSize = 0U;
+    size_t blockSize = 0U;
+    size_t firstWeightSize = 0U;
+    size_t indexUnitSize = 0U;
 };
 
 const int INDEX_SIZE_COMPACT_MODE = 8;

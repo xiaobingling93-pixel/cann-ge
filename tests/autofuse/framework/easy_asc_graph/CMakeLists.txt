@@ -19,4 +19,4 @@ target_include_directories(easy_asc_graph
     PUBLIC ${CMAKE_BINARY_DIR}/ascir_builtin_ops
 )
 
-target_link_libraries(easy_asc_graph PUBLIC intf_pub_cxx17 ascir graph graph_base)
+target_link_libraries(easy_asc_graph PUBLIC intf_llt_pub ascir graph graph_base)

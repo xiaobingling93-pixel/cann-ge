@@ -16,7 +16,7 @@ target_compile_definitions(runtime_stub PRIVATE
 target_include_directories(runtime_stub PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_link_libraries(runtime_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         c_sec
         cce_headers
         msprof_headers

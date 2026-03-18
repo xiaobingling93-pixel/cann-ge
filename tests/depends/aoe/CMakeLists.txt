@@ -19,6 +19,6 @@ add_library(mdat SHARED
 )
 
 target_link_libraries(mdat PRIVATE
-    intf_pub
+    intf_llt_pub
     metadef_headers
 )

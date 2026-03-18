@@ -17,4 +17,4 @@ target_include_directories(easy_graph_b
     PRIVATE src                                # 私有包含目录
 )
 # 添加其他依赖库（如果有）
-target_link_libraries(easy_graph_b PUBLIC intf_pub_cxx17)
+target_link_libraries(easy_graph_b PUBLIC intf_llt_pub)

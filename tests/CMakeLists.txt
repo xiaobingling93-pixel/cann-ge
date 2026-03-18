@@ -12,6 +12,7 @@ set(METADEF_DIR ${AIR_CODE_DIR}/base/metadef)
 set(GE_METADEF_TEST_DIR ${AIR_CODE_DIR}/tests/graph_metadef)
 set(AIR_COMMON_COMPILE_OPTION ${AIR_COMMON_COMPILE_OPTION} -fno-access-control)
 
+include(cmake/intf_llt_pub.cmake)
 include(dflow/udf/cmake/third_party/boost.cmake)
 include(dflow/udf/cmake/third_party/mockcpp.cmake)
 add_subdirectory(depends/slog)

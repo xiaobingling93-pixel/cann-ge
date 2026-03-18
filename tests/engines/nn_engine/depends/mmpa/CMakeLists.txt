@@ -20,7 +20,7 @@ add_library(mmpa_stub SHARED ${SRCS})
 
 target_link_libraries(mmpa_stub
         PRIVATE
-                intf_pub
+                intf_llt_pub
                 msprof_headers
                 runtime_headers
                 metadef_headers

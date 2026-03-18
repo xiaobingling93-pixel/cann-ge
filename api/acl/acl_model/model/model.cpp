@@ -2616,8 +2616,8 @@ aclError aclmdlLoadFromFileWithQImpl(const char *modelPath, uint32_t *modelId, c
     ACL_LOG_INFO("start to execute aclmdlLoadFromFileWithQ, inputQNum[%zu], outputQNum[%zu]", inputQNum, outputQNum);
     std::vector<uint32_t> inputQVec(inputQ, inputQ + inputQNum);
     std::vector<uint32_t> outputQVec(outputQ, outputQ + outputQNum);
-    ge::ModelQueueArg args{.input_queue_ids = std::move(inputQVec), .output_queue_ids = std::move(outputQVec),
-                        .file_constant_mems = {}, false};
+    ge::ModelQueueArg args{std::move(inputQVec), std::move(outputQVec),
+                        {}, false};
     const aclError ret = acl::ModelLoadFromFileWithQ(modelPath, modelId, args, 0);
     if (ret != ACL_SUCCESS) {
         return ret;
@@ -2638,8 +2638,8 @@ aclError aclmdlLoadFromMemWithQImpl(const void *model, size_t modelSize, uint32_
         modelSize, inputQNum, outputQNum);
     std::vector<uint32_t> inputQVec(inputQ, inputQ + inputQNum);
     std::vector<uint32_t> outputQVec(outputQ, outputQ + outputQNum);
-    ge::ModelQueueArg args{.input_queue_ids = std::move(inputQVec), .output_queue_ids = std::move(outputQVec),
-                        .file_constant_mems = {}, false};
+    ge::ModelQueueArg args{std::move(inputQVec), std::move(outputQVec),
+                        {}, false};
     const aclError ret = acl::ModelLoadFromMemWithQ(model, modelSize, modelId, args, 0);
     if (ret != ACL_SUCCESS) {
         return ret;
@@ -3513,8 +3513,8 @@ aclError aclmdlLoadWithConfigImpl(const aclmdlConfigHandle *handle, uint32_t *mo
             }
             std::vector<uint32_t> inputQVec(handle->inputQ, handle->inputQ + handle->inputQNum);
             std::vector<uint32_t> outputQVec(handle->outputQ, handle->outputQ + handle->outputQNum);
-            ge::ModelQueueArg args{.input_queue_ids = std::move(inputQVec), .output_queue_ids = std::move(outputQVec),
-                                .file_constant_mems = file_constant_mems, handle->withoutGraph};
+            ge::ModelQueueArg args{std::move(inputQVec), std::move(outputQVec),
+                                file_constant_mems, handle->withoutGraph};
             return acl::ModelLoadFromFileWithQ(handle->loadPath.c_str(), modelId, args, handle->priority);
         }
         case ACL_MDL_LOAD_FROM_MEM_WITH_Q:
@@ -3525,8 +3525,8 @@ aclError aclmdlLoadWithConfigImpl(const aclmdlConfigHandle *handle, uint32_t *mo
             }
             std::vector<uint32_t> inputQVec(handle->inputQ, handle->inputQ + handle->inputQNum);
             std::vector<uint32_t> outputQVec(handle->outputQ, handle->outputQ + handle->outputQNum);
-            ge::ModelQueueArg que_args{.input_queue_ids = std::move(inputQVec), .output_queue_ids = std::move(outputQVec),
-                    .file_constant_mems = file_constant_mems, handle->withoutGraph};
+            ge::ModelQueueArg que_args{std::move(inputQVec), std::move(outputQVec),
+                    file_constant_mems, handle->withoutGraph};
             return acl::ModelLoadFromMemWithQ(handle->mdlAddr, handle->mdlSize, modelId, que_args, handle->priority);
         }
         default:

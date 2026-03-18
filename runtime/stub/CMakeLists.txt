@@ -91,6 +91,7 @@ target_link_libraries(gert_stub PRIVATE
 target_compile_options(gert_stub PRIVATE
     -fvisibility=hidden -Os -fno-common -Wfloat-equal
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 set_target_properties(gert_stub PROPERTIES

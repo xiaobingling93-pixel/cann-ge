@@ -69,7 +69,7 @@ target_link_options(ut_fast_runtime2_test PRIVATE
         )
 
 target_link_libraries(ut_fast_runtime2_test PRIVATE
-        intf_pub
+        intf_llt_pub
         ${AIR_COMMON_LINK_OPTION}
         -Wl,--whole-archive
         rt2_registry_static

@@ -68,7 +68,7 @@ void ConvertGeToAicpuTensor(const ge::GeTensorDesc &tensor_desc,
 }
 
 int32_t AddStringAttrToNodeDef(const ge::Operator &op, const char *name,
-                               aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                               [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::string s;
   ge::graphStatus ret = op.GetAttr(name, s);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -82,7 +82,7 @@ int32_t AddStringAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListStringAttrToNodeDef(const ge::Operator &op, const char *name,
-                                   aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                   [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<std::string> list_s;
   ge::graphStatus ret = op.GetAttr(name, list_s);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -103,7 +103,7 @@ int32_t AddListStringAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddFloatAttrToNodeDef(const ge::Operator &op, const char *name,
-                              aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                              [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   float f = 0;
   ge::graphStatus ret = op.GetAttr(name, f);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -117,7 +117,7 @@ int32_t AddFloatAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListFloatAttrToNodeDef(const ge::Operator &op, const char *name,
-                                  aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                  [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<float> list_f;
   ge::graphStatus ret = op.GetAttr(name, list_f);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -138,7 +138,7 @@ int32_t AddListFloatAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddBoolAttrToNodeDef(const ge::Operator &op, const char *name,
-                             aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                             [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   bool b = false;
   ge::graphStatus ret = op.GetAttr(name, b);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -152,7 +152,7 @@ int32_t AddBoolAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListBoolAttrToNodeDef(const ge::Operator &op, const char *name,
-                                 aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                 [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<bool> list_b;
   ge::graphStatus ret = op.GetAttr(name, list_b);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -173,7 +173,7 @@ int32_t AddListBoolAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddIntAttrToNodeDef(const ge::Operator &op, const char *name,
-                            aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                            [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   int64_t i = 0;
   ge::graphStatus ret = op.GetAttr(name, i);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -187,7 +187,7 @@ int32_t AddIntAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListIntAttrToNodeDef(const ge::Operator &op, const char *name,
-                                aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<int64_t> list_i;
   ge::graphStatus ret = op.GetAttr(name, list_i);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -208,7 +208,7 @@ int32_t AddListIntAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListListIntAttrToNodeDef(const ge::Operator &op, const char *name,
-                                    aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                    [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<std::vector<int64_t>> list_i;
   ge::graphStatus ret = op.GetAttr(name, list_i);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -233,7 +233,7 @@ int32_t AddListListIntAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddDataTypeAttrToNodeDef(const ge::Operator &op, const char *name,
-                                 aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                 [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   ge::DataType data_type = ge::DT_UNDEFINED;
   ge::graphStatus ret = op.GetAttr(name, data_type);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -247,7 +247,7 @@ int32_t AddDataTypeAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListDataTypeAttrToNodeDef(const ge::Operator &op, const char *name,
-                                     aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                     [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<ge::DataType> list_type;
   ge::graphStatus ret = op.GetAttr(name, list_type);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -268,7 +268,7 @@ int32_t AddListDataTypeAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddTensorAttrToNodeDef(const ge::Operator &op, const char *name,
-                               aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                               [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   ge::Tensor ge_tensor;
   ge::graphStatus ret = op.GetAttr(name, ge_tensor);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -304,7 +304,7 @@ int32_t AddTensorAttrToNodeDef(const ge::Operator &op, const char *name,
 }
 
 int32_t AddListTensorAttrToNodeDef(const ge::Operator &op, const char *name,
-                                   aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
+                                   [[maybe_unused]] aicpuops::NodeDef node_def, aicpuops::AttrValue &attr_value) {
   std::vector<ge::Tensor> ge_list_tensor;
   ge::graphStatus ret = op.GetAttr(name, ge_list_tensor);
   if (ret != ge::GRAPH_SUCCESS) {

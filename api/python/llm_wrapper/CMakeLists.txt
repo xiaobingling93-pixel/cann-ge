@@ -28,6 +28,7 @@ if (NOT ENABLE_TEST)
             $<BUILD_INTERFACE:slog_headers>
             $<BUILD_INTERFACE:mmpa_headers>
             $<BUILD_INTERFACE:hccl_headers>
+            $<BUILD_INTERFACE:pybind_options>
             alog
             flow_graph
             llm_engine

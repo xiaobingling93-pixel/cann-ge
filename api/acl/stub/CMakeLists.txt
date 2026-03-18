@@ -61,6 +61,10 @@ target_compile_definitions(stub_acl_cblas PRIVATE
     _FORTIFY_SOURCE=2
 )
 
+target_compile_options(stub_acl_cblas PRIVATE
+    -Wno-unused-parameter
+)
+
 set_target_properties(stub_acl_cblas
     PROPERTIES
     OUTPUT_NAME acl_cblas
@@ -94,6 +98,10 @@ set_target_properties(stub_acl_op_compiler
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/stub
 )
 
+target_compile_options(stub_acl_op_compiler PRIVATE
+    -Wno-unused-parameter
+)
+
 target_link_libraries(stub_acl_op_compiler PRIVATE
     $<BUILD_INTERFACE:intf_pub>
     $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
@@ -117,6 +125,11 @@ target_include_directories(stub_acl_op_executor PRIVATE
 target_compile_definitions(stub_acl_op_executor PRIVATE
     _FORTIFY_SOURCE=2
 )
+
+target_compile_options(stub_acl_op_executor PRIVATE
+    -Wno-unused-parameter
+)
+
 set_target_properties(stub_acl_op_executor
     PROPERTIES
     OUTPUT_NAME acl_op_executor
@@ -146,6 +159,11 @@ target_include_directories(stub_acl_mdl PRIVATE
 target_compile_definitions(stub_acl_mdl PRIVATE
     _FORTIFY_SOURCE=2
 )
+
+target_compile_options(stub_acl_mdl PRIVATE
+    -Wno-unused-parameter
+)
+
 set_target_properties(stub_acl_mdl
     PROPERTIES
     OUTPUT_NAME acl_mdl

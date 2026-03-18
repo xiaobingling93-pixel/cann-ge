@@ -39,7 +39,7 @@ target_include_directories(runtime_stub PRIVATE
 )
 
 target_link_libraries(runtime_stub PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     c_sec
     GTest::gtest
     GTest::gtest_main

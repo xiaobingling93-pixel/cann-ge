@@ -23,7 +23,7 @@ target_include_directories(graphtuner_executor PRIVATE
 )
 target_link_libraries(graphtuner_executor
     PRIVATE
-        intf_pub
+        intf_llt_pub
         metadef_headers
         c_sec_headers
         slog_headers

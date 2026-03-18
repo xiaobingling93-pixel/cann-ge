@@ -176,19 +176,19 @@ py::memoryview ToReadonlyMemoryView(const FlowFunc::Tensor &tensor) {
 
 class PyFlowFuncLogger : public FlowFunc::FlowFuncLogger {
  public:
-  bool IsLogEnable(FlowFunc::FlowFuncLogLevel level) override {
+  bool IsLogEnable([[maybe_unused]] FlowFunc::FlowFuncLogLevel level) override {
     PYBIND11_OVERRIDE_PURE(bool, FlowFunc::FlowFuncLogger, IsLogEnable, );
   }
-  void Error(const char *fmt, ...) override {
+  void Error([[maybe_unused]] const char *fmt, ...) override {
     PYBIND11_OVERRIDE_PURE(void, FlowFunc::FlowFuncLogger, Error, );
   }
-  void Warn(const char *fmt, ...) override {
+  void Warn([[maybe_unused]] const char *fmt, ...) override {
     PYBIND11_OVERRIDE_PURE(void, FlowFunc::FlowFuncLogger, Warn, );
   }
-  void Info(const char *fmt, ...) override {
+  void Info([[maybe_unused]] const char *fmt, ...) override {
     PYBIND11_OVERRIDE_PURE(void, FlowFunc::FlowFuncLogger, Info, );
   }
-  void Debug(const char *fmt, ...) override {
+  void Debug([[maybe_unused]] const char *fmt, ...) override {
     PYBIND11_OVERRIDE_PURE(void, FlowFunc::FlowFuncLogger, Debug, );
   }
   void ErrorLog(const char *location_message, const char *user_message) const {
@@ -271,7 +271,7 @@ class PyFlowMsg : public FlowFunc::FlowMsg {
 
 class PyFlowMsgQueue : public FlowFunc::FlowMsgQueue {
  public:
-  int32_t Dequeue(std::shared_ptr<FlowFunc::FlowMsg> &flow_msg, int32_t timeout) override {
+  int32_t Dequeue(std::shared_ptr<FlowFunc::FlowMsg> &flow_msg, [[maybe_unused]] int32_t timeout) override {
     (void)flow_msg;
     PYBIND11_OVERRIDE_PURE(int32_t, FlowFunc::FlowMsgQueue, Dequeue, );
   }
@@ -307,7 +307,7 @@ class PyTensor : public FlowFunc::Tensor {
     PYBIND11_OVERRIDE_PURE(int64_t, FlowFunc::Tensor, GetElementCnt, );
   }
 
-  int32_t Reshape(const std::vector<int64_t> &shape) override {
+  int32_t Reshape([[maybe_unused]] const std::vector<int64_t> &shape) override {
     PYBIND11_OVERRIDE_PURE(int32_t, FlowFunc::Tensor, Reshape, );
   }
 };
@@ -349,16 +349,15 @@ class PyMetaParams : public FlowFunc::MetaParams {
 
 class PyMetaRunContext : public FlowFunc::MetaRunContext {
  public:
-  std::shared_ptr<FlowFunc::FlowMsg> AllocTensorMsg(const std::vector<int64_t> &shape,
+  std::shared_ptr<FlowFunc::FlowMsg> AllocTensorMsg([[maybe_unused]] const std::vector<int64_t> &shape,
                                                     FlowFunc::TensorDataType data_type) override {
     (void)data_type;
     PYBIND11_OVERRIDE_PURE(std::shared_ptr<FlowFunc::FlowMsg>, FlowFunc::MetaRunContext, AllocTensorMsg, );
   }
 
-  std::shared_ptr<FlowFunc::FlowMsg> AllocTensorMsgWithAlign(const std::vector<int64_t> &shape,
-                                                             FlowFunc::TensorDataType data_type,
-                                                             uint32_t align) override {
-    (void)data_type;
+  std::shared_ptr<FlowFunc::FlowMsg> AllocTensorMsgWithAlign([[maybe_unused]] const std::vector<int64_t> &shape,
+                                                             [[maybe_unused]] FlowFunc::TensorDataType data_type,
+                                                             [[maybe_unused]] uint32_t align) override {
     PYBIND11_OVERRIDE_PURE(std::shared_ptr<FlowFunc::FlowMsg>, FlowFunc::MetaRunContext, AllocTensorMsg, );
   }
 
@@ -390,14 +389,16 @@ class PyMetaRunContext : public FlowFunc::MetaRunContext {
   }
 
   int32_t RunFlowModel(const char *model_key, const std::vector<std::shared_ptr<FlowFunc::FlowMsg>> &input_msgs,
-                       std::vector<std::shared_ptr<FlowFunc::FlowMsg>> &output_msgs, int32_t timeout) override {
+                       std::vector<std::shared_ptr<FlowFunc::FlowMsg>> &output_msgs,
+                       [[maybe_unused]] int32_t timeout) override {
     (void)model_key;
     (void)input_msgs;
     (void)output_msgs;
     PYBIND11_OVERRIDE_PURE(int32_t, FlowFunc::MetaRunContext, RunFlowModel, );
   }
 
-  int32_t GetUserData(void *data, size_t size, size_t offset = 0U) const override {
+  int32_t GetUserData([[maybe_unused]] void *data, [[maybe_unused]] size_t size,
+                      [[maybe_unused]] size_t offset = 0U) const override {
     PYBIND11_OVERRIDE_PURE(int32_t, FlowFunc::MetaRunContext, GetUserData);
   }
 };

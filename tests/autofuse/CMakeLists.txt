@@ -181,7 +181,7 @@ if (ENABLE_OPEN_SRC)
     )
 else ()
     target_link_libraries(ascgen_common PUBLIC
-            $<BUILD_INTERFACE:intf_pub_cxx17>
+            $<BUILD_INTERFACE:intf_llt_pub>
             $<BUILD_INTERFACE:mmpa_headers>
             $<BUILD_INTERFACE:msprof_headers>
             $<BUILD_INTERFACE:runtime_headers>

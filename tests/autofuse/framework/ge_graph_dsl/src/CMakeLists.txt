@@ -18,7 +18,7 @@ target_include_directories(ge_graph_dsl_b
 
 target_compile_options(ge_graph_dsl_b PRIVATE -g)
 
-target_link_libraries(ge_graph_dsl_b PUBLIC intf_pub)
+target_link_libraries(ge_graph_dsl_b PUBLIC intf_llt_pub)
 
 set_target_properties(ge_graph_dsl_b PROPERTIES CXX_STANDARD 17)
 target_link_libraries(ge_graph_dsl_b PUBLIC ge_graph_dsl_inc_b easy_graph_b graph graph_base)

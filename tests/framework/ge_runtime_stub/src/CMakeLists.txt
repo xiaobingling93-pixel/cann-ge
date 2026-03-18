@@ -37,7 +37,7 @@ target_include_directories(ge_runtime_stub PUBLIC
 )
 
 target_link_libraries(ge_runtime_stub PRIVATE
-        intf_pub
+        intf_llt_pub
         msprof_headers
         runtime_headers
         opp_registry

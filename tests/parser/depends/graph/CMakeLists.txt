@@ -56,7 +56,7 @@ target_compile_options(attr_util_stub PRIVATE
 )
 
 target_link_libraries(attr_util_stub PRIVATE
-    intf_pub
+    intf_llt_pub
     metadef_headers
     air_headers
     slog_headers
