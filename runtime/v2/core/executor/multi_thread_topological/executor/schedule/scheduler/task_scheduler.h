@@ -20,6 +20,7 @@
 #include "runtime/subscriber/executor_subscriber_c.h"
 #include "ge/ge_api_types.h"
 #include "graph/ge_error_codes.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 class TaskScheduler {
@@ -63,6 +64,8 @@ class TaskScheduler {
   ge::Status StartUp();
   ge::Status EndUp();
   void RecycleTaskWhenExecuteFailed();
+  void SetExecuteStreamForWorkers();
+  aclrtStream GetExecuteMainStream() const;
   bool ExecuteTasks(TaskWorkerId *curr_worker_group_ids);
   ge::Status RecycleTasks();
   void GetAllThreadId(std::vector<uint32_t> &all_thread_id);
@@ -81,6 +84,7 @@ class TaskScheduler {
   bool has_launched_{false};
   size_t schedule_limit_{0U};
   bool force_quit_{false};
+  const ExecutionData *execution_data_{nullptr};
 
  private:
   std::unique_ptr<TaskProducer> task_producer_;

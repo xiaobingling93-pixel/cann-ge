@@ -63,7 +63,7 @@ struct GraphExecutionContext {
   const GEThreadLocalContext *ge_context = nullptr;
   rtStream_t stream = nullptr;
   rtStream_t hccl_stream = nullptr;
-  rtContext_t rt_context = nullptr;
+  aclrtContext rt_context = nullptr;
   CallbackManager *callback_manager = nullptr;
   NpuMemoryAllocator *allocator = nullptr;
   mutable std::unique_ptr<HybridProfiler> profiler = nullptr;

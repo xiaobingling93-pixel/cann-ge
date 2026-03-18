@@ -822,6 +822,8 @@ class BackendUtils {
   static bool HasTypesInAscgraph(const NodePtr &node, const std::vector<std::string> &target_types);
   // 判断node的ascgraph是否除了data load store output只有某些节点type
   static bool OnlyHasTypesInAscgraph(const NodePtr &node, const std::vector<std::string> &target_types);
+  static void SetReduceOriginalAxisInfo(AutofuseInnerAttrs &attr_new, const AutofuseInnerAttrs &attr1,
+                                        const AutofuseInnerAttrs &attr2);
 
  private:
   static Status BackSteppingViewOpBroadcast(TensorAttrInfo &temp_data_attr, TensorAttrInfo &temp_load_attr,

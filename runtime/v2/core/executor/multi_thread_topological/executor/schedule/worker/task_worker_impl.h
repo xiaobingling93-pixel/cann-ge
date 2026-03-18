@@ -20,6 +20,7 @@
 #include "core/executor/multi_thread_topological/executor/schedule/config/task_worker_config.h"
 #include "core/executor/multi_thread_topological/executor/schedule/task/task_package.h"
 #include "core/executor/multi_thread_topological/executor/schedule/task/exec_task.h"
+#include "acl/acl_rt.h"
 #include "runtime/context.h"
 #include "runtime/rt.h"
 #include "checker.h"
@@ -27,6 +28,7 @@
 #include "base/err_mgr.h"
 #include "graph/ge_local_context.h"
 #include "mmpa/mmpa_api.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 template <typename QUEUE>
@@ -131,6 +133,10 @@ class TaskWorkerImpl : public TaskWorker {
     is_sleep_.store(true, std::memory_order_release);
   }
 
+  void SetExecuteStream(aclrtStream stream) override {
+    execute_stream_.store(stream, std::memory_order_release);
+  }
+
   void SetSubscriber(int sub_graph_type, ExecutorSubscriber *es) override {
     sub_graph_type_ = sub_graph_type;
     es_ = es;
@@ -167,8 +173,8 @@ class TaskWorkerImpl : public TaskWorker {
   }
 
  private:
-  void GetCurrentCtx(rtContext_t &ctx) const {
-    auto ret = rtCtxGetCurrent(&ctx);
+  void GetCurrentCtx(aclrtContext &ctx) const {
+    auto ret = aclrtGetCurrentContext(&ctx);
     if ((ret == RT_ERROR_NONE) && (ctx != nullptr)) {
       return;
     }
@@ -182,7 +188,7 @@ class TaskWorkerImpl : public TaskWorker {
 
   bool StartThreads() {
     size_t index = 0;
-    rtContext_t ctx = nullptr;
+    aclrtContext ctx = nullptr;
     GetCurrentCtx(ctx);
     GE_ASSERT_NOTNULL(ctx);
     const error_message::ErrorManagerContext &error_context = error_message::GetErrMgrContext();
@@ -194,8 +200,8 @@ class TaskWorkerImpl : public TaskWorker {
         break;
       }
       if (!thread->Start([this, &thread, ctx, ge_context, error_context]() {
-            auto rtErr = rtCtxSetCurrent(ctx);
-            if (rtErr != RT_ERROR_NONE) {
+            auto rtErr = aclrtSetCurrentContext(ctx);
+            if (rtErr != ACL_SUCCESS) {
               GELOGW("Failed to set current context, ret %d", rtErr);
               REPORT_INNER_ERR_MSG("E19999", "Set context failed, ret %d", rtErr);
             }
@@ -238,10 +244,39 @@ class TaskWorkerImpl : public TaskWorker {
     }
   }
 
+  void RebindStreamResLimitIfNeeded(aclrtStream &bound_stream) {
+    const auto execute_stream = execute_stream_.load(std::memory_order_acquire);
+    if (bound_stream == execute_stream) {
+      return;
+    }
+    if (bound_stream != nullptr) {
+      const auto acl_error = aclrtUnuseStreamResInCurrentThread(bound_stream);
+      if (acl_error != ACL_SUCCESS) {
+        GELOGW("Failed to unbind stream resource limit in thread, stream %p, ret %d", bound_stream, acl_error);
+      } else {
+        GELOGI("Worker[%s] unbind old stream %p success.", name_.c_str(), bound_stream);
+      }
+      bound_stream = nullptr;
+    }
+
+    if (execute_stream == nullptr) {
+      return;
+    }
+    const auto acl_error = aclrtUseStreamResInCurrentThread(execute_stream);
+    if (acl_error != ACL_SUCCESS) {
+      GELOGW("Failed to bind stream resource limit in thread, stream %p, ret %d", execute_stream, acl_error);
+      return;
+    }
+    GELOGI("Worker[%s] bind stream %p success.", name_.c_str(), execute_stream);
+    bound_stream = execute_stream;
+  }
+
   void ExecuteTasks(TaskThread &thread) {
+    aclrtStream bound_stream = nullptr;
     while (is_running_.load(std::memory_order_acquire)) {
       ExecTask *task = nullptr;
       Wait();
+      RebindStreamResLimitIfNeeded(bound_stream);
       if (!pending_task_queue_.Pop(task)) {
         thread.OnTaskPopFailed();
         thread.Await();
@@ -269,6 +304,12 @@ class TaskWorkerImpl : public TaskWorker {
           thread.OnTaskLeaked(task);
           break;
         }
+      }
+    }
+    if (bound_stream != nullptr) {
+      const auto acl_error = aclrtUnuseStreamResInCurrentThread(bound_stream);
+      if (acl_error != ACL_SUCCESS) {
+        GELOGW("Failed to unbind stream resource limit on thread exit, stream %p, ret %d", bound_stream, acl_error);
       }
     }
   }
@@ -306,6 +347,7 @@ class TaskWorkerImpl : public TaskWorker {
   std::mutex lk_;
   std::condition_variable cv_;
   std::atomic<bool> is_sleep_{true};
+  std::atomic<aclrtStream> execute_stream_{nullptr};
   int sub_graph_type_{1};
   ExecutorSubscriber *es_{nullptr};
   std::mutex all_thread_id_mtx_;

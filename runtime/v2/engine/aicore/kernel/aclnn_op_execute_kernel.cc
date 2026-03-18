@@ -17,6 +17,7 @@
 #include "core/executor/multi_thread_topological/executor/schedule/producer/producers/kernel_tags/critical_section_config.h"
 #include "core/utils/tensor_utils.h"
 #include "core/debug/kernel_tracing.h"
+#include "acl/acl_rt.h"
 #include "rts/rts_stream.h"
 #include "kernel/common_kernel_impl/platform.h"
 
@@ -41,15 +42,15 @@ ge::graphStatus SetStreamCoreNumLimit(const rtStream stream, const int64_t op_ai
   need_set_stream_aicore_num = false;
   need_set_stream_vec_core_num = false;
   if (op_aicore_num > 0) {
-    GE_CHK_RT_RET(rtsSetStreamResLimit(stream, RT_DEV_RES_CUBE_CORE, static_cast<uint32_t>(op_aicore_num)));
+    GE_CHK_RT_RET(aclrtSetStreamResLimit(stream, ACL_RT_DEV_RES_CUBE_CORE, static_cast<uint32_t>(op_aicore_num)));
     need_set_stream_aicore_num = true;
   }
   if (op_vec_core_num > 0) {
-    GE_CHK_RT_RET(rtsSetStreamResLimit(stream, RT_DEV_RES_VECTOR_CORE, static_cast<uint32_t>(op_vec_core_num)));
+    GE_CHK_RT_RET(aclrtSetStreamResLimit(stream, ACL_RT_DEV_RES_VECTOR_CORE, static_cast<uint32_t>(op_vec_core_num)));
     need_set_stream_vec_core_num = true;
   }
   if (need_set_stream_aicore_num || need_set_stream_vec_core_num) {
-    GE_CHK_RT_RET(rtsUseStreamResInCurrentThread(stream));
+    GE_CHK_RT_RET(aclrtUseStreamResInCurrentThread(stream));
   }
   return ge::GRAPH_SUCCESS;
 }
@@ -58,11 +59,11 @@ ge::graphStatus ResetStreamCoreNumLimit(const rtStream stream, const int64_t glo
                                         const bool need_set_stream_aicore_num, const bool need_set_stream_vec_core_num) {
   if (need_set_stream_aicore_num) {
     GE_ASSERT_TRUE(global_aicore_num >= 0);
-    GE_CHK_RT_RET(rtsSetStreamResLimit(stream, RT_DEV_RES_CUBE_CORE, static_cast<uint32_t>(global_aicore_num)));
+    GE_CHK_RT_RET(aclrtSetStreamResLimit(stream, ACL_RT_DEV_RES_CUBE_CORE, static_cast<uint32_t>(global_aicore_num)));
   }
   if (need_set_stream_vec_core_num) {
     GE_ASSERT_TRUE(global_vec_core_num >= 0);
-    GE_CHK_RT_RET(rtsSetStreamResLimit(stream, RT_DEV_RES_VECTOR_CORE, static_cast<uint32_t>(global_vec_core_num)));
+    GE_CHK_RT_RET(aclrtSetStreamResLimit(stream, ACL_RT_DEV_RES_VECTOR_CORE, static_cast<uint32_t>(global_vec_core_num)));
   }
   return ge::GRAPH_SUCCESS;
 }

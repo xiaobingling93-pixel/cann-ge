@@ -14,6 +14,7 @@
 #include "core/executor/multi_thread_topological/executor/schedule/task/task_package.h"
 #include "runtime/subscriber/executor_subscriber_c.h"
 #include "runtime/exe_graph_executor.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 class TaskWorker {
@@ -28,6 +29,7 @@ class TaskWorker {
   virtual void WaitDone(TaskPackage &task_package) = 0;
   virtual void WakeupThreads() = 0;
   virtual void SleepThreads() = 0;
+  virtual void SetExecuteStream(aclrtStream stream) = 0;
   virtual void SetSubscriber(int sub_graph_type, ExecutorSubscriber *es) = 0;
   virtual void GetAllThreadId(std::vector<uint32_t> &all_thread_id) = 0;
 

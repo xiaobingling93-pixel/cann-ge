@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <map>
 #include <cstring>
-#include <dlfcn.h>
 #include <functional>
 #include <Python.h>
 
@@ -22,6 +21,7 @@
 #include "inc/te_fusion_log.h"
 #include "common/te_config_info.h"
 #include "common/common_utils.h"
+#include "mmpa/mmpa_api.h"
 
 namespace te {
 namespace fusion {
@@ -150,7 +150,7 @@ bool HandleManager::LoadDynLibFromPyCfg(std::string &pythonLib, void *handle) co
         TE_FUSION_LOG_EXEC(TE_FUSION_LOG_DEBUG, "Get lib path[%s].", line_path);
         std::string line_path_temp = line_path;
         pythonLibUpdate = line_path_temp + "/lib/" + pythonLib;
-        handle = dlopen(pythonLibUpdate.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        handle = mmDlopen(pythonLibUpdate.c_str(), RTLD_NOW | RTLD_GLOBAL);
         if (handle == nullptr) {
             TE_WARNLOG("Python path[%s] is invalid, please confirm ld_library_path of the python library.",
                        pythonLibUpdate.c_str());
@@ -212,7 +212,7 @@ bool HandleManager::LaunchDynamicLib()
     void *handle = nullptr;
     std::string pythonLibPath = pythonLib;
     if (!LoadDynLibFromPyCfg(pythonLibPath, handle) || handle == nullptr) {
-        void *libHandle = dlopen(pythonLib.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        void *libHandle = mmDlopen(pythonLib.c_str(), RTLD_NOW | RTLD_GLOBAL);
         if (libHandle == nullptr) {
             std::map<std::string, std::string> pythonPathMap = {{"value", TeConfigInfo::Instance().GetEnvPath()},
                 {"env", "PATH"},

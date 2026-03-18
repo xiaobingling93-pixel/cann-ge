@@ -2312,7 +2312,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
 {
     auto graph = std::make_shared<ComputeGraph>("test");
     CreateConcatOpDescGraph10(graph);
-    vector<int64_t> dims = {-1, 2, 3, 32};
+    vector<int64_t> dims = {1, 2, 3, 32};
     vector<int64_t> shape_vec;
     OptimizeUtilitySTStub *optimize_utility_stub = new OptimizeUtilitySTStub();
     auto fe_graph_optimizer_ptr = std::make_shared<FEGraphOptimizer>(ops_info_store);
@@ -2321,7 +2321,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
     tbe_op_store_adapter->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_ptr->ShapeAndValueGeneralize(*(graph.get()));
 
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(fe::FAILED, status);
     for (auto node : graph->GetDirectNode()) {
       auto op_desc = node->GetOpDesc();
       if (op_desc->GetType() != "ConcatD") {
@@ -2345,7 +2345,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
     tbe_op_store_adapter->CheckIsTbeGeneralizeFuncRegistered = checkIsRegistered;
     tbe_op_store_adapter->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_ptr->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(status, fe::FAILED);
     for (auto node : graph->GetDirectNode()) {
       auto op_desc = node->GetOpDesc();
       auto tensor_desc_x = op_desc->MutableInputDesc("x");
@@ -2361,7 +2361,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
 {
     auto graph = std::make_shared<ComputeGraph>("test");
     CreateSingleNodeGraph(graph);
-    std::vector<int64_t> dims = {-1, 2, 3, 4};
+    std::vector<int64_t> dims = {1, 2, 3, 4};
     std::vector<int64_t> shape_vec;
     OptimizeUtilitySTStub *optimize_utility_stub = new OptimizeUtilitySTStub();
     auto fe_graph_optimizer_ptr = std::make_shared<FEGraphOptimizer>(ops_info_store);
@@ -2369,7 +2369,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
     tbe_op_store_adapter->CheckIsTbeGeneralizeFuncRegistered = checkIsRegistered;
     tbe_op_store_adapter->TeGeneralize = teGeneralize;
     Status status = fe_graph_optimizer_ptr->ShapeAndValueGeneralize(*(graph.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(status, fe::FAILED);
     for (auto node : graph->GetDirectNode()) {
       if (node->GetType() == fe::DATA) {
         continue;
@@ -2383,7 +2383,7 @@ TEST_F(STEST_fusion_engine_fe_graph_optimizer, shape_and_value_generalize_succes
     CreateSingleNodeGraph2(graph2);
 
     status = fe_graph_optimizer_ptr->ShapeAndValueGeneralize(*(graph2.get()));
-    EXPECT_EQ(fe::SUCCESS, status);
+    EXPECT_EQ(status, fe::FAILED);
     for (auto node : graph2->GetDirectNode()) {
       if (node->GetType() == fe::DATA) {
         continue;

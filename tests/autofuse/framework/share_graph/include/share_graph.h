@@ -98,6 +98,10 @@ struct ShareGraph {
                                                            ge::DataType out_dtype);
   static ge::ComputeGraphPtr CeilBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr CosBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr AtanhBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr CoshBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr DigammaBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr ErfcBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BF16SinFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BF16SqrtFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BF16RsqrtFusedGraph(size_t dims_size);
@@ -107,6 +111,10 @@ struct ShareGraph {
   static ge::ComputeGraphPtr BinaryApiScalarFusedGraph();
   static ge::ComputeGraphPtr AcosFloatFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AcosBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr AcoshBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr AsinBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr AsinhBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr AtanBf16FusedGraph(size_t dims_size);
 };
 }  // namespace ascir
 #endif

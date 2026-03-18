@@ -38,11 +38,11 @@ Status LoadRegApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axi
   std::stringstream ss;
   const auto &gm = inputs[0].get();
   const auto &ub = outputs[0].get();
-  if (tpipe.cv_fusion_type == ascir::CubeTemplateType::kUBFuse) {
+  if (tpipe.cv_fusion_type == ascir::CubeTemplateType::kUBFuse && !ub.is_ub_scalar) {
     std::string dtype_name;
     Tensor::DtypeName(gm.dtype, dtype_name);
     ss << "DataCopyPadExtend<" << dtype_name << ", AscendC::PaddingMode::Normal>(" << ub << ", " << gm << "[offset], "
-       << "curAivM, curAivN, (shapeN - curAivN), 0);" << std::endl;
+       << "curAivM, curAlignN, (shapeN - curAlignN), 0);" << std::endl;
   } else {
     DataCopyParams param;
     bool status = CalculateDmaParams(tpipe, ub, ub, param);

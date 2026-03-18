@@ -39,7 +39,7 @@ class VfCall final : public ApiCall {
  private:
   Status ParseInputOutputInfo(const TPipe &tpipe) const;
   void SetNodeAxisIds(const std::vector<ascir::AxisId> &origin_axis_ids);
-  bool ShouldInitAsMaskReg(const ascir::NodeView &node, ge::AscTensor *output) const;
+  bool ShouldInitAsMaskReg(const ascir::NodeView &node, const ge::AscTensor *output) const;
 
  private:
   std::string vf_call_name_;

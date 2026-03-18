@@ -1597,8 +1597,8 @@ Status KernelTaskInfo::UpdateHostArgs(const std::vector<uint64_t> &active_mem_ba
 }
 
 Status KernelTaskInfo::Release() {
-  rtContext_t ctx = nullptr;
-  GE_CHK_RT(rtCtxGetCurrent(&ctx));
+  aclrtContext ctx = nullptr;
+  GE_CHK_RT(aclrtGetCurrentContext(&ctx));
 
   args_ = nullptr;
   kernel_name_arg_ = nullptr;

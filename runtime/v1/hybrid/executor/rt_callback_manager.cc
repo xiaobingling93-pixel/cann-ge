@@ -55,9 +55,9 @@ Status RtCallbackManager::RegisterCallback(const rtStream_t stream,
 }
 
 Status RtCallbackManager::Init() {
-  rtContext_t ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&ctx));
-  ret_future_ = std::async(std::launch::async, [this](const rtContext_t context,
+  aclrtContext ctx = nullptr;
+  GE_CHK_RT_RET(aclrtSetCurrentContext(&ctx));
+  ret_future_ = std::async(std::launch::async, [this](const aclrtContext context,
       const struct error_message::ErrorManagerContext &error_context) ->Status {
     error_message::SetErrMgrContext(error_context);
     return CallbackProcess(context);
@@ -71,8 +71,8 @@ Status RtCallbackManager::Init() {
   return SUCCESS;
 }
 
-Status RtCallbackManager::CallbackProcess(const rtContext_t context) {
-  GE_CHK_RT_RET(rtCtxSetCurrent(context));
+Status RtCallbackManager::CallbackProcess(const aclrtContext context) {
+  GE_CHK_RT_RET(aclrtSetCurrentContext(context));
   std::pair<rtEvent_t, std::pair<rtCallback_t, void *>> entry;
   bool rt_timeout = false;
   while (true) {

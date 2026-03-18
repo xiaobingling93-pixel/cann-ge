@@ -319,7 +319,7 @@ graphStatus HandleSplitDimConnectionForSplitV(const NodePtr &old_split_node, con
   auto split_dim_peer_out_anchor = in_data_anchor_split_dim->GetPeerOutAnchor();
   GE_ASSERT_NOTNULL(split_dim_peer_out_anchor);
 
-  auto peer_out_split_dim_const_data_node = split_dim_peer_out_anchor->GetOwnerNode();
+  auto peer_out_split_dim_const_data_node = split_dim_peer_out_anchor->GetOwnerNodeBarePtr();
   GE_ASSERT_NOTNULL(peer_out_split_dim_const_data_node);
 
   GE_ASSERT_GRAPH_SUCCESS(GraphUtils::AddEdge(split_dim_peer_out_anchor,

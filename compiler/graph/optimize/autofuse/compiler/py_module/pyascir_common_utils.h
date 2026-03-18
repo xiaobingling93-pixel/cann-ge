@@ -23,7 +23,7 @@ bool PyListToVector(PyObject *list, std::vector<std::string> &vec);
 PyObject *UtilsDeserialize(PyObject *self_pyobject, PyObject *args, PyObject *kwds);
 PyObject *UtilsDurationRecord(PyObject *self_pyobject, PyObject *args, PyObject *kwds);
 PyObject *UtilsReportDurations(PyObject *self_pyobject, PyObject *args, PyObject *kwds);
-PyObject *UtilsSetPlatform(PyObject *self_pyobject, PyObject *args, PyObject *kwds);
+PyObject *UtilsSetPlatform(const PyObject *self_pyobject, PyObject *args, const PyObject *kwds);
 }
 
 #endif

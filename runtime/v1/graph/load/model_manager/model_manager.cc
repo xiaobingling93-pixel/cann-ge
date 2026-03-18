@@ -535,8 +535,8 @@ void ModelManager::DestroyAicpuSession(const uint64_t session_id, const bool sin
     GELOGI("The session : %" PRIu64 " not created", session_id);
     return;
   }
-  rtContext_t ctx = nullptr;
-  const bool has_ctx = (rtCtxGetCurrent(&ctx) == RT_ERROR_NONE);
+  aclrtContext ctx = nullptr;
+  const bool has_ctx = (aclrtGetCurrentContext(&ctx) == ACL_SUCCESS);
   if (single_device) {
     if (iter->second.find(device_id) == iter->second.cend()) {
       GELOGI("The session:%" PRIu64 " not create on device:%u", session_id, device_id);
@@ -562,7 +562,7 @@ void ModelManager::DestroyAicpuSession(const uint64_t session_id, const bool sin
       (void) sess_id_to_device_ids_.erase(iter);
     }
     if (has_ctx) {
-      (void) rtCtxSetCurrent(ctx);
+      (void) aclrtSetCurrentContext(ctx);
     }
   }
 }
@@ -1922,8 +1922,8 @@ Status ModelManager::LoadCustAicpuSo(const CustAICPUKernelPtr &aicpu_kernel, con
   }
 
   // get current context
-  rtContext_t rt_cur_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&rt_cur_ctx));
+  aclrtContext rt_cur_ctx = nullptr;
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&rt_cur_ctx));
 
   // use current context as resource key
   const std::lock_guard<std::mutex> lk(cust_aicpu_mutex_);
@@ -1963,8 +1963,8 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
     return SUCCESS;
   }
   // get current context
-  rtContext_t rt_cur_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&rt_cur_ctx));
+  aclrtContext rt_cur_ctx = nullptr;
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&rt_cur_ctx));
 
   const uintptr_t resource_id = static_cast<uintptr_t>(PtrToValue(rt_cur_ctx));
   const auto it = cust_aicpu_so_.find(resource_id);
@@ -2081,8 +2081,8 @@ Status ModelManager::LaunchCustAicpuSo() {
 
 Status ModelManager::GetPlatformInfosSoName(std::string &so_name) {
   // get current context
-  rtContext_t rt_cur_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&rt_cur_ctx));
+  aclrtContext rt_cur_ctx = nullptr;
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&rt_cur_ctx));
   const uintptr_t resource_id = static_cast<uintptr_t>(PtrToValue(rt_cur_ctx));
   std::vector<std::string> v_so_name;
   {

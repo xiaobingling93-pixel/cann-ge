@@ -377,11 +377,11 @@ void DavinciModel::DestroyResources() {
   op_list_.clear();
   operator_list_.clear();
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) == RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) == ACL_SUCCESS) {
     for (size_t i = 0U; i < label_list_.size(); ++i) {
       if (label_list_[i] != nullptr) {
-        GE_LOGW_IF(rtLabelDestroy(label_list_[i]) != RT_ERROR_NONE, "Destroy label failed, index: %zu.", i);
+        GE_LOGW_IF(aclrtDestroyLabel(label_list_[i]) != ACL_SUCCESS, "Destroy label failed, index: %zu.", i);
       }
     }
 
@@ -476,6 +476,12 @@ void DavinciModel::ReleaseTask() {
     }
   }
   task_list_.clear();
+  for (const auto& item : label_goto_args_) {
+    void* arg_addr = item.second.first;
+    if (arg_addr != nullptr) {
+      (void)aclrtDestroyLabelList(arg_addr);
+    }
+  }
   label_goto_args_.clear();
 }
 
@@ -1487,7 +1493,7 @@ Status DavinciModel::InitSupplyResource() {
   GE_CHK_STATUS_RET(OpDebugRegister(), "[Call][OpDebugRegister] failed, model_id: %u.", model_id_);
 
   // malloc mem for overflow detetcion
-  GE_CHK_RT_RET(rtCtxGetOverflowAddr(&globalworkspace_overflow_addr_));
+  GE_CHK_RT_RET(aclrtCtxGetFloatOverflowAddr(&globalworkspace_overflow_addr_));
   return SUCCESS;
 }
 
@@ -3088,6 +3094,7 @@ void DavinciModel::ParseDynamicOutShape(const std::vector<std::string> &str_info
 
 Status DavinciModel::GetLabelGotoAddr(const uint32_t label_index, const rtMemType_t mem_type,
                                       void *&arg_addr, uint32_t &arg_size) {
+  (void)mem_type;
   const std::lock_guard<std::mutex> lk(label_args_mutex_);
   const auto it = label_goto_args_.find(label_index);
   if (it != label_goto_args_.cend()) {
@@ -3104,15 +3111,12 @@ Status DavinciModel::GetLabelGotoAddr(const uint32_t label_index, const rtMemTyp
     return INTERNAL_ERROR;
   }
   GE_CHECK_NOTNULL(label_list_[static_cast<size_t>(label_index)]);
-  std::vector<rtLabel_t> label_used = { label_list_[static_cast<size_t>(label_index)] };
+  std::vector<aclrtLabel> label_used = { label_list_[static_cast<size_t>(label_index)] };
 
   arg_size = static_cast<uint32_t>(label_used.size() * sizeof(rtLabelDevInfo));
-  arg_addr = MallocDynamicMemory(static_cast<uint64_t>(arg_size), mem_type);
+  GE_ASSERT_RT_OK(aclrtCreateLabelList(label_used.data(), label_used.size(), &arg_addr));
   GE_ASSERT_NOTNULL(arg_addr);
   label_goto_args_[label_index] = { arg_addr, arg_size };
-
-  GE_CHK_RT_RET(rtLabelListCpy(label_used.data(), static_cast<uint32_t>(label_used.size()), arg_addr, arg_size));
-
   return SUCCESS;
 }
 
@@ -3196,8 +3200,8 @@ Status DavinciModel::InitLabelSet(const OpDescPtr &op_desc) {
   const size_t stream_id = static_cast<size_t>(op_desc->GetStreamId());
   GE_CHK_STATUS_RET_NOLOG(GetOpStream(op_desc, stream_id, stream));
 
-  rtLabel_t rt_label = nullptr;
-  GE_CHK_RT_RET(rtLabelCreateExV2(&rt_label, rt_model_handle_, stream));
+  aclrtLabel rt_label = nullptr;
+  GE_CHK_RT_RET(aclrtCreateLabel(&rt_label));
 
   GELOGI("InitLabelSet: label[%u]=%p stream[%zu]=%p", label_index, rt_label, stream_id, stream);
   (void)label_id_indication_.insert(label_index);
@@ -5683,8 +5687,8 @@ Status DavinciModel::ModelRunStop() {
 void DavinciModel::UnbindTaskSinkStream() {
   GELOGD("Npu model: %u start to unbind streams.", model_id_);
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) != RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) != ACL_SUCCESS) {
     return;
   }
 
@@ -5719,8 +5723,8 @@ void DavinciModel::UnbindTaskSinkStream() {
 void DavinciModel::DestroyStream() {
   GELOGD("Npu model: %u start to destroy stream.", model_id_);
   // check rt ctx is exist. rt api call will cause error log when ctx does not exist
-  rtContext_t current_ctx = nullptr;
-  if (rtCtxGetCurrent(&current_ctx) != RT_ERROR_NONE) {
+  aclrtContext current_ctx = nullptr;
+  if (aclrtGetCurrentContext(&current_ctx) != ACL_SUCCESS) {
     return;
   }
   for (size_t i = 0U; i < all_hccl_stream_list_.size(); ++i) {

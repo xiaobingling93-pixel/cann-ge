@@ -55,6 +55,7 @@
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "runtime/rts/rts_dqs.h"
 #include "acl/acl_rt.h"
+#include "acl/acl_mdl.h"
 
 namespace ge {
 enum class ModelProcStage : uint32_t {
@@ -363,7 +364,7 @@ class DavinciModel {
     return active_stream_indication_.find(stream_id) != active_stream_indication_.end();
   }
 
-  const std::vector<rtLabel_t> &GetLabelList() const { return label_list_; }
+  const std::vector<aclrtLabel> &GetLabelList() const { return label_list_; }
 
   uint64_t GetAllStreamNum() const { return stream_list_.size() + all_hccl_stream_list_.size(); }
 
@@ -1507,7 +1508,7 @@ class DavinciModel {
   std::map<uint64_t, std::vector<size_t>> stream_to_task_index_list_;
   std::map<int64_t, int64_t> split_logic_stream_2_origin_logic_stream_;
 
-  std::vector<rtLabel_t> label_list_;
+  std::vector<aclrtLabel> label_list_;
   std::set<uint32_t> label_id_indication_;
 
   std::mutex label_args_mutex_;

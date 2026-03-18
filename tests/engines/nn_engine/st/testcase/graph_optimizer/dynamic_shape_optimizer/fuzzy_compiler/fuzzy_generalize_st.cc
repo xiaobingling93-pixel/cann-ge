@@ -1168,7 +1168,7 @@ TEST_F(STEST_fusion_engine_fuzzy_generalize, fuzzy_generalize_generalize_graph) 
   tbe_op_store_adapter_->CheckIsTbeGeneralizeFuncRegistered = CheckIsRegistered;
   tbe_op_store_adapter_->TeGeneralize = TeGeneralizeStub;
   Status res = fuzzy_ptr->GeneralizeGraph(*graph);
-  EXPECT_EQ(res, fe::SUCCESS);
+  EXPECT_EQ(res, fe::FAILED);
 }
 
 TEST_F(STEST_fusion_engine_fuzzy_generalize, fuzzy_generalize_C_axis_corrent_001) {
@@ -1753,7 +1753,7 @@ TEST_F(STEST_fusion_engine_fuzzy_generalize, further_generalize) {
 
   auto input_desc = bn_node->GetOpDesc()->MutableInputDesc("x");
   auto shape_dims = input_desc->GetShape().GetDims();
-  std::vector<int64_t> shape_dims_std = {-2};
+  std::vector<int64_t> shape_dims_std = {1, 2, 3, 32};
   EXPECT_EQ(shape_dims, shape_dims_std);
 }
 

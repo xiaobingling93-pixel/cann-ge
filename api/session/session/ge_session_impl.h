@@ -86,6 +86,7 @@ class GeSession::Impl {
     bool GetLoadFlag(uint32_t graph_id) const;
 
     void UpdateGlobalSessionContext() const;
+
   private:
     uint64_t session_id_{0};
     SessionPtr inner_session_;

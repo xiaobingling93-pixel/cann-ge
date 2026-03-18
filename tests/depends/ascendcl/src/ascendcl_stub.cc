@@ -899,6 +899,32 @@ aclError AclRuntimeStub::aclrtGetStreamAvailableNum(uint32_t *streamCount) {
   return ACL_SUCCESS;
 }
 
+aclError AclRuntimeStub::aclrtSetStreamResLimit(aclrtStream stream, aclrtDevResLimitType type, uint32_t value) {
+  if (std::string(__FUNCTION__) == g_acl_stub_mock) {
+    return ACL_ERROR_RT_INTERNAL_ERROR;
+  }
+  (void) stream;
+  (void) type;
+  (void) value;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtUseStreamResInCurrentThread(aclrtStream stream) {
+  if (std::string(__FUNCTION__) == g_acl_stub_mock) {
+    return ACL_ERROR_RT_INTERNAL_ERROR;
+  }
+  (void) stream;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtUnuseStreamResInCurrentThread(aclrtStream stream) {
+  if (std::string(__FUNCTION__) == g_acl_stub_mock) {
+    return ACL_ERROR_RT_INTERNAL_ERROR;
+  }
+  (void) stream;
+  return ACL_SUCCESS;
+}
+
 aclError AclRuntimeStub::aclrtGetEventId(aclrtEvent event, uint32_t *eventId) {
   if (std::string(__FUNCTION__) == g_acl_stub_mock) {
     return -1;
@@ -1564,6 +1590,18 @@ aclError aclrtSetOpExecuteTimeOutV2(uint64_t timeout, uint64_t *actualTimeout) {
 
 aclError aclrtGetStreamAvailableNum(uint32_t *streamCount) {
   return ge::AclRuntimeStub::GetInstance()->aclrtGetStreamAvailableNum(streamCount);
+}
+
+aclError aclrtSetStreamResLimit(aclrtStream stream, aclrtDevResLimitType type, uint32_t value) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtSetStreamResLimit(stream, type, value);
+}
+
+aclError aclrtUseStreamResInCurrentThread(aclrtStream stream) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtUseStreamResInCurrentThread(stream);
+}
+
+aclError aclrtUnuseStreamResInCurrentThread(aclrtStream stream) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtUnuseStreamResInCurrentThread(stream);
 }
 
 aclError aclrtGetEventId(aclrtEvent event, uint32_t *eventId) {

@@ -161,7 +161,7 @@ bool DtypeConsistency::TryMergeWithUpstreamCast(ge::AscGraph &graph, const ge::A
 
   // Check if the original cast has multiple downstream consumers
   auto orig_cast_out_anchor = upstream_cast->GetOutDataAnchor(0);
-  auto orig_cast_peer_anchors = orig_cast_out_anchor->GetPeerInDataAnchors();
+  auto orig_cast_peer_anchors = orig_cast_out_anchor->GetPeerInDataAnchorsPtr();
   bool has_multiple_consumers = orig_cast_peer_anchors.size() > 1U;
 
   auto in_anchor = downstream_node->GetInDataAnchor(static_cast<int32_t>(input_idx));

@@ -133,7 +133,7 @@ ge::graphStatus CustBinHandlerManager::LoadAndGetBinHandle(const std::string &so
   }
 
   rtContext_t current_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&current_ctx));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&current_ctx));
   const uintptr_t resource_id = reinterpret_cast<uintptr_t>(current_ctx);
 
   const std::lock_guard<std::recursive_mutex> lk(mutex_);
@@ -175,7 +175,7 @@ ge::graphStatus CustBinHandlerManager::GetBinHandle(const std::string &so_name, 
   }
 
   rtContext_t current_ctx = nullptr;
-  GE_CHK_RT_RET(rtCtxGetCurrent(&current_ctx));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&current_ctx));
   const uintptr_t resource_id = reinterpret_cast<uintptr_t>(current_ctx);
 
   const std::lock_guard<std::recursive_mutex> lk(mutex_);

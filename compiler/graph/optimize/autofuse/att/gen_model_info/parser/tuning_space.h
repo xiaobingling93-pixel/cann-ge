@@ -231,7 +231,7 @@ struct Container {
   std::vector<TensorPtr> allocated_tensors; // queue或者buf分配了哪些tensor
   std::vector<HardwareDef> buf_location; // queue或者buf涉及哪些硬件
   std::vector<std::vector<TensorPtr>> coexist_tensors;  // coexist_tensors表示tensor共存且位于同一scope,比如tbuf做pingpong、tqueue中两个tensor同时存在
-  ge::AllocType alloc_type;
+  ge::AllocType alloc_type{ge::AllocType::kAllocTypeInvalid};
   int64_t container_id{0};
 };
 using ContainerPtr = std::shared_ptr<Container>;

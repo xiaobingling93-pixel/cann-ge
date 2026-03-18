@@ -30,6 +30,11 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
     rtMemType_t rts_mem_type;
     uint16_t model_id;
   };
+  struct StreamResLimitRecord {
+    aclrtStream stream;
+    aclrtDevResLimitType type;
+    uint32_t value;
+  };
   const std::map<const void *, HandleArgsPtrList> &GetLaunchWithHandleArgs();
   void Clear();
   AclRuntimeStubImpl();
@@ -51,6 +56,15 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
   }
   const std::list<ge::GeLaunchSqeUpdateTaskArgs> &GetLaunchSqeUpdateTaskArgs() const {
     return all_launch_sqe_update_records_;
+  }
+  const std::vector<StreamResLimitRecord> &GetStreamResLimitRecords() const {
+    return stream_res_limit_records_;
+  }
+  const std::vector<aclrtStream> &GetUseStreamResRecords() const {
+    return use_stream_res_records_;
+  }
+  const std::vector<aclrtStream> &GetNotUseStreamResRecords() const {
+    return not_use_stream_res_records_;
   }
 
   const std::vector<uintptr_t> &GetLiteEceptionArgs() const {
@@ -86,6 +100,12 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
   aclError aclrtDestroyStreamForce(aclrtStream stream) override;
 
   aclError aclrtGetStreamAvailableNum(uint32_t *streamCount) override;
+
+  aclError aclrtSetStreamResLimit(aclrtStream stream, aclrtDevResLimitType type, uint32_t value) override;
+
+  aclError aclrtUseStreamResInCurrentThread(aclrtStream stream) override;
+
+  aclError aclrtUnuseStreamResInCurrentThread(aclrtStream stream) override;
 
   aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind) override;
 
@@ -136,6 +156,9 @@ class AclRuntimeStubImpl : public ge::AclRuntimeStub {
   std::list<ge::GetAllSwitchArgs> all_switch_args_;
   std::unordered_map<void *, MemoryInfo> addrs_to_mem_info_;
   std::list<ge::GeLaunchSqeUpdateTaskArgs> all_launch_sqe_update_records_;
+  std::vector<StreamResLimitRecord> stream_res_limit_records_;
+  std::vector<aclrtStream> use_stream_res_records_;
+  std::vector<aclrtStream> not_use_stream_res_records_;
   std::mutex mtx_;
   std::unique_ptr<std::string> last_tag_;
   // uint32_t task_id_{0}; // 同一个模型的task在一条流上分配，只用来区分不同task

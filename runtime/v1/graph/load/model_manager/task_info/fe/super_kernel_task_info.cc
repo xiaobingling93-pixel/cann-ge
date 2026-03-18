@@ -29,6 +29,7 @@
 #include "runtime/kernel.h"
 #include "common/kernel_handles_manager/kernel_handle_utils.h"
 #include "graph/load/model_manager/kernel/kernel_register_info_builder.h"
+#include "acl/acl_rt.h"
 
 namespace {
 const std::string kLocalMemorySize = "local_memory_size";
@@ -232,8 +233,8 @@ Status SuperKernelV2TaskInfo::GetTaskArgsRefreshInfos(std::vector<TaskArgsRefres
 }
 
 Status SuperKernelV2TaskInfo::Release() {
-  rtContext_t ctx = nullptr;
-  GE_CHK_RT(rtCtxGetCurrent(&ctx));
+  aclrtContext ctx = nullptr;
+  GE_CHK_RT(aclrtGetCurrentContext(&ctx));
   args_ = nullptr;
 
   return SUCCESS;

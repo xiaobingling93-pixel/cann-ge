@@ -696,6 +696,14 @@ rtError_t rtGetSocVersion(char *version, const uint32_t maxLen)
   return RT_ERROR_NONE;
 }
 
+rtError_t rtGetSocSpec(const char *label, const char *key, char *value, const uint32_t maxLen)
+{
+  (void)label;
+  (void)key;
+  (void)strcpy_s(value, maxLen, "3510");
+  return RT_ERROR_NONE;
+}
+
 rtError_t rtGetAiCoreCount(uint32_t *aiCoreCnt)
 {
   return RT_ERROR_NONE;

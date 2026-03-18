@@ -74,6 +74,7 @@
 //#include "register/op_impl_registry_holder_manager.h"
 //#include "register/op_ct_impl_kernel_registry.h"
 #include "compile/superkernel_task.h"
+#include "mmpa/mmpa_api.h"
 
 using namespace std;
 using namespace testing;
@@ -3942,8 +3943,9 @@ TEST(TEST_TEFUSION_ST, AssembleOpPrivateAttrs)
 
 TEST(TEST_TEFUSION_ST, UpdateInhibitionInfoForLog)
 {
+    te::fusion::TeFusionManager::GetInstance()->taskStatisticsTime_ = 0;
     bool res = te::fusion::TeFusionManager::GetInstance()->UpdateInhibitionInfoForLog();
-    EXPECT_EQ(res, false);
+    EXPECT_EQ(res, true);
 }
 
 TEST(TEST_TEFUSION_ST, update_preops_info) {
@@ -4501,7 +4503,7 @@ TEST(TEST_TEFUSION_ST, LaunchDynamicLib_load_so_fail)
         .will(returnValue(fp1))
         .then(returnValue(fp2));
     void *libHandle = nullptr;
-    MOCKER(dlopen)
+    MOCKER(mmDlopen)
         .expects(once())
         .will(returnValue(libHandle));
     bool res = te::fusion::HandleManager::Instance().LaunchDynamicLib();

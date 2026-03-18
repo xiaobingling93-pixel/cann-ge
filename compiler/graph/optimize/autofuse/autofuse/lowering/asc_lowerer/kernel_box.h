@@ -11,6 +11,9 @@
 #ifndef AIR_CXX_COMPILER_GRAPH_OPTIMIZE_AUTOFUSE_LOWERING_KERNEL_BOX_H_
 #define AIR_CXX_COMPILER_GRAPH_OPTIMIZE_AUTOFUSE_LOWERING_KERNEL_BOX_H_
 
+#include <map>
+#include <set>
+#include <sstream>
 #include <cstddef>
 #include <functional>
 #include <memory>

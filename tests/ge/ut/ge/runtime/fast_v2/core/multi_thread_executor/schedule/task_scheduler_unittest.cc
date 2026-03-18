@@ -18,8 +18,28 @@
 #include "runtime/subscriber/executor_subscribers_scheduler.h"
 #include "subscriber/profiler/cann_profiler_v2.h"
 #include "subscriber/tracer/executor_tracer.h"
+#include "stub/acl_runtime_stub_impl.h"
+#include "stub/runtime_stub_impl.h"
 
 using namespace gert;
+
+namespace {
+struct RuntimeStubGuard {
+  RuntimeStubGuard()
+      : runtime_stub(std::make_shared<RuntimeStubImpl>()),
+        acl_runtime_stub(std::make_shared<AclRuntimeStubImpl>()) {
+    ge::RuntimeStub::SetInstance(runtime_stub);
+    ge::AclRuntimeStub::SetInstance(acl_runtime_stub);
+  }
+  ~RuntimeStubGuard() {
+    ge::RuntimeStub::Reset();
+    ge::AclRuntimeStub::Reset();
+  }
+
+  std::shared_ptr<RuntimeStubImpl> runtime_stub;
+  std::shared_ptr<AclRuntimeStubImpl> acl_runtime_stub;
+};
+}  // namespace
 
 class TaskSchedulerUnitTest : public testing::Test {
   void SetUp() override {
@@ -48,6 +68,59 @@ TEST_F(TaskSchedulerUnitTest, should_schedule_single_task_in_single_worker) {
   ASSERT_EQ(1, scheduler->GetCompletedTaskCount());
   KERNEL_RUN_EXPECT(3, 7, 5, 8, 6);
   delete scheduler;
+}
+
+TEST_F(TaskSchedulerUnitTest, should_schedule_without_execute_args_and_skip_stream_binding) {
+  RuntimeStubGuard runtime_stub_guard;
+  TaskSchedulerConfig cfg;
+  cfg.producer_cfg.type = TaskProducerType::SINGLE;
+  cfg.AddWorkers(1, ExecTaskType::NORMAL, TaskThreadMode::LOW_LOAD, 1);
+
+  FakeExecutionData execution_data(10);
+  execution_data.Chain({3, 7, 6}).StartNodes({3});
+
+  auto scheduler = TaskSchedulerFactory::GetInstance().Create(cfg);
+  ASSERT_NE(scheduler, nullptr);
+
+  ASSERT_EQ(ge::GRAPH_SUCCESS, scheduler->Prepare(TaskScheduler::ScheduleData{execution_data.Data()}));
+  ASSERT_EQ(kStatusSuccess, scheduler->Schedule());
+  delete scheduler;
+
+  EXPECT_TRUE(runtime_stub_guard.acl_runtime_stub->GetUseStreamResRecords().empty());
+  EXPECT_TRUE(runtime_stub_guard.acl_runtime_stub->GetNotUseStreamResRecords().empty());
+}
+
+TEST_F(TaskSchedulerUnitTest, should_rebind_execute_stream_between_schedules_and_unbind_on_stop) {
+  RuntimeStubGuard runtime_stub_guard;
+  TaskSchedulerConfig cfg;
+  cfg.producer_cfg.type = TaskProducerType::CHAIN;
+  cfg.worker_cfgs.resize(1);
+
+  FakeExecutionData first_execution_data(10);
+  first_execution_data.Chain({3, 7, 6}).StartNodes({3}).ExecuteStream(reinterpret_cast<aclrtStream>(0x11));
+
+  FakeExecutionData second_execution_data(10);
+  second_execution_data.Chain({5, 8, 6}).StartNodes({5}).ExecuteStream(reinterpret_cast<aclrtStream>(0x22));
+
+  auto scheduler = TaskSchedulerFactory::GetInstance().Create(cfg);
+  ASSERT_NE(scheduler, nullptr);
+
+  ASSERT_EQ(ge::GRAPH_SUCCESS, scheduler->Prepare(TaskScheduler::ScheduleData{first_execution_data.Data()}));
+  ASSERT_EQ(kStatusSuccess, scheduler->Schedule());
+  EXPECT_EQ(runtime_stub_guard.acl_runtime_stub->GetUseStreamResRecords(),
+            std::vector<aclrtStream>({reinterpret_cast<aclrtStream>(0x11)}));
+  EXPECT_TRUE(runtime_stub_guard.acl_runtime_stub->GetNotUseStreamResRecords().empty());
+
+  ASSERT_EQ(ge::GRAPH_SUCCESS, scheduler->Prepare(TaskScheduler::ScheduleData{second_execution_data.Data()}));
+  ASSERT_EQ(kStatusSuccess, scheduler->Schedule());
+  EXPECT_EQ(runtime_stub_guard.acl_runtime_stub->GetUseStreamResRecords(),
+            std::vector<aclrtStream>({reinterpret_cast<aclrtStream>(0x11), reinterpret_cast<aclrtStream>(0x22)}));
+  EXPECT_EQ(runtime_stub_guard.acl_runtime_stub->GetNotUseStreamResRecords(),
+            std::vector<aclrtStream>({reinterpret_cast<aclrtStream>(0x11)}));
+
+  delete scheduler;
+  EXPECT_EQ(runtime_stub_guard.acl_runtime_stub->GetNotUseStreamResRecords(),
+            std::vector<aclrtStream>({reinterpret_cast<aclrtStream>(0x11), reinterpret_cast<aclrtStream>(0x22)}));
 }
 
 TEST_F(TaskSchedulerUnitTest, should_schedule_chain_task_in_single_worker) {

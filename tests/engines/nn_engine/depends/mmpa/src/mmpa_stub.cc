@@ -290,7 +290,15 @@ INT32 mmRealPath(const CHAR *path, CHAR *realPath, INT32 realPathLen)
     return EN_OK;
   }
 
-  return fe::MmpaStub::GetInstance().GetImpl()->RealPath(path, realPath, realPathLen);
+  if (g_program_exiting.load(std::memory_order_relaxed)) {
+      return EN_ERROR;
+    }
+    auto weak_impl = fe::MmpaStub::GetInstance().GetImplWeakPtr();
+    auto impl = weak_impl.lock();
+    if (!impl) {
+      return EN_ERROR;
+    }
+    return impl->RealPath(path, realPath, realPathLen);
 }
 
 INT32 mmRWLockInit(mmRWLock_t *rwLock)
@@ -412,7 +420,15 @@ CHAR *mmDlerror() {
 }
 
 INT32 mmDladdr(VOID *addr, mmDlInfo *info) {
-  if (fe::MmpaStub::GetInstance().GetImpl()->DlAddr(addr, info) != -1) {
+  if (g_program_exiting.load(std::memory_order_relaxed)) {
+      return -1;
+  }
+  auto weak_impl = fe::MmpaStub::GetInstance().GetImplWeakPtr();
+  auto impl = weak_impl.lock();
+  if (!impl) {
+    return -1;
+  }
+  if (impl->DlAddr(addr, info) != -1) {
     return 0;
   } else {
     return -1;
@@ -433,11 +449,6 @@ VOID *mmDlopen(const CHAR *fileName, INT32 mode) {
   return fe::MmpaStub::GetInstance().GetImpl()->DlOpen(fileName, mode);
 }
 
-VOID *dlopen(const CHAR *fileName, INT32 mode) {
-  printf("Test dlopen function");
-  return fe::MmpaStub::GetInstance().GetImpl()->DlOpen(fileName, mode);
-}
-
 INT32 mmDlclose(VOID *handle) {
   if (libcce_name.data() == handle) {
     return 0;
@@ -453,12 +464,24 @@ INT32 mmDlclose(VOID *handle) {
   if (g_program_exiting.load(std::memory_order_relaxed)) {
     return 0; // 程序正在退出，安全跳过
   }
-
-  return fe::MmpaStub::GetInstance().GetImpl()->DlClose(handle);
+  auto weak_impl = fe::MmpaStub::GetInstance().GetImplWeakPtr();
+  auto impl = weak_impl.lock();
+  if (!impl) {
+    return 0;
+  }
+  return impl->DlClose(handle);
 }
 
 VOID *mmDlsym(VOID *handle, const CHAR *funcName) {
-  return fe::MmpaStub::GetInstance().GetImpl()->DlSym(handle, funcName);
+  if (g_program_exiting.load(std::memory_order_relaxed)) {
+ 	     return nullptr;
+  }
+  auto weak_impl = fe::MmpaStub::GetInstance().GetImplWeakPtr();
+  auto impl = weak_impl.lock();
+  if (!impl) {
+    return nullptr;
+  }
+  return impl->DlSym(handle, funcName);
 }
 
 INT32 mmGetPid()
@@ -542,7 +565,15 @@ INT32 mmSetEnv(const CHAR *name, const CHAR *value, INT32 overwrite) {
 }
 
 INT32 mmWaitPid(mmProcess pid, INT32 *status, INT32 options) {
-  return fe::MmpaStub::GetInstance().GetImpl()->WaitPid(pid, status, options);
+  if (g_program_exiting.load(std::memory_order_relaxed)) {
+ 	  return EN_ERROR;
+  }
+  auto weak_impl = fe::MmpaStub::GetInstance().GetImplWeakPtr();
+  auto impl = weak_impl.lock();
+  if (!impl) {
+    return EN_ERROR;
+  }
+  return impl->WaitPid(pid, status, options);
 }
 #ifdef __cplusplus
 }

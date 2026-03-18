@@ -20,6 +20,7 @@
 #include "graph/debug/ge_op_types.h"
 #include "graph/ascendc_ir/utils/asc_graph_utils.h"
 #include "utils/autofuse_attrs.h"
+#include "utils/autofuse_utils.h"
 #include "op_helper/lower_concat_helper.h"
 #include "op_helper/lower_split_helper.h"
 #include "common/scope_tracing_recorder.h"
@@ -259,6 +260,10 @@ graphStatus AscIrLowerer::DfxForAscBackendOp(const ComputeGraphPtr &graph) const
       continue;
     }
     GE_ASSERT_NOTNULL(node->GetOpDesc());
+    std::string autofuse_origin_node_name = node->GetOpDesc()->GetName();
+    std::string autofuse_simplified_node_name = AutofuseUtils::SimplifyNodeName(autofuse_origin_node_name);
+    node->GetOpDesc()->SetName(autofuse_simplified_node_name);
+    GELOGD("Simplified node name is %s", autofuse_simplified_node_name.c_str());
     auto fuse_attrs = node->GetOpDesc()->GetAttrsGroup<AutoFuseAttrs>();
     if (fuse_attrs == nullptr) {
       continue;

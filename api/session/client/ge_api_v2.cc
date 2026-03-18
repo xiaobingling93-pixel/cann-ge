@@ -45,6 +45,7 @@
 #include "runtime/v2/core/debug/kernel_tracing.h"
 #include "session/session_manager.h"
 #include "session/ge_session_impl.h"
+#include "session/ge_session_registry.h"
 #include "plog.h"
 #include "common/checker.h"
 #include "framework/runtime/subscriber/global_profiler.h"
@@ -340,6 +341,10 @@ Status GEFinalizeV2() {
   GELOGT(TRACE_INIT, "GEFinalize start");
 
   GELOGI("GeSessionManager finalization.");
+
+  // Finalize 所有 GeSession 的 inner_session_ 并置空
+  GeSessionRegistry::Instance().FinalizeAllSessions();
+
   ShutDownProfiling();
 
   (void)CustomPassHelper::Instance().Unload();

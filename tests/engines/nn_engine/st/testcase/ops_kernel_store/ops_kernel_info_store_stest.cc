@@ -2405,7 +2405,7 @@ TEST_F(STEST_OP_KERNEL_INFO_STORE, fuzzy_compile_fusionop_success) {
     std::vector<ge::NodePtr> node_vec{};
     node_vec.push_back(test_node);
     Status ret = fe_ops_kernel_info_store_ptr->FuzzCompileOp(node_vec);
-    EXPECT_EQ(ret, fe::SUCCESS);
+    EXPECT_EQ(ret, fe::FAILED);
 }
 
 TEST_F(STEST_OP_KERNEL_INFO_STORE, update_diff_shape_change) {

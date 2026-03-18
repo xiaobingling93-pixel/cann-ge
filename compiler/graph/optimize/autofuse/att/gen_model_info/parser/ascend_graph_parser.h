@@ -131,10 +131,10 @@ private:
   ge::Status CheckReduceBroadcastSplitStoreConflict();
 
   // 辅助方法：检查并标记轴是否为 Reduce 分核轴
-  bool CheckAndMarkReduceSplitAxis(SubAxis *axis, const std::set<std::string> &reduce_axis_orig_names);
+  bool CheckAndMarkReduceSplitAxis(SubAxis *axis, const std::set<std::string> &reduce_axis_orig_names) const;
 
   // 辅助方法：检查并标记轴是否为 Broadcast 分核轴
-  bool CheckAndMarkBroadcastSplitAxis(SubAxis *axis, const std::set<std::string> &broadcast_axis_orig_names);
+  bool CheckAndMarkBroadcastSplitAxis(SubAxis *axis, const std::set<std::string> &broadcast_axis_orig_names) const;
 
 private:
   std::map<std::string, TensorPtr> tensor_info_; // 记录所有tensor信息，目前未用到

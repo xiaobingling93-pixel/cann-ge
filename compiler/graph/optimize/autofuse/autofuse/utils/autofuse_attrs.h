@@ -53,6 +53,8 @@ struct AutofuseInnerAttrs {
   SplitFusionRatioRequirementState split_fusion_ratio_requirement_state = SplitFusionRatioRequirementState::NOT_DETERMINED;   // 缓存对split融合比例是否超过阈值的预测结果
   bool is_split_complete = false; // 缓存原split节点是否完全恢复的判断结果
   bool is_fuse_from_lowering = false;       // 标识融合节点来自lowering还是can_fuse
+  std::vector<int64_t> reduce_original_axis;  // reduce操作前的原始轴信息
+  std::vector<Expression> reduce_original_repeats;  // reduce操作前的原始repeats信息
 
   bool IsReduction() const {
     return HasFuseType(loop::FuseType::kReduction);
@@ -237,6 +239,22 @@ class AutoFuseAttrs : public ge::AttrGroupsBase {
   }
   void SetSplitComplete() {
     inner_attrs_.is_split_complete = true;
+  }
+
+  void SetReduceOriginalAxis(const std::vector<int64_t> &axis) {
+    inner_attrs_.reduce_original_axis = axis;
+  }
+
+  const std::vector<int64_t>& GetReduceOriginalAxis() const {
+    return inner_attrs_.reduce_original_axis;
+  }
+
+  void SetReduceOriginalRepeats(const std::vector<Expression> &repeats) {
+    inner_attrs_.reduce_original_repeats = repeats;
+  }
+
+  const std::vector<Expression>& GetReduceOriginalRepeats() const {
+    return inner_attrs_.reduce_original_repeats;
   }
   bool GetSplitComplete() {
     return inner_attrs_.is_split_complete;

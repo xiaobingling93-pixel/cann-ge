@@ -556,6 +556,8 @@ ApiPerfRegister<ApiPerf> cos_api_perf_v2(ApiPerfRegisterV2(kCos, GetPerfFunc(kUn
                                                                    &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> acos_api_perf_v2(ApiPerfRegisterV2(kAcos, GetPerfFunc(kUnitVector), nullptr,
                                                                    &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> cosh_api_perf_v2(ApiPerfRegisterV2(kCosh, GetPerfFunc(kUnitVector), nullptr,
+                                                                   &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> logical_and_api_perf_v2(ApiPerfRegisterV2(kLogicalAnd, GetPerfFunc(kLogicalAnd + "V2"), nullptr,
                                                                    &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> logical_or_api_perf_v2(ApiPerfRegisterV2(kLogicalOr, GetPerfFunc(kLogicalOr + "V2"), nullptr,
@@ -590,6 +592,20 @@ ApiPerfRegister<ApiPerf> sub_api_perf_v2(ApiPerfRegisterV2(kSub, GetPerfFunc(kSu
                                                            &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> tanh_api_perf_v2(ApiPerfRegisterV2(kTanh, GetPerfFunc(kTanh + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> sin_api_perf_v2(ApiPerfRegisterV2(kSin, GetPerfFunc(kSin + "V2"), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> asin_api_perf_v2(ApiPerfRegisterV2(kAsin, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> asinh_api_perf_v2(ApiPerfRegisterV2(kAsinh, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> atan_api_perf_v2(ApiPerfRegisterV2(kAtan, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> atanh_api_perf_v2(ApiPerfRegisterV2(kAtanh, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> digamma_api_perf_v2(ApiPerfRegisterV2(kDigamma, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> erfc_api_perf_v2(ApiPerfRegisterV2(kErfc, GetPerfFunc(kUnitVector), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> acosh_api_perf_v2(ApiPerfRegisterV2(kAcosh, GetPerfFunc(kUnitVector), nullptr,
                                                            &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> rshift_api_perf_v2(ApiPerfRegisterV2(kRShift, GetPerfFunc(kRShift + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> where_api_perf_v2(ApiPerfRegisterV2(kWhere, GetPerfFunc(kWhere + "V2"), nullptr,

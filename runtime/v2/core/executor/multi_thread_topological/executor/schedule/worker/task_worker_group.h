@@ -36,6 +36,7 @@ class TaskWorkerGroup {
   void WaitDoneAndStop(TaskPackage &completedTasks);
   void WakeupWorkers();
   void SleepWorkers();
+  void SetExecuteStream(aclrtStream stream);
   void SetSubscriber(int sub_graph_type, ExecutorSubscriber *es);
 
   void GetAllThreadId(std::vector<uint32_t> &all_thread_id) const;

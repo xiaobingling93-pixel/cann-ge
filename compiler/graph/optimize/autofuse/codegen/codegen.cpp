@@ -32,6 +32,13 @@ const std::string kKernelTaskTypeMixAIVOneZero = "KERNEL_TYPE_MIX_AIV_1_0";
 const std::string kKernelTaskTypeAICOnly = "KERNEL_TYPE_AIC_ONLY";
 const std::string kKernelTaskTypeMixAICOneTwo = "KERNEL_TYPE_MIX_AIC_1_2";
 
+// Include path prefixes to be removed
+const std::string kBasicApiInclude = "#include \"basic_api/";
+const std::string kAdvApiInclude = "#include \"adv_api/";
+const std::string kMicroApiInclude = "#include \"micro_api/";
+const std::string kSimtApiInclude = "#include \"simt_api/";
+const std::string kUtilsStdInclude = "#include \"utils/std/";
+
 std::string GetKernelTaskType(const ascir::FusedScheduledResult &schedule_results) {
   if (ascgen_utils::IsJustCubeFixpip(schedule_results)) {
     return kKernelTaskTypeAICOnly;
@@ -98,11 +105,16 @@ std::string RemoveSubDirInclude(const std::string& kernel_str) {
   std::stringstream ss(kernel_str);
   std::string line;
   while (std::getline(ss, line)) {
-    if (line.substr(0, 20) != "#include \"basic_api/" && line.substr(0, 18) != "#include \"adv_api/" &&
-        line.substr(0, 20) != "#include \"micro_api/" && line.substr(0, 19) != "#include \"simt_api/" &&
-        line.substr(0, 20) != "#include \"utils/std/") {
+    auto shouldRemove = [&line]() {
+      return line.compare(0, kBasicApiInclude.size(), kBasicApiInclude) == 0 ||
+             line.compare(0, kAdvApiInclude.size(), kAdvApiInclude) == 0 ||
+             line.compare(0, kMicroApiInclude.size(), kMicroApiInclude) == 0 ||
+             line.compare(0, kSimtApiInclude.size(), kSimtApiInclude) == 0 ||
+             line.compare(0, kUtilsStdInclude.size(), kUtilsStdInclude) == 0;
+    };
+    if (!shouldRemove()) {
       result += line + "\n";
-        }
+    }
   }
   return result;
 }

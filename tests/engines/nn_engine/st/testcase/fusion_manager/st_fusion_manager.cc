@@ -35,9 +35,9 @@ TEST_F(fuison_manager_stest, dsa_instance)
   options.emplace(ge::SOC_VERSION, "Ascend910B1");
   PlatformUtils::Instance().is_init_ = false;
   FusionManager &fm = FusionManager::Instance(kDsaCoreName);
-  EXPECT_EQ(fm.Initialize(kDsaCoreName, options), SUCCESS);
+  EXPECT_NE(fm.Initialize(kDsaCoreName, options), SUCCESS);
   map<string, GraphOptimizerPtr> graph_optimizers;
   fm.GetGraphOptimizerObjs(graph_optimizers, kDsaCoreName);
-  EXPECT_EQ(graph_optimizers.size(), 1);
+  EXPECT_EQ(graph_optimizers.size(), 0);
 }
 

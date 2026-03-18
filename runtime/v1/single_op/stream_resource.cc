@@ -14,6 +14,7 @@
 #include "runtime/rt.h"
 #include "single_op/single_op_model.h"
 #include "framework/runtime/device_memory_recorder.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace {
@@ -163,7 +164,7 @@ uint8_t *StreamResource::DoMallocMemory(const std::string &purpose, const size_t
 }
 
 Status StreamResource::InitOverflowMemory() {
-  const auto ret = rtCtxGetOverflowAddr(&overflow_addr_);
+  const auto ret = aclrtCtxGetFloatOverflowAddr(&overflow_addr_);
   GE_CHK_RT_RET(ret);
   return SUCCESS;
 }

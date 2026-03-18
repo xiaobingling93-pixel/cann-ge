@@ -11,6 +11,9 @@
 #include "autofuse_utils.h"
 #include <queue>
 #include <numeric>
+#include <unordered_map>
+#include <regex>
+#include <algorithm>
 #include <google/protobuf/text_format.h>
 #include "nlohmann/json.hpp"
 #include "autofuse_attrs.h"
@@ -142,6 +145,215 @@ std::stringstream GetDumpGraphPrefixAndCreateDir(const std::string &module_name)
   return stream_file_name;
 }
 
+bool IsNumber(const std::string &str) {
+  return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}
+
+bool IsFusedFormat(const std::vector<std::string> &parts) {
+  if (parts.size() < 3) {
+    return false;
+  }
+  return (parts[0] == "autofuse") && (parts[1] == "fused") && IsNumber(parts[2]);
+}
+
+bool IsNormalFormat(const std::vector<std::string> &parts) {
+  if (parts.size() < 2) {
+    return false;
+  }
+  return (parts[0] == "autofuse") && IsNumber(parts[1]);
+}
+
+void ParseTypePart(const std::string &part, std::string &type, int32_t &count) {
+  // 找到第一个非数字字符的位置
+  auto it = std::find_if(part.begin(), part.end(), [](char c) {
+    return !::isdigit(c);
+  });
+
+  if (it == part.begin()) {
+    // 没有数字前缀，计数为1
+    type = part;
+    count = 1;
+  } else {
+    // 提取数字和type
+    std::string num_str(part.begin(), it);
+    count = std::stoi(num_str);
+    type = std::string(it, part.end());
+  }
+}
+
+std::vector<std::pair<std::string, int32_t>> CountTypes(const std::vector<std::string>& parts, int32_t start_idx, int32_t end_idx = -1) {
+  std::vector<std::pair<std::string, int32_t>> type_list;
+  int32_t actual_end = (end_idx == -1) ? static_cast<int32_t>(parts.size()) : end_idx;
+
+  for (int32_t i = start_idx; i < actual_end; ++i) {
+    std::string type;
+    int32_t count;
+    ParseTypePart(parts[i], type, count);
+
+    bool found = false;
+    for (auto& p : type_list) {
+      if (p.first == type) {
+        p.second += count;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      type_list.emplace_back(type, count);
+    }
+  }
+  return type_list;
+}
+
+std::string CountToStr(const std::vector<std::pair<std::string, int32_t>>& type_list) {
+  std::string result;
+  for (const auto& pair : type_list) {
+    if (!result.empty()) {
+      result += "_";
+    }
+    if (pair.second > 1) {
+      result += std::to_string(pair.second) + pair.first;
+    } else {
+      result += pair.first;
+    }
+  }
+  return result;
+}
+
+std::string CountContinuousTypes(const std::vector<std::string> &parts, int32_t start_idx) {
+  std::string result;
+  if (start_idx >= static_cast<int32_t>(parts.size())) {
+    return result;
+  }
+  // 初始化：取第一个type
+  std::string current_type;
+  int current_count;
+  ParseTypePart(parts[start_idx], current_type, current_count);
+
+  for (size_t i = static_cast<size_t>(start_idx + 1); i < parts.size(); ++i) {
+    std::string temp_type;
+    int32_t temp_count;
+    ParseTypePart(parts[i], temp_type, temp_count);
+    if (temp_type == current_type) {
+      // 连续相同type，累加计数
+      current_count += temp_count;
+    } else {
+      // 非连续，拼接当前统计结果，重置当前type
+      if (!result.empty()) {
+        result += "_";
+      }
+      if (current_count > 1) {
+        result += std::to_string(current_count) + current_type;
+      } else {
+        result += current_type;
+      }
+      current_type = temp_type;
+      current_count = temp_count;
+    }
+  }
+  // 拼接最后一个type的统计结果
+  if (!result.empty()) {
+    result += "_";
+  }
+  if (current_count > 1) {
+    result += std::to_string(current_count) + current_type;
+  } else {
+    result += current_type;
+  }
+  return result;
+}
+
+std::string ProcessFusedFormat(const std::vector<std::string> &parts) {
+  // 找到第一个以Concat开头的type位置（不区分大小写开头）
+  int32_t concat_idx = -1;
+  for (size_t i = 3U; i < parts.size(); ++i) {
+    std::string type;
+    int count;
+    ParseTypePart(parts[i], type, count);
+    // 判断是否以Concat开头（忽略大小写）
+    std::string lower_type = type;
+    std::transform(lower_type.begin(), lower_type.end(), lower_type.begin(), ::tolower);
+    if (lower_type.substr(0, 6) == "concat") {
+      concat_idx = static_cast<int32_t>(i);
+      break;
+    }
+  }
+
+  std::string result = "autofuse_fused_" + parts[2];
+  if (concat_idx != -1) {
+    // 统计Concat前的type
+    auto before_concat = CountTypes(parts, 3, concat_idx);
+    // 统计Concat本身
+    std::string concat_type;
+    int concat_count;
+    ParseTypePart(parts[concat_idx], concat_type, concat_count);
+    // 统计Concat后的type
+    auto after_concat = CountTypes(parts, concat_idx + 1);
+    // 拼接结果
+    if (!before_concat.empty()) {
+      result += "_" + CountToStr(before_concat);
+    }
+    result += "_" + std::to_string(concat_count) + concat_type;
+    if (!after_concat.empty()) {
+      result += "_" + CountToStr(after_concat);
+    }
+  } else {
+    // 没有找到Concat，直接统计所有type
+    auto all_types = CountTypes(parts, 3);
+    result += "_" + CountToStr(all_types);
+  }
+  return result;
+}
+
+std::string ProcessNormalFormat(const std::vector<std::string> &parts) {
+  // 统计数字后的所有type
+  auto type_count = CountTypes(parts, 2);
+  // 拼接结果
+  std::string result = "autofuse_" + parts[1];
+  if (!type_count.empty()) {
+    result += "_" + CountToStr(type_count);
+  }
+  return result;
+}
+
+std::string SplitStringToOriginal(const std::vector<std::string> &parts) {
+  std::string result;
+  for (size_t i = 0U; i < parts.size(); ++i) {
+    if (i > 0) {
+      result += "_";
+    }
+    result += parts[i];
+  }
+  return result;
+}
+
+std::string ProcessGeneralFormat(const std::vector<std::string> &parts) {
+  // 第一步：找到数字所在的索引位置
+  int32_t num_idx = -1;
+  for (size_t i = 0U; i < parts.size(); ++i) {
+    if (IsNumber(parts[i])) {
+      num_idx = i;
+      break;
+    }
+  }
+  // 无数字则返回原字符串
+  if ((num_idx == -1) || (num_idx >= static_cast<int32_t>(parts.size() - 1))) {
+    return SplitStringToOriginal(parts);
+  }
+  // 第二步：拼接数字前的前缀
+  std::string prefix;
+  for (size_t i = 0U; i <= static_cast<size_t>(num_idx); ++i) {
+    if (!prefix.empty()) {
+      prefix += "_";
+    }
+    prefix += parts[i];
+  }
+  // 第三步：按连续出现次数统计数字后的type
+  std::string type_str = CountContinuousTypes(parts, num_idx + 1);
+  // 第四步：拼接最终结果
+  return prefix + (type_str.empty() ? "" : "_" + type_str);
+}
+
 void AutofuseUtils::DumpGraphToOnnx(const ge::ComputeGraph &compute_graph, const std::string &module_name,
                                     const std::string &suffix) {
   if (IsNoNeedDump() || NoNeedDumpGraphBySuffix(suffix)) {
@@ -189,9 +401,14 @@ void AutofuseUtils::DumpGraphToOnnxLevel1(const ge::ComputeGraph &compute_graph,
   ge::GraphUtils::DumpGrphToOnnx(compute_graph, prefix.str(), suffix);
 }
 
+thread_local int64_t AutofuseUtils::number = 0;
+
 int64_t AutofuseUtils::GenUniqueNumber() {
-  thread_local static int64_t number = 0;
   return number++;
+}
+
+void AutofuseUtils::ClearUniqueNumber() {
+  number = 0;
 }
 
 Status AutofuseUtils::AddOperatorPrototypeAttrs(const OpDescPtr &op_desc) {
@@ -673,4 +890,20 @@ std::vector<const ge::Node *> AutofuseUtils::GetComputeOps(const std::vector<con
   return compute_ops;
 }
 
+std::string AutofuseUtils::SimplifyNodeName(const std::string &node_name) {
+  // 1. 拆分node_name为各个部分
+  std::vector<std::string> parts = StringUtils::Split(node_name, '_');
+  if (parts.empty()) {
+    return node_name; // 空输入直接返回
+  }
+  // 2. 判断是哪种格式的node_name
+  if (IsFusedFormat(parts)) {
+    return ProcessFusedFormat(parts);
+  } else if (IsNormalFormat(parts)) {
+    return ProcessNormalFormat(parts);
+  } else {
+    // 新增逻辑：通用格式（autofuse_xxx_数字_xxx），按连续出现次数统计
+    return ProcessGeneralFormat(parts);
+  }
+}
 }  // namespace ge

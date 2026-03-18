@@ -398,7 +398,8 @@ Status AscBackendFusionDecider::UpdateNewNodeAttr(const OpDescPtr op, const Node
       MergeFuseType(GetInterAttrs(autofuse_attr1).fuse_type, GetInterAttrs(autofuse_attr2).fuse_type);
   attr->SetAscGraph(BackendUtils::GetNodeFusedAscGraph(node1), autofuse_attr1->GetFuseType());
   GetInterAttrs(attr).fuse_type = fuse_type;
-
+  BackendUtils::SetReduceOriginalAxisInfo(GetInterAttrs(attr), GetInterAttrs(autofuse_attr1),
+                                          GetInterAttrs(autofuse_attr2));
   return SUCCESS;
 }
 
@@ -447,11 +448,12 @@ std::string CreateFuseNodeName(const NodePtr &node1, const NodePtr &node2, const
     ss << "autofuse_fused_" << counter->NextId() << "_" << ordered_node_type;
   }
   std::string node_name = ss.str();
-  if (node_name.size() > AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len) {
+  auto simplified_node_name = AutofuseUtils::SimplifyNodeName(node_name);
+  if (simplified_node_name.size() > AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len) {
     // 判断超长截断
-    node_name = node_name.substr(0, AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len);
+    simplified_node_name = simplified_node_name.substr(0, AutoFuseConfig::FusionStrategySolverConfig().max_op_name_len);
   }
-  return node_name;
+  return simplified_node_name;
 }
 
 NodePtr AscBackendFusionDecider::FuseNode(NodePtr node1, NodePtr node2, const ComputeGraphPtr merged_graph,
