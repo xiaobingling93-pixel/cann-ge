@@ -570,8 +570,8 @@ Status KernelTaskInfo::DistributeTask() {
   launch_kernel_param.args = args_;
   launch_kernel_param.args_size =
       customized_args_info_.customized_aligned ? customized_args_info_.kernel_def_args_size : args_size_;
-  // aicore算子设置成block_dim，其他类型的算子设置为1
-  if (IsAllKernel(task_type_) || ModelUtils::IsAICoreKernel(kernel_type_)) {
+  // aicore和aicpu_kfc算子设置成block_dim，其他类型的算子设置为1
+  if (IsAllKernel(task_type_) || ModelUtils::IsAICoreKernel(kernel_type_) || kernel_type_ == ccKernelType::AI_CPU_KFC) {
     launch_kernel_param.block_dim = block_dim_;
     GE_ASSERT_SUCCESS(ReportL0ExceptionDumpInfo(op_desc_, l0_dump_list_), "[%s] report l0 exception dump addr failed",
                       op_desc_->GetNamePtr());
