@@ -15,6 +15,9 @@ endif()
 set(seccomp_download_dependent FALSE)
 if (IS_DIRECTORY "${OPEN_SOURCE_DIR}/../tools/minios/arm64/include/libseccomp")
     set(LIB_SECCOMP_INCLUDE_PATH "${OPEN_SOURCE_DIR}/../tools/minios/arm64/include/libseccomp")
+elseif (EXISTS "${OPEN_SOURCE_DIR}/lib_cache/libseccomp-2.5.4/include/seccomp.h")
+    message("seccomp use opensource cache.")
+    set(LIB_SECCOMP_INCLUDE_PATH "${OPEN_SOURCE_DIR}/lib_cache/libseccomp-2.5.4/include")
 elseif (EXISTS "/usr/local/include/seccomp.h")
     set(LIB_SECCOMP_INCLUDE_PATH "/usr/local/include")
 else()
@@ -34,7 +37,7 @@ else()
             TLS_VERIFY        OFF
             DOWNLOAD_DIR      ${CMAKE_BINARY_DIR}/downloads
             PREFIX            third_party
-            CONFIGURE_COMMAND cd <SOURCE_DIR> && ./autogen.sh && ./configure --prefix=<INSTALL_DIR>
+            CONFIGURE_COMMAND bash -c "cd <SOURCE_DIR> && test -f include/seccomp.h || (./autogen.sh && ./configure --prefix=<INSTALL_DIR>)"
             INSTALL_COMMAND   ""
             BUILD_COMMAND     ""
             )
