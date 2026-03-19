@@ -52,9 +52,12 @@ target_compile_options(data_flow_base PRIVATE
 )
 
 target_include_directories(data_flow_base SYSTEM PRIVATE
-    ${CMAKE_BINARY_DIR}
     ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto
     ${CMAKE_BINARY_DIR}/proto/graphengine_protos
+)
+
+target_include_directories(data_flow_base PRIVATE
+    ${CMAKE_BINARY_DIR}
     ${AIR_CODE_DIR}/
     ${AIR_CODE_DIR}/inc
     ${AIR_CODE_DIR}/inc/external
@@ -63,7 +66,6 @@ target_include_directories(data_flow_base SYSTEM PRIVATE
     ${AIR_CODE_DIR}/dflow
     ${AIR_CODE_DIR}/dflow/inc
     ${AIR_CODE_DIR}/dflow/inc/data_flow
-    ${AIR_CODE_DIR}/dflow/deployer
 )
 
 target_link_options(data_flow_base PRIVATE

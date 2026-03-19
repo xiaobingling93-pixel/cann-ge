@@ -173,8 +173,6 @@ target_include_directories(model_deployer PRIVATE
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/graph_metadef
         ${AIR_CODE_DIR}/inc/external
-        ${AIR_CODE_DIR}/runtime/v1
-        ${AIR_CODE_DIR}/runtime/v2
         ${AIR_CODE_DIR}/compiler
         ${CMAKE_BINARY_DIR}/proto/graphengine_protos
         ${CMAKE_BINARY_DIR}/proto/graphengine_protos/proto
@@ -362,7 +360,6 @@ set(NPU_EXECUTOR_INC_LIST
         ${AIR_CODE_DIR}/runtime/v1
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/external
-        ${AIR_CODE_DIR}/runtime/v2
         ${AIR_CODE_DIR}/compiler
         ${AIR_CODE_DIR}/dflow/inc/data_flow
         .
@@ -514,7 +511,6 @@ set(HOST_CPU_EXECUTOR_INC_LIST
         ${AIR_CODE_DIR}/runtime/v1
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/external
-        ${AIR_CODE_DIR}/runtime/v2
         ${AIR_CODE_DIR}/compiler
         ${AIR_CODE_DIR}/dflow/inc/data_flow
         .

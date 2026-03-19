@@ -72,11 +72,16 @@ target_compile_options(dflow_runner PRIVATE
 )
 
 target_include_directories(dflow_runner SYSTEM PRIVATE
+    ${CMAKE_BINARY_DIR}/proto/data_flow_protos
+    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
+)
+
+target_include_directories(dflow_runner PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${AIR_CODE_DIR}/dflow/inc/data_flow
     ${AIR_CODE_DIR}/base
     ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse/inc
     ${AIR_CODE_DIR}/compiler
-    ${AIR_CODE_DIR}/runtime/v1
     ${AIR_CODE_DIR}/inc
     ${AIR_CODE_DIR}/inc/graph_metadef
     ${AIR_CODE_DIR}/inc/external
@@ -84,13 +89,10 @@ target_include_directories(dflow_runner SYSTEM PRIVATE
     ${AIR_CODE_DIR}/api/session
     ${AIR_CODE_DIR}
     ${CMAKE_BINARY_DIR}
-    ${CMAKE_BINARY_DIR}/proto/data_flow_protos
-    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
     ${METADEF_DIR}/pkg_inc
     ${TOP_DIR}/runtime/include/external
     ${TOP_DIR}/runtime/include/external/acl/error_codes
-    ${AIR_CODE_DIR}/dflow/inc/data_flow
-    )
+)
 
 target_link_options(dflow_runner PRIVATE
     -Wl,-Bsymbolic

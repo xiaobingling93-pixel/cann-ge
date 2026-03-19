@@ -13,7 +13,6 @@
 #include "framework/common/debug/log.h"
 #include "common/debug/ge_log.h"
 #include "graph/def_types.h"
-#include "graph/manager/util/hcom_ome_util.h"
 #include "common/dump/dump_manager.h"
 #include "common/checker.h"
 #include "executor/cpu_sched_model.h"
