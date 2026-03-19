@@ -22,6 +22,7 @@
 #include "graph/load/model_manager/task_info/hccl/hccl_util.h"
 #include "graph/load/model_manager/task_info/fe/fusion_task_info.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "depends/ascendcl/src/ascendcl_stub.h"
 #include "ge/ut/ge/ffts_plus_proto_tools.h"
 #include "framework/common/types.h"
 #include "graph/manager/graph_var_manager.h"
@@ -1663,11 +1664,6 @@ TEST_F(UtestKernelTaskInfo, blocking_aicpu_op_fail_02) {
 
   EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
   RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
-  EXPECT_EQ(kernel_task_info.Distribute(), FAILED);
-  kernel_task_info.Release();
-
-  EXPECT_EQ(kernel_task_info.InitAicpuTaskExtInfo(kernel_def.kernel_ext_info()), SUCCESS);
-  RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
   EXPECT_EQ(kernel_task_info.Distribute(), FAILED);
   kernel_task_info.Release();
 

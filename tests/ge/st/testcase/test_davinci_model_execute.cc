@@ -3501,14 +3501,15 @@ TEST_F(DavinciModelTest, GetEventIdForBlockingAicpuOp_fail) {
   uint32_t event_id = 0;
 
   model.stream_2_event_[stream] = (rtEvent_t)2;
-  g_runtime_stub_mock = "rtGetEventID";
+  g_acl_stub_mock = "aclrtGetEventId";
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
 
   model.stream_2_event_.clear();
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
 
-  g_runtime_stub_mock = "rtEventCreateWithFlag";
-  EXPECT_EQ(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS); //??
+  g_acl_stub_mock = "aclrtCreateEventWithFlag";
+  EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
+  g_acl_stub_mock = "";
 }
 
 /**
@@ -3649,7 +3650,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_event_resource_suc
   (void)BuildGraphNode(graph_id_2, graph_node_2, flow_root_model_2, ge_model_2);
 
   uint32_t event_num_dev_avail;
-  (void)rtGetAvailEventNum(&event_num_dev_avail);
+  (void)aclrtGetEventAvailNum(&event_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_2, ATTR_MODEL_EVENT_NUM, event_num_dev_avail + 32 + 2)); // 32：model event 2：kfc stream event
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_2, graph_node_2), SUCCESS);
   EXPECT_EQ(model_mgr.model_map_.size(), 1);

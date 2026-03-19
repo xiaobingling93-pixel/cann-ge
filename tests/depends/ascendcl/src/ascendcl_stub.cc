@@ -795,6 +795,9 @@ aclError AclRuntimeStub::aclrtCreateEventWithFlag(aclrtEvent *event, uint32_t fl
 }
 
 aclError AclRuntimeStub::aclrtResetEvent(aclrtEvent event, aclrtStream stream) {
+  if (std::string(__FUNCTION__) == g_acl_stub_mock) {
+    return -1;
+  }
   return ACL_SUCCESS;
 }
 

@@ -390,16 +390,16 @@ void DavinciModel::DestroyResources() {
     }
 
     for (size_t i = 0U; i < event_list_.size(); ++i) {
-      GE_LOGW_IF(rtEventDestroySync(event_list_[i]) != RT_ERROR_NONE, "Destroy event failed, index: %zu", i);
+      GE_LOGW_IF(aclrtDestroyEvent(event_list_[i]) != ACL_SUCCESS, "Destroy event failed, index: %zu", i);
     }
 
     for (size_t i = 0U; i < hccl_group_ordered_event_list_.size(); ++i) {
-      GE_LOGW_IF(rtEventDestroy(hccl_group_ordered_event_list_[i]) != RT_ERROR_NONE,
+      GE_LOGW_IF(aclrtDestroyEvent(hccl_group_ordered_event_list_[i]) != ACL_SUCCESS,
         "Destroy hccl group ordered event failed, index: %zu", i);
     }
 
     for (const auto &it : stream_2_event_) {
-      GE_LOGW_IF(rtEventDestroySync(it.second) != RT_ERROR_NONE, "Destroy event failed");
+      GE_LOGW_IF(aclrtDestroyEvent(it.second) != ACL_SUCCESS, "Destroy event failed");
     }
 
     ReleaseTask();
@@ -774,9 +774,10 @@ Status DavinciModel::CreateHcclGroupOrderedEvent() {
 
   uint32_t i = 0U;
   while (i < hccl_group_ordered_stream_list_.size()) {
-    rtEvent_t rt_event = nullptr;
+    aclrtEvent rt_event = nullptr;
     int32_t stream_id = 0;
-    GE_CHK_RT_RET(rtEventCreateExWithFlag(&rt_event, static_cast<uint32_t>(RT_EVENT_WITH_FLAG)));
+    GE_CHK_RT_RET(aclrtCreateEventExWithFlag(
+      &rt_event, static_cast<uint32_t>(ACL_EVENT_SYNC | ACL_EVENT_CAPTURE_STREAM_PROGRESS | ACL_EVENT_TIME_LINE)));
     hccl_group_ordered_event_list_.push_back(rt_event);
     (void)rtGetStreamId(hccl_group_ordered_stream_list_[i], &stream_id);
     GELOGI("hccl group ordered stream id:%d, stream:%p", stream_id, hccl_group_ordered_stream_list_[i]);
@@ -1476,8 +1477,9 @@ Status DavinciModel::InitRuntimeResource() {
   }
   i = 0U;
   while (i < runtime_param_.event_num) {
-    rtEvent_t rt_event = nullptr;
-    GE_CHK_RT_RET(rtEventCreateWithFlag(&rt_event, static_cast<uint32_t>(RT_EVENT_WITH_FLAG)));
+    aclrtEvent rt_event = nullptr;
+    GE_CHK_RT_RET(aclrtCreateEventWithFlag(
+      &rt_event, static_cast<uint32_t>(ACL_EVENT_SYNC | ACL_EVENT_CAPTURE_STREAM_PROGRESS | ACL_EVENT_TIME_LINE)));
     event_list_.push_back(rt_event);
     ++i;
   }
@@ -8269,15 +8271,16 @@ Status DavinciModel::GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtSt
   GELOGI("Get event id for aicpu blocking op:%s", op_desc->GetName().c_str());
   const auto it = stream_2_event_.find(stream);
   if (it != stream_2_event_.end()) {
-    GE_CHK_RT_RET(rtGetEventID(it->second, &event_id));
+    GE_CHK_RT_RET(aclrtGetEventId(it->second, &event_id));
   } else {
-    rtEvent_t rt_event = nullptr;
-    GE_CHK_RT_RET(rtEventCreateWithFlag(&rt_event, RT_EVENT_WITH_FLAG));
-    const rtError_t rt_ret = rtGetEventID(rt_event, &event_id);
-    if (rt_ret != RT_ERROR_NONE) {
-      (void)rtEventDestroy(rt_event);
-      REPORT_INNER_ERR_MSG("E19999", "Call rtGetEventID fail, ret: %d", rt_ret);
-      GELOGE(ge::RT_FAILED, "Call rtGetEventID failed, ret: %d", rt_ret);
+    aclrtEvent rt_event = nullptr;
+    GE_CHK_RT_RET(aclrtCreateEventWithFlag(
+      &rt_event, ACL_EVENT_SYNC | ACL_EVENT_CAPTURE_STREAM_PROGRESS | ACL_EVENT_TIME_LINE));
+    const aclError rt_ret = aclrtGetEventId(rt_event, &event_id);
+    if (rt_ret != ACL_SUCCESS) {
+      (void)aclrtDestroyEvent(rt_event);
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtGetEventId fail, ret: %d", rt_ret);
+      GELOGE(ge::RT_FAILED, "Call aclrtGetEventId failed, ret: %d", rt_ret);
       return RT_ERROR_TO_GE_STATUS(rt_ret);
     }
     stream_2_event_[stream] = rt_event;
@@ -8285,7 +8288,7 @@ Status DavinciModel::GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtSt
   return SUCCESS;
 }
 
-Status DavinciModel::GetEventByStream(rtStream_t const stream, rtEvent_t &rt_event) {
+Status DavinciModel::GetEventByStream(rtStream_t const stream, aclrtEvent &rt_event) {
   const auto it = stream_2_event_.find(stream);
   if (it == stream_2_event_.end()) {
     REPORT_INNER_ERR_MSG("E19999", "Get event failed");
@@ -9165,13 +9168,13 @@ Status DavinciModel::LaunchEventForHcclGroupOrderedStream(rtStream_t const strea
     return SUCCESS;
   }
 
-  rtError_t rt_ret = RT_ERROR_NONE;
+  aclError rt_ret = ACL_SUCCESS;
   for (size_t i = 0U ; i < hccl_group_ordered_event_list_.size(); i++) {
     // 执行流下发event record
-    rt_ret = rtEventRecord(hccl_group_ordered_event_list_[i], stream);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtEventRecord failed, ret:%d", rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtEventRecord] failed, ret:%d", rt_ret);
+    rt_ret = aclrtRecordEvent(hccl_group_ordered_event_list_[i], stream);
+    if (rt_ret != ACL_SUCCESS) {
+      REPORT_INNER_ERR_MSG("E19999", "Call aclrtRecordEvent failed, ret:%d", rt_ret);
+      GELOGE(RT_FAILED, "[Call][aclrtRecordEvent] failed, ret:%d", rt_ret);
       return RT_ERROR_TO_GE_STATUS(rt_ret);
     }
 

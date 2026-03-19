@@ -66,6 +66,7 @@ void ProfilingContext::Init() {
   profiler_->RegisterString(kRtEventSync, "rtEventSync");
   profiler_->RegisterString(kRtStreamSync, "rtStreamSync");
   profiler_->RegisterString(kRtEventDestroy, "rtEventDestroy");
+  profiler_->RegisterString(kAclrtEventDestroy, "AclrtEventDestroy");
   profiler_->RegisterString(kOpExecute, "OpExecute");
   profiler_->RegisterString(kModelExecute, "ModelExecute");
   profiler_->RegisterString(kAllocMem, "AllocMemory");

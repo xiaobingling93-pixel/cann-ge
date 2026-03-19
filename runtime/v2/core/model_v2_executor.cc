@@ -94,7 +94,7 @@ ge::graphStatus ModelV2Executor::Load(const ModelExecuteArg &arg) {
 
 ge::graphStatus ModelV2Executor::OccupyStreamResource(const ModelExecuteArg &arg,
                                                       TypedContinuousVector<rtStream_t> *&streams,
-                                                      TypedContinuousVector<rtEvent_t> *&events,
+                                                      TypedContinuousVector<aclrtEvent> *&events,
                                                       TypedContinuousVector<rtNotify_t> *&notifies) {
   StreamAllocator *stream_allocator;
   EventAllocator *event_allocator;
@@ -136,7 +136,7 @@ ge::graphStatus ModelV2Executor::OccupyStreamResource(const ModelExecuteArg &arg
 ge::graphStatus ModelV2Executor::SpecifyArgsInputs(const ModelExecuteArg &arg, size_t input_num,
                                                    ExeGraphExecutor &graph_executor) {
   TypedContinuousVector<rtStream_t> *streams = nullptr;
-  TypedContinuousVector<rtEvent_t> *events = nullptr;
+  TypedContinuousVector<aclrtEvent> *events = nullptr;
   TypedContinuousVector<rtNotify_t> *notifies = nullptr;
   GE_RETURN_IF_ERROR(OccupyStreamResource(arg, streams, events, notifies));
   GE_RETURN_IF_ERROR(graph_executor.SpecifyInput(streams, input_num++));

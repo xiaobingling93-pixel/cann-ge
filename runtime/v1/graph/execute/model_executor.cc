@@ -916,7 +916,7 @@ Status ModelExecutor::CheckAndReleaseEvent(const GeRootModelPtr &ge_root_model, 
 
   uint32_t free_event_num = 0U;
   GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
-  GE_CHK_RT_RET(rtGetAvailEventNum(&free_event_num));
+  GE_CHK_RT_RET(aclrtGetEventAvailNum(&free_event_num));
 
   if (required_event_num <= free_event_num) {
     GELOGI("Graph id[%u] no need to unload other models, required event nums[%u], free event nums[%u]",
@@ -944,7 +944,7 @@ Status ModelExecutor::CheckAndReleaseEvent(const GeRootModelPtr &ge_root_model, 
     it.second->SetLoadCount(it.second->GetLoadRecord());
     it.second->SetLoadRecord(kNeverLoaded);
 
-    GE_CHK_RT_RET(rtGetAvailEventNum(&free_event_num));
+    GE_CHK_RT_RET(aclrtGetEventAvailNum(&free_event_num));
     if (required_event_num <= free_event_num) {
       GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
       return SUCCESS;

@@ -354,9 +354,10 @@ Status RdmaNodeTask::ExecuteAsync(TaskContext &context, const std::function<void
     return SUCCESS;
   }
 
-  rtEvent_t evt = nullptr;
+  aclrtEvent evt = nullptr;
   if (context.GetExecutionContext()->hccl_stream != nullptr) {
-    GE_CHK_RT_RET(rtEventCreateWithFlag(&evt, RT_EVENT_WITH_FLAG));
+    GE_CHK_RT_RET(aclrtCreateEventWithFlag(
+      &evt, ACL_EVENT_SYNC | ACL_EVENT_CAPTURE_STREAM_PROGRESS | ACL_EVENT_TIME_LINE));
     GE_CHK_RT_RET(rtStreamWaitEvent(context.GetExecutionContext()->hccl_stream, evt));
   }
   TaskContext *const p_ctx = &context;
@@ -370,8 +371,8 @@ Status RdmaNodeTask::ExecuteAsync(TaskContext &context, const std::function<void
       done_callback();
     }
     if (evt != nullptr) {
-      GE_CHK_RT_RET(rtEventRecord(evt, nullptr));
-      GE_CHK_RT_RET(rtEventDestroy(evt));
+      GE_CHK_RT_RET(aclrtRecordEvent(evt, nullptr));
+      GE_CHK_RT_RET(aclrtDestroyEvent(evt));
     }
     GELOGI("rdma callback success.");
     return SUCCESS;

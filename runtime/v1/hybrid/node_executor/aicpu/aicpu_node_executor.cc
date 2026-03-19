@@ -47,7 +47,7 @@ REGISTER_NODE_EXECUTOR_BUILDER(NodeExecutorManager::ExecutorType::AICPU_CUSTOM, 
 
 AicpuNodeTaskBase::~AicpuNodeTaskBase() {
   if (rt_event_ != nullptr) {
-    (void)rtEventDestroy(rt_event_);
+    (void)aclrtDestroyEvent(rt_event_);
   }
 }
 
@@ -330,19 +330,20 @@ Status AicpuNodeTaskBase::UpdateEventIdForBlockingAicpuOp() {
     return SUCCESS;
   }
   uint32_t event_id = 0U;
-  auto rt_ret = rtEventCreateWithFlag(&rt_event_, RT_EVENT_WITH_FLAG);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventCreateWithFlag failed for node:%s(%s), ret:%d",
+  auto rt_ret = aclrtCreateEventWithFlag(
+    &rt_event_,ACL_EVENT_SYNC | ACL_EVENT_CAPTURE_STREAM_PROGRESS | ACL_EVENT_TIME_LINE);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtCreateEventWithFlag failed for node:%s(%s), ret:%d",
                       node_name_.c_str(), node_type_.c_str(), rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtEventCreateWithFlag] failed for node:%s(%s), ret:%d",
+    GELOGE(RT_FAILED, "[Call][aclrtCreateEventWithFlag] failed for node:%s(%s), ret:%d",
            node_name_.c_str(), node_type_.c_str(), rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
-  rt_ret = rtGetEventID(rt_event_, &event_id);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtGetEventID failed for node:%s(%s), ret:%d",
+  rt_ret = aclrtGetEventId(rt_event_, &event_id);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtGetEventId failed for node:%s(%s), ret:%d",
                       node_name_.c_str(), node_type_.c_str(), rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtGetEventID] failed for node:%s(%s), ret:%d",
+    GELOGE(RT_FAILED, "[Call][aclrtGetEventId] failed for node:%s(%s), ret:%d",
            node_name_.c_str(), node_type_.c_str(), rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
@@ -408,10 +409,10 @@ Status AicpuNodeTaskBase::DistributeWaitTaskForAicpuBlockingOp(rtStream_t stream
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   SetTaskTag();
-  rt_ret = rtEventReset(rt_event_, stream);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventReset failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtEventReset] failed, ret:%d", rt_ret);
+  rt_ret = aclrtResetEvent(rt_event_, stream);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtResetEvent failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtResetEvent] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
   return SUCCESS;

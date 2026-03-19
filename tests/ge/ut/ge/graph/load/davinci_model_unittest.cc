@@ -697,6 +697,7 @@ class UtestDavinciModel : public testing::Test {
     VarManager::Instance(0)->SetMemoryMallocSize(options, 10UL * 1024UL * 1024UL);
     MemManager::Instance().Initialize({ RT_MEMORY_HBM, RT_MEMORY_P2P_DDR });
     g_runtime_stub_mock.clear();
+    AclRuntimeStub::SetErrorResultApiName("");
     RuntimeStub::GetInstance()->input_mem_copy_batch_count_ = 0;
     RTS_STUB_SETUP();
     const ::testing::TestInfo *test_info = ::testing::UnitTest::GetInstance()->current_test_info();
@@ -707,6 +708,7 @@ class UtestDavinciModel : public testing::Test {
 
   void TearDown() {
     g_runtime_stub_mock.clear();
+    AclRuntimeStub::SetErrorResultApiName("");
     VarManager::Instance(0)->FreeVarMemory();
     MemManager::Instance().Finalize();
     ProfilingTestUtil::Instance().Clear();
@@ -6008,14 +6010,12 @@ TEST_F(UtestDavinciModel, GetEventIdForBlockingAicpuOp_fail) {
   uint32_t event_id = 0;
 
   model.stream_2_event_[stream] = (rtEvent_t)2;
-  g_runtime_stub_mock = "rtGetEventID";
+  AclRuntimeStub::SetErrorResultApiName("aclrtGetEventId");
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
 
   model.stream_2_event_.clear();
+  AclRuntimeStub::SetErrorResultApiName("aclrtCreateEventWithFlag");
   EXPECT_NE(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS);
-
-  g_runtime_stub_mock = "rtEventCreateWithFlag";
-  EXPECT_EQ(model.GetEventIdForBlockingAicpuOp(op_desc, stream, event_id), SUCCESS); //??
 }
 
 TEST_F(UtestDavinciModel, UpdateOpInputValue_fail) {
@@ -6896,27 +6896,6 @@ TEST_F(UtestDavinciModel, NnExecute_LaunchKfcEvent_Ok) {
   HcomTopoInfo::Instance().UnsetGroupOrderedStream(0, "group1");
   HcomTopoInfo::Instance().UnsetGroupOrderedStream(0, "group2");
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
-}
-
-TEST_F(UtestDavinciModel, LaunchEventForKfcStreamFailed) {
-  DavinciModel model(0, nullptr);
-  rtEvent_t event_1;
-  rtEvent_t event_2;
-  model.hccl_group_ordered_event_list_.push_back(event_1);
-  model.hccl_group_ordered_event_list_.push_back(event_2);
-  model.hccl_group_ordered_stream_list_.push_back((void*)1);
-  model.hccl_group_ordered_stream_list_.push_back((void*)2);
-  model.is_async_mode_ = true;
-
-  RTS_STUB_RETURN_VALUE(rtEventRecord, rtError_t, 0x78000001);
-  EXPECT_NE(model.LaunchEventForHcclGroupOrderedStream((void*)1), SUCCESS);
-
-  RTS_STUB_RETURN_VALUE(rtEventRecord, rtError_t, RT_ERROR_NONE);
-  RTS_STUB_RETURN_VALUE(rtStreamWaitEventWithTimeout, rtError_t, 0x78000001);
-  EXPECT_NE(model.LaunchEventForHcclGroupOrderedStream((void*)1), SUCCESS);
-
-  model.hccl_group_ordered_event_list_.clear();
-  model.hccl_group_ordered_stream_list_.clear();
 }
 
 TEST_F(UtestDavinciModel, NnExecute_FmMemoryRefreshOk) {

@@ -13,6 +13,8 @@
 
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/op_desc.h"
+#include "acl/acl_rt.h"
+
 namespace ge {
 class EventWaitTaskInfo : public TaskInfo {
  public:
@@ -27,7 +29,7 @@ class EventWaitTaskInfo : public TaskInfo {
   Status Distribute() override;
 
  private:
-  rtEvent_t event_{nullptr};
+  aclrtEvent event_{nullptr};
   uint32_t event_type_{0U};
   uint32_t op_index_{0U};
   OpDescPtr op_desc_{nullptr};

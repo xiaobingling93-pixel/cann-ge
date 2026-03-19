@@ -114,6 +114,7 @@ enum {
   kRtEventCreateRecord,
   kRtEventSync,
   kRtEventDestroy,
+  kAclrtEventDestroy,
   kRtStreamSync,
   kOpExecute,
   kModelExecute,
