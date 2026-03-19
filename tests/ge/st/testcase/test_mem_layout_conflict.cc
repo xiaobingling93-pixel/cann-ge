@@ -2267,7 +2267,7 @@ TEST_F(MemLayoutConflictTest, ContinuousInAndRtsSpecailInOutSameMemType_CheckMem
  *    \    /             \    /
  *    assign             assign
  *      |       ==>        |
- *  hcombroadcast        tensormove
+ *  hcombroadcast        identity
  *      |                  |
  *      a              hcombroadcast
  *      |                  |
@@ -2275,7 +2275,7 @@ TEST_F(MemLayoutConflictTest, ContinuousInAndRtsSpecailInOutSameMemType_CheckMem
  *                         |
  *                       netoutput
  *
- * 用例场景：variable-assign-rts输出内存，校验只在assign后面插入tensormove，不在variable后面插入。
+ * 用例场景：variable-assign-rts输出内存，校验只在assign后面插入identity，不在variable后面插入。
  * 步骤：
  * step 1. 按照用例场景构图
  * 期望：构图成功
@@ -2297,19 +2297,19 @@ TEST_F(MemLayoutConflictTest, ImmutableOutAndRtsSpecailInByAssign_Insert_SUCCESS
     GE_DUMP(graph, "BuildGraphFailed");
   }
   EXPECT_EQ(ret, SUCCESS);
-  size_t tensormove_cnt = 0U;
+  size_t identity_cnt = 0U;
   CHECK_GRAPH(PreRunAfterMemConflictProc) {
     std::map<std::string, NodePtr> name_to_node;
     for (const auto &node : graph->GetAllNodes()) {
       name_to_node[node->GetName()] = node;
-      if (node->GetType() == TENSORMOVE) {
-        tensormove_cnt++;
+      if (node->GetType() == IDENTITY) {
+        identity_cnt++;
       }
     }
-    EXPECT_EQ(tensormove_cnt, 1U);
+    EXPECT_EQ(identity_cnt, 1U);
     ASSERT_NE(name_to_node["hcombroadcast"], nullptr);
     ASSERT_NE(name_to_node["hcombroadcast"]->GetInDataAnchor(0), nullptr);
-    EXPECT_EQ(name_to_node["hcombroadcast"]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetType(), TENSORMOVE);
+    EXPECT_EQ(name_to_node["hcombroadcast"]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetType(), IDENTITY);
   };
 }
 /*
@@ -2409,7 +2409,7 @@ TEST_F(MemLayoutConflictTest, NoPaddingContinuousInAndNoPaddingContinuousOutConn
  *     \    /                \    /
  *     assign   c            assign
  *       |     /               |
- *   hcombroadcast  ==>     tensormove   c
+ *   hcombroadcast  ==>     identity   c
  *       / \                   |      /
  *      a   b               hcombroadcast (need p2p in/out, continuous in/out, out ref in)
  *      |   |                   / \
@@ -2454,17 +2454,17 @@ TEST_F(MemLayoutConflictTest, ImmutableOutAnRtsSpecailOutContinuousInOutByAssign
     GE_DUMP(graph, "BuildGraphFailed");
   }
   EXPECT_EQ(ret, SUCCESS);
-  size_t tensormove_cnt = 0U;
+  size_t identity_cnt = 0U;
   CHECK_GRAPH(PreRunAfterMemConflictProc) {
     std::map<std::string, NodePtr> name_to_node;
     for (const auto &node : graph->GetAllNodes()) {
       name_to_node[node->GetName()] = node;
-      if (node->GetType() == TENSORMOVE) {
-        tensormove_cnt++;
+      if (node->GetType() == IDENTITY) {
+        identity_cnt++;
       }
     }
-    EXPECT_EQ(tensormove_cnt, 1U);
-    EXPECT_EQ(name_to_node["hcombroadcast"]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetType(), TENSORMOVE);
+    EXPECT_EQ(identity_cnt, 1U);
+    EXPECT_EQ(name_to_node["hcombroadcast"]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetType(), IDENTITY);
   };
 }
 /*

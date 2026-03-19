@@ -32,6 +32,31 @@ ComputeGraphPtr BuildTensormoveOnlyOutputToAssignGraph() {
   return ToComputeGraph(g1);
 }
 
+ComputeGraphPtr BuildMultiRefFromVarGraph() {
+  DEF_GRAPH(g1) {
+    auto assign1 = OP_CFG(ASSIGN)
+                      .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+                      .InCnt(2)
+                      .OutCnt(1)
+                      .InNames({"ref", "value"})
+                      .OutNames({"ref"})
+                      .Attr(ATTR_NAME_REFERENCE, true)
+                      .Build("assign1");
+    auto assign2 = OP_CFG(ASSIGN)
+                      .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
+                      .InCnt(2)
+                      .OutCnt(1)
+                      .InNames({"ref", "value"})
+                      .OutNames({"ref"})
+                      .Attr(ATTR_NAME_REFERENCE, true)
+                      .Build("assign2");
+    CHAIN(NODE("var", VARIABLE)->NODE(assign1)->NODE(assign2)->NODE("net_output", NETOUTPUT));
+    CHAIN(NODE("data1", DATA))->EDGE(0, 1)->NODE(assign1);
+    CHAIN(NODE("data1", DATA))->EDGE(0, 1)->NODE(assign2);
+  };
+  return ToComputeGraph(g1);
+}
+
 ComputeGraphPtr BuildReluOnlyOutputToAssignGraph() {
   DEF_GRAPH(g1) {
     auto assign = OP_CFG(ASSIGN)
@@ -273,6 +298,22 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_4) {
 
 TEST_F(UtestGraphPassesInnerTensorMoveAddPass, not_add_tensormove) {
   auto graph = BuildTensormoveOnlyOutputToAssignGraph();
+  InnerTensorMoveAddPass pass;
+  ASSERT_EQ(pass.Run(graph), SUCCESS);
+  size_t inner_tensor_move_count = 0;
+  for (const auto &node : graph->GetDirectNode()) {
+    if (node->GetType() == TENSORMOVE) {
+      bool is_inner_tensor_move = false;
+      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_tensor_move", is_inner_tensor_move) && is_inner_tensor_move) {
+        inner_tensor_move_count++;
+      }
+    }
+  }
+  ASSERT_EQ(inner_tensor_move_count, 0U);
+}
+
+TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_fromvar_not_add_tensormove) {
+  auto graph = BuildMultiRefFromVarGraph();
   InnerTensorMoveAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
   size_t inner_tensor_move_count = 0;
