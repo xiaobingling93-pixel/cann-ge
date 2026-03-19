@@ -1330,7 +1330,7 @@ TEST_F(VectorFuncSt, CastNotFusion) {
       ++cast_num;
     }
   }
-  EXPECT_EQ(cast_num, 1UL);
+  EXPECT_EQ(cast_num, 2UL);
 }
 
 TEST_F(VectorFuncSt, MaximumNotFusion) {

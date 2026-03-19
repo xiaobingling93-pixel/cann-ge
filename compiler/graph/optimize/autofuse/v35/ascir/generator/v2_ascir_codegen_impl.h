@@ -1247,10 +1247,14 @@ class GeAscIrCodegenImplV2 : public AscIrCodegenV2 {
     if (!IsAllVecAxisContinuous(node)) {
       return false;
     }
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     if (node.GetInDataNodes().at(0)->GetType() == "Scalar") {
       return false;
@@ -1306,10 +1310,14 @@ class EqAscIrCodegenImplV2 : public AscIrCodegenV2 {
     if (node.GetInDataNodes().at(0)->GetType() == "Scalar") {
       return false;
     }
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     return true;
   }
@@ -1372,10 +1380,14 @@ class NeAscIrCodegenImplV2 : public AscIrCodegenV2 {
     return "MicroCompareApiCall";
   }
   [[nodiscard]] bool IsVectorFunctionSupported(const ge::AscNode &node) const override {
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     if (!IsAllVecAxisContinuous(node)) {
       return false;
@@ -1424,10 +1436,14 @@ class GtAscIrCodegenImplV2 : public AscIrCodegenV2 {
     return "GT";
   }
   [[nodiscard]] bool IsVectorFunctionSupported(const ge::AscNode &node) const override {
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Select") || (out_node->GetType() == "Where")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     if (node.GetInDataNodes().at(0)->GetType() == "Scalar") {
       return false;
@@ -1483,10 +1499,14 @@ class LeAscIrCodegenImplV2 : public AscIrCodegenV2 {
     if (!IsAllVecAxisContinuous(node)) {
       return false;
     }
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Select") && (out_node->GetType() != "Where")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     return true;
   }
@@ -1532,10 +1552,14 @@ class LtAscIrCodegenImplV2 : public AscIrCodegenV2 {
     if (node.GetInDataNodes().at(0)->GetType() == "Scalar") {
       return false;
     }
+    AscNodeInputs compare_inputs = node.inputs;
     for (const auto &out_node : node.GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     if (!IsAllVecAxisContinuous(node)) {
       return false;
@@ -1996,17 +2020,21 @@ class WhereAscIrCodegenImplV2 : public AscIrCodegenV2 {
     if (!IsAllVecAxisContinuous(node)) {
       return false;
     }
-    auto in_node = node.GetInDataNodes().at(0);
+    auto in_node = std::dynamic_pointer_cast<ge::AscNode>(node.GetInDataNodes().at(0));
     // 当前节点的第一个输入节点必须是比较算子
     if (in_node->GetType() != "Ge" && in_node->GetType() != "Eq" && in_node->GetType() != "Ne" &&
         in_node->GetType() != "Le" && in_node->GetType() != "Lt" && in_node->GetType() != "Gt") {
       return false;
     }
-    // 当前节点的第一个输入节点的所有输出节点必须是Where算子或Select算子
+    AscNodeInputs compare_inputs = in_node->inputs;
+    // 当前节点的第一个输入节点的所有输出节点必须全部是Where算子或Select算子，并且输入tensor类型和compare算子一致
     for (const auto &out_node : in_node->GetOutNodes()) {
-      if ((out_node->GetType() != "Where") && (out_node->GetType() != "Select")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     return true;
   }
@@ -2060,11 +2088,15 @@ class SelectAscIrCodegenImplV2 : public AscIrCodegenV2 {
         in_node->GetType() != "Le" && in_node->GetType() != "Ge" && in_node->GetType() != "Gt") {
       return false;
     }
-    // 当前节点的第一个输入节点的所有输出节点必须是Where算子或Select算子
+    AscNodeInputs compare_inputs = std::dynamic_pointer_cast<ge::AscNode>(in_node)->inputs;
+    // 当前节点的第一个输入节点的所有输出节点必须全部是Where算子或Select算子，并且输入tensor类型和compare算子一致
     for (const auto &out_node : in_node->GetOutNodes()) {
-      if ((out_node->GetType() != "Select") && (out_node->GetType() != "Where")) {
-        return false;
+      AscNodeInputs where_inputs = std::dynamic_pointer_cast<ge::AscNode>(out_node)->inputs;
+      if (((out_node->GetType() == "Where") || (out_node->GetType() == "Select")) &&
+          (compare_inputs[0].attr.dtype == where_inputs[1].attr.dtype)) {
+        continue;
       }
+      return false;
     }
     return true;
   }
