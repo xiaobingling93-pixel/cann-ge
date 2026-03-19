@@ -9,7 +9,7 @@
  */
 
 #include "inner_tensor_move_add_pass.h"
-
+#include <stack>
 #include "node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/op_type_utils.h"
@@ -27,15 +27,36 @@ bool IsChangedByRefNode(const NodePtr &node) {
   return (type == REFSWITCH) || (type == REFMERGE) || (type == READVARIABLEOP);
 }
 
-bool IsNoNeedInsertTensorMove(const NodePtr &node) {
-  NodePtr real_node = node;
-  if (OpTypeUtils::IsDataNode(real_node->GetType())) {
-    const auto in_node = NodeUtils::GetParentInput(real_node);
-    if (in_node != nullptr) {
-      real_node = in_node;
+bool IsNoNeedInsertTensorMove(const OutDataAnchorPtr &anchor) {
+  std::stack<OutDataAnchorPtr> out_data_anchor_stack;
+  out_data_anchor_stack.push(anchor);
+  NodePtr input_node = anchor->GetOwnerNode();
+  // 类似多重ref->ref场景，找到非ref输入
+  while (!out_data_anchor_stack.empty()) {
+    auto out_data_anchor = out_data_anchor_stack.top();
+    out_data_anchor_stack.pop();
+    auto node = out_data_anchor->GetOwnerNode();
+    GE_ASSERT_NOTNULL(node);
+    if (OpTypeUtils::IsDataNode(node->GetType())) {
+      const auto in_node = NodeUtils::GetParentInput(node);
+      if (in_node != nullptr) {
+        node = in_node;
+        out_data_anchor = node->GetOutDataAnchor(0U);
+      }
+    }
+    int32_t reuse_in_index = -1;
+    if (!GraphUtils::IsRefFromInput(out_data_anchor, reuse_in_index)) {
+      input_node = node;
+    } else {
+      auto in_data_anchor = node->GetInDataAnchor(reuse_in_index);
+      GE_ASSERT_NOTNULL(in_data_anchor);
+      auto peer_out_data_anchor = in_data_anchor->GetPeerOutAnchor();
+      if (peer_out_data_anchor != nullptr) {
+        out_data_anchor_stack.push(peer_out_data_anchor);
+      }
     }
   }
-  return OpTypeUtils::IsVarLikeNode(real_node->GetType()) || IsChangedByRefNode(real_node);
+  return OpTypeUtils::IsVarLikeNode(input_node->GetType()) || IsChangedByRefNode(input_node);
 }
 }
 Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
@@ -51,6 +72,7 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
                       graph->GetName().c_str());
   }
   GE_ASSERT_SUCCESS(PassUtils::UpdateRefAttr(graph));
+
   for (const auto &node : graph->GetDirectNode()) {
     auto op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
@@ -76,10 +98,11 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
         continue;
       }
 
-      if (IsNoNeedInsertTensorMove(ref_input_node)) {
+      if (IsNoNeedInsertTensorMove(peer_out_data_anchor)) {
         GELOGD("ref node %s input is %s, skip insert inner Tensormove", node->GetNamePtr(), ref_input_node->GetNamePtr());
         continue;
       }
+
       std::vector<InDataAnchorPtr> target_in_data_anchors; // 记录ref_input_node多引用时需要重新连边的输入inanchor
       for (const auto &peer_in_data_anchor : peer_out_data_anchor->GetPeerInDataAnchors()) {
         GE_ASSERT_NOTNULL(peer_in_data_anchor);
