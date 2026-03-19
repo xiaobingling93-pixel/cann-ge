@@ -764,45 +764,12 @@ graphStatus LowerSlice(const NodePtr &node) {
   return GRAPH_SUCCESS;
 }
 
-graphStatus ConvertToDirectLoad(const NodePtr &node) {
-  std::vector<loop::Index> indices;
-  const auto x_anchor = node->GetInDataAnchor(0);
-  GE_ASSERT_NOTNULL(x_anchor);
-  auto x = loop::Load(x_anchor);
-  loop::Store(node->GetOutDataAnchor(0), x);
-  GELOGI("Stridedslice node: %s lowered to direct load store", node->GetNamePtr());
-  (void) AttrUtils::SetBool(node->GetOpDesc(), "_disable_lifting", true);
-  return GRAPH_SUCCESS;
-}
-
-bool IsRedundantNode(const NodePtr &node, std::vector<ge::Expression> &x_dims) {
-  bool is_redundant_node = true;
-  const auto out_anchor = node->GetOutDataAnchor(0);
-  std::vector<Expression> dst_dims;
-  if (loop::GetBufferShape(out_anchor, dst_dims) != GRAPH_SUCCESS) {
-    GELOGI("Failed to get output buffer shape, skip tans to direct load");
-    return false;
-  }
-  for (size_t i = 0U; i < dst_dims.size(); ++i) {
-    if (SymbolicUtils::StaticCheckEq(x_dims[i], dst_dims[i]) != TriBool::kTrue) {
-      is_redundant_node = false;
-      break;
-    }
-  }
-  return is_redundant_node;
-}
-
 graphStatus LowerStridedSlice(const NodePtr &node) {
   const auto x_anchor = node->GetInDataAnchor(0);
   GE_ASSERT_NOTNULL(x_anchor);
   std::vector<ge::Expression> x_dims;
   GE_WARN_ASSERT_GRAPH_SUCCESS(loop::GetBufferShape(x_anchor, x_dims));
   GE_ASSERT(!x_dims.empty());
-  bool is_redundant_node = IsRedundantNode(node, x_dims);
-  if (is_redundant_node) {
-    GE_WARN_ASSERT_GRAPH_SUCCESS(ConvertToDirectLoad(node), "Skip lowering node %s, as: ConvertToDirectLoad failed", node->GetNamePtr());
-    return GRAPH_SUCCESS;
-  }
   vector<int64_t> begin_list = {};
   vector<int64_t> stride_list = {};
   GE_WARN_ASSERT(AutofuseUtils::GetListIntByInputOrAttr(node, begin_list, "begin", "begin") == GRAPH_SUCCESS,
@@ -811,6 +778,8 @@ graphStatus LowerStridedSlice(const NodePtr &node) {
   GE_WARN_ASSERT(AutofuseUtils::GetListIntByInputOrAttr(node, stride_list, "strides", "strides") == GRAPH_SUCCESS,
                  "Skip lowering node %s, as: Failed to get strides.", node->GetNamePtr());
   GE_ASSERT(!stride_list.empty());
+  vector<Expression> start;
+  vector<Expression> stride;
   StridedSliceMaskAttr mask_attr;
   StrdedSliceIndexInputs index_input;
   GE_ASSERT_TRUE(AttrUtils::GetInt(node->GetOpDesc(), "begin_mask", mask_attr.begin_mask));
