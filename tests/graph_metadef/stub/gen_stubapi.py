@@ -238,9 +238,6 @@ RETURN_STATEMENTS = {
     'CompileTimeTensorDesc*': '    return nullptr;',
     'RuntimeAttrs*': '    return nullptr;',
     'DeviceTilingContextBuilder& DeviceTilingContextBuilder::': '    return *this;',
-    'KernelContextHolder KernelRunContextBuilder::':
-        'static KernelContextHolder default_holder;\n    return std::move(default_holder);',
-    'ge::NodePtr KernelRunContextBuilder::': '    return nullptr;',
     'OpDescPtr': '    return nullptr;',
     'std::set<ge::AscendString>&': '    static std::set<ge::AscendString> as;\n    return as;',
     'ResourceContext*': '    return nullptr;',
@@ -1082,7 +1079,6 @@ def collect_header_files(inc_file):
         'metadef/register/',
         'metadef/third_party/transformer/src/',
         'include/register/',
-        'graph_metadef/'
         # add include dirs
     ]
     for inc_dir in inc_dirs:

@@ -94,7 +94,6 @@ endif()
 set(STUB_HEADER_LIST_LOWERING
     ${GE_METADEF_INC_DIR}/exe_graph/lowering/bg_kernel_context_extend.h
     ${GE_METADEF_INC_DIR}/exe_graph/lowering/device_tiling_context_builder.h
-    ${GE_METADEF_DIR}/exe_graph/lowering/kernel_run_context_builder.h
 )
 
 list(TRANSFORM STUB_HEADER_LIST_LOWERING
