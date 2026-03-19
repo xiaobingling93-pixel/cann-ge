@@ -6,6 +6,10 @@
 
 本样例展示了如何注册AscendC自定义算子，并通过`<<<>>>`内核调用符调用核函数，以简单的Add算子为例，在交付件`custom_op.cpp`中的继承`EagerExecuteOp`，实现`Execute`入GE图，通过`torchair`调用实现两个向量的逐元素相加，支持PyTorch图模式编译以提升计算效率。
 
+## 支持的产品
+
+    Atlas A2 训练系列产品/Atlas A2 推理系列产品
+
 ## 算子描述
 
 - 算子功能：
