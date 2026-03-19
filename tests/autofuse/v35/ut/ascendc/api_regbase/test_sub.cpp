@@ -77,6 +77,21 @@ class TestRegbaseApiSubUT : public testing::Test {
         param.x1[i] = distr(eng);
         param.x2[i] = distr(eng) + 1;
         param.exp[i] = param.x1[i] - param.x2[i];
+      } else if constexpr (std::is_same_v<T, uint16_t>) {
+        std::uniform_int_distribution<int> distr(0, 65535);
+        param.x1[i] = static_cast<T>(distr(eng));
+        param.x2[i] = static_cast<T>(distr(eng) % 65535 + 1);
+        param.exp[i] = param.x1[i] - param.x2[i];
+      } else if constexpr (std::is_same_v<T, uint32_t>) {
+        std::uniform_int_distribution<uint32_t> distr(0, 4294967295);
+        param.x1[i] = distr(eng);
+        param.x2[i] = distr(eng) % 4294967295 + 1;
+        param.exp[i] = param.x1[i] - param.x2[i];
+      } else if constexpr (std::is_same_v<T, uint64_t>) {
+        std::uniform_int_distribution<uint64_t> distr(0, 18446744073709551615ULL);
+        param.x1[i] = distr(eng);
+        param.x2[i] = distr(eng) % 18446744073709551615ULL + 1;
+        param.exp[i] = param.x1[i] - param.x2[i];
       } else {
         std::uniform_int_distribution<int> distr(-input_range, input_range);
         param.x1[i] = static_cast<T>(distr(eng));
@@ -154,6 +169,30 @@ TEST_F(TestRegbaseApiSubUT, Sub_TensorTensor_Test) {
   SubTensorTensorTest<uint8_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(int8_t));
   SubTensorTensorTest<uint8_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(int8_t));
   SubTensorTensorTest<uint8_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(int8_t));
+
+  // uint16
+  SubTensorTensorTest<uint16_t>(ONE_BLK_SIZE / sizeof(uint16_t));
+  SubTensorTensorTest<uint16_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint16_t));
+  SubTensorTensorTest<uint16_t>((ONE_BLK_SIZE - sizeof(uint16_t)) / sizeof(uint16_t));
+  SubTensorTensorTest<uint16_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint16_t));
+  SubTensorTensorTest<uint16_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint16_t));
+  SubTensorTensorTest<uint16_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint16_t));
+
+  // uint32
+  SubTensorTensorTest<uint32_t>(ONE_BLK_SIZE / sizeof(uint32_t));
+  SubTensorTensorTest<uint32_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint32_t));
+  SubTensorTensorTest<uint32_t>((ONE_BLK_SIZE - sizeof(uint32_t)) / sizeof(uint32_t));
+  SubTensorTensorTest<uint32_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint32_t));
+  SubTensorTensorTest<uint32_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint32_t));
+  SubTensorTensorTest<uint32_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint32_t));
+
+  // uint64
+  SubTensorTensorTest<uint64_t>(ONE_BLK_SIZE / sizeof(uint64_t));
+  SubTensorTensorTest<uint64_t>(ONE_REPEAT_BYTE_SIZE / sizeof(uint64_t));
+  SubTensorTensorTest<uint64_t>((ONE_BLK_SIZE - sizeof(uint64_t)) / sizeof(uint64_t));
+  SubTensorTensorTest<uint64_t>((ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint64_t));
+  SubTensorTensorTest<uint64_t>(MAX_REPEAT_NUM * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint64_t));
+  SubTensorTensorTest<uint64_t>((MAX_REPEAT_NUM - 1) * ONE_REPEAT_BYTE_SIZE / 2 / sizeof(uint64_t));
 }
 
 }  // namespace ge

@@ -691,7 +691,15 @@ codegen_e2e_st() {
                       atanh_bf16_test_e2e_v2 \
                       cosh_bf16_test_e2e_v2 \
                       digamma_bf16_test_e2e_v2 \
-                      erfc_bf16_test_e2e_v2"
+                      erfc_bf16_test_e2e_v2 \
+                      pow_bf16_test_e2e_v2 \
+                      reciprocal_bf16_test_e2e_v2 \
+                      relu_uint8_test_e2e_v2 \
+                      round_bf16_test_e2e_v2 \
+                      rshift_uint8_test_e2e_v2 \
+                      sign_uint8_test_e2e_v2 \
+                      sign_bf16_test_e2e_v2 \
+                      truediv_bf16_test_e2e_v2"
   fi
   MAKE_TARGET_LIST_CODEGEN=$(echo "${MAKE_TARGET_LIST}" | sed 's/e2e/codegen/g')
   echo "MAKE_TARGET_LIST_CODEGEN"
