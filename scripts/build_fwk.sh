@@ -343,6 +343,9 @@ if [ ! -z "$ONLY_BUILD" ];then
 fi
 export LD_LIBRARY_PATH=${BUILD_PATH}/tests/depends/aoe/:$LD_LIBRARY_PATH
 if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$ENABLE_PYTHON_UT" = "Xon" ]] || [[ "X$ENABLE_PARSER_UT" = "Xon" ]] || [[ "X$ENABLE_DFLOW_UT" = "Xon" ]]; then
+    COV_DIRS=()   
+    COV_DIRS+=("${BUILD_PATH}/api")
+    COV_DIRS+=("${BUILD_PATH}/base")
     #execute ut testcase with mem leaks by default
     if [[ "X$ENABLE_GE_UT" = "Xon" ]]; then
       echo "[TEST GE COMMON] Begin to run tests with leaks check"
@@ -352,6 +355,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
             -O ${BUILD_PATH}/ctest_ut_ge_common.log
       unset LD_PRELOAD
       unset ASAN_OPTIONS
+      COV_DIRS+=("${BUILD_PATH}/graph_metadef")
+      COV_DIRS+=("${BUILD_PATH}/compiler")
     fi
     if [[ "X$ENABLE_RT2_UT" = "Xon" ]]; then
       echo "[TEST GE RT] Begin to run tests with leaks check"
@@ -361,6 +366,8 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
             -O ${BUILD_PATH}/ctest_ut_rt.log
       unset ASAN_OPTIONS
       unset LD_PRELOAD
+      COV_DIRS+=("${BUILD_PATH}/runtime/v1")
+      COV_DIRS+=("${BUILD_PATH}/runtime/v2")
     fi
     if [[ "X$ENABLE_PYTHON_UT" = "Xon" ]]; then
       unset LD_PRELOAD
@@ -393,6 +400,7 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       fi
       unset ASAN_OPTIONS
       unset LD_PRELOAD
+      COV_DIRS+=("${BUILD_PATH}/graph_metadef")
     fi
 
     if [[ "X$ENABLE_DFLOW_UT" = "Xon" ]]; then
@@ -419,6 +427,7 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       fi
       unset LD_PRELOAD
       unset ASAN_OPTIONS
+      COV_DIRS+=("${BUILD_PATH}/dflow")
     fi
 
     if [[ "X$ENABLE_GE_COV" = "Xon" ]]; then
@@ -432,14 +441,17 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
         mv .coverage ${BASEPATH}/cov/
       fi
 
-      lcov -c -d ${BUILD_PATH}/api \
-                           -d ${BUILD_PATH}/api/atc \
-                           -d ${BUILD_PATH}/dflow \
-                           -d ${BUILD_PATH}/graph_metadef \
-                           -d ${BUILD_PATH}/runtime/v2 \
-                           -d ${BUILD_PATH}/runtime/v1 \
-                           -d ${BUILD_PATH}/base \
-                           -d ${BUILD_PATH}/compiler -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
+      # 去重
+      IFS=$'\n' COV_DIRS_UNIQUE=($(sort -u <<<"${COV_DIRS[*]}"))
+      unset IFS
+
+      # 转换为 lcov 参数格式
+      COV_DIRS_PARAMS=()
+      for dir in "${COV_DIRS_UNIQUE[@]}"; do
+        COV_DIRS_PARAMS+=(-d "$dir")
+      done
+
+      lcov -c "${COV_DIRS_PARAMS[@]}" -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错
@@ -489,6 +501,9 @@ if [[ "X$ENABLE_GE_BENCHMARK" = "Xon" ]]; then
     fi
 fi
 if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$ENABLE_RT3_ST" = "Xon" ]] || [[ "X$ENABLE_PYTHON_ST" = "Xon" ]] || [[ "X$ENABLE_PARSER_ST" = "Xon" ]] || [[ "X$ENABLE_DFLOW_ST" = "Xon" ]]; then
+    COV_DIRS=()
+    COV_DIRS+=("${BUILD_PATH}/api")
+    COV_DIRS+=("${BUILD_PATH}/base")
     cp -rf ${BUILD_PATH}/tests/ge/st/testcase/st_run_data ${BUILD_PATH}/
     cp -rf ${BUILD_PATH}/tests/depends/graph_tuner/libgraphtuner_executor.so ${BUILD_PATH}/tests/ge/st/testcase/
     if [ -d ${BUILD_PATH}/compiler/plugin/nnengine ]; then
@@ -514,6 +529,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1;
       fi
+      COV_DIRS+=("${BUILD_PATH}/graph_metadef")
+      COV_DIRS+=("${BUILD_PATH}/compiler")
     fi
 
     if [[ "X$ENABLE_RT3_ST" = "Xon" ]]; then
@@ -524,6 +541,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
             -O ${BUILD_PATH}/ctest_st_hetero.log
       unset LD_PRELOAD
       unset ASAN_OPTIONS
+      COV_DIRS+=("${BUILD_PATH}/runtime/v1")
+      COV_DIRS+=("${BUILD_PATH}/runtime/v2")
     fi
 
     if [[ "X$ENABLE_RT2_ST" = "Xon" ]]; then
@@ -540,6 +559,8 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       fi
       unset LD_PRELOAD
       unset ASAN_OPTIONS
+      COV_DIRS+=("${BUILD_PATH}/runtime/v1")
+      COV_DIRS+=("${BUILD_PATH}/runtime/v2")
     fi
 
     if [[ "X$ENABLE_PYTHON_ST" = "Xon" ]]; then
@@ -570,6 +591,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       fi
       unset LD_PRELOAD
       unset ASAN_OPTIONS
+      COV_DIRS+=("${BUILD_PATH}/graph_metadef")
     fi
 
     if [[ "X$ENABLE_DFLOW_ST" = "Xon" ]]; then
@@ -596,6 +618,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       fi
       unset LD_PRELOAD;
       unset ASAN_OPTIONS;
+      COV_DIRS+=("${BUILD_PATH}/dflow")
     fi
 
     # remove plugin
@@ -611,15 +634,17 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         mv .coverage ${BASEPATH}/cov/
       fi
 
-      lcov -c -d ${BUILD_PATH}/api \
-                           -d ${BUILD_PATH}/api/atc \
-                           -d ${BUILD_PATH}/dflow \
-                           -d ${BUILD_PATH}/graph_metadef \
-                           -d ${BUILD_PATH}/runtime/v2 \
-                           -d ${BUILD_PATH}/runtime/v1 \
-                           -d ${BUILD_PATH}/base \
-                           -d ${BUILD_PATH}/compiler \
-                           -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
+      # 去重
+      IFS=$'\n' COV_DIRS_UNIQUE=($(sort -u <<<"${COV_DIRS[*]}"))
+      unset IFS
+
+      # 转换为 lcov 参数格式
+      COV_DIRS_PARAMS=()
+      for dir in "${COV_DIRS_UNIQUE[@]}"; do
+        COV_DIRS_PARAMS+=(-d "$dir")
+      done
+
+      lcov -c "${COV_DIRS_PARAMS[@]}" -o cov/tmp.info $(add_lcov_ops_by_major_version 2 "--ignore-errors empty,mismatch,negative")
       if [ ! -s "cov/tmp.info" ] || ! grep -q "SF:" "cov/tmp.info"; then
         echo "No valid cpp coverage data found; skip filtering."
         touch cov/coverage.info  # 生成空文件占位，避免后续流程报错
