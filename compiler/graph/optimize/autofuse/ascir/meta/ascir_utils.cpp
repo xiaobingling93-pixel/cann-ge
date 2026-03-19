@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -15,6 +15,10 @@
 #include <queue>
 #include <set>
 #include <algorithm>
+#include <optional>
+#include <unistd.h>
+#include "google/protobuf/text_format.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "graph/utils/type_utils.h"
 #include "graph_utils.h"
 #include "mmpa/mmpa_api.h"
@@ -24,20 +28,21 @@
 #include "asc_graph_dumper_context.h"
 #include "graph_metadef/graph/utils/file_utils.h"
 #include "graph_metadef/graph/utils/readable_dump.h"
+#include "graph_metadef/graph/model.h"
+#include "graph/utils/ge_ir_utils.h"
 #include "common_utils.h"
 #include "ascir_ops_utils.h"
 #include "ascir_ops.h"
 #include "ascendc_graph_txt_dumper.h"
 
 namespace {
-constexpr int32_t DUMP_ID_WIDTH = 8;
-constexpr int32_t kBaseOfIntegerValue = 10;
-const char *const kDumpGEGraph = "DUMP_GE_GRAPH";
-const char *const kDumpGraphLevel = "DUMP_GRAPH_LEVEL";
-enum class DumpGraphLevel : int64_t {
-  kDumpAllGraph = 1,
-  kDumpInWhiteList = 2,
-};
+constexpr int32_t DUMP_ID_WIDTH = 5;
+
+std::string FormatDumpIndex(uint64_t index) {
+  std::ostringstream ss;
+  ss << std::setw(DUMP_ID_WIDTH) << std::setfill('0') << index;
+  return ss.str();
+}
 
 bool GetConcatDim(const ge::AscNode &node, size_t &concat_dim) {
   auto node_inputs = node.inputs;
@@ -148,42 +153,122 @@ bool GetConcatDimAndColSizes(const ge::AscNode &node,
   return true;
 }
 
-bool IsNoNeedDump() {
-  char dump_ge_graph[MMPA_MAX_PATH] = {'\0'};
-  const int32_t res = mmGetEnv(kDumpGEGraph, &(dump_ge_graph[0U]), static_cast<uint32_t>(MMPA_MAX_PATH));
-  if (res != EN_OK) {
-    return true;
+// Dump 配置结构体
+struct DumpConfig {
+  bool enabled = false;
+  std::string debug_dir;
+};
+
+// 去除字符串两端空白
+std::string TrimParam(const std::string &s) {
+  size_t start = s.find_first_not_of(" \t");
+  if (start == std::string::npos) return "";
+  size_t end = s.find_last_not_of(" \t");
+  return s.substr(start, end - start + 1);
+}
+
+// 解析 debug_dir 参数值，去除引号
+std::string ParseDebugDirValue(const std::string &value, bool has_space) {
+  std::string dir = value;
+  if (has_space) {
+    // 去除可能的引号和空格
+    dir.erase(0, dir.find_first_not_of(" \t\"'"));
+    dir.erase(dir.find_last_not_of(" \t\"'") + 1);
+  } else {
+    // 去除可能的引号
+    if (!dir.empty() && (dir.front() == '"' || dir.front() == '\'')) {
+      dir.erase(0, 1);
+    }
+    if (!dir.empty() && (dir.back() == '"' || dir.back() == '\'')) {
+      dir.pop_back();
+    }
   }
-  auto dump_level = (dump_ge_graph[0U] != '\0') ? std::strtol(&(dump_ge_graph[0U]), nullptr, kBaseOfIntegerValue)
-                                                : static_cast<int64_t>(ge::DumpLevel::NO_DUMP);
-  if ((dump_level == static_cast<int64_t>(ge::DumpLevel::NO_DUMP)) ||
-      (dump_level >= static_cast<int64_t>(ge::DumpLevel::DUMP_WITH_OUT_DESC))) {
-    return true;
+  return dir;
+}
+
+// 尝试从参数中解析 debug_dir
+bool TryParseDebugDir(const std::string &param, std::string &debug_dir) {
+  const char *patterns[] = {"debug_dir=", "debug_dir ="};
+  for (size_t i = 0; i < 2; ++i) {
+    size_t pos = param.find(patterns[i]);
+    if (pos != std::string::npos) {
+      std::string dir = ParseDebugDirValue(param.substr(pos + strlen(patterns[i])), i == 1);
+      if (!dir.empty()) {
+        debug_dir = dir;
+        GELOGI("[DumpGraph] Found debug_dir in AUTOFUSE_DFX_FLAGS: %s", dir.c_str());
+        return true;
+      }
+    }
   }
   return false;
 }
 
-bool CheckNeedDumpGraphBySuffix(const std::string &suffix) {
-  char dump_graph_level_str[MMPA_MAX_PATH] = {'\0'};
-  (void)mmGetEnv(kDumpGraphLevel, &(dump_graph_level_str[0U]), static_cast<uint32_t>(MMPA_MAX_PATH));
-
-  auto dump_level = (dump_graph_level_str[0U] != '\0')
-                        ? std::strtol(&(dump_graph_level_str[0U]), nullptr, kBaseOfIntegerValue)
-                        : static_cast<int64_t>(DumpGraphLevel::kDumpInWhiteList);
-  if (dump_level == static_cast<int64_t>(DumpGraphLevel::kDumpAllGraph)) {
-    return true;
-  } else if (dump_level == static_cast<int64_t>(DumpGraphLevel::kDumpInWhiteList)) {
-    static std::set<std::string> white_lists = {"AutoFuseBeforeOptimize", "AutoFuseAfterOptimize"};
-    return std::any_of(white_lists.begin(), white_lists.end(), [&suffix](const std::string &white_list) {
-      return suffix.find(white_list) != std::string::npos;
-    });
-  }
-  return false;
+// 检查参数是否包含 codegen_compile_debug=true
+bool IsCodegenCompileDebugEnabled(const std::string &param) {
+  return param.find("codegen_compile_debug=true") != std::string::npos ||
+         param.find("codegen_compile_debug = true") != std::string::npos;
 }
+
+// 解析 AUTOFUSE_DFX_FLAGS 环境变量
+DumpConfig ParseDfxFlags(const char *dfx_flags) {
+  DumpConfig cfg;
+  if (dfx_flags == nullptr || strlen(dfx_flags) == 0) {
+    return cfg;
+  }
+
+  std::string flags(dfx_flags);
+  std::stringstream ss(flags);
+  std::string param;
+
+  while (std::getline(ss, param, ';')) {
+    param = TrimParam(param);
+    if (param.empty()) continue;
+
+    if (!cfg.enabled && IsCodegenCompileDebugEnabled(param)) {
+      cfg.enabled = true;
+    }
+    if (cfg.debug_dir.empty() && TryParseDebugDir(param, cfg.debug_dir)) {
+      continue;
+    }
+  }
+  return cfg;
+}
+
+std::optional<DumpConfig> &GetMutableDumpConfig() {
+  static std::optional<DumpConfig> config;
+  return config;
+}
+
+const DumpConfig &GetDumpConfig() {
+  auto &config = GetMutableDumpConfig();
+  if (!config.has_value()) {
+    config = ParseDfxFlags(std::getenv("AUTOFUSE_DFX_FLAGS"));
+  }
+  return config.value();
+}
+
+bool IsCodegenCompileEnabled() {
+  return GetDumpConfig().enabled;
+}
+
+std::string GetCodegenCompileDebugDir() {
+  return GetDumpConfig().debug_dir;
+}
+
+// 当前 fused_graph 名称，用于按图分目录 dump
+thread_local std::string g_current_fused_graph_name;
+
+// 当前 fused_graph 的文件编号计数器
+thread_local uint64_t g_current_fused_graph_dump_index = 0UL;
+
+// 已缓存的 pid 目录路径（不含 graph 子目录）
+thread_local std::string g_cached_pid_dir;
+
+// 已创建的 graph 子目录集合
+thread_local std::set<std::string> g_created_graph_dirs;
 }  // namespace
 
 namespace ascir::utils {
-static uint64_t kDumpGraphIndex = 0UL;
 static std::string DtypeToStr(ge::DataType dtype) {
   switch (dtype) {
     case ge::DT_FLOAT: return "float32";
@@ -209,32 +294,65 @@ static std::map<ge::AxisId, std::string> GetAxisIdToName(const std::vector<ge::A
   return axis_id_to_name;
 }
 
-std::stringstream GetDumpGraphPrefixAndCreateDir() {
-  std::stringstream stream_file_name;
-  char dump_graph_path[MMPA_MAX_PATH] = {'\0'};
-  auto res = mmGetEnv("DUMP_GRAPH_PATH", &(dump_graph_path[0U]), static_cast<uint32_t>(MMPA_MAX_PATH));
-  if (res == EN_OK) {
-    const std::string dump_graph_path_str(dump_graph_path);
-    stream_file_name << (dump_graph_path_str.empty() ? "" : dump_graph_path_str + "/");
-  } else {
-    stream_file_name << "./";
-    std::string ascend_work_path;
-    (void)ge::GetAscendWorkPath(ascend_work_path);
-    if (!ascend_work_path.empty()) {
-      stream_file_name.str("");
-      stream_file_name << (ascend_work_path + "/");
+// 构建基础路径（debug_dir 或当前目录）
+static std::string BuildBasePath(const std::string &debug_dir) {
+  if (!debug_dir.empty()) {
+    return debug_dir + (debug_dir.back() == '/' ? "" : "/");
+  }
+  return "./";
+}
+
+// 尝试创建目录，失败时返回回退路径
+static std::string TryCreateDirAndGetFallback(const std::string &dir_path, const std::string &fallback_path) {
+  if (mmAccess2(dir_path.c_str(), M_F_OK) != EN_OK) {
+    if (ge::CreateDir(dir_path) != 0) {
+      GELOGW("[DumpGraph][CreateDir] Create dir failed, path:%s", dir_path.c_str());
+      return fallback_path;
     }
   }
-  stream_file_name << "ascgen_dump_pid_";
-  stream_file_name << mmGetPid() << "/";
-  if (mmAccess2(stream_file_name.str().c_str(), M_F_OK) != EN_OK) {
-    if (ge::CreateDir(stream_file_name.str()) != 0) {
-      GELOGW("[DumpGraph][CreateDir] Create dump graph dir failed, path:%s", stream_file_name.str().c_str());
-      stream_file_name.str("");
-      stream_file_name << "./";
+  return dir_path;
+}
+
+static std::string GetDumpGraphPrefixAndCreateDir() {
+  const std::string debug_dir = GetCodegenCompileDebugDir();
+
+  // 使用缓存的 pid 目录（首次调用时创建并缓存）
+  if (g_cached_pid_dir.empty()) {
+    // 构建基础路径
+    std::string base_path = BuildBasePath(debug_dir);
+
+    // 构建 autofuse_compile_debug 目录路径
+    std::string autofuse_dir = base_path + "autofuse_compile_debug/";
+    autofuse_dir = TryCreateDirAndGetFallback(autofuse_dir, "./");
+    // 如果创建失败回退到当前目录，重新构建 base_path
+    if (autofuse_dir == "./") {
+      base_path = "./";
     }
+
+    // 构建 pid 目录路径
+    std::string pid_dir = autofuse_dir + "ascgen_dump_pid_" + std::to_string(mmGetPid()) + "/";
+    pid_dir = TryCreateDirAndGetFallback(pid_dir, "./");
+
+    // 缓存 pid 目录
+    g_cached_pid_dir = pid_dir;
   }
-  return stream_file_name;
+
+  // 如果 pid 目录创建失败，直接返回
+  if (g_cached_pid_dir == "./") {
+    return "./";
+  }
+
+  // 如果设置了 fused_graph_name，再创建一层子目录（使用缓存避免重复创建）
+  if (!g_current_fused_graph_name.empty()) {
+    std::string graph_dir = g_cached_pid_dir + g_current_fused_graph_name + "/";
+    // 检查是否已创建过该 graph 目录
+    if (g_created_graph_dirs.find(graph_dir) == g_created_graph_dirs.end()) {
+      graph_dir = TryCreateDirAndGetFallback(graph_dir, g_cached_pid_dir);
+      g_created_graph_dirs.insert(graph_dir);
+    }
+    return graph_dir;
+  }
+  return g_cached_pid_dir;
 }
 
 static std::string ExecConditionToStr(ge::ExecuteCondition condition) {
@@ -481,7 +599,7 @@ static std::stringstream &OutputVectorizedStr(std::stringstream &ss, const ascir
     auto all_axis = graph.GetAllAxis();
     std::map<ge::AxisId, std::string> axis_id_to_name = GetAxisIdToName(all_axis);
 
-    ss << "        .vectorized = {";
+    ss << "        .vectorized_strides = {";
     for (size_t i = 0; i < output_attr.vectorized_axis.size(); ++i) {
       if (i > 0) ss << ", ";
       auto axis_name = axis_id_to_name[output_attr.vectorized_axis[i]];
@@ -592,68 +710,91 @@ static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Grap
   return ss;
 }
 
-static void DumpGraphText(const Graph &graph, const string &suffix, const uint32_t graph_id, const bool verbose) {
-  static std::stringstream prefix = GetDumpGraphPrefixAndCreateDir();
-  std::stringstream ss;
-  ss << prefix.str();
-
+static void DumpGraphText(const Graph &graph, const string &suffix, const uint32_t graph_id, const bool verbose,
+                           const std::string &prefix) {
   // 判断是否是子图
   bool is_subgraph = (suffix.find("_Subgraph_") != std::string::npos);
-
   // 使用新的 MLIR 风格格式
   auto dump_asc_graph = DebugStrNew(graph, verbose, is_subgraph);
 
-  ss << "ascgraph_" << std::setw(DUMP_ID_WIDTH) << std::setfill('0') << kDumpGraphIndex;
-  ss << "_" << graph.GetName() << "_" << suffix << "_" << graph_id << ".txt";
-  std::ofstream f_stream(ss.str());
+  std::string file_name = prefix + "ascgraph_" + FormatDumpIndex(g_current_fused_graph_dump_index)
+               + "_" + graph.GetName() + "_" + suffix + "_" + std::to_string(graph_id) + ".txt";
+  std::ofstream f_stream(file_name);
   if (f_stream.is_open()) {
     f_stream << dump_asc_graph << std::endl;
     f_stream.close();
   }
 }
 
-void DumpComputeGraph(const ge::ComputeGraphPtr &compute_graph, const std::string &suffix, bool always_dump) {
-  bool no_need_dump = IsNoNeedDump();
-  if (!always_dump && (no_need_dump || (compute_graph == nullptr) || !CheckNeedDumpGraphBySuffix(suffix))) {
+// Dump ComputeGraph 为 onnx 格式，使用统一的 index
+// 文件名格式: {prefix}/ge_onnx_{index:05d}_{graph_name}_{suffix}.pbtxt
+static void DumpComputeGraphImpl(const ge::ComputeGraphPtr &compute_graph, const std::string &suffix,
+                                 const std::string &prefix) {
+  if (compute_graph == nullptr) {
     return;
   }
-  static std::stringstream prefix = GetDumpGraphPrefixAndCreateDir();
-  std::stringstream gss;
-  gss << compute_graph->GetName() << "_" << suffix;
-  ge::GraphUtils::DumpGrphToOnnx(*compute_graph, prefix.str(), gss.str());
+  std::string file_name = prefix + "ge_onnx_" + FormatDumpIndex(g_current_fused_graph_dump_index)
+                         + "_" + compute_graph->GetName() + "_" + suffix + ".pbtxt";
+  // 转换 ComputeGraph 到 onnx ModelProto
+  ge::Model model("GE", "");
+  model.SetGraph(compute_graph);
+  ge::onnx::ModelProto model_proto;
+  if (!ge::OnnxUtils::ConvertGeModelToModelProto(model, model_proto)) {
+    GELOGW("[DumpGraph] ConvertGeModelToModelProto failed for graph: %s", compute_graph->GetName().c_str());
+    return;
+  }
+
+  // 写入文件
+  ge::GraphUtils::WriteProtoToTextFile(model_proto, file_name.c_str());
+}
+
+void DumpComputeGraph(const ge::ComputeGraphPtr &compute_graph, const std::string &suffix, bool always_dump) {
+  // 使用统一的 AUTOFUSE_DFX_FLAGS 环境变量检查
+  if (!always_dump && !IsCodegenCompileEnabled()) {
+    return;
+  }
+  std::string prefix = GetDumpGraphPrefixAndCreateDir();
+  DumpComputeGraphImpl(compute_graph, suffix, prefix);
+}
+
+static void DumpGraphImpl(const ascir::Graph &graph, const std::string &suffix, const uint32_t graph_id,
+                          const bool verbose) {
+  std::string prefix = GetDumpGraphPrefixAndCreateDir();
+  // dump txt
+  DumpGraphText(graph, suffix, graph_id, verbose, prefix);
+  std::vector<ge::AscGraph> subgraphs;
+  (void)graph.GetAllSubGraphs(subgraphs);
+  for (auto &subgraph : subgraphs) {
+    DumpGraphText(subgraph, "_Subgraph_", graph_id, verbose, prefix);
+  }
+
+  // dump onnx
+  const auto compute_graph = ge::AscGraphUtils::GetComputeGraph(graph);
+  DumpComputeGraphImpl(compute_graph, suffix, prefix);
+
+  ++g_current_fused_graph_dump_index;
 }
 
 void DumpGraph(const ascir::Graph &graph, const std::string &suffix, const uint32_t graph_id, const bool verbose) {
-  if (IsNoNeedDump()) {
+  if (!IsCodegenCompileEnabled()) {
     // 环境变量没开启时, 捕获图对象为异常退出时维测服务
     AscGraphDumperContext::GetThreadLocalCtx().AddWatchGraph(suffix, graph);
     return;
   }
-
-  DumpGraphText(graph, suffix, graph_id, verbose);
-  std::vector<ge::AscGraph> subgraphs;
-  (void)graph.GetAllSubGraphs(subgraphs);
-  for (auto &subgraph : subgraphs) {
-    DumpGraphText(subgraph, "_Subgraph_", graph_id, verbose);
-  }
-
-  ++kDumpGraphIndex;
+  DumpGraphImpl(graph, suffix, graph_id, verbose);
 }
 
 void AlwaysDumpGraph(const Graph &graph, const string &suffix, const uint32_t graph_id, const bool verbose) {
-  // dump txt
-  DumpGraphText(graph, suffix, graph_id, verbose);
-  std::vector<ge::AscGraph> subgraphs;
-  (void)graph.GetAllSubGraphs(subgraphs);
-  for (auto &subgraph : subgraphs) {
-    DumpGraphText(subgraph, "_Subgraph_", graph_id, verbose);
+  // AlwaysDumpGraph 用于在没开 codegen_compile_debug=true时，当异常时强制 dump
+  if (IsCodegenCompileEnabled()) {
+    // 正常流程已经 dump，这里不需要再 dump
+    return;
   }
-
-  ++kDumpGraphIndex;
+  DumpGraphImpl(graph, suffix, graph_id, verbose);
 }
 
 void DumpImplGraphs(const std::vector<ascir::Graph> &graphs, const std::string &suffix) {
-  if (IsNoNeedDump()) {
+  if (!IsCodegenCompileEnabled()) {
     return;
   }
   for (size_t i = 0UL; i < graphs.size(); ++i) {
@@ -662,15 +803,13 @@ void DumpImplGraphs(const std::vector<ascir::Graph> &graphs, const std::string &
 }
 
 void DumpPyCode(const ge::AscGraph &graph) {
-  if (IsNoNeedDump()) {
+  if (!IsCodegenCompileEnabled()) {
     return;
   }
-  static std::stringstream prefix = GetDumpGraphPrefixAndCreateDir();
-  std::stringstream ss;
-  ss << prefix.str();
-  ss << graph.GetName() << "_" << std::to_string(kDumpGraphIndex) << "_graph_builder.py";
+  std::string prefix = GetDumpGraphPrefixAndCreateDir();
+  std::string file_name = prefix + "py_code_" + graph.GetName() + ".py";
   ge::ascir::PythonCodeDumper dumper;
-  (void)dumper.Dump(graph, ss.str());
+  (void)dumper.Dump(graph, file_name);
 }
 
 std::string IdentifierToStr(ascir::Identifier id) {
@@ -854,4 +993,34 @@ bool AreAllInputsLoad(const ge::NodePtr &node) {
   }
   return true;
 }
+
+std::string SetCurrentFusedGraphName(const std::string &name) {
+  std::string prev_name = std::move(g_current_fused_graph_name);
+
+  // 如果名称为空，直接清空
+  if (name.empty()) {
+    g_current_fused_graph_name.clear();
+    g_current_fused_graph_dump_index = 0UL;
+    GELOGI("[DumpGraph] Clear fused_graph_name");
+    return prev_name;
+  }
+
+  // 如果名称发生变化，重置计数器
+  if (prev_name != name) {
+    g_current_fused_graph_name = name;
+    g_current_fused_graph_dump_index = 0UL;
+    GELOGI("[DumpGraph] Set fused_graph_name to: %s, reset dump index to 0", name.c_str());
+  }
+  return prev_name;
+}
+
+void ResetDumpConfig() {
+  GetMutableDumpConfig().reset();
+  // 清除目录缓存
+  g_cached_pid_dir.clear();
+  g_created_graph_dirs.clear();
+  g_current_fused_graph_name.clear();
+  g_current_fused_graph_dump_index = 0UL;
+}
+
 }  // namespace ascir::utils

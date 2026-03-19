@@ -110,7 +110,7 @@ class GraphBuilder {
  * data0  data1   data2 data3
  */
 ComputeGraphPtr BuildFusedGraph(const std::string node_type = "") {
-  auto builder = GraphBuilder("test", node_type);
+  auto builder = GraphBuilder("test1", node_type);
   auto data0 = builder.AddNode("data0", "Data", 0, 1);
   ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
   auto data1 = builder.AddNode("data1", "Data", 0, 1);
@@ -151,7 +151,7 @@ ComputeGraphPtr BuildFusedGraph(const std::string node_type = "") {
  *     data0    data1
  */
 static ComputeGraphPtr BuildFusedPackGraph(const std::string node_type = "") {
-  auto builder = GraphBuilder("test", node_type);
+  auto builder = GraphBuilder("test2", node_type);
   auto data0 = builder.AddNode("data0", "Data", 0, 1);
   auto data1 = builder.AddNode("data1", "Data", 0, 1);
   ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
@@ -183,7 +183,7 @@ static ComputeGraphPtr BuildFusedPackGraph(const std::string node_type = "") {
  *     data0    data1  data2
  */
 static ComputeGraphPtr BuildConcatBackwardFusion(const std::string node_type = "") {
-  auto builder = GraphBuilder("test", node_type);
+  auto builder = GraphBuilder("test3", node_type);
   auto data0 = builder.AddNode("data0", "Data", 0, 1);
   auto data1 = builder.AddNode("data1", "Data", 0, 1);
   auto data2 = builder.AddNode("data2", "Data", 0, 1);
@@ -1753,7 +1753,7 @@ TEST_F(OptimizerSt, TestConcatGraph_OptimizeSuccess) {
 }
 
 TEST_F(OptimizerSt, TestSingleConcatGraph_OptimizeSuccess) {
-  auto builder = GraphBuilder("test");
+  auto builder = GraphBuilder("test_single_cat");
   auto data0 = builder.AddNode("data0", "Data", 0, 1);
   ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
   auto data1 = builder.AddNode("data1", "Data", 0, 1);

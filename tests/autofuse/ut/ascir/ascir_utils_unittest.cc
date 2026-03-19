@@ -22,8 +22,9 @@ class AscendGraphDumpUT : public testing::Test {
   void SetUp() {}
 
   void TearDown() {
-    unsetenv("DUMP_GE_GRAPH");
-    system("rm -rf ./ge_onnx*");
+    unsetenv("AUTOFUSE_DFX_FLAGS");
+    ::ascir::utils::ResetDumpConfig();
+    system("rm -rf ./ge_onnx* ./autofuse_compile_debug");
   }
 };
 
@@ -52,8 +53,8 @@ TEST_F(AscendGraphDumpUT, test_dump_when_env_not_set) {
 }
 
 TEST_F(AscendGraphDumpUT, test_not_watch_when_env_set) {
-  setenv("DUMP_GE_GRAPH", "2", 1);
-  setenv("DUMP_GRAPH_LEVEL", "1", 1);
+  ::ascir::utils::ResetDumpConfig();
+  setenv("AUTOFUSE_DFX_FLAGS", "codegen_compile_debug=true", 1);
   AscGraph graph("test");
   ::ascir::utils::DumpGraph(graph, "empty");
 
@@ -68,10 +69,7 @@ TEST_F(AscendGraphDumpUT, test_not_watch_when_env_set) {
   ::ascir::utils::AlwaysDumpGraph(graph, "AutoFuseBeforeOptimize");
   EXPECT_TRUE(watched_graphs.empty());
 
-  setenv("DUMP_GRAPH_LEVEL", "3", 1);
-  setenv("DUMP_GE_GRAPH", "2", 1);
   ::ascir::utils::DumpGraph(graph, "AutoFuseBeforeOptimize");
-  unsetenv("DUMP_GE_GRAPH");
-  unsetenv("DUMP_GRAPH_LEVEL");
+  unsetenv("AUTOFUSE_DFX_FLAGS");
 }
 }  // namespace ge

@@ -153,6 +153,34 @@ struct ParamInfo {
 };
 
 /**
+ * @brief 函数签名参数（按 data, workspace, output 顺序）
+ */
+struct FunctionParams {
+  std::vector<ParamInfo> data_params;      // Data 节点
+  std::vector<ParamInfo> workspace_params; // Workspace 节点
+  std::vector<ParamInfo> output_params;    // Output 节点
+};
+
+/**
+ * @brief Dump 上下文，缓存重复计算的数据
+ */
+struct DumpContext {
+  std::vector<ge::AxisPtr> all_axis;
+  std::vector<ge::SizeVarPtr> all_size_vars;
+  std::map<ge::AxisId, std::string> axis_id_to_name;
+  std::map<int64_t, ge::Axis::Type> axis_id_to_type;
+  SSAMappingInfo ssa_mapping;
+  FunctionParams func_params;  // 函数参数（data, workspace, output）
+};
+
+/**
+ * @brief 构建 Dump 上下文
+ * @param graph 图对象
+ * @return Dump 上下文
+ */
+DumpContext BuildDumpContext(const ascir::Graph &graph);
+
+/**
  * @brief Tile/Block 分解树的节点
  */
 struct AxisTreeNode {
@@ -199,26 +227,29 @@ struct BufferInfo {
 /**
  * @brief 生成 VIEW 1: Loop Execution 的文本
  * @param graph 图对象
+ * @param ctx Dump 上下文（缓存重复计算的数据）
  * @return VIEW 1 的文本内容
  */
-std::string DumpLoopExecutionView(const ascir::Graph &graph);
+std::string DumpLoopExecutionView(const ascir::Graph &graph, const DumpContext &ctx);
 
 /**
  * @brief 生成 VIEW 2: Graph Structure 的文本
  * @param graph 图对象
+ * @param ctx Dump 上下文（缓存重复计算的数据）
  * @param verbose 是否显示详细信息
  * @param is_subgraph 是否为子图
  * @return VIEW 2 的文本内容
  */
-std::string DumpGraphStructureView(const ascir::Graph &graph, bool verbose, bool is_subgraph);
+std::string DumpGraphStructureView(const ascir::Graph &graph, const DumpContext &ctx, bool verbose, bool is_subgraph);
 
 /**
  * @brief 生成 VIEW 3: Memory Layout 的文本
  * @param graph 图对象
+ * @param ctx Dump 上下文（缓存重复计算的数据）
  * @param verbose 是否显示详细信息
  * @return VIEW 3 的文本内容
  */
-std::string DumpMemoryLayoutView(const ascir::Graph &graph, bool verbose);
+std::string DumpMemoryLayoutView(const ascir::Graph &graph, const DumpContext &ctx, bool verbose);
 
 /**
  * @brief 生成完整的图转储文本（包含三个 VIEW）
