@@ -10,6 +10,7 @@
 
 project(ut_ascendcl_c_utest)
 set(CMAKE_CXX_STANDARD 11)
+include(${AIR_CODE_DIR}/tests/cmake/intf_llt_pub.cmake)
 
 set(UT_FILES
     "main.cc"
@@ -60,8 +61,6 @@ target_include_directories(ut_ascendcl_c_utest PRIVATE
 )
 
 target_compile_options(ut_ascendcl_c_utest PRIVATE
-    -fsanitize=address -fsanitize=leak
-    -g --coverage -fprofile-arcs -ftest-coverage
     -Wall -Wextra -Wfloat-equal
     # -Werror
 )
@@ -75,8 +74,7 @@ target_compile_definitions(ut_ascendcl_c_utest PRIVATE
 )
 
 target_link_libraries(ut_ascendcl_c_utest PRIVATE
-    -fsanitize=address -fsanitize=leak
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     msprof_headers
     runtime_headers
     c_sec
@@ -84,8 +82,4 @@ target_link_libraries(ut_ascendcl_c_utest PRIVATE
     GTest::gtest_main
     GTest::gmock
     GTest::gmock_main
-    -lrt
-    -ldl
-    -lpthread
-    -lgcov
 )

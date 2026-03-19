@@ -23,7 +23,7 @@ file(GLOB_RECURSE SOURCES
 
 add_library(ge_graph_dsl STATIC ${SOURCES})
 
-target_link_libraries(ge_graph_dsl PUBLIC slog_headers ge_graph_dsl_inc easy_graph graph graph_base intf_pub)
+target_link_libraries(ge_graph_dsl PUBLIC slog_headers ge_graph_dsl_inc easy_graph graph graph_base intf_llt_pub)
 
 target_include_directories(ge_graph_dsl PRIVATE
         ${ASCEND_INSTALL_PATH}/include
@@ -46,7 +46,7 @@ add_library(slog_stub SHARED
 
 target_link_libraries(slog_stub
         PRIVATE
-                intf_pub
+                intf_llt_pub
         PUBLIC
                 unified_dlog_headers
         )

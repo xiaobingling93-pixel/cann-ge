@@ -39,7 +39,7 @@ static int32_t RegularFileFilterFn(const mmDirent2 *const entry)
     return static_cast<int32_t>(ret);
 }
 
-aclError ListFiles(const std::string &dirName, const FileNameFilterFn filter, std::vector<std::string> &names,
+aclError ListFiles(const std::string &dirName, FileNameFilterFn filter, std::vector<std::string> &names,
     const int32_t maxDepth)
 {
     if (maxDepth <= 0) {

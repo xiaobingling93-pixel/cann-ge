@@ -18,7 +18,7 @@ target_include_directories(common_stub PUBLIC
 
 target_link_libraries(common_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         metadef_headers
     PUBLIC
         ascend_protobuf

@@ -56,7 +56,7 @@ target_compile_definitions(ut_parser PRIVATE
 )
 
 target_link_libraries(ut_parser
-    intf_pub
+    intf_llt_pub
     metadef_headers
     air_headers
     slog_headers

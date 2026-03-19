@@ -182,7 +182,7 @@ RETURN_STATEMENTS = {
     'std::unordered_map<std::string, OpTilingFuncInfo>& OpTilingFuncRegistry::':
         '    static std::unordered_map<std::string, OpTilingFuncInfo> op_func_map;\n    return op_func_map;',
     'void* OpRunInfo::': '    return nullptr;',
-    'ge::AscendString& OpCompileInfo::': '    return ge::AscendString();',
+    'ge::AscendString& OpCompileInfo::': '  static ge::AscendString compile_info;\n  return compile_info;',
     'std::unordered_map<std::string, OpTilingFuncV2>& OpTilingRegistryInterf_V2::':
         '    static std::unordered_map<std::string, OpTilingFuncV2> interf;\n    return interf;',
     'OpTilingFunc& OpTilingFuncInfo::': '    return this->tiling_func_;',
@@ -206,7 +206,7 @@ RETURN_STATEMENTS = {
     'Promote& PromoteImpl::': '    return obj;',
     'std::pair<GNodePtr, int32_t> GNode::':
         '    const std::pair<GNodePtr, int32_t> gnode_idx = {nullptr, 0xFF};\n    return gnode_idx;',
-    'std::vector<int64_t>& OpRunInfo::': '    std::vector<int64_t> vec;\n    return vec;',
+    'std::vector<int64_t>& OpRunInfo::': '    static std::vector<int64_t> vec;\n    return vec;',
     'std::vector<const char *>': '    return {};',
     'std::vector<FieldInfo>': '    return {};',
     'std::vector<GNodePtr>': '    return {};',
@@ -218,7 +218,8 @@ RETURN_STATEMENTS = {
     'std::vector<ge::GeTensorDesc>': '    return {};',
     'std::vector<GNode>': '    return {};',
     'std::vector<GraphPtr>': '    return {};',
-    'std::vector<std::vector<ShapeAndType>>&': '    return {};',
+    'std::vector<std::vector<ShapeAndType>>&':
+        '    static std::vector<std::vector<ShapeAndType>> sat;\n    return sat;',
     'std::vector<std::pair<int64_t, int64_t>>': '    return {};',
     'OpsProtoManager* OpsProtoManager::': '    static OpsProtoManager instance;\n    return &instance;',
     'Operator': '    return Operator();',
@@ -238,7 +239,7 @@ RETURN_STATEMENTS = {
     'RuntimeAttrs*': '    return nullptr;',
     'DeviceTilingContextBuilder& DeviceTilingContextBuilder::': '    return *this;',
     'OpDescPtr': '    return nullptr;',
-    'std::set<ge::AscendString>&': '   return {};',
+    'std::set<ge::AscendString>&': '    static std::set<ge::AscendString> as;\n    return as;',
     'ResourceContext*': '    return nullptr;',
     'std::unique_ptr<InferenceContext>': '    return nullptr;',
     'Shape ShapeAndType::': '    return Shape();',
@@ -275,7 +276,7 @@ RETURN_STATEMENTS = {
     'ProtoAttrMap& GeTensorDesc::MutableAttrMap': '    static ProtoAttrMap attr;\n    return attr;',
     'ConstProtoAttrMap& GeTensorDesc::GetAttrMap': '    static ProtoAttrMap attr;\n    return attr;',
     'std::uint8_t*': '    return nullptr;',
-    'std::shared_ptr<AlignedPtr>&': '    return nullptr;',
+    'std::shared_ptr<AlignedPtr>&': '    static std::shared_ptr<AlignedPtr> ap = nullptr;    return ap;',
     'TensorData& TensorData::operator=': '    return *this;',
     'GeTensorDesc& GeTensor::': '    static GeTensorDesc desc;\n    return desc;',
     'std::shared_ptr<AlignedPtr> GeTensor::': '    return nullptr;',

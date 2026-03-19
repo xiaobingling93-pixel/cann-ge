@@ -40,7 +40,7 @@ target_compile_options(df_st_stubs PRIVATE
     -Wall -Wfloat-equal -Werror
 )
 
-target_link_libraries(df_st_stubs PUBLIC intf_pub ge_running_env GTest::gtest GTest::gmock ascend_protobuf metadef_headers)
+target_link_libraries(df_st_stubs PUBLIC intf_llt_pub ge_running_env GTest::gtest GTest::gmock ascend_protobuf metadef_headers)
 
 add_library(df_memset_stubs STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/memset.c)
-target_link_libraries(df_memset_stubs PUBLIC intf_pub)
+target_link_libraries(df_memset_stubs PUBLIC intf_llt_pub)

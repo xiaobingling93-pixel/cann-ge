@@ -12,7 +12,7 @@ file(GLOB_RECURSE BIN_SRCS CONFIGURE_DEPENDS "kernel/*.cc")
 
 add_executable(ge_runtime_bin ${BIN_SRCS} ${FAKER_SRCS})
 
-target_link_libraries(ge_runtime_bin PUBLIC intf_pub)
+target_link_libraries(ge_runtime_bin PUBLIC intf_llt_pub)
 
 target_link_libraries(ge_runtime_bin PUBLIC ge_runtime_v2 ge_graph_dsl ge_runtime_stub)
 

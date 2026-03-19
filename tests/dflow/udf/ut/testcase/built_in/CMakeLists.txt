@@ -56,6 +56,7 @@ target_link_libraries(ut_built_in_flow_func PRIVATE
         ascend_protobuf
         udf_dump
         udf_static
+        mockcpp_static
         mmpa
         -rdynamic
         built_in_flowfunc

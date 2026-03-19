@@ -157,9 +157,9 @@ Status NpuSchedModelLoader::LoadModel(const ModelQueueParam &model_queue_param, 
   GE_CHK_STATUS_RET(SetModelConfig(), "Fail to set model config, model_id:%u, runtime_model_id:%u.", model_id_,
                     runtime_model_id_);
   // create aicpu entry stream and next stream
-  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_entry_stream_, kDefaultStreamPriority, ACL_STREAM_CPU_SCHEDULE));
+  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_entry_stream_, kDefaultStreamPriority, ACL_STREAM_CPU_SCHEDULE | ACL_STREAM_PERSISTENT));
   DF_CHK_ACL_RET(aclmdlRIBindStream(rt_model_handle_, rt_entry_stream_, static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_HEAD)));
-  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_next_stream_, kDefaultStreamPriority, ACL_STREAM_CPU_SCHEDULE));
+  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_next_stream_, kDefaultStreamPriority, ACL_STREAM_CPU_SCHEDULE | ACL_STREAM_PERSISTENT));
   DF_CHK_ACL_RET(aclmdlRIBindStream(rt_model_handle_, rt_next_stream_, static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_DEFAULT)));
   // create tasks on entry stream and next stream
   GE_CHK_STATUS_RET(CreateSchedTasks(), "Fail to create sched tasks for model:%u.", model_id_);
@@ -230,7 +230,7 @@ Status NpuSchedModelLoader::DistributeTasks() const {
 }
 
 Status NpuSchedModelLoader::DistributeEndGraph() {
-  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_fake_stream_, kDefaultStreamPriority, 0));
+  DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&rt_fake_stream_, kDefaultStreamPriority, ACL_STREAM_PERSISTENT));
   DF_CHK_ACL_RET(aclmdlRIBindStream(rt_model_handle_, rt_fake_stream_, static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_DEFAULT)));
   DF_CHK_ACL_RET(aclmdlRIEndTask(rt_model_handle_, rt_fake_stream_));
   return SUCCESS;

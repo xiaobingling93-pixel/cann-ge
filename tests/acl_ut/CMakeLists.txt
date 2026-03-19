@@ -10,6 +10,7 @@
 
 project(tests CXX C)
 
+include(../cmake/intf_llt_pub.cmake)
 add_subdirectory(depends)
 
 if (ENABLE_ACL_COV OR ENABLE_ACL_UT)

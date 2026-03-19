@@ -35,7 +35,7 @@ target_compile_options(cann_kb_stub PRIVATE
 
 target_link_libraries(cann_kb_stub
         PRIVATE
-                intf_pub
+                intf_llt_pub
                 c_sec
                 air_headers
                 metadef_headers)

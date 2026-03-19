@@ -476,7 +476,7 @@ bool FEOpsKernelInfoStore::CheckAccuracySupported(const ge::OpDescPtr &op_desc_p
 }
 
 bool FEOpsKernelInfoStore::CheckSupported(const ge::NodePtr &node, std::string &un_supported_reason,
-                                          ge::CheckSupportFlag &flag) const {
+                                          [[maybe_unused]] ge::CheckSupportFlag &flag) const {
   bool bres = false;
   try {
     bres = CheckSupported(node, un_supported_reason);

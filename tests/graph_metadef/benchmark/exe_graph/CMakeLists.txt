@@ -12,7 +12,7 @@ file(GLOB_RECURSE EXE_GRAPH_SRCS CONFIGURE_DEPENDS "*.cc")
 
 add_executable(exec_graph_benchmark ${EXE_GRAPH_SRCS})
 
-target_link_libraries(exec_graph_benchmark PRIVATE intf_pub)
+target_link_libraries(exec_graph_benchmark PRIVATE intf_llt_pub)
 
 target_include_directories(exec_graph_benchmark PRIVATE
         ${AIR_CODE_DIR}/tests/ge/ut/ge/runtime/fast_v2

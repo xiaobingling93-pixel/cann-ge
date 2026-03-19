@@ -41,7 +41,7 @@ target_link_directories(fe_env_mocker PRIVATE
 )
 
 target_link_libraries(fe_env_mocker PUBLIC
-        intf_pub
+        intf_llt_pub
         msprof_headers
         runtime_headers
         c_sec

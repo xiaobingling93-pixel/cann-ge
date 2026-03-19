@@ -14,7 +14,7 @@ file(GLOB_RECURSE BENCHMARK_SRCS CONFIGURE_DEPENDS "*.cc")
 
 add_executable(ge_runtime_benchmark ${BENCHMARK_SRCS} ${FAKER_SRCS})
 
-target_link_libraries(ge_runtime_benchmark PUBLIC intf_pub)
+target_link_libraries(ge_runtime_benchmark PUBLIC intf_llt_pub)
 
 target_include_directories(ge_runtime_benchmark PRIVATE
         ${AIR_CODE_DIR}/tests/ge/ut/ge/runtime/fast_v2

@@ -152,7 +152,7 @@ bool TbeJsonFileParse::SetRelatedNodesStr(const string &attr_name, const string 
   return ret;
 }
 
-bool TbeJsonFileParse::ClearRelatedNodesStr(const string &attr_name) {
+bool TbeJsonFileParse::ClearRelatedNodesStr([[maybe_unused]] const string &attr_name) {
   bool ret = op_desc_->DelAttr(GetAttrPrefix() + ATTR_NAME_KERNEL_LIST_FIRST_NAME);
   if (ffts_related_thread_nodes_ != nullptr) {
     for (auto &ele : *ffts_related_thread_nodes_) {

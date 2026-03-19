@@ -20,7 +20,7 @@ target_include_directories(asc_slog_stub PRIVATE
 
 target_link_libraries(asc_slog_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
     PUBLIC
     unified_dlog_headers
 )

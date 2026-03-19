@@ -38,6 +38,7 @@ add_dependencies(atc_stub_ge_compiler ge_stub)
 target_compile_options(atc_stub_ge_compiler PRIVATE
     -fno-common
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_link_libraries(atc_stub_ge_compiler PRIVATE
@@ -68,6 +69,7 @@ add_dependencies(fwk_stub_ge_runner_v2 ge_stub)
 target_compile_options(fwk_stub_ge_runner_v2 PRIVATE
     -fno-common
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 
@@ -102,6 +104,7 @@ add_dependencies(fwk_stub_ge_runner ge_stub)
 target_compile_options(fwk_stub_ge_runner PRIVATE
     -fno-common
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 

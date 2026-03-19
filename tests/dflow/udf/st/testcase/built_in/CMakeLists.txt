@@ -60,6 +60,7 @@ target_link_libraries(st_built_in_flow_func PRIVATE
         -rdynamic
         built_in_flowfunc
         intf_llt_pub
+        mockcpp_static
         -rdynamic
         $<BUILD_INTERFACE:intf_llt_pub>
         $<BUILD_INTERFACE:slog_headers>

@@ -17,7 +17,7 @@ target_compile_definitions(autofuse_runtime_stub PRIVATE
 target_include_directories(autofuse_runtime_stub PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_link_libraries(autofuse_runtime_stub
         PRIVATE
-        intf_pub
+        intf_llt_pub
         c_sec
         PUBLIC
         runtime_headers

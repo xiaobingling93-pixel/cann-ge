@@ -105,6 +105,7 @@ target_compile_options(aicpu_engine_common PRIVATE
     -Werror=format
     -Wextra
     -Wfloat-equal
+    -Wno-pmf-conversions
 )
 
 target_link_options(aicpu_engine_common PRIVATE

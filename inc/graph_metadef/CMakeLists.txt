@@ -62,20 +62,8 @@ target_include_directories(metadef_headers INTERFACE
     # ---------------------end-----------------------
 )
 
-# 开发环境支持run包后可删除
-if (ENABLE_OPEN_SRC)
-    target_include_directories(metadef_headers INTERFACE
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc>
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc/graph>
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc/base>
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc/common>
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc/graph/utils>
-            $<BUILD_INTERFACE:${AIR_CODE_DIR}/base/metadef/pkg_inc/common/ge_common>
-            )
-endif ()
-
 message(STATUS "inc gaph_metadef")
-#恢复原有metadef头文件，减少依赖组件的修改
+set(SRC_GRAPH_DIR ${ASCEND_INSTALL_PATH}/include/graph)
 
 if (EXISTS "${ASCEND_INSTALL_PATH}/include/graph")
     set(SRC_GRAPH_DIR ${ASCEND_INSTALL_PATH}/include/graph)

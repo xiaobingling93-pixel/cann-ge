@@ -265,5 +265,5 @@ target_link_libraries(fe_st PRIVATE
         slog_stub
         unified_dlog
         cann_kb_stub
-        intf_pub
+        intf_llt_pub
         )

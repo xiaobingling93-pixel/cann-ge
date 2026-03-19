@@ -42,7 +42,7 @@ target_compile_definitions(ut_graph PRIVATE
 )
 
 target_link_libraries(ut_graph PRIVATE
-    intf_pub
+    intf_llt_pub
     -Wl,-z,muldefs
     -Wl,--no-as-needed
     platform

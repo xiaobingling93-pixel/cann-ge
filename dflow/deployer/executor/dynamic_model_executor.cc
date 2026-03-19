@@ -1048,7 +1048,7 @@ Status DynamicModelExecutor::CreateFakeAicpuModelAndStream() {
       GE_CHK_RT_RET(rtModelGetId(aicpu_model_handle_, &aicpu_model_id_));
     }
     if (aicpu_stream_ == nullptr) {
-      uint32_t stream_flags = ACL_STREAM_CPU_SCHEDULE;
+      uint32_t stream_flags = ACL_STREAM_CPU_SCHEDULE | ACL_STREAM_PERSISTENT;
       DF_CHK_ACL_RET(aclrtCreateStreamWithConfig(&aicpu_stream_, kDefaultStreamPriority, stream_flags));
       DF_CHK_ACL_RET(aclrtStreamGetId(aicpu_stream_, &aicpu_stream_id_));
     }

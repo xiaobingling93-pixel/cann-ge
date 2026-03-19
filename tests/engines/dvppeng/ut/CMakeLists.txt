@@ -98,7 +98,7 @@ target_link_directories(dvpp_engine_utest PRIVATE
 )
 
 target_link_libraries(dvpp_engine_utest PRIVATE
-    intf_pub
+    intf_llt_pub
     runtime_headers
     msprof_headers
     cce_headers

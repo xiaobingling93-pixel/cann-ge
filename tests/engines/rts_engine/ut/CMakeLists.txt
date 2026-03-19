@@ -162,7 +162,7 @@ target_link_options(rts_engine_utest PRIVATE
 )
 
 target_link_libraries(rts_engine_utest PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     $<BUILD_INTERFACE:mmpa_headers>
     $<BUILD_INTERFACE:msprof_headers>
     $<BUILD_INTERFACE:slog_headers>
@@ -176,7 +176,7 @@ target_link_libraries(rts_engine_utest PRIVATE
     runtime
     -Wl,--as-needed
     cce_headers
-    intf_pub
+    intf_llt_pub
     runtime_headers
     msprof_headers
     GTest::gtest

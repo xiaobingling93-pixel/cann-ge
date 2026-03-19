@@ -61,7 +61,7 @@ target_link_options(ascir_builtin_ops_stub PRIVATE
         -Wl,--exclude-libs,All
         )
 
-target_link_libraries(ascir_builtin_ops_stub PRIVATE intf_pub metadef_headers unified_dlog ascend_protobuf)
+target_link_libraries(ascir_builtin_ops_stub PRIVATE intf_llt_pub metadef_headers unified_dlog ascend_protobuf)
 
 set(ops_header_dir ${CMAKE_BINARY_DIR}/graph_metadef/graph/ascendc_ir/generator/)
 
@@ -110,7 +110,7 @@ target_include_directories(aihacb_autofusion_stub PRIVATE
         )
 
 target_link_libraries(aihacb_autofusion_stub PRIVATE
-        intf_pub
+        intf_llt_pub
         metadef_headers
         slog_headers
         mmpa_headers

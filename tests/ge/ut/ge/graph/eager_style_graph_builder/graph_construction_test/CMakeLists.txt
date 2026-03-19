@@ -22,7 +22,7 @@ add_library(stub_geir_ops SHARED
 target_compile_options(stub_geir_ops PRIVATE)
 target_link_libraries(stub_geir_ops
         PRIVATE
-        intf_pub
+        intf_llt_pub
         graph
         graph_base
         error_manager
@@ -58,7 +58,7 @@ target_link_libraries(ut_graph_construction
         es_ut_test
         graph_base
         graph
-        intf_pub
+        intf_llt_pub
         ascend_protobuf
         c_sec
         aihac_symbolizer

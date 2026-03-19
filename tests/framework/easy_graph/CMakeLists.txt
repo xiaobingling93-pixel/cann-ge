@@ -12,7 +12,7 @@ file(GLOB_RECURSE EASY_GRAPH_SRCS  src/*.cc)
 
 add_library(easy_graph STATIC ${EASY_GRAPH_SRCS})
 
-target_link_libraries(easy_graph PUBLIC intf_pub)
+target_link_libraries(easy_graph PUBLIC intf_llt_pub)
 
 target_include_directories(easy_graph PUBLIC include
                                       PRIVATE src)

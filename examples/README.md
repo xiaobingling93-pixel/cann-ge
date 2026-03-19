@@ -10,4 +10,4 @@
 | ES构图样例                               | [README](es/README.md)                                       |
 | 融合Pass样例                             | [README](fusion_pass/README.md)                              |
 | 推荐网络高性能推理样例                          | [README](recommendation/README.md)                           |
-| 自定义Triton算子入图样例                   | [README](custom_op/triton_add_custom/README.md)                           |
+| 自定义算子入图样例                   | [README](custom_op/README.md)                           |

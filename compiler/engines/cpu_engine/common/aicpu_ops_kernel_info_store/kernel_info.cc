@@ -27,7 +27,7 @@ std::mutex g_cust_mutex;
 }
 
 namespace aicpu {
-Status KernelInfo::Initialize(const map<string, string> &options) {
+Status KernelInfo::Initialize([[maybe_unused]] const map<string, string> &options) {
   AICPU_CHECK_RES(Finalize());
   // read kernel info json file
   if (!ReadOpInfoFromJsonFile()) {

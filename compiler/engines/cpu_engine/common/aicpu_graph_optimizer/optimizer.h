@@ -45,8 +45,8 @@ class Optimizer {
    * @return status whether this operation success
    */
   virtual ge::Status OptimizeOriginalGraph(
-      ge::ComputeGraph &graph,
-      const std::map<std::string, OpFullInfo> &all_op_info) const {
+      [[maybe_unused]] ge::ComputeGraph &graph,
+      [[maybe_unused]] const std::map<std::string, OpFullInfo> &all_op_info) const {
     return ge::SUCCESS;
   }
 
@@ -66,12 +66,12 @@ class Optimizer {
    * @return status whether this operation success
    */
   virtual ge::Status OptimizeFusedGraph(
-      ge::ComputeGraph &graph,
-      const std::map<std::string, OpFullInfo> &all_op_info) const {
+      [[maybe_unused]] ge::ComputeGraph &graph,
+      [[maybe_unused]] const std::map<std::string, OpFullInfo> &all_op_info) const {
     return ge::SUCCESS;
   }
 
-  virtual void SetCustUserInfos(map<std::string, std::string> info) {
+  virtual void SetCustUserInfos([[maybe_unused]] map<std::string, std::string> info) {
     return;
   }
 

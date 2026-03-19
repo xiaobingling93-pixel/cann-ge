@@ -16,5 +16,5 @@ target_include_directories(ge_graph_dsl
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AIR_CODE_DIR}/inc
         )
 
-target_link_libraries(ge_graph_dsl PUBLIC intf_pub opp_registry metadef ge_graph_dsl_inc
+target_link_libraries(ge_graph_dsl PUBLIC intf_llt_pub opp_registry metadef ge_graph_dsl_inc
         easy_graph aihac_symbolizer json ascend_protobuf graph graph_base)

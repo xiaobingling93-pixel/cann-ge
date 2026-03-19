@@ -64,7 +64,7 @@ target_link_libraries(autofuse_test PRIVATE
         GTest::gmock
         GTest::gmock_main
         es_ge_test
-        intf_pub
+        intf_llt_pub
         -Wl,--whole-archive
         rt2_registry_static
         -Wl,--no-whole-archive

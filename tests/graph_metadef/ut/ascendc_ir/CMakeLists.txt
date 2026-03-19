@@ -52,7 +52,7 @@ add_dependencies(ut_ascendc_ir aihacb_autofusion_stub)
 
 # intf_pub包含stdc++11 当前需要按照更高版本来编译ut
 target_link_libraries(ut_ascendc_ir PRIVATE
-    intf_pub metadef_headers
+    intf_llt_pub metadef_headers
     -Wl,--no-as-needed
     platform
     metadef

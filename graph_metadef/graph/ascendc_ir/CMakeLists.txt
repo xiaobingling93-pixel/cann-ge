@@ -5,7 +5,7 @@ add_library(aihac_ir SHARED
     core/ascendc_ir.cc
     ${UTILS_SRCS}
 )
-target_compile_options(aihac_ir PRIVATE -DNO_METADEF_ABI_COMPATIABLE -O2 -Werror)
+target_compile_options(aihac_ir PRIVATE -DNO_METADEF_ABI_COMPATIABLE)
 
 target_compile_options(aihac_ir PRIVATE
     $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${ENABLE_OPEN_SRC},True>>:-fexceptions>

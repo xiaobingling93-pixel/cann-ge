@@ -3100,7 +3100,8 @@ bool TbeOpStoreAdapter::JudgeBuiltInOppKernelInstalled() const {
   return IsOppKernelInstalled(false, static_cast<int64_t>(EN_IMPL_HW_TBE));
 }
 
-bool TbeOpStoreAdapter::IsNeedSkipOpJudge(const ge::NodePtr &node, const OpKernelInfoPtr &op_kernel_info_ptr) const {
+bool TbeOpStoreAdapter::IsNeedSkipOpJudge(const ge::NodePtr &node,
+                                          [[maybe_unused]] const OpKernelInfoPtr &op_kernel_info_ptr) const {
   FE_CHECK(node == nullptr, FE_LOGE("Node is nullptr!"), return false);
   ge::OpDescPtr op_desc_ptr = node->GetOpDesc();
   FE_CHECK(op_desc_ptr == nullptr, FE_LOGE("Op desc is nullptr!"), return false);

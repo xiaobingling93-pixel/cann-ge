@@ -11,7 +11,7 @@
 add_library(error_manager_stub SHARED src/error_manager_stub.cc)
 target_link_libraries(error_manager_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         c_sec
     PUBLIC
         metadef_headers

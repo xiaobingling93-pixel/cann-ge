@@ -92,6 +92,7 @@ add_library(fmk_onnx_parser_stub SHARED
 target_compile_options(fmk_onnx_parser_stub PRIVATE
     -O2
     -fno-common
+    -Wno-unused-parameter
 )
 
 target_compile_definitions(fmk_onnx_parser_stub PRIVATE

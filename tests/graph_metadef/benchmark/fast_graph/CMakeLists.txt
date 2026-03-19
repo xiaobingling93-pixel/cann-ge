@@ -36,7 +36,7 @@ set_target_properties(fast_graph_benchmark PROPERTIES CXX_STANDARD 17)
 target_compile_options(fast_graph_benchmark PRIVATE -O2 -std=c++17)
 
 target_link_libraries(fast_graph_benchmark  PRIVATE benchmark::benchmark
-        intf_pub
+        intf_llt_pub
         metadef_headers
         -Wl,--no-as-needed
         graph

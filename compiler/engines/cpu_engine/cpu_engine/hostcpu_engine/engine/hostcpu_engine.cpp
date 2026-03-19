@@ -28,7 +28,7 @@ BaseEnginePtr HostCpuEngine::Instance() {
 }
 
 ge::Status HostCpuEngine::Initialize(
-    const std::map<std::string, std::string> &options) {
+    [[maybe_unused]] const std::map<std::string, std::string> &options) {
   if (ops_kernel_info_store_ == nullptr) {
     ops_kernel_info_store_ =
         std::make_shared<AicpuOpsKernelInfoStore>(kHostCpuEngine);

@@ -269,6 +269,6 @@ target_link_libraries(fe_ut PRIVATE
         cann_kb_stub
         easy_graph
         ge_graph_dsl
-        intf_pub
+        intf_llt_pub
  	GTest::gmock
  	mockcpp_static)

@@ -47,7 +47,7 @@ target_link_libraries(llm_wrapper PRIVATE
         json
         runtime_stub
         mmpa_stub2
-        intf_pub
+        intf_llt_pub
         ascendcl_stub
         llm_engine_base
         -Wl,--no-as-needed

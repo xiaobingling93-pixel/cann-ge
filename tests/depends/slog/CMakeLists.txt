@@ -14,14 +14,14 @@ file(GLOB_RECURSE ASCENDALOG_SRC_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src
 
 add_library(slog_common SHARED ${SLOG_SRC_FILES})
 target_compile_options(slog_common PRIVATE -g -O0)
-target_link_libraries(slog_common PRIVATE intf_pub
+target_link_libraries(slog_common PRIVATE intf_llt_pub
         PUBLIC slog_headers
         )
 
 add_library(ascendalog SHARED ${ASCENDALOG_SRC_FILES})
 target_compile_definitions(ascendalog PRIVATE LOG_CPP)
 target_compile_options(ascendalog PRIVATE -g -O0)
-target_link_libraries(ascendalog PRIVATE intf_pub
+target_link_libraries(ascendalog PRIVATE intf_llt_pub
         PUBLIC slog_headers
         slog_common
         )

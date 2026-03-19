@@ -16,7 +16,7 @@ target_include_directories(share_graph
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include ${AIR_CODE_DIR}/inc
 )
 
-target_link_libraries(share_graph PUBLIC intf_pub)
+target_link_libraries(share_graph PUBLIC intf_llt_pub)
 
 set_target_properties(share_graph PROPERTIES CXX_STANDARD 17)
 target_link_libraries(share_graph PUBLIC 

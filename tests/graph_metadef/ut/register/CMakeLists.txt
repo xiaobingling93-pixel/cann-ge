@@ -46,7 +46,7 @@ target_link_options(ut_register PRIVATE
 )
 
 target_link_libraries(ut_register
-    intf_pub
+    intf_llt_pub
     metadef_headers
     runtime_headers
     slog_headers

@@ -24,6 +24,7 @@ target_link_libraries(dflow_wrapper PRIVATE
         $<BUILD_INTERFACE:metadef_headers>
         $<BUILD_INTERFACE:parser_headers>
         $<BUILD_INTERFACE:air_headers>
+        $<BUILD_INTERFACE:pybind_options>
         unified_dlog
         flow_graph
         ge_runner_v2
@@ -42,7 +43,6 @@ target_compile_definitions(dflow_wrapper PRIVATE
 )
 
 target_compile_options(dflow_wrapper PRIVATE
-        -O2
         -Xlinker -export-dynamic
 )
 
@@ -67,6 +67,7 @@ target_link_libraries(data_wrapper PRIVATE
         $<BUILD_INTERFACE:intf_pub>
         $<BUILD_INTERFACE:udf_headers>
         $<BUILD_INTERFACE:metadef_headers>
+        $<BUILD_INTERFACE:pybind_options>
 )
 
 set_target_properties(data_wrapper
@@ -75,7 +76,6 @@ set_target_properties(data_wrapper
 )
 
 target_compile_options(data_wrapper PRIVATE
-        -O2
         -Xlinker -export-dynamic
 )
 

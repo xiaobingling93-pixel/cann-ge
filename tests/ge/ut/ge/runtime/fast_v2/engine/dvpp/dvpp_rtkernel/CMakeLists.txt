@@ -21,7 +21,6 @@ target_compile_options(ut_dvpp_runtime2_test PRIVATE
         ${AIR_COMMON_COMPILE_OPTION}
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
-        --coverage -fprofile-arcs -ftest-coverage
         )
 
 target_compile_definitions(ut_dvpp_runtime2_test PRIVATE
@@ -36,8 +35,7 @@ target_include_directories(ut_dvpp_runtime2_test PRIVATE
         )
 
 target_link_libraries(ut_dvpp_runtime2_test PRIVATE
-        intf_pub
-        ${AIR_COMMON_LINK_OPTION}
+        intf_llt_pub
         -Wl,--whole-archive
         -Wl,--no-whole-archive
         GTest::gtest

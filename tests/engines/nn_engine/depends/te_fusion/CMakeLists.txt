@@ -79,7 +79,7 @@ target_compile_options(te_fusion_stub PRIVATE
 
 target_link_libraries(te_fusion_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         msprof_headers
         runtime_headers
         metadef_headers

@@ -633,7 +633,7 @@ target_link_options(ge_ut_common PRIVATE
 )
 
 target_link_libraries(ge_ut_common PRIVATE
-    intf_pub
+    intf_llt_pub
     metadef_headers
     datagw_headers
     adump_headers
@@ -692,7 +692,7 @@ target_link_options(ut_libge_multiparts_utest PRIVATE
 )
 
 target_link_libraries(ut_libge_multiparts_utest
-    intf_pub
+    intf_llt_pub
     metadef_headers
     ascendcl_stub
     -Wl,-z,muldefs
@@ -766,7 +766,7 @@ target_link_options(ut_libge_symbol_infer_utest PRIVATE
         )
 
 target_link_libraries(ut_libge_symbol_infer_utest
-        intf_pub
+        intf_llt_pub
         -Wl,-z,muldefs
         symengine
         lowering
@@ -820,7 +820,7 @@ target_link_options(ut_libge_common_utest PRIVATE
 )
 
 target_link_libraries(ut_libge_common_utest
-    intf_pub
+    intf_llt_pub
     metadef_headers
     ascendcl_stub
     symengine
@@ -895,7 +895,7 @@ target_link_options(ut_libge_others_utest PRIVATE
 )
 
 target_link_libraries(ut_libge_others_utest
-    intf_pub
+    intf_llt_pub
     metadef_headers
     ascendcl_stub
     ${AIR_COMMON_LINK_OPTION}
@@ -948,7 +948,7 @@ target_link_options(ut_libge_label_maker_utest PRIVATE
 
 # TODO:ge_ut_common need shrink; it has too many depends so
 target_link_libraries(ut_libge_label_maker_utest
-    intf_pub
+    intf_llt_pub
     metadef_headers
     ascendcl_stub
     ge_common
@@ -999,7 +999,7 @@ target_include_directories(ut_libge_kernel_utest PRIVATE
 )
 
 target_link_libraries(ut_libge_kernel_utest
-        intf_pub
+        intf_llt_pub
         metadef_headers
         -Wl,--whole-archive
         ascendcl_stub
@@ -1060,7 +1060,7 @@ target_link_options(ut_libge_distinct_load_utest PRIVATE
 )
 
 target_link_libraries(ut_libge_distinct_load_utest
-    intf_pub
+    intf_llt_pub
     metadef_headers
     ascendcl_stub
     datagw_headers
@@ -1114,7 +1114,7 @@ target_link_options(ge_manual_test PRIVATE
 )
 
 target_link_libraries(ge_manual_test
-        intf_pub
+        intf_llt_pub
         metadef_headers
         ascendcl_stub
         ge_compiler
@@ -1166,7 +1166,7 @@ target_link_options(ut_jit_execution PRIVATE
 )
 
 target_link_libraries(ut_jit_execution
-        intf_pub
+        intf_llt_pub
         metadef_headers
         ascendcl_stub
         ${AIR_COMMON_LINK_OPTION}
@@ -1222,7 +1222,7 @@ target_link_options(ut_eager_style_builder PRIVATE
 )
 
 target_link_libraries(ut_eager_style_builder
-        intf_pub
+        intf_llt_pub
         -Wl,-z,muldefs
         metadef_headers
         es_generator_inner_headers

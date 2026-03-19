@@ -38,7 +38,7 @@ target_include_directories(profiling_stub PRIVATE
 )
 
 target_link_libraries(profiling_stub PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
     c_sec
     GTest::gtest
     GTest::gtest_main

@@ -22,6 +22,7 @@ target_link_libraries(flowfunc_wrapper PRIVATE
         $<BUILD_INTERFACE:udf_headers>
         $<BUILD_INTERFACE:slog_headers>
         $<BUILD_INTERFACE:metadef_headers>
+        $<BUILD_INTERFACE:pybind_options>
         flow_func
         unified_dlog
 )
@@ -36,7 +37,6 @@ target_compile_definitions(flowfunc_wrapper PRIVATE
 )
 
 target_compile_options(flowfunc_wrapper PRIVATE
-        -O2
         -Xlinker -export-dynamic
 )
 

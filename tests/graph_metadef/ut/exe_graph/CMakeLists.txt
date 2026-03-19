@@ -42,7 +42,7 @@ target_link_options(ut_exe_graph PRIVATE
 		)
 
 target_link_libraries(ut_exe_graph PRIVATE
-        intf_pub
+        intf_llt_pub
         -Wl,--no-as-needed
         slog_headers
         platform

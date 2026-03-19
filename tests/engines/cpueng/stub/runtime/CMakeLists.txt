@@ -21,7 +21,7 @@ target_link_libraries(runtime_aicpu_stub
         c_sec
         -ldl
         -lrt
-        intf_pub
+        intf_llt_pub
         cce_headers
         msprof_headers
     PUBLIC

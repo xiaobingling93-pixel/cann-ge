@@ -27,7 +27,7 @@ target_compile_definitions(profiler_stub PRIVATE
 
 target_link_libraries(profiler_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         runtime_headers
         c_sec
         ascend_protobuf

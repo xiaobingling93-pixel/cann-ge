@@ -11,7 +11,7 @@ add_library(aihac_symbolizer SHARED
     attr_group_symbolic_desc_attr.cc
     guard_dfx_context.cc
 )
-target_compile_options(aihac_symbolizer PRIVATE -DNO_METADEF_ABI_COMPATIABLE -O2 -Werror)
+target_compile_options(aihac_symbolizer PRIVATE -DNO_METADEF_ABI_COMPATIABLE)
 
 target_compile_options(aihac_symbolizer PRIVATE
     $<$<OR:$<STREQUAL:${PRODUCT_SIDE},host>,$<STREQUAL:${ENABLE_OPEN_SRC},True>>:-fexceptions>

@@ -127,6 +127,7 @@ target_compile_options(fmk_parser_stub PRIVATE
     -Wextra
     -Wfloat-equal
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_compile_definitions(fmk_parser_stub PRIVATE

@@ -56,7 +56,7 @@ target_compile_options(op_tiling_rt2_stub PRIVATE
         -Dgoogle=ascend_private)
 
 target_link_libraries(op_tiling_rt2_stub PRIVATE 
-        intf_pub
+        intf_llt_pub
         slog_headers
         msprof_headers
         mmpa_headers

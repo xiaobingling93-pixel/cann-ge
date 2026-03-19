@@ -10,32 +10,39 @@
 add_library(intf_llt_pub INTERFACE)
 
 target_include_directories(intf_llt_pub INTERFACE
-)
+        )
 
 target_compile_definitions(intf_llt_pub INTERFACE
         CFG_BUILD_DEBUG
         _GLIBCXX_USE_CXX11_ABI=0
-)
+        FUNC_VISIBILITY
+        FMK_SUPPORT_DUMP
+        FWK_SUPPORT_TRAINING_TRACE
+        )
 
 target_compile_options(intf_llt_pub INTERFACE
         -g
+        -O0
         -w
         $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
-        $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined -fsanitize=leak>
+        $<$<BOOL:${ENABLE_ASAN}>:
+        -Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak -fsanitize-recover=address,all
+            -fno-stack-protector -fno-omit-frame-pointer -g>
         -fPIC
         -pipe
-)
+        -fno-access-control
+        )
 
 target_link_options(intf_llt_pub INTERFACE
-        $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fsanitize=undefined -fsanitize=leak>
-)
+        $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fsanitize=leak -fsanitize-recover=address>
+        )
 
 target_link_directories(intf_llt_pub INTERFACE
-)
+        )
 
 target_link_libraries(intf_llt_pub INTERFACE
-        GTest::gtest
         -lpthread
-        mockcpp_static
-)
+        -ldl
+        -lrt
+        )
 

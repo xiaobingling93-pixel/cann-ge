@@ -28,7 +28,7 @@ target_compile_options(runtime_stub_fe PRIVATE
 
 target_link_libraries(runtime_stub_fe 
         PRIVATE
-                intf_pub
+                intf_llt_pub
                 msprof_headers
                 c_sec
         PUBLIC

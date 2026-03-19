@@ -127,6 +127,7 @@ target_compile_options(stub_lowering PRIVATE
     -fno-common
     -Os
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_link_libraries(stub_lowering
@@ -151,6 +152,7 @@ if (NOT ENABLE_OPEN_SRC)
     target_compile_options(stub_lowering_static PRIVATE
         -ffunction-sections
         -fdata-sections
+        -Wno-unused-parameter
     )
     set_target_properties(stub_lowering_static PROPERTIES
         OUTPUT_NAME lowering

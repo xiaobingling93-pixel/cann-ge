@@ -247,7 +247,7 @@ target_link_directories(host_engine_stest PRIVATE
 )
 
 target_link_libraries(tf_engine_stest PRIVATE
-    intf_pub
+    intf_llt_pub
     msprof_headers
     air_headers
     datagw_headers
@@ -290,7 +290,7 @@ target_compile_definitions(cpu_engine_stest PRIVATE
 
 if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
     target_link_libraries(cpu_engine_stest PRIVATE
-        intf_pub
+        intf_llt_pub
         msprof_headers
         air_headers
         datagw_headers
@@ -322,7 +322,7 @@ if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
     )
 else ()
     target_link_libraries(cpu_engine_stest PRIVATE
-        intf_pub
+        intf_llt_pub
         msprof_headers
         air_headers
         datagw_headers
@@ -365,7 +365,7 @@ target_compile_definitions(host_engine_stest PRIVATE
 )
 
 target_link_libraries(host_engine_stest PRIVATE
-    intf_pub
+    intf_llt_pub
     msprof_headers
     air_headers
     datagw_headers

@@ -75,7 +75,7 @@ target_link_libraries(llm_engine_base PRIVATE
         air_headers
         slog_headers
         metadef_headers
-        intf_pub
+        intf_llt_pub
         llm_mmpa_stub
         mmpa
         slog_stub

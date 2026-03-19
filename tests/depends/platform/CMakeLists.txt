@@ -19,7 +19,7 @@ if(NOT TARGET platform)
 add_library(platform SHARED ${SRC_FILES})
 target_link_libraries(platform
     PRIVATE
-        intf_pub
+        intf_llt_pub
 )
 target_compile_options(platform PRIVATE -g)
 endif()

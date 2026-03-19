@@ -19,7 +19,7 @@ target_include_directories(ascendcl_stub PRIVATE
     ${AIR_CODE_DIR}/base/metadef/pkg_inc)
 target_link_libraries(ascendcl_stub
     PRIVATE
-        intf_pub
+        intf_llt_pub
         c_sec
         cce_headers
         msprof_headers

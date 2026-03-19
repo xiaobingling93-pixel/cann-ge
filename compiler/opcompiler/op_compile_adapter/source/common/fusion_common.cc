@@ -148,7 +148,8 @@ void GenerateExtraInfoForFusionOpContext(const std::vector<ge::Node *> &oriNodes
     });
 }
 
-void GenerateExtraInfoForContext(const TbeOpInfo &opInfo, const ge::OpDescPtr &opDescPtr, PyObject *pyContextDict)
+void GenerateExtraInfoForContext([[maybe_unused]] const TbeOpInfo &opInfo, const ge::OpDescPtr &opDescPtr,
+                                 PyObject *pyContextDict)
 {
     std::string custAicNum;
     ge::AttrUtils::GetStr(opDescPtr, kAicCntKeyOp, custAicNum);

@@ -563,6 +563,7 @@ add_dependencies(hybrid_executor_stub
 target_compile_options(hybrid_executor_stub PRIVATE
     -fno-common -Wfloat-equal -fvisibility=default -Os
     -Werror=return-type
+    -Wno-unused-parameter
 )
 
 target_compile_definitions(hybrid_executor_stub PRIVATE
