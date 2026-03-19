@@ -1094,12 +1094,9 @@ Status GraphManager::PreRunOptimizeOriginalGraph(const GraphNodePtr &graph_node,
   GM_RUN_AND_DUMP_PERF("OptimizeOriginalGraph", stages.optimizer.OptimizeOriginalGraph, compute_graph);
 
   GM_RUN_AND_DUMP_PERF("PrepareRunningFormatRefiner", stages.preparer.PrepareRunningFormatRefiner);
-
   GM_RUN_AND_DUMP_PERF("RefineRunningPrecision",
       stages.optimizer.OptimizeOriginalGraphJudgePrecisionInsert, compute_graph);
-  AutofuseOptimize autofuser;
-  GE_CHK_STATUS_RET(autofuser.Run(compute_graph, inputs), "Failed to auto fuse optimize for graph:%s",
-      compute_graph->GetName().c_str());
+  GM_RUN_AND_DUMP_PERF("AutofuseWithExtOptimize", AutofuseWithExtOptimize, compute_graph, inputs); 
   GM_RUN_AND_DUMP_PERF("RefineRunningFormat",
       stages.optimizer.OptimizeOriginalGraphJudgeFormatInsert, compute_graph);
   GM_RUN_AND_DUMP_PERF("SubexpressionMigration", SubexpressionMigration, compute_graph);
@@ -3113,6 +3110,27 @@ Status GraphManager::RemoveIsolatedConst(ge::ComputeGraphPtr &compute_graph) {
   for (auto &sub_graph : compute_graph->GetAllSubgraphs()) {
     GE_CHK_STATUS_RET(RemoveIsolatedConstInThisGraph(sub_graph));
   }
+  return SUCCESS;
+}
+
+Status GraphManager::AutofuseWithExtOptimize(ge::ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs) {
+  PassManager after_merge_passes;
+  GE_CHK_STATUS_RET(after_merge_passes.AddPass("AutofuseWithExtOptimize::TransOpWithoutReshapeFusionPass",
+                                               new (std::nothrow) TransOpWithoutReshapeFusionPass));
+  GE_TRACE_START(after_merge_passes);
+  auto ret = after_merge_passes.Run(compute_graph);
+  GE_COMPILE_TRACE_TIMESTAMP_END(after_merge_passes, "GraphManager::AutofuseWithExtOptimize");
+  if (ret != SUCCESS && ret != NOT_CHANGED) {
+    GELOGE(ret, "[Run][Passes] when AutofuseWithExtOptimize failed, ret:%u.", ret);
+    return ret;
+  }
+
+  GE_DUMP(compute_graph, "AutofuseWithExtOptimize");
+
+  AutofuseOptimize autofuser;
+  GE_CHK_STATUS_RET(autofuser.Run(compute_graph, inputs), "Failed to auto fuse optimize for graph:%s",
+      compute_graph->GetName().c_str());
+
   return SUCCESS;
 }
 
