@@ -400,6 +400,8 @@ Optimizer::Optimizer(const OptimizerOptions &options) : options_(options) {}
 Status Optimizer::Optimize(const ge::ComputeGraphPtr &fused_graph,
                            ascir::FusedScheduledResult &fused_scheduled_result) {
   GELOGI("Fused graph optimize in, graph_name:[%s].", fused_graph->GetName().c_str());
+  // RAII Guard，函数结束时自动清空 fused_graph_name
+  ascir::utils::FusedGraphNameGuard guard(fused_graph->GetName());
   ascir::utils::DumpComputeGraph(fused_graph, "BaseFusedGraph");
   if (options_.graph_type == GraphType::kFusedAscBackend) {
     return OptimizeFusedAscBackend(fused_graph, fused_scheduled_result);

@@ -17,7 +17,6 @@
 #include "common/utils/heterogeneous_profiler.h"
 #include "common/utils/rts_api_utils.h"
 #include "common/dump/dump_manager.h"
-#include "graph/load/model_manager/model_manager.h"
 #include "aicpu/aicpu_schedule/aicpusd_interface.h"
 #include "aicpu/aicpu_schedule/aicpusd_info.h"
 #include "aicpu/queue_schedule/dgw_client.h"

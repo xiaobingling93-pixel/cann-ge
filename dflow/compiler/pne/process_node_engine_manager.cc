@@ -32,6 +32,7 @@ Status ProcessNodeEngineManager::Initialize(const std::map<std::string, std::str
     return SUCCESS;
   }
 
+  GE_TIMESTAMP_START(ProcessNodeEngine);
   // Load process node engine so
   const std::string so_path = "plugin/pnecompiler/";
   std::string path = GetModelPath();
@@ -68,6 +69,7 @@ Status ProcessNodeEngineManager::Initialize(const std::map<std::string, std::str
     }
   }
 
+  GE_TIMESTAMP_EVENT_END(ProcessNodeEngine, "InnerInitialize::ProcessNodeEngine");
   init_flag_.store(true);
   return SUCCESS;
 }

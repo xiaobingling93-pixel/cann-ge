@@ -61,6 +61,30 @@ ge::TriBool AreConcatInputShapesEqual(const ge::AscNodePtr &node);
 
 bool AreAllInputsLoad(const ge::NodePtr &node);
 
+/**
+ * @brief 设置当前 fused_graph 名称，用于按图分目录 dump
+ * @param name fused_graph 的名称，空字符串表示清空
+ * @return 返回之前的名称，用于恢复
+ */
+std::string SetCurrentFusedGraphName(const std::string &name);
+
+void ResetDumpConfig();
+
+/**
+ * @brief RAII Guard，支持嵌套，作用域结束时自动恢复之前的 fused_graph_name
+ */
+class FusedGraphNameGuard {
+public:
+  explicit FusedGraphNameGuard(const std::string &name) : prev_name_(SetCurrentFusedGraphName(name)) {}
+  ~FusedGraphNameGuard() {
+    (void)SetCurrentFusedGraphName(prev_name_);
+  }
+  FusedGraphNameGuard(const FusedGraphNameGuard&) = delete;
+  FusedGraphNameGuard& operator=(const FusedGraphNameGuard&) = delete;
+private:
+  std::string prev_name_;
+};
+
 }  // namespace ascir::utils
 
 #endif

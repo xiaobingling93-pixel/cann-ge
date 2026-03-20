@@ -345,7 +345,7 @@ class DavinciModel {
   const std::vector<rtEvent_t> &GetNotifyList() const { return notify_list_; }
 
   // get Event list
-  const std::vector<rtEvent_t> &GetEventList() const { return event_list_; }
+  const std::vector<aclrtEvent> &GetEventList() const { return event_list_; }
 
   const std::vector<rtStream_t> &GetStreamList() const { return stream_list_; }
 
@@ -788,7 +788,7 @@ class DavinciModel {
   void SetAiCpuCustFlag(const bool flag) { aicpu_flg_ = flag; }
 
   // for blocking aicpu op
-  Status GetEventByStream(rtStream_t const stream, rtEvent_t &rt_event);
+  Status GetEventByStream(rtStream_t const stream, aclrtEvent &rt_event);
   Status GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtStream_t const stream, uint32_t &event_id);
 
   uint32_t GetResultCode();
@@ -1497,10 +1497,10 @@ class DavinciModel {
   std::map<int64_t, std::vector<rtStream_t>> main_follow_stream_mapping_;
 
   std::vector<rtNotify_t> notify_list_;
-  std::vector<rtEvent_t> event_list_;
+  std::vector<aclrtEvent> event_list_;
 
   std::unordered_set<std::string > hccl_group_id_set_;
-  std::vector<rtEvent_t> hccl_group_ordered_event_list_;
+  std::vector<aclrtEvent> hccl_group_ordered_event_list_;
   std::vector<rtStream_t> hccl_group_ordered_stream_list_; // 流资源为hccl管理
 
   std::mutex hccl_task_stream_set_mutex_;
@@ -1661,7 +1661,7 @@ class DavinciModel {
   // op name to attrs mapping
   std::map<std::string, std::map<std::string, std::vector<std::string>>> op_name_to_attrs_;
 
-  std::map<rtStream_t, rtEvent_t> stream_2_event_;
+  std::map<rtStream_t, aclrtEvent> stream_2_event_;
 
   AiCpuResources aicpu_resources_;
   std::map<std::string, std::string> file_id_and_path_map_;

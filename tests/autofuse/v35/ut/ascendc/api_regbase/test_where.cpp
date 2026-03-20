@@ -439,4 +439,44 @@ TEST_F(TestRegbaseApiWhereUT, Where_uint8_normal) {
   WhereNormalTest<uint8_t, 2>(71, (ONE_BLK_SIZE - sizeof(uint8_t)) / sizeof(uint8_t));
   WhereNormalTest<uint8_t, 2>(71, (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint8_t));
 }
+
+// 场景8: uint16 测试
+TEST_F(TestRegbaseApiWhereUT, Where_uint16_count) {
+  WhereNormalTest<uint16_t, 1>(1, ONE_BLK_SIZE / sizeof(uint16_t));
+  WhereNormalTest<uint16_t, 1>(1, ONE_REPEAT_BYTE_SIZE / sizeof(uint16_t));
+  WhereNormalTest<uint16_t, 1>(1, (ONE_BLK_SIZE - sizeof(uint16_t)) / sizeof(uint16_t));
+}
+
+TEST_F(TestRegbaseApiWhereUT, Where_uint16_normal) {
+  WhereNormalTest<uint16_t, 2>(71, ONE_REPEAT_BYTE_SIZE / sizeof(uint16_t));
+  WhereNormalTest<uint16_t, 2>(71, (ONE_BLK_SIZE - sizeof(uint16_t)) / sizeof(uint16_t));
+  WhereNormalTest<uint16_t, 2>(71, (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint16_t));
+}
+
+// 场景9: uint32 测试
+TEST_F(TestRegbaseApiWhereUT, Where_uint32_count) {
+  WhereNormalTest<uint32_t, 1>(1, ONE_BLK_SIZE / sizeof(uint32_t));
+  WhereNormalTest<uint32_t, 1>(1, ONE_REPEAT_BYTE_SIZE / sizeof(uint32_t));
+  WhereNormalTest<uint32_t, 1>(1, (ONE_BLK_SIZE - sizeof(uint32_t)) / sizeof(uint32_t));
+}
+
+TEST_F(TestRegbaseApiWhereUT, Where_uint32_normal) {
+  WhereNormalTest<uint32_t, 2>(71, ONE_REPEAT_BYTE_SIZE / sizeof(uint32_t));
+  WhereNormalTest<uint32_t, 2>(71, (ONE_BLK_SIZE - sizeof(uint32_t)) / sizeof(uint32_t));
+  WhereNormalTest<uint32_t, 2>(71, (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint32_t));
+}
+
+// 场景10: uint64 测试
+TEST_F(TestRegbaseApiWhereUT, Where_uint64_count) {
+  WhereNormalTest<uint64_t, 1>(1, ONE_BLK_SIZE / sizeof(uint64_t));
+  WhereNormalTest<uint64_t, 1>(1, ONE_REPEAT_BYTE_SIZE / sizeof(uint64_t));
+  WhereNormalTest<uint64_t, 1>(1, (ONE_BLK_SIZE - sizeof(uint64_t)) / sizeof(uint64_t));
+}
+
+TEST_F(TestRegbaseApiWhereUT, Where_uint64_normal) {
+  WhereNormalTest<uint64_t, 2>(71, ONE_REPEAT_BYTE_SIZE / sizeof(uint64_t));
+  WhereNormalTest<uint64_t, 2>(71, (ONE_BLK_SIZE - sizeof(uint64_t)) / sizeof(uint64_t));
+  WhereNormalTest<uint64_t, 2>(71, (ONE_REPEAT_BYTE_SIZE - ONE_BLK_SIZE) / sizeof(uint64_t));
+}
+
 }  // namespace ge

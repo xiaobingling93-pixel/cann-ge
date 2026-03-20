@@ -342,6 +342,7 @@ set(STUB_HEADER_LIST
     ${GE_METADEF_INC_DIR}/external/graph/operator_factory.h
     ${GE_METADEF_INC_DIR}/external/graph/types.h
     ${GE_METADEF_INC_DIR}/external/hcom/hcom_topo_info.h
+    ${GE_METADEF_INC_DIR}/graph/custom_op_factory.h
     ${GE_METADEF_INC_DIR}/graph/utils/op_desc_utils.h
     ${GE_METADEF_INC_DIR}/graph/utils/op_desc_utils_ex.h
     ${GE_METADEF_INC_DIR}/graph/utils/node_utils_ex.h

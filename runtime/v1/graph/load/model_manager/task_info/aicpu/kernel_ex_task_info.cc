@@ -500,7 +500,7 @@ Status KernelExTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
     return SUCCESS;
   }
   GELOGD("Distribute wait task begin");
-  rtEvent_t rt_event = nullptr;
+  aclrtEvent rt_event = nullptr;
   if (davinci_model_->GetEventByStream(stream_, rt_event) != SUCCESS) {
     GELOGE(FAILED, "[Call][GetEventByStream] Call GetEventByStream failed");
     return FAILED;
@@ -508,7 +508,7 @@ Status KernelExTaskInfo::DistributeWaitTaskForAicpuBlockingOp() const {
   uint32_t timeout = 0xffffffff;
   (void)AttrUtils::GetInt(op_desc_, ATTR_NAME_BLOCKING_OP_TIMEOUT, timeout);
   GE_CHK_RT_RET(rtStreamWaitEventWithTimeout(stream_, rt_event, timeout));
-  GE_CHK_RT_RET(rtEventReset(rt_event, stream_));
+  GE_CHK_RT_RET(aclrtResetEvent(rt_event, stream_));
 
   return SUCCESS;
 }

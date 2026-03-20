@@ -16,7 +16,6 @@
 #include <vector>
 #include "dflow/inc/data_flow/model/flow_model.h"
 #include "common/plugin/ge_make_unique_util.h"
-#include "dflow/base/model/model_relation.h"
 #include "ge/ge_api_error_codes.h"
 #include "dflow/base/deploy/deploy_planner.h"
 #include "dflow/base/deploy/exchange_service.h"

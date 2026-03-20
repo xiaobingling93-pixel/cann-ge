@@ -87,19 +87,120 @@ std::map<int64_t, ge::Axis::Type> BuildAxisIdToTypeMap(const std::vector<ge::Axi
   return id_to_type;
 }
 
+/**
+ * @brief 获取 DataType 的字符串表示（短名字）
+ */
+static std::string GetDtypeString(ge::DataType dtype) {
+  const DtypeInfo *info = GetDtypeInfo(dtype);
+  if (info != nullptr) {
+    return info->short_name;
+  }
+  return ge::TypeUtils::DataTypeToSerialString(dtype);
+}
+
+/**
+ * @brief 获取 tensor 类型字符串（用于函数签名）
+ */
+static std::string GetTensorTypeStr(const ge::AscGraph &graph, const ge::AscTensorAttr &attr,
+                                    const std::map<ge::AxisId, std::string> &axis_id_to_name) {
+  (void) graph;
+  std::stringstream ss;
+
+  // 数据类型 - 使用简写类型名
+  auto dtype = attr.dtype;
+  std::string dtype_str;
+  const DtypeInfo *info = GetDtypeInfo(dtype);
+  if (info != nullptr) {
+    dtype_str = info->short_name;
+  } else {
+    // 使用完整类型名
+    dtype_str = GetDtypeString(dtype);
+  }
+
+  ss << dtype_str << "[";
+
+  // 形状
+  for (size_t i = 0; i < attr.axis.size(); ++i) {
+    if (i > 0) ss << ",";
+    auto axis_id = attr.axis[i];
+
+    // 如果是 repeats，输出大小
+    if (i < attr.repeats.size()) {
+      auto repeat = attr.repeats[i];
+      if (repeat.GetExprType() == ge::ExprType::kExprConstantRation) {
+        int64_t val = 0;
+        if (repeat.GetConstValue(val)) {
+          ss << val;
+        } else {
+          auto it = axis_id_to_name.find(axis_id);
+          ss << (it != axis_id_to_name.end() ? it->second : "axis") << "_size";
+        }
+      } else {
+        ss << ge::SymbolicUtils::ToString(repeat);
+      }
+    } else {
+      auto it = axis_id_to_name.find(axis_id);
+      ss << (it != axis_id_to_name.end() ? it->second : "axis") << "_size";
+    }
+  }
+
+  ss << "]";
+  return ss.str();
+}
+
+DumpContext BuildDumpContext(const ascir::Graph &graph) {
+  DumpContext ctx;
+  ctx.all_axis = graph.GetAllAxis();
+  ctx.all_size_vars = graph.GetAllSizeVar();
+  ctx.axis_id_to_name = BuildAxisIdToNameMap(ctx.all_axis);
+  ctx.axis_id_to_type = BuildAxisIdToTypeMap(ctx.all_axis);
+  ctx.ssa_mapping = BuildSSAMapping(graph.GetAllNodes());
+
+  // 收集函数参数（data, workspace, output）
+  for (auto node: graph.GetAllNodes()) {
+    auto node_type = node->GetType();
+    if (node_type == NodeType::kData) {
+      if (!node->outputs().empty()) {
+        auto &output_attr = node->outputs()[0]->attr;
+        ctx.func_params.data_params.push_back({node->GetName(),
+            GetTensorTypeStr(graph, output_attr, ctx.axis_id_to_name)});
+      }
+    } else if (node_type == NodeType::kWorkspace) {
+      if (!node->outputs().empty()) {
+        auto &output_attr = node->outputs()[0]->attr;
+        ctx.func_params.workspace_params.push_back({node->GetName(),
+            GetTensorTypeStr(graph, output_attr, ctx.axis_id_to_name)});
+      }
+    } else if (node_type == NodeType::kOutput) {
+      if (!node->outputs().empty()) {
+        auto &output_attr = node->outputs()[0]->attr;
+        ctx.func_params.output_params.push_back({node->GetName(),
+            GetTensorTypeStr(graph, output_attr, ctx.axis_id_to_name)});
+      }
+    }
+  }
+
+  return ctx;
+}
+
 std::string ExtractDtypeFromTensorType(const std::string &tensor_type) {
   // tensor_type 格式: f32[...] 或 float32[...]
   size_t pos = tensor_type.find('[');
   if (pos != std::string::npos) {
     std::string dtype = tensor_type.substr(0, pos);
-    // 转换简写为完整名称
-    if (dtype == "f32") return "float32";
-    if (dtype == "f16") return "float16";
-    if (dtype == "i32") return "int32";
-    if (dtype == "i8") return "int8";
-    if (dtype == "i16") return "int16";
-    if (dtype == "bf16") return "bfloat16";
-    return dtype;
+    // 转换完整名称为简写
+    if (dtype == "float32") return "f32";
+    if (dtype == "float16") return "f16";
+    if (dtype == "int32") return "i32";
+    if (dtype == "int8") return "i8";
+    if (dtype == "int16") return "i16";
+    if (dtype == "int64") return "i64";
+    if (dtype == "uint8") return "u8";
+    if (dtype == "uint16") return "u16";
+    if (dtype == "uint32") return "u32";
+    if (dtype == "uint64") return "u64";
+    if (dtype == "bfloat16") return "bf16";
+    return dtype;  // 已经是简写或其他格式
   }
   return tensor_type;
 }
@@ -163,16 +264,6 @@ SSAMappingInfo BuildSSAMapping(ge::AscNodeVisitor all_nodes) {
 // =============================================================================
 
 namespace {
-/**
- * @brief 获取 DataType 的字符串表示（完整类型名）
- */
-static std::string GetDtypeString(ge::DataType dtype) {
-  const DtypeInfo *info = GetDtypeInfo(dtype);
-  if (info != nullptr) {
-    return info->full_name;
-  }
-  return ge::TypeUtils::DataTypeToSerialString(dtype);
-}
 
 // =============================================================================
 // 向量化相关辅助函数实现
@@ -284,56 +375,6 @@ static std::string GetVectorizedAxesStr(const ascir::Graph &graph, const ge::Asc
 
   ss << "x" << GetDtypeSuffix(attr.dtype) << ">";
 
-  return ss.str();
-}
-
-/**
- * @brief 获取 tensor 类型字符串（用于函数签名）
- */
-static std::string GetTensorTypeStr(const ascir::Graph &graph, const ge::AscTensorAttr &attr,
-                                    const std::map<ge::AxisId, std::string> &axis_id_to_name) {
-  (void) graph;
-  std::stringstream ss;
-
-  // 数据类型 - 使用简写类型名
-  auto dtype = attr.dtype;
-  std::string dtype_str;
-  const DtypeInfo *info = GetDtypeInfo(dtype);
-  if (info != nullptr) {
-    dtype_str = info->short_name;
-  } else {
-    // 使用完整类型名
-    dtype_str = GetDtypeString(dtype);
-  }
-
-  ss << dtype_str << "[";
-
-  // 形状
-  for (size_t i = 0; i < attr.axis.size(); ++i) {
-    if (i > 0) ss << ",";
-    auto axis_id = attr.axis[i];
-
-    // 如果是 repeats，输出大小
-    if (i < attr.repeats.size()) {
-      auto repeat = attr.repeats[i];
-      if (repeat.GetExprType() == ge::ExprType::kExprConstantRation) {
-        int64_t val = 0;
-        if (repeat.GetConstValue(val)) {
-          ss << val;
-        } else {
-          auto it = axis_id_to_name.find(axis_id);
-          ss << (it != axis_id_to_name.end() ? it->second : "axis") << "_size";
-        }
-      } else {
-        ss << ge::SymbolicUtils::ToString(repeat);
-      }
-    } else {
-      auto it = axis_id_to_name.find(axis_id);
-      ss << (it != axis_id_to_name.end() ? it->second : "axis") << "_size";
-    }
-  }
-
-  ss << "]";
   return ss.str();
 }
 
@@ -548,31 +589,6 @@ bool IsSubgraph(const std::string &graph_name) {
 }
 
 /**
- * @brief 收集所有 Data 和 Output 节点
- */
-void CollectDataAndOutputNodes(const ascir::Graph &graph,
-                               std::vector<ParamInfo> &inputs,
-                               std::vector<ParamInfo> &outputs,
-                               const std::map<ge::AxisId, std::string> &axis_id_to_name) {
-  auto all_nodes = graph.GetAllNodes();
-
-  for (auto node: all_nodes) {
-    auto node_type = node->GetType();
-    if (node_type == NodeType::kData || node_type == NodeType::kWorkspace) {
-      if (!node->outputs().empty()) {
-        auto &output_attr = node->outputs()[0]->attr;
-        inputs.push_back({node->GetName(), GetTensorTypeStr(graph, output_attr, axis_id_to_name)});
-      }
-    } else if (node_type == NodeType::kOutput) {
-      if (!node->outputs().empty()) {
-        auto &output_attr = node->outputs()[0]->attr;
-        outputs.push_back({node->GetName(), GetTensorTypeStr(graph, output_attr, axis_id_to_name)});
-      }
-    }
-  }
-}
-
-/**
  * @brief 收集所有被向量化的轴
  */
 std::set<int64_t> CollectVectorizedAxes(const ascir::Graph &graph) {
@@ -598,23 +614,23 @@ std::set<int64_t> CollectVectorizedAxes(const ascir::Graph &graph) {
 /**
  * @brief 生成原始 tensor 形状的注释
  */
-std::string GenerateOriginalShapesComment(const std::vector<ParamInfo> &inputs,
-                                          const std::vector<ParamInfo> &outputs) {
+std::string GenerateOriginalShapesComment(const FunctionParams &params) {
   std::stringstream ss;
 
   ss << "# Original tensor shapes:" << std::endl;
 
-  if (!inputs.empty()) {
+  // Data 参数
+  if (!params.data_params.empty()) {
     // 按类型分组输入
     std::map<std::string, std::vector<std::string> > inputs_by_type;
-    for (auto &input: inputs) {
+    for (const auto &input: params.data_params) {
       auto dtype = ExtractDtypeFromTensorType(input.type);
       auto axes = ExtractAxisListFromTensorType(input.type);
       std::string full_type = dtype + axes;
       inputs_by_type[full_type].push_back(input.name);
     }
 
-    for (auto &entry: inputs_by_type) {
+    for (const auto &entry: inputs_by_type) {
       ss << "#   ";
       for (size_t i = 0; i < entry.second.size(); ++i) {
         if (i > 0) ss << ", ";
@@ -625,11 +641,16 @@ std::string GenerateOriginalShapesComment(const std::vector<ParamInfo> &inputs,
     }
   }
 
-  if (!outputs.empty()) {
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      ss << "#   output: " << outputs[i].name << ": "
-          << ExtractDtypeFromTensorType(outputs[i].type) << "[]" << std::endl;
-    }
+  // Workspace 参数
+  for (const auto &param: params.workspace_params) {
+    ss << "#   workspace: " << param.name << ": "
+        << ExtractDtypeFromTensorType(param.type) << "[]" << std::endl;
+  }
+
+  // Output 参数
+  for (const auto &param: params.output_params) {
+    ss << "#   output: " << param.name << ": "
+        << ExtractDtypeFromTensorType(param.type) << "[]" << std::endl;
   }
 
   ss << "#" << std::endl;
@@ -751,33 +772,37 @@ std::string GenerateTileBlockDecompositionComment(const std::vector<ge::AxisPtr>
  * @brief 生成函数签名
  */
 std::string GenerateFunctionSignature(const std::string &graph_name,
-                                      const std::vector<ParamInfo> &inputs,
-                                      const std::vector<ParamInfo> &outputs) {
+                                      const FunctionParams &params) {
   std::stringstream ss;
 
   ss << "func @" << graph_name << "(";
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    if (i > 0) ss << ", ";
-    ss << "%" << inputs[i].name << ": " << inputs[i].type;
+
+  // 按 data, workspace, output 顺序排布参数
+  bool first = true;
+
+  // Data 参数
+  for (const auto &param: params.data_params) {
+    if (!first) ss << ", ";
+    ss << "%" << param.name << ": " << param.type;
+    first = false;
   }
 
-  ss << ") -> ";
-  if (!outputs.empty()) {
-    if (outputs.size() > 1) {
-      ss << "(";
-      for (size_t i = 0; i < outputs.size(); ++i) {
-        if (i > 0) ss << ", ";
-        ss << ExtractDtypeFromTensorType(outputs[i].type) << "[]";
-      }
-      ss << ")";
-    } else {
-      ss << ExtractDtypeFromTensorType(outputs[0].type) << "[]";
-    }
-  } else {
-    ss << "()";
+  // Workspace 参数
+  for (const auto &param: params.workspace_params) {
+    if (!first) ss << ", ";
+    ss << "%" << param.name << ": " << param.type;
+    first = false;
   }
 
-  ss << " {" << std::endl;
+  // Output 参数
+  for (const auto &param: params.output_params) {
+    if (!first) ss << ", ";
+    ss << "%" << param.name << ": " << param.type;
+    first = false;
+  }
+
+  // 核函数无返回值
+  ss << ") {" << std::endl;
 
   return ss.str();
 }
@@ -919,6 +944,44 @@ void DumpScalarNode(std::stringstream &ss,
 }
 
 /**
+ * @brief 获取 ExecuteCondition 的字符串表示
+ */
+static std::string ExecuteConditionToString(ge::ExecuteCondition condition) {
+  switch (condition) {
+    case ge::ExecuteCondition::kNoCache: return "no_cache";
+    case ge::ExecuteCondition::kCacheBlockSplitFusedBroadcastAxis: return "cache_block_split_fused_brc_axis";
+    case ge::ExecuteCondition::kCacheBlockSplitOriginBroadcastAxis: return "cache_block_split_origin_brc_axis";
+    case ge::ExecuteCondition::kConditionInvalid: return "invalid";
+    default: return "unknown";
+  }
+}
+
+/**
+ * @brief 获取 Store 节点写入目标的注释字符串
+ */
+static std::string GetStoreDestinationComment(const ge::AscNodePtr &node) {
+  if (node->GetType() != "Store" || node->GetAllOutDataAnchorsSize() == 0) {
+    return "";
+  }
+  auto out_anchor = node->GetOutDataAnchor(0);
+  if (out_anchor == nullptr) {
+    return "";
+  }
+  for (auto peer_in_anchor : out_anchor->GetPeerInDataAnchors()) {
+    auto peer_node = peer_in_anchor->GetOwnerNode();
+    if (peer_node == nullptr) continue;
+    auto dest_type = peer_node->GetType();
+    if (dest_type == NodeType::kOutput) {
+      return " → output: %" + peer_node->GetName();
+    }
+    if (dest_type == NodeType::kWorkspace) {
+      return " → workspace: %" + peer_node->GetName();
+    }
+  }
+  return "";
+}
+
+/**
  * @brief 输出单个节点的执行语句
  */
 void DumpNodeExecution(std::stringstream &ss,
@@ -937,6 +1000,14 @@ void DumpNodeExecution(std::stringstream &ss,
     return;
   }
 
+  // ExecuteCondition 条件判断
+  auto exec_condition = node->attr.sched.exec_condition;
+  if (exec_condition != ge::ExecuteCondition::kNoCache) {
+    ss << std::string(indent_spaces, ' ') << "if ("
+       << ExecuteConditionToString(exec_condition) << ") {" << std::endl;
+    indent_spaces += kIndentSpaces;
+  }
+
   // 非Scalar节点的通用处理
   ss << std::string(indent_spaces, ' ') << "%" << (topo_id + 1)
       << " = ascir.ops." << node_type << "(";
@@ -944,21 +1015,25 @@ void DumpNodeExecution(std::stringstream &ss,
   // 输入参数
   auto input_names = CollectInputNames(graph, node);
   ss << FormatInputParams(input_names, ssa_info);
-
   ss << ")";
 
   // 类型转换
   if (!node->outputs().empty()) {
     auto &output_attr = node->outputs()[0]->attr;
     auto vectorized_str = GetVectorizedAxesStr(graph, output_attr, axis_id_to_name);
-    if (!vectorized_str.empty()) {
-      ss << " → " << vectorized_str;
-    } else {
-      ss << " → " << GetDtypeString(output_attr.dtype);
-    }
+    ss << " → " << (vectorized_str.empty() ? GetDtypeString(output_attr.dtype) : vectorized_str);
   }
 
-  ss << "  # @" << node_name << " (topo_id=" << topo_id << ")" << std::endl;
+  // 注释：节点名称 + topo_id + Store目标
+  ss << "  # @" << node_name << " (topo_id=" << topo_id << ")";
+  ss << GetStoreDestinationComment(node);
+  ss << std::endl;
+
+  // 关闭 ExecuteCondition 条件判断
+  if (exec_condition != ge::ExecuteCondition::kNoCache) {
+    indent_spaces -= kIndentSpaces;
+    ss << std::string(indent_spaces, ' ') << "}" << std::endl;
+  }
 }
 
 /**
@@ -1113,51 +1188,35 @@ static std::string DumpRegularGraphLoopExecution(
 // VIEW 1: Loop Execution
 // =============================================================================
 
-std::string DumpLoopExecutionView(const ascir::Graph &graph) {
+std::string DumpLoopExecutionView(const ascir::Graph &graph, const DumpContext &ctx) {
   std::stringstream ss;
 
   // 获取基本信息
   std::string graph_name = graph.GetName();
   bool is_subgraph = IsSubgraph(graph_name);
 
-  auto all_axis = graph.GetAllAxis();
-  auto axis_id_to_name = BuildAxisIdToNameMap(all_axis);
-  auto axis_id_to_type = BuildAxisIdToTypeMap(all_axis);
-
-  // 收集输入输出
-  std::vector<ParamInfo> inputs;
-  std::vector<ParamInfo> outputs;
-  CollectDataAndOutputNodes(graph, inputs, outputs, axis_id_to_name);
-
   // 收集向量化轴
   std::set<int64_t> vectorized_axes = CollectVectorizedAxes(graph);
 
   // 生成说明性注释
-  ss << GenerateOriginalShapesComment(inputs, outputs);
+  ss << GenerateOriginalShapesComment(ctx.func_params);
 
   // 生成 Tile/Block 分解注释（仅非子图）
   if (!is_subgraph) {
-    ss << GenerateTileBlockDecompositionComment(all_axis);
+    ss << GenerateTileBlockDecompositionComment(ctx.all_axis);
   }
 
-  // 生成函数签名
-  ss << GenerateFunctionSignature(graph_name, inputs, outputs);
+  // 生成函数签名（无返回值，按 data/workspace/output 顺序）
+  ss << GenerateFunctionSignature(graph_name, ctx.func_params);
 
   // 生成函数体
   if (is_subgraph) {
     // 子图模式
-    ss << DumpSubgraphLoopExecution(graph, axis_id_to_name, axis_id_to_type);
+    ss << DumpSubgraphLoopExecution(graph, ctx.axis_id_to_name, ctx.axis_id_to_type);
   } else {
     // 非子图模式：按照 loop_axis 分层输出节点
-    auto all_nodes = graph.GetAllNodes();
-    SSAMappingInfo ssa_info = BuildSSAMapping(all_nodes);
-    ss << DumpRegularGraphLoopExecution(graph, axis_id_to_name, axis_id_to_type,
-                                        vectorized_axes, ssa_info);
-  }
-
-  // 返回值
-  if (!outputs.empty()) {
-    ss << "  return %" << outputs[0].name << std::endl;
+    ss << DumpRegularGraphLoopExecution(graph, ctx.axis_id_to_name, ctx.axis_id_to_type,
+                                        vectorized_axes, ctx.ssa_mapping);
   }
 
   ss << "}" << std::endl;
@@ -1307,19 +1366,6 @@ static std::stringstream &OutputMemStr(std::stringstream &ss, const ge::AscTenso
 // =============================================================================
 // VIEW 2: Graph Structure 辅助函数实现
 // =============================================================================
-
-/**
- * @brief 获取 ExecuteCondition 的字符串表示
- */
-std::string ExecuteConditionToString(ge::ExecuteCondition condition) {
-  switch (condition) {
-    case ge::ExecuteCondition::kNoCache: return "no_cache";
-    case ge::ExecuteCondition::kCacheBlockSplitFusedBroadcastAxis: return "cache_block_split_fused_brc_axis";
-    case ge::ExecuteCondition::kCacheBlockSplitOriginBroadcastAxis: return "cache_block_split_origin_brc_axis";
-    case ge::ExecuteCondition::kConditionInvalid: return "invalid";
-    default: return "unknown";
-  }
-}
 
 /**
  * @brief 输出 Size 变量列表
@@ -1477,29 +1523,24 @@ void DumpNodeDetails(std::stringstream &ss, const ascir::Graph &graph,
   DumpNodeOutputs(ss, graph, node, axis_id_to_name, verbose, is_subgraph);
 }
 
-std::string DumpGraphStructureView(const ascir::Graph &graph, bool verbose, bool is_subgraph) {
+std::string DumpGraphStructureView(const ascir::Graph &graph, const DumpContext &ctx, bool verbose, bool is_subgraph) {
   std::stringstream ss;
 
   // Header
   ss << "Graph: " << graph.GetName() << std::endl;
 
-  // 获取轴映射
-  auto all_axis = graph.GetAllAxis();
-  auto axis_id_to_name = BuildAxisIdToNameMap(all_axis);
-
   // Sizes
   DumpSizeVars(ss, graph);
 
   // Axis
-  DumpAxisList(ss, graph, axis_id_to_name);
+  DumpAxisList(ss, graph, ctx.axis_id_to_name);
 
   // Nodes
   ss << std::endl << "Nodes:" << std::endl;
-  auto all_nodes = graph.GetAllNodes();
   size_t idx = 0UL;
 
-  for (auto node: all_nodes) {
-    DumpNodeDetails(ss, graph, node, idx++, axis_id_to_name, verbose, is_subgraph);
+  for (auto node: graph.GetAllNodes()) {
+    DumpNodeDetails(ss, graph, node, idx++, ctx.axis_id_to_name, verbose, is_subgraph);
   }
 
   return ss.str();
@@ -1606,7 +1647,8 @@ void DumpBuffers(std::stringstream &ss, const std::map<int32_t, dumper::BufferIn
 }
 } // namespace
 
-std::string DumpMemoryLayoutView(const ascir::Graph &graph, bool verbose) {
+std::string DumpMemoryLayoutView(const ascir::Graph &graph, const DumpContext &ctx, bool verbose) {
+  (void)ctx;  // 暂未使用，预留扩展
   if (!verbose) {
     return "";
   }
@@ -1628,6 +1670,8 @@ std::string DumpMemoryLayoutView(const ascir::Graph &graph, bool verbose) {
 std::string DumpGraphText(const ascir::Graph &graph, bool verbose, bool is_subgraph) {
   std::stringstream ss;
 
+  // 构建 Dump 上下文（只获取一次数据，避免重复计算）
+  DumpContext ctx = BuildDumpContext(graph);
   // Header
   ss << "================================================================================" << std::endl;
   ss << "Graph: " << graph.GetName() << std::endl;
@@ -1638,19 +1682,19 @@ std::string DumpGraphText(const ascir::Graph &graph, bool verbose, bool is_subgr
   ss << "--------------------------------------------------------------------------------" << std::endl;
   ss << "VIEW 1: Loop Execution" << std::endl;
   ss << "--------------------------------------------------------------------------------" << std::endl;
-  ss << DumpLoopExecutionView(graph);
+  ss << DumpLoopExecutionView(graph, ctx);
   ss << std::endl;
 
   // VIEW 2: Graph Structure
   ss << "--------------------------------------------------------------------------------" << std::endl;
   ss << "VIEW 2: Graph Structure" << std::endl;
   ss << "--------------------------------------------------------------------------------" << std::endl;
-  ss << DumpGraphStructureView(graph, verbose, is_subgraph);
+  ss << DumpGraphStructureView(graph, ctx, verbose, is_subgraph);
   ss << std::endl;
 
   // VIEW 3: Memory Layout (子图不显示，非子图仅在 verbose=true 时显示)
   if (!is_subgraph) {
-    auto memory_layout = DumpMemoryLayoutView(graph, verbose);
+    auto memory_layout = DumpMemoryLayoutView(graph, ctx, verbose);
     if (!memory_layout.empty()) {
       ss << "--------------------------------------------------------------------------------" << std::endl;
       ss << "VIEW 3: Memory Layout" << std::endl;

@@ -17,6 +17,7 @@
 #include "hybrid/executor/rt_callback_manager.h"
 #include "hybrid/executor/subgraph_executor.h"
 #include "hybrid/executor/hybrid_model_executor.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -53,7 +54,7 @@ class StageSubject {
 class StageExecutor {
  public:
   struct StageTask {
-    rtEvent_t event = nullptr;
+    aclrtEvent event = nullptr;
     int32_t stage = 0;
     int64_t iteration = 0;
     bool is_eos = false;

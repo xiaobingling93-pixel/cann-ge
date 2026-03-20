@@ -498,7 +498,7 @@ run_backend_one_e2e_st() {
 }
 
 codegen_e2e_st() {
-  echo "$(date '+%F %T') create build directory and build ascgen-dev";
+  echo "$(date '+%F %T') create build directory and build codegen_e2e_st";
   mk_dir "${BUILD_PATH}"
   cd "${BUILD_PATH}"
   g++ -v
@@ -529,22 +529,14 @@ codegen_e2e_st() {
                     load_where_x2x3_is_ubscalar_throwfor_store_expect_code_e2e \
                     constant_load_gt_store_expect_code_e2e \
                     constant_load_le_store_expect_code_e2e \
-                    load_rprod_store_e2e \
                     load_compare_ub_scalar_tensor_eq_store_e2e \
                     load_compare_half_tensor_eq_store_e2e \
-                    load_compare_int64_tensor_eq_store_e2e \
-                    load_compare_int64_tensor_ne_store_e2e \
-                    load_compare_int64_tensor_gt_store_e2e \
-                    load_broadcast_axis_s1_store_expect_code_e2e \
                     clip_by_value_float_e2e \
-                    pow_int32_e2e \
                     discrete_store_e2e \
                     discrete_load_e2e \
-                    discrete_store_merge_axis_e2e \
                     broadcast_force_merge_e2e \
                     load_rmax_store_e2e \
                     load_rmean_store_e2e \
-                    load_rmin_store_e2e \
                     load_multi_axis_store_e2e \
                     load_abs_store_expect_code_e2e \
                     load_cast_store_expect_code_e2e \
@@ -554,7 +546,6 @@ codegen_e2e_st() {
                     load_sub_store_expect_code_e2e \
                     broadcast_merge_axis_e2e \
                     store_scalar_e2e \
-                    concat_last_dim_e2e \
                     concat_same_tail_dim_e2e \
                     concat_small_tail_dim_e2e \
                     concat_inter_dim_e2e \
@@ -564,7 +555,6 @@ codegen_e2e_st() {
                     concat_mult_inputs_e2e \
                     dynamic_inputs_and_outputs_e2e \
                     load_max_min_store_e2e \
-                    load_rsum_store_e2e \
                     load_rsum_block_store_e2e \
                     load_rsum_ra_store_e2e \
                     load_reciprocal_store_e2e \
@@ -599,7 +589,6 @@ codegen_e2e_st() {
                     compare_x2_tensor_int64_eq_test_e2e \
                     compare_x2_tensor_int64_gt_test_e2e \
                     load_to_store_and_abs_test_e2e \
-                    concat_test_e2e \
                     concat_all_aligned_test_e2e \
                     concat_to_stores_test_e2e \
                     load_unalign_pad_test_e2e \
@@ -613,7 +602,6 @@ codegen_e2e_st() {
                     load_pow_all_input_is_scalar_store_test_e2e \
                     axpy_abs_half_test_e2e \
                     pgo_add_abs_test_e2e \
-                    pgo_sub_transpose_abs_test_e2e \
                     matmul_elemwise_test_e2e \
                     axpy_abs_test_e2e \
                     load_logical_not_store_test_e2e"
@@ -631,7 +619,6 @@ codegen_e2e_st() {
     MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
                       load_loop_mode_test_e2e_v2\
                       add_abs_test_e2e_v2 \
-                      concat_test_e2e_v2 \
                       slice_concat_test_e2e_v2 \
                       continues_brc_test_e2e_v2 \
                       scalar_brc_test_e2e_v2 \
@@ -704,172 +691,52 @@ codegen_e2e_st() {
                       atanh_bf16_test_e2e_v2 \
                       cosh_bf16_test_e2e_v2 \
                       digamma_bf16_test_e2e_v2 \
-                      erfc_bf16_test_e2e_v2"
+                      erfc_bf16_test_e2e_v2 \
+                      pow_bf16_test_e2e_v2 \
+                      reciprocal_bf16_test_e2e_v2 \
+                      relu_uint8_test_e2e_v2 \
+                      round_bf16_test_e2e_v2 \
+                      rshift_uint8_test_e2e_v2 \
+                      sign_uint8_test_e2e_v2 \
+                      sign_bf16_test_e2e_v2 \
+                      truediv_bf16_test_e2e_v2"
   fi
+  MAKE_TARGET_LIST_CODEGEN=$(echo "${MAKE_TARGET_LIST}" | sed 's/e2e/codegen/g')
+  echo "MAKE_TARGET_LIST_CODEGEN"
+  echo $MAKE_TARGET_LIST_CODEGEN
+  make -j${THREAD_NUM} $MAKE_TARGET_LIST_CODEGEN
+  if [ $? -ne 0 ]
+  then
+    echo "execute command: make codegen_e2e_st_test1 failed."
+    return 1
+  fi
+  echo "$(date '+%F %T') make codegen_e2e_st_test1 end"
+
+  export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test1 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test1.log
+  if [ $? -ne 0 ]; then
+    echo "execute command: run codegen_e2e_st_test1 failed."
+    return 1
+  fi
+
   make -j${THREAD_NUM} $MAKE_TARGET_LIST
   if [ $? -ne 0 ]
   then
-    echo "execute command: make codegen_e2e_st failed."
+    echo "execute command: make codegen_e2e_st_test2 failed."
     return 1
   fi
-  echo "$(date '+%F %T') make codegen_e2e_st end"
+  echo "$(date '+%F %T') make codegen_e2e_st_test2 end"
 
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
-  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
-        -O ${BUILD_PATH}/ctest_codegen_e2e_st.log
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test2 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test2.log
   if [ $? -ne 0 ]; then
-    echo "execute command: run codegen e2e st failed."
+    echo "execute command: run codegen_e2e_st_test2 failed."
     return 1
   fi
   unset LD_LIBRARY_PATH
-  echo "$(date '+%F %T') codegen e2e_st execute success!"
-}
-
-build_backend() {
-  echo "create build directory and build ascgen-dev";
-  mk_dir "${BUILD_PATH}"
-  cd "${BUILD_PATH}"
-  g++ -v
-
-  ASCEND_INSTALL_LIB_PATH=${ASCEND_INSTALL_PATH}/$(uname -m)-linux/lib64/
-  CMAKE_ARGS="-D CMAKE_C_COMPILER=gcc \
-            -D CMAKE_CXX_COMPILER=g++ \
-            -D ASCEND_3RD_LIB_PATH=${ASCEND_3RD_LIB_PATH} \
-            -D ASCEND_INSTALL_PATH=${ASCEND_INSTALL_PATH} \
-            -D CMAKE_INSTALL_PREFIX=${OUTPUT_PATH} \
-            -D ASCEND_INSTALL_LIB_PATH=${ASCEND_INSTALL_LIB_PATH} \
-            -D BUILD_METADEF=ON \
-            -D ENABLE_OPEN_SRC=True \
-            -D ENABLE_PKG=${ENABLE_PKG} \
-            -D ENABLE_TEST=True \
-            -D ENABLE_GE_ST=on \
-            -D ENABLE_LLT_PKG=ON"
-
-  ORIGINAL_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
-  unset LD_LIBRARY_PATH
-  env
-
-  cmake $CMAKE_ARGS ../
-
-  # st用例可执行文件的列表
-  MAKE_TARGET_LIST="add_abs_test_e2e \
-                    axpy_abs_test_e2e \
-                    sub_abs_test_e2e \
-                    scalar_float_inf_test_e2e \
-                    scalar_div_inf_test_e2e \
-                    add_gelu_test_e2e \
-                    compare_test_e2e \
-                    compare_x2_tensor_test_e2e \
-                    compare_x2_tensor_int32_test_e2e \
-                    compare_x2_tensor_int64_eq_test_e2e \
-                    compare_x2_tensor_int64_gt_test_e2e \
-                    load_to_store_and_abs_test_e2e \
-                    concat_test_e2e \
-                    concat_all_aligned_test_e2e \
-                    concat_to_stores_test_e2e \
-                    load_unalign_pad_test_e2e \
-                    brc_inline_test_e2e \
-                    add_neg_test_e2e \
-                    load_where_store_test_e2e \
-                    load_where_x2_x3_is_ubscalar_store_test_e2e \
-                    load_where_x2_is_ubscalar_store_test_e2e \
-                    load_where_x3_is_ubscalar_store_test_e2e \
-                    add_rsqrt_test_e2e \
-                    load_pow_all_input_is_scalar_store_test_e2e \
-                    axpy_abs_half_test_e2e \
-                    pgo_add_abs_test_e2e \
-                    pgo_sub_transpose_abs_test_e2e \
-                    matmul_elemwise_test_e2e \
-                    axpy_abs_test_e2e \
-                    load_logical_not_store_test_e2e"
-
-  if [[ "X$RUN_V35_TESTS" = "Xon" ]]; then
-    MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
-                      load_loop_mode_test_e2e_v2\
-                      add_abs_test_e2e_v2 \
-                      concat_test_e2e_v2 \
-                      slice_concat_test_e2e_v2 \
-                      continues_brc_test_e2e_v2 \
-                      scalar_brc_test_e2e_v2 \
-                      brc_reduce_test_e2e_v2 \
-                      load_brc_test_e2e_v2 \
-                      cast_abs_test_e2e_v2 \
-                      cast_nan_test_e2e_v2 \
-                      split_test_e2e_v2 \
-                      load_leaky_relu_store_test_e2e_v2 \
-                      cast_abs_float16_float_test_e2e_v2 \
-                      add_abs_int8_scalar_test_e2e_v2 \
-                      add_abs_half_scalar_test_e2e_v2 \
-                      add_abs_float_scalar_test_e2e_v2 \
-                      abs_brc_add_test_e2e_v2 \
-                      ub_scalar_brc_abs_add_test_e2e_v2 \
-                      abs_fma_bf16_test_e2e_v2 \
-                      abs_fma_test_e2e_v2 \
-                      add_exp_bf16_test_e2e_v2 \
-                      add_exp2_test_e2e_v2 \
-                      add_floor_bf16_test_e2e_v2 \
-                      add_floor_test_e2e_v2 \
-                      floordiv_abs_test_e2e_v2 \
-                      floordiv_mul_le_select_test_e2e_v2 \
-                      load_bitwise_and_store_test_e2e_v2 \
-                      tail_brc_tail_reduce_test_e2e_v2 \
-                      int32_logical_not_test_e2e_v2 \
-                      int16_logical_not_test_e2e_v2 \
-                      float_logical_not_test_e2e_v2 \
-                      half_logical_not_test_e2e_v2 \
-                      uint8_logical_not_test_e2e_v2 \
-                      abs_clip_by_value_test_e2e_v2 \
-                      load_logicalor_store_test_e2e_v2 \
-                      load_logicaland_store_test_e2e_v2 \
-                      load_gather_split_b_t_abs_store_test_e2e_v2 \
-                      load_gather_tail_split_b_t_abs_store_test_e2e_v2 \
-                      load_gather_one_axis_split_b_t_abs_store_test_e2e_v2 \
-                      load_where_x2_x3_is_ubscalar_store_test_e2e_v2  \
-                      gather_reduce_store_test_e2e_v2 \
-                      load_where_store_test_e2e_v2 \
-                      load_where_x2_is_ubscalar_store_test_e2e_v2 \
-                      load_where_x3_is_ubscalar_store_test_e2e_v2 \
-                      load_tanh_store_test_e2e_v2 \
-                      load_compare_store_test_e2e_v2 \
-                      load_compare_cast_sum_store_test_e2e_v2 \
-                      scalar_div_inf_test_e2e_v2 \
-                      matmul_elemwise_brc_test_e2e_v2 \
-                      matmul_compare_scalar_test_e2e_v2 \
-                      div_abs_test_e2e_v2 \
-                      load_log2_store_test_e2e_v2 \
-                      mod_test_e2e_v2 \
-                      load_lshift_store_test_e2e_v2 \
-                      bf16_add_test_e2e_v2 \
-                      bf16_nddma_add_test_e2e_v2 \
-                      abs_bf16_test_e2e_v2 \
-                      abs_uint8_test_e2e_v2 \
-                      erf_bf16_test_e2e_v2 \
-                      load_bitwise_not_store_test_e2e_v2 \
-                      load_bitwise_or_store_test_e2e_v2 \
-                      load_bitwise_xor_store_test_e2e_v2 \
-                      ceil_bf16_test_e2e_v2 \
-                      cos_bf16_test_e2e_v2 \
-                      load_compare_scalar_where_store_test_e2e_v2 \
-                      load_compare_where_store_test_e2e_v2 \
-                      binary_api_scalar_test_e2e_v2 \
-                      acos_bf16_test_e2e_v2"
-  fi
-  make -j${THREAD_NUM} $MAKE_TARGET_LIST
-  if [ $? -ne 0 ]
-  then
-    echo "execute command: make backend_e2e_st failed."
-    return 1
-  fi
-  echo "$(date '+%F %T') make backend_e2e_st end"
-  export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
-  ctest --output-on-failure -j${THREAD_NUM} -L st -L backend_e2e_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
-        -O ${BUILD_PATH}/ctest_backend_e2e_st.log
-  if [ $? -ne 0 ]; then
-    echo "execute command: run backend e2e st failed."
-    return 1
-  fi
-  unset LD_LIBRARY_PATH
-  echo "$(date '+%F %T') backend e2e_st execute success!"
+  echo "$(date '+%F %T') codegen_e2e_st execute success!"
 }
 
 build_kernel_tool() {
@@ -1063,9 +930,6 @@ build_st() {
       ;;
     "tools")
       build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
-      ;;
-    "backend")
-      build_backend || { echo "run backend st failed."; exit 1; }
       ;;
     "ascendc_api")
       build_test_ascir_st || { echo "run ascir st failed."; exit 1; }

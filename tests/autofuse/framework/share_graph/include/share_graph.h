@@ -56,6 +56,7 @@ struct ShareGraph {
   static ge::ComputeGraphPtr AddExpBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr FloordivAbsFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr LoadTanhStoreFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr LoadTanhBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AddAbsScalarFusedGraph(size_t dims_size, ge::DataType dtype);
   static ge::ComputeGraphPtr AbsBrcAddFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr UbScalarBrcAbsAddFusedGraph(size_t dims_size);
@@ -85,6 +86,7 @@ struct ShareGraph {
   static ge::ComputeGraphPtr LoadMatmulElewiseBrcFusedGraph();
   static ge::ComputeGraphPtr LoadMatmulCompareScalarFusedGraph();
   static ge::ComputeGraphPtr DivAbsFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr TrueDivBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BF16AddFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BF16NddmaAddFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AbsBf16FusedGraph(size_t dims_size);
@@ -115,6 +117,13 @@ struct ShareGraph {
   static ge::ComputeGraphPtr AsinBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AsinhBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AtanBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr PowBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr ReciprocalBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr RoundBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr ReluUint8FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr RshiftUint8FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr SignUint8FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr SignBf16FusedGraph(size_t dims_size);
 };
 }  // namespace ascir
 #endif

@@ -38,7 +38,7 @@ class RtCallbackManager : public CallbackManager {
   Status CallbackProcess(const aclrtContext context);
   static void RtCallbackFunc(void *const data);
 
-  BlockingQueue<std::pair<rtEvent_t, std::pair<rtCallback_t, void *>>> callback_queue_;
+  BlockingQueue<std::pair<aclrtEvent, std::pair<rtCallback_t, void *>>> callback_queue_;
   std::future<Status> ret_future_;
 };
 }  // namespace hybrid

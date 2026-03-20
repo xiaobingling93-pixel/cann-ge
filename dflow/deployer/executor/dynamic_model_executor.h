@@ -13,12 +13,12 @@
 
 #include <thread>
 #include <vector>
+#include "graph/compute_graph.h"
 #include "ge_common/ge_api_error_codes.h"
 #include "common/blocking_queue.h"
 #include "framework/common/runtime_tensor_desc.h"
 #include "executor/cpu_sched_model.h"
 #include "executor/cpu_id_resource_manager.h"
-#include "hybrid/common/npu_memory_allocator.h"
 #include "common/ge_common/ge_types.h"
 #include "acl/acl_mdl.h"
 #include "acl/acl_rt.h"

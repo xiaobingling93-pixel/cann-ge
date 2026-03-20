@@ -19,6 +19,7 @@
 #include "hybrid/executor/subgraph_context.h"
 #include "hybrid/node_executor/aicpu/aicpu_node_executor.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "depends/ascendcl/src/ascendcl_stub.h"
 #include "ge/ut/ge/ffts_plus_proto_tools.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "common/opskernel/ops_kernel_info_types.h"
@@ -43,6 +44,7 @@ class UtestAicpuNodeExecutor : public testing::Test {
   }
   void TearDown() {
     RTS_STUB_TEARDOWN();
+    AclRuntimeStub::SetErrorResultApiName("");
   }
 };
 
@@ -618,8 +620,9 @@ TEST_F(UtestAicpuNodeExecutor, aicpu_blocking_node_task_fail) {
   {
     AicpuNodeTask aicpu_node_task(node_item, task_def);
     ASSERT_EQ(aicpu_node_task.Init(hybrid_model), SUCCESS);
-    RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
+    AclRuntimeStub::SetErrorResultApiName("aclrtResetEvent");
     ASSERT_EQ(aicpu_node_task.LaunchTask(*node_state->GetTaskContext()), FAILED);
+    AclRuntimeStub::SetErrorResultApiName("");
 
     RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
     RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);
@@ -662,8 +665,9 @@ TEST_F(UtestAicpuNodeExecutor, aicpu_blocking_node_task_fail) {
     auto aicpu_tf_node_task = std::make_shared<AicpuTfNodeTask>(node_item, task_def);
 
     ASSERT_EQ(aicpu_tf_node_task->Init(hybrid_model), SUCCESS);
-    RTS_STUB_RETURN_VALUE(rtEventReset, rtError_t, 0x78000001);
+    AclRuntimeStub::SetErrorResultApiName("aclrtResetEvent");
     ASSERT_EQ(aicpu_tf_node_task->LaunchTask(*node_state->GetTaskContext()), FAILED);
+    AclRuntimeStub::SetErrorResultApiName("");
 
     RTS_STUB_RETURN_VALUE(rtGetDeviceCapability, rtError_t, RT_ERROR_NONE);
     RTS_STUB_OUTBOUND_VALUE(rtGetDeviceCapability, int32_t, value, RT_AICPU_BLOCKING_OP_NOT_SUPPORT);

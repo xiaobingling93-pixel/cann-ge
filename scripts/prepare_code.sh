@@ -17,61 +17,15 @@ FARM_LAND=`echo $2 | awk -F\@ '{print "vendor/"$1"/"$2" project:"$3}'`
 METADEF_DIR="${TOP_DIR}/metadef"
 GE_METADEF_DIR="${TOP_DIR}/air/graph_metadef"
 
-copy_dir() {
-  src_dir="$1"
-  dst_dir="$2"
-  if [ -d ${src_dir} ]; then
-    if [ ! -d ${dst_dir} ]; then
-      ln -sf ${src_dir} ${dst_dir}
-    fi
-  fi
-}
-
-copy_dir_files() {
-  src_dir="$1"
-  dst_dir="$2"
-  if [ -d ${src_dir} ]; then
-    if [ -d ${dst_dir} ]; then
-      mv ${dst_dir}/CMakeLists.txt ${dst_dir}/CMakeLists.txt_bak
-      mv ${dst_dir}/graph/debug/ge_util.h ${dst_dir}/graph/debug/ge_util.h_bak
-      mv ${dst_dir}/base/attr/attrs_to_buffer.h ${dst_dir}/base/attr/attrs_to_buffer.h_bak
-      mv ${dst_dir}/common/ge_common/util.h ${dst_dir}/common/ge_common/util.h_bak
-      mv ${dst_dir}/common/plugin/plugin_manager.h ${dst_dir}/common/plugin/plugin_manager.h_bak
-      mv ${dst_dir}/graph/aligned_ptr.h ${dst_dir}/graph/aligned_ptr.h_bak
-      mv ${dst_dir}/graph/utils/file_utils.h ${dst_dir}/graph/utils/file_utils.h_bak
-      mv ${dst_dir}/common/util/mem_utils.h ${dst_dir}/common/util/mem_utils.h_bak
-
-      cp -rf ${src_dir}/* ${dst_dir}
-
-      mv ${dst_dir}/CMakeLists.txt_bak ${dst_dir}/CMakeLists.txt
-      mv ${dst_dir}/graph/debug/ge_util.h_bak ${dst_dir}/graph/debug/ge_util.h
-      mv ${dst_dir}/base/attr/attrs_to_buffer.h_bak ${dst_dir}/base/attr/attrs_to_buffer.h
-      mv ${dst_dir}/common/ge_common/util.h_bak ${dst_dir}/common/ge_common/util.h
-      mv ${dst_dir}/common/plugin/plugin_manager.h_bak ${dst_dir}/common/plugin/plugin_manager.h
-      mv ${dst_dir}/graph/aligned_ptr.h_bak ${dst_dir}/graph/aligned_ptr.h
-      mv ${dst_dir}/graph/utils/file_utils.h_bak ${dst_dir}/graph/utils/file_utils.h
-      mv ${dst_dir}/common/util/mem_utils.h_bak ${dst_dir}/common/util/mem_utils.h
-    fi
-  fi
-}
-
 if [ -d ${METADEF_DIR} ]; then
   if [ ! -d ${METADEF_DIR}/proto ];then
     if [ ! -d ${GE_METADEF_DIR} ]; then
       echo "ERROR: Yellow zone need add air/graph_metadef to ${FARM_LAND}"
-    else
-      copy_dir "${GE_METADEF_DIR}/ops" "${METADEF_DIR}/ops"
-      copy_dir "${GE_METADEF_DIR}/graph" "${METADEF_DIR}/graph"
-      copy_dir "${GE_METADEF_DIR}/proto" "${METADEF_DIR}/proto"
-      copy_dir "${GE_METADEF_DIR}/exe_graph" "${METADEF_DIR}/exe_graph"
-      copy_dir "${GE_METADEF_DIR}/third_party" "${METADEF_DIR}/third_party"
-      copy_dir "${GE_METADEF_DIR}/register" "${METADEF_DIR}/register"
     fi
 
     if [ ! -d ${TOP_DIR}/air/inc/graph_metadef ]; then
       echo "ERROR: Yellow zone need add air/inc/graph_metadef to ${FARM_LAND}"
     else
-      copy_dir_files "${TOP_DIR}/air/inc/graph_metadef" "${METADEF_DIR}/inc"
       if [ ! -d ${METADEF_DIR}/inc/include/register ]; then
         mkdir -p ${METADEF_DIR}/inc/include/register
       fi

@@ -16,7 +16,7 @@ template <typename T>
 inline __aicore__ void Pow(const AscendC::LocalTensor<T> &dst, const AscendC::LocalTensor<T> &src1,
                            const AscendC::LocalTensor<T> &src2, const uint32_t calCount,
                            AscendC::LocalTensor<uint8_t> &tmp_buf) {
-  if constexpr (std::is_same_v<T, float>) {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, bfloat16_t>) {
     Power<T, false, pow_config>(dst, src1, src2, tmp_buf, calCount);
   } else {
     Power(dst, src1, src2, tmp_buf, calCount);
@@ -41,7 +41,7 @@ inline __aicore__ void Pow(const AscendC::LocalTensor<T> &dst, const AscendC::Lo
   } else if (static_cast<float>(src2) == 3.0f) {
     Mul(dst, src1, src1, calCount);
     Mul(dst, dst, src1, calCount);
-  } else if constexpr (std::is_same_v<T, float>) {
+  } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, bfloat16_t>) {
     Power<T, false, pow_config>(dst, src1, src2, tmp_buf, calCount);
   } else {
     Power(dst, src1, src2, tmp_buf, calCount);
@@ -51,7 +51,7 @@ inline __aicore__ void Pow(const AscendC::LocalTensor<T> &dst, const AscendC::Lo
 template <typename T>
 inline __aicore__ void Pow(const AscendC::LocalTensor<T> &dst, const T &src1, const AscendC::LocalTensor<T> &src2,
                            const uint32_t calCount, AscendC::LocalTensor<uint8_t> &tmp_buf) {
-  if constexpr (std::is_same_v<T, float>) {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, bfloat16_t>) {
     Power<T, false, pow_config>(dst, src1, src2, tmp_buf, calCount);
   } else {
     Power(dst, src1, src2, tmp_buf, calCount);
@@ -86,7 +86,7 @@ inline __aicore__ void Pow(const AscendC::LocalTensor<T> &dst, const T &src1, co
   } else if (static_cast<float>(src2) == 3.0f) {
     Mul(dst_buf, src1_buf, src1_buf, calCount);
     Mul(dst_buf, dst_buf, src1_buf, calCount);
-  } else if constexpr (std::is_same_v<T, float>) {
+  } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, bfloat16_t>) {
     Power<T, false, pow_config>(dst_buf, src1_buf, src2, left_tmp_buf, block_cnt);
   } else {
     Power(dst_buf, src1_buf, src2, left_tmp_buf, block_cnt);

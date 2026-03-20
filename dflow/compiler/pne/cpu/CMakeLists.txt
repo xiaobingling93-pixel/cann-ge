@@ -36,6 +36,10 @@ target_compile_options(cpu_compiler PRIVATE
 )
 
 target_include_directories(cpu_compiler SYSTEM PRIVATE
+    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
+)
+
+target_include_directories(cpu_compiler PRIVATE
     ${AIR_CODE_DIR}
     ${AIR_CODE_DIR}/base
     ${AIR_CODE_DIR}/compiler
@@ -44,7 +48,6 @@ target_include_directories(cpu_compiler SYSTEM PRIVATE
     ${AIR_CODE_DIR}/inc/external
     ${AIR_CODE_DIR}/inc/framework
     ${CMAKE_BINARY_DIR}
-    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
 )
 
 target_link_options(cpu_compiler PRIVATE

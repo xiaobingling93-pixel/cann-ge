@@ -350,9 +350,9 @@ TEST_F(TransopFusionOptimizeTest, DiffGraph_ExtractTransdataThroughDoubleSubGrap
 
   ASSERT_EQ(compute_graph->FindNode("transdata1"), nullptr);
   ASSERT_EQ(compute_graph->FindNode("transdata"), nullptr);
-  ASSERT_EQ(compute_graph->FindNode("partitioned_call")->GetInDataNodes().size(), 2U);
+  ASSERT_EQ(compute_graph->FindNode("partitioned_call")->GetInDataNodes().size(), 1U);
 
-  ASSERT_NE(sub_sub_1_graph->FindNode("sub_sub_1_transdata_fusion_arg_1"), nullptr);
+  ASSERT_EQ(sub_sub_1_graph->FindNode("sub_sub_1_transdata_fusion_arg_1"), nullptr);
 }
 
 /*

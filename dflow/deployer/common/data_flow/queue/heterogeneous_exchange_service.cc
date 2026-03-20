@@ -11,7 +11,8 @@
 #include "common/data_flow/queue/heterogeneous_exchange_service.h"
 #include <thread>
 #include <chrono>
-#include "common/profiling/profiling_manager.h"
+#include "common/profiling/profiling_properties.h"
+#include "framework/runtime/subscriber/global_profiler.h"
 #include "framework/common/runtime_tensor_desc.h"
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "framework/common/debug/log.h"

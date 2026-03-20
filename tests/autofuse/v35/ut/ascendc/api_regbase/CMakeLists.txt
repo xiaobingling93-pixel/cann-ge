@@ -15,6 +15,10 @@ add_library(test_regbase_ascendc OBJECT
     ./test_bitwise_and.cpp
     ./test_rshift.cpp
     ./test_sin.cpp
+    ./test_pow.cpp
+    ./test_reciprocal.cpp
+    ./test_relu.cpp
+    ./test_round.cpp
     )
 target_link_libraries(test_regbase_ascendc
     ascendc_api_regbase_extend

@@ -24,7 +24,7 @@
 #include "framework/common/helper/model_helper.h"
 #include "external/ge/ge_ir_build.h"
 #include "dflow/compiler/pne/process_node_engine_manager.h"
-#include "common/compile_profiling/ge_trace_wrapper.h"
+#include "common/compile_profiling/ge_call_wrapper.h"
 #include "graph/debug/ge_attr_define.h"
 
 namespace ge {
@@ -110,9 +110,7 @@ Status EnsureDflowInitialized(const std::map<std::string, std::string> &options)
     GE_TIMESTAMP_EVENT_END(InitializeExecutionRuntime, "InitializeExecutionRuntime");
   }
 
-  GE_TRACE_START(ProcessNodeEngine);
   Status init_pne_status = ProcessNodeEngineManager::GetInstance().Initialize(options);
-  GE_INIT_TRACE_TIMESTAMP_END(ProcessNodeEngine, "InnerInitialize::ProcessNodeEngine");
   if (init_pne_status != SUCCESS) {
     GELOGE(init_pne_status, "[Init][EngineManager]GE process node engine manager initial failed.");
     REPORT_INNER_ERR_MSG("E19999", "Process node engine manager initial failed.");

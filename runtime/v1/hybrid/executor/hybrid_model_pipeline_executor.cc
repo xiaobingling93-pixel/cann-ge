@@ -147,13 +147,13 @@ Status StageExecutor::Start(const std::vector<TensorValue> &inputs, const std::v
     next_task.iteration = task_info.iteration + 1;
     GE_MAKE_GUARD(next_task_guard, [&next_task]() {
       if (next_task.event != nullptr) {
-        (void)rtEventDestroy(next_task.event);
+        (void)aclrtDestroyEvent(next_task.event);
         next_task.event = nullptr;
       }
     });
     if (((task_info.iteration + 1) % iteration_count) > 0) {
-      GE_CHK_RT_RET(rtEventCreate(&next_task.event));
-      GE_CHK_RT_RET(rtEventRecord(next_task.event, context_.hccl_stream));
+      GE_CHK_RT_RET(aclrtCreateEvent(&next_task.event));
+      GE_CHK_RT_RET(aclrtRecordEvent(next_task.event, context_.hccl_stream));
     }
 
     const auto sync_result = Synchronize();
@@ -170,7 +170,7 @@ Status StageExecutor::Start(const std::vector<TensorValue> &inputs, const std::v
     }
     stage_subject_->Release(task_info.stage);
     if (task_info.event != nullptr) {
-      GE_CHK_RT_RET(rtEventDestroy(task_info.event));
+      GE_CHK_RT_RET(aclrtDestroyEvent(task_info.event));
       RECORD_MODEL_EXECUTION_EVENT(&context_, "[iteration = %ld] [Stage = %d] EventDestroy End", task_info.iteration,
                                    task_info.stage);
     }

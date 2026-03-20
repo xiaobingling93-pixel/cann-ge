@@ -122,7 +122,7 @@ class AicpuNodeTaskBase : public NodeTask {
   std::unique_ptr<TensorBuffer> copy_input_dst_dev_;
   // for blocking aicpu op
   bool is_blocking_aicpu_op_ = false;
-  rtEvent_t rt_event_ = nullptr;
+  aclrtEvent rt_event_ = nullptr;
   std::string op_name_;
   friend class AicpuTfNodeTask;
   friend class AicpuNodeTask;

@@ -60,10 +60,10 @@ Status EventWaitTaskInfo::Distribute() {
 
   SetTaskTag(op_desc_->GetName().c_str());
   // event_wait在Distribute时下了wait和reset两个任务，所以编译时计算task时要算成2个
-  rt_ret = rtEventReset(event_, stream_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtEventReset failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtEventReset] failed, ret:%d", rt_ret);
+  rt_ret = aclrtResetEvent(event_, stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtResetEvent failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtResetEvent] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 

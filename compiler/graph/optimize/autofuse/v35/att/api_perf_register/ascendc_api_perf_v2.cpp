@@ -21,6 +21,19 @@ uint32_t GetCacheLineSize() {
   return TilingScheduleConfigTableV2().GetCacheLineSize();
 }
 
+// 初始化block_len扩展所需的参数
+ge::Status InitBlockLenExpandParams(const NodeDetail &node_info, const std::vector<Expr> &dims,
+                                     Expr &block_len, Expr &cache_line_ele_num) {
+  const size_t dim_size = dims.size();
+  block_len = dims[dim_size - 1UL];
+  const int32_t kCacheLineSize = static_cast<int32_t>(GetCacheLineSize());
+  const auto &data_type_size = kDataTypeSizeMap.find(node_info.input_dtype[0]);
+  GE_ASSERT_TRUE(data_type_size != kDataTypeSizeMap.cend(), "Check data type size failed, node[%s]",
+                 node_info.ToString().c_str());
+  cache_line_ele_num = CreateExpr(kCacheLineSize) / data_type_size->second;
+  return ge::SUCCESS;
+}
+
 ge::Status GetBlockCount(const NodeDetail &node_info, vector<CacheLineConfig> *cache_line_config) {
   if (cache_line_config != nullptr) {
     auto dims = node_info.input_dims;
@@ -92,12 +105,18 @@ ge::Status LoadPerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
   return ge::SUCCESS;
 }
 
+ge::Status ExpandMTE3BlockLen(const NodeDetail &node_info, PerfOutputInfo &perf, std::vector<Expr> &dims);
+
 ge::Status StorePerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
   Expr res_normal;
   Expr res_stride;
-  GELOGD("Dma with Load: %s", node_info.ToString().c_str());
+  GELOGD("Dma with Store: %s", node_info.ToString().c_str());
+  std::vector<Expr> padded_dims{node_info.input_dims};
+  // 应用MTE3场景的block_len padding（cache line大小128字节）
+  GE_ASSERT_SUCCESS(ExpandMTE3BlockLen(node_info, perf, padded_dims),
+                    "Expand MTE3 block len failed, node[%s]", node_info.ToString().c_str());
   GE_ASSERT_SUCCESS(GetPerf({kMoveUbToGm, node_info.input_dtype[0],node_info.output_dtype[0],
-                             node_info.input_dims, CreateExpr(0)}, res_normal));
+                             padded_dims, CreateExpr(0)}, res_normal));
   GE_ASSERT_SUCCESS(GetPerf({kMoveUbToGm + "Stride", node_info.input_dtype[0], node_info.output_dtype[0],
                              node_info.repeats, node_info.gm_stride, node_info.block_count_idx}, res_stride));
   GE_ASSERT_SUCCESS(GetBlockCount(node_info, perf.cache_line_config));
@@ -105,45 +124,112 @@ ge::Status StorePerf(const NodeDetail &node_info, PerfOutputInfo &perf) {
   return ge::SUCCESS;
 }
 
+namespace {
+ge::Status InitBlockLenExpand(const NodeDetail &node_info, std::vector<Expr> &dims,
+                              Expr &block_len, Expr &cache_line_ele_num,
+                              Expr &block_len_ref, int32_t &kCacheLineSize,
+                              int32_t &blk_len_val, int32_t &stride_val) {
+  GE_ASSERT_SUCCESS(InitBlockLenExpandParams(node_info, dims, block_len, cache_line_ele_num));
+  block_len_ref = const_cast<std::vector<Expr> &>(dims)[dims.size() - 1UL];
+  kCacheLineSize = static_cast<int32_t>(GetCacheLineSize());
+  if (block_len_ref.IsConstExpr() && node_info.gm_stride.IsConstExpr()) {
+    block_len_ref.GetConstValue(blk_len_val);
+    node_info.gm_stride.GetConstValue(stride_val);
+    return ge::SUCCESS;
+  }
+  return ge::FAILED;
+}
+}
+
 ge::Status ExpandBlockLen(const NodeDetail &node_info, PerfOutputInfo &perf, std::vector<Expr> &dims) {
   // 满足gm非连续且搬运小于cache line，扩展每次搬运数据量到cache line
-  const size_t dim_size = dims.size();
-  auto &block_len = dims[dim_size - 1UL];
-  const int32_t kCacheLineSize = static_cast<int32_t>(GetCacheLineSize());
-  const auto &data_type_size = kDataTypeSizeMap.find(node_info.input_dtype[0]);
-  GE_ASSERT_TRUE(data_type_size != kDataTypeSizeMap.cend(), "Check data type size failed, node[%s]",
-                 node_info.ToString().c_str());
-  const auto kCacheLineEleNum = CreateExpr(kCacheLineSize) / data_type_size->second;
-  if (block_len.IsConstExpr() && node_info.gm_stride.IsConstExpr()) {
-    int32_t blk_len_val = 1;
-    int32_t stride_val = 0;
-    block_len.GetConstValue(blk_len_val);
-    node_info.gm_stride.GetConstValue(stride_val);
+  Expr block_len;
+  Expr cache_line_ele_num;
+  Expr block_len_ref;
+  int32_t kCacheLineSize = 0;
+  int32_t blk_len_val = 1;
+  int32_t stride_val = 0;
+
+  if (InitBlockLenExpand(node_info, dims, block_len, cache_line_ele_num,
+                         block_len_ref, kCacheLineSize, blk_len_val, stride_val) == ge::SUCCESS) {
     // 存在非连续并且block_len较小，无法并包，考虑将block_len对齐到cache line大小
     if ((blk_len_val < kCacheLineSize) && (stride_val > 0)) {
-      block_len = CreateExpr(kCacheLineSize);
+      block_len_ref = CreateExpr(kCacheLineSize);
     }
   } else {
+    auto &block_len_ref_actual = const_cast<std::vector<Expr> &>(dims)[dims.size() - 1UL];
     auto is_small_block_len_checker =
-        ge::sym::LogicalAnd({ge::sym::Gt(node_info.gm_stride, CreateExpr(0)), ge::sym::Lt(block_len, kCacheLineEleNum)});
+        ge::sym::LogicalAnd({ge::sym::Gt(node_info.gm_stride, CreateExpr(0)), ge::sym::Lt(block_len_ref_actual, cache_line_ele_num)});
     bool is_small_block_len{false};
     if (is_small_block_len_checker.IsConstExpr()) {
       is_small_block_len_checker.GetConstValue(is_small_block_len);
-      block_len = is_small_block_len ? std::move(kCacheLineEleNum) : std::move(block_len);
+      block_len_ref_actual = is_small_block_len ? std::move(cache_line_ele_num) : std::move(block_len_ref_actual);
     } else {
       Expr res = CreateExpr("block_len");
-      auto normal_case = std::make_shared<IfCase>(block_len);
+      auto normal_case = std::make_shared<IfCase>(block_len_ref_actual);
       GE_ASSERT_NOTNULL(normal_case);
-      auto small_block_len_case = std::make_shared<IfCase>(kCacheLineEleNum);
+      auto small_block_len_case = std::make_shared<IfCase>(cache_line_ele_num);
       GE_ASSERT_NOTNULL(small_block_len_case);
       TernaryOp ternary_op = TernaryOp(CondType::K_EQ, is_small_block_len_checker, CreateExpr(false),
                                     std::move(normal_case), std::move(small_block_len_case));
       ternary_op.SetVariable(res);
       perf.ternary_ops[res] = ternary_op;
-      block_len = res;
+      block_len_ref_actual = res;
     }
     GELOGD("Block len checker[%s], is_small_block_len[%d], block_len[%s]", is_small_block_len_checker.Serialize().get(),
-           is_small_block_len, block_len.Serialize().get());
+           is_small_block_len, block_len_ref_actual.Serialize().get());
+  }
+  return ge::SUCCESS;
+}
+
+ge::Status ExpandMTE3BlockLen(const NodeDetail &node_info, PerfOutputInfo &perf, std::vector<Expr> &dims) {
+  // 满足GM非连续且搬运小于cache line，扩展每次搬运数据量到cache line大小
+  Expr block_len;
+  Expr cache_line_ele_num;
+  Expr block_len_ref;
+  int32_t kCacheLineSize = 0;
+  int32_t blk_len_val = 1;
+  int32_t stride_val = 0;
+
+  if (InitBlockLenExpand(node_info, dims, block_len, cache_line_ele_num,
+                         block_len_ref, kCacheLineSize, blk_len_val, stride_val) == ge::SUCCESS) {
+    // 计算实际字节数
+    const auto &data_type_size = kDataTypeSizeMap.find(node_info.input_dtype[0]);
+    int32_t data_type_size_val = 0;
+    data_type_size->second.GetConstValue(data_type_size_val);
+    int32_t block_len_bytes = blk_len_val * data_type_size_val;
+    // 仅在有stride且block_len_bytes小于cache line时padding
+    if ((block_len_bytes < kCacheLineSize) && (stride_val > 0)) {
+      block_len_ref = cache_line_ele_num;
+      GELOGD("MTE3 Store: block_len padded from %d to %d elements (%d bytes)", blk_len_val,
+             kCacheLineSize / data_type_size_val, kCacheLineSize);
+    }
+  } else {
+    // 动态shape处理 - 创建三元表达式
+    auto &block_len_ref_actual = const_cast<std::vector<Expr> &>(dims)[dims.size() - 1UL];
+    const auto &data_type_size = kDataTypeSizeMap.find(node_info.input_dtype[0]);
+    Expr block_len_bytes = ge::sym::Mul(block_len_ref_actual, data_type_size->second);
+    auto need_padding_checker = ge::sym::LogicalAnd(
+        {ge::sym::Gt(node_info.gm_stride, CreateExpr(0)), ge::sym::Lt(block_len_bytes, CreateExpr(kCacheLineSize))});
+    bool need_padding{false};
+    if (need_padding_checker.IsConstExpr()) {
+      need_padding_checker.GetConstValue(need_padding);
+      block_len_ref_actual = need_padding ? std::move(cache_line_ele_num) : std::move(block_len_ref_actual);
+    } else {
+      // 动态分支：生成三元表达式
+      Expr res = CreateExpr("mte3_block_len");
+      auto normal_case = std::make_shared<IfCase>(block_len_ref_actual);
+      GE_ASSERT_NOTNULL(normal_case);
+      auto padding_case = std::make_shared<IfCase>(cache_line_ele_num);
+      GE_ASSERT_NOTNULL(padding_case);
+      TernaryOp ternary_op = TernaryOp(CondType::K_EQ, need_padding_checker, CreateExpr(false),
+                                     std::move(normal_case), std::move(padding_case));
+      ternary_op.SetVariable(res);
+      perf.ternary_ops[res] = ternary_op;
+      block_len_ref_actual = res;
+    }
+    GELOGD("MTE3 Block len padding checker[%s], need_padding[%d], block_len[%s]",
+           need_padding_checker.Serialize().get(), need_padding, block_len_ref.Serialize().get());
   }
   return ge::SUCCESS;
 }

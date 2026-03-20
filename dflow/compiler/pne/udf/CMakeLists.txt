@@ -40,6 +40,11 @@ target_compile_options(udf_compiler PRIVATE
 )
 
 target_include_directories(udf_compiler SYSTEM PRIVATE
+    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
+    ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto
+)
+
+target_include_directories(udf_compiler PRIVATE
         .
     ${AIR_CODE_DIR}
     ${AIR_CODE_DIR}/base
@@ -48,8 +53,6 @@ target_include_directories(udf_compiler SYSTEM PRIVATE
     ${AIR_CODE_DIR}/inc/external
     ${AIR_CODE_DIR}/inc/framework
     ${CMAKE_BINARY_DIR}
-    ${CMAKE_BINARY_DIR}/proto/graphengine_protos
-    ${CMAKE_BINARY_DIR}/proto/data_flow_base_proto
 )
 
 target_link_options(udf_compiler PRIVATE
