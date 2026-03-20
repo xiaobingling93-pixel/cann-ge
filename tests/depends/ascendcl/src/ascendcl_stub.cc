@@ -679,6 +679,7 @@ aclError AclRuntimeStub::aclrtMemcpyBatch(void **dsts, size_t *destMax, void **s
 
 aclError AclRuntimeStub::aclrtCheckArchCompatibility(const char *socVersion, int32_t *canCompatible) {
   if (std::string(__FUNCTION__) == g_acl_stub_mock) {
+    *canCompatible = 0;
     return -1;
   }
   *canCompatible = 1;
@@ -1032,6 +1033,9 @@ aclError AclRuntimeStub::aclrtProfTrace(void *userdata, int32_t length, aclrtStr
   char record_path[MMPA_MAX_PATH] = {};
   (void)mmGetEnv(kEnvRecordPath, &record_path[0], static_cast<uint32_t>(MMPA_MAX_PATH));
   if (std::string(&record_path[0]).find("mock_fail") != std::string::npos) {
+    return -1;
+  }
+  if (std::string(__FUNCTION__) == g_acl_stub_mock) {
     return -1;
   }
   return ACL_SUCCESS;

@@ -65,6 +65,18 @@ class MockMemRuntime : public ge::RuntimeStub {
   }
 };
 
+class MockAclRuntime : public ge::AclRuntimeStub {
+public:
+  aclError aclrtCheckArchCompatibility(const char *socVersion, int32_t *canCompatible) {
+    if (std::string(socVersion) == "Ascend310") {
+      *canCompatible = 0;
+      return -1;
+    }
+    *canCompatible = 1;
+    return ACL_SUCCESS;
+  }
+};
+
 class GeExecutorTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -1721,7 +1733,9 @@ TEST_F(GeExecutorTest, sample_davinci_model_dynamic_memory) {
 
   {
     auto mock_runtime = std::make_shared<MockMemRuntime>();
+    auto mock_acl_runtime = std::make_shared<MockAclRuntime>();
     ge::RuntimeStub::SetInstance(mock_runtime);
+    ge::AclRuntimeStub::SetInstance(mock_acl_runtime);
 
     ModelHelper model_helper;
     model_helper.SetSaveMode(true);  // Save to file.
@@ -1744,6 +1758,7 @@ TEST_F(GeExecutorTest, sample_davinci_model_dynamic_memory) {
       model_ids.emplace_back(model_id);
     }
     ge::RuntimeStub::Reset();
+    ge::AclRuntimeStub::Reset();
   }
 
   ModelDumpFiniCmd(ge_executor_);

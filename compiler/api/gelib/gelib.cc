@@ -121,8 +121,8 @@ Status GELib::Initialize(const std::map<std::string, std::string> &options) {
       GE_ASSERT_SUCCESS(ge::ConvertToInt32(wait_iter->second.c_str(), wait_timeout), "convert [%s] to int failed.",
                         wait_iter->second.c_str());
       if (wait_timeout >= 0) {
-        GE_CHK_RT_RET(rtSetOpWaitTimeOut(static_cast<uint32_t>(wait_timeout)));
-        GELOGI("Succeeded in setting rtSetOpWaitTimeOut[%s] to runtime.", wait_iter->second.c_str());
+        GE_CHK_RT_RET(aclrtSetOpWaitTimeout(static_cast<uint32_t>(wait_timeout)));
+        GELOGI("Succeeded in setting aclrtSetOpWaitTimeout[%s] to runtime.", wait_iter->second.c_str());
       }
     }
   }
