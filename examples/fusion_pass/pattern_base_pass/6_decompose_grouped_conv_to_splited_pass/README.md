@@ -21,8 +21,9 @@
 
 ## 环境要求
 
-- 使用python及其依赖库版本：python>=3.8 、pytorch>=2.1
-- 已完成[相关环境准备](../../../docs/build.md)。
+- 编译器：GCC >= 7.3.x
+- 使用python及其依赖库版本：python>=3.9 、pytorch>=2.1
+- 已完成[相关环境准备](../../../../docs/build.md)。
 
 ## 实现步骤
 

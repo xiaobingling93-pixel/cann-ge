@@ -2,18 +2,18 @@
 
 ## 功能描述
 
-本样例为移动ReLu到Concat前的自定义pass样例，当融合pass场景中需要包含**动态数量输入/出的算子**时，可参考本样例。
-样例中提供在线推理与atc工具离线编译模型两种方式演示框架如何调用自定义pass完成图优化，
-使用eager style api和融合接口实现。
+本样例为修改`Conv2D`算子`data_format`并删除后续`Transpose`算子对。
+提供在线推理与atc工具离线编译模型两种方式演示框架如何调用自定义pass完成图优化。
+本样例使用eager style api和融合接口实现。
 
 ## 目录结构
 
 ```
 ├── src
-│   ├──move_relu_before_concat_pass.cpp                 // pass实现文件 
+│   ├──modify_conv_data_format_pass.cpp.cpp             // pass实现文件 
 ├── CMakeLists.txt                                      // 编译脚本
 ├── data         
-|   ├──es_gen_air.py                                // 导出air
+|   ├──torch_gen_onnx.py                                // torch脚本用于导出onnx
 |   ├──torch_forward.py                                 // torch脚本用于在线推理
 |—— gen_es_api
 |   |——CMakeLists.txt                                   // 生成eager style api的编译脚本
@@ -21,22 +21,23 @@
 
 ## 环境要求
 
-- 使用python及其依赖库版本：python>=3.8 、pytorch>=2.1
-- 已完成[相关环境准备](../../../docs/build.md)。
-
+- 编译器：GCC >= 7.3.x
+- 使用python及其依赖库版本：python>=3.9 、pytorch>=2.1
+- 已完成[相关环境准备](../../../../docs/build.md)。
 
 ## 实现步骤
-1. 定义`MoveReluBeforeConcatPass`类继承`FusionBasePass`。
+
+1. 定义`ConvTransFormatPass`类继承`FusionBasePass`。
 2. 重写基类`FusionBasePass`中的`Run`方法，其中实现自定义pass逻辑。
-3. 定义`FindConcatNodesMeetRequirements`遍历图中节点，获取符合条件的Concat节点。
-4. 定义`MoveReluBeforeConcat`实现改图，其中：
-   - `Replacement`根据concat节点构造替换结构
-   - `GetSubgraphBoundary`构造被替换的子图边界boundary
-   - 最后调用`SubgraphRewriter`的`Replace`方法实现替换
+3. 定义`FindNCHWConvNodes`遍历图中节点，获取符合条件的Conv节点。
+4. 对符合条件的节点使用`SetAttr`修改属性。
+5. 定义`DeleteTransposePairBehindIfExist`，广度遍历后续节点，删除转置操作。
+6. 注册`ConvTransFormatPass`到指定阶段。
+
 
 ## 程序编译
 
-假设CANN软件包的安装目录为INSTALL_PATH，例如`/home/HwHiAiUser/Ascend/`。
+假设CANN软件包的安装目录为INSTALL_PATH， 例如`/home/HwHiAiUser/Ascend/`。
 
 1. 配置环境变量。
 
@@ -70,10 +71,10 @@
    ```
    执行后，在**build**目录下产生的es_all_build/generated_code目录中包含es构图api的头文件及源码。
 
-4. 执行make命令编译自定义pass so，成功编译后通过make install将动态库文件libmove_relu_before_concat_pass.so安装到自定义融合pass目录下。
+4. 执行make命令编译自定义pass so，成功编译后通过make modify_conv_data_format_pass.so安装到自定义融合pass目录下。
    可以在make后增加可选参数`-j$(nproc)`用于并行执行构建任务，`$(nproc)`动态获取CPU核心数。
    ```
-   make -j$(nproc) move_relu_before_concat_pass
+   make -j$(nproc) modify_conv_data_format_pass
    make install
    ```
 
@@ -95,30 +96,22 @@
       ```
       export DUMP_GE_GRAPH=1
       ```
-    - 安装es_all.whl
+    - 进入data目录执行.py文件导出onnx（文件中使用了torch的onnx导出器，依赖额外的Python包onnx，运行前确保安装。
+      此外ATC工具当前最高支持onnx opset_version 18，若当前torch默认导出更高版本，请显式指定，见脚本中注释）：
       ```
-      pip install --force-reinstall --upgrade --target ${ASCEND_PATH}/python/site-packages/ 
-      ${BUILD_PATH}/es_output/whl/es_all-*****.whl
+      python torch_gen_onnx.py
       ```
-      `${BUILD_PATH}`请替换为build目录的实际路径。
-    - 设置环境变量，添加es_all.so的路径
+    - 执行结束后，在data目录下生成.onnx格式的模型文件，名称为model.onnx。
+    - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾社区](www.hiascend.com)搜索ATC离线模型编译工具)，`soc_version`请根据实际环境修改：
       ```
-      LD_LIBRARY_PATH="${BUILD_PATH}/es_output/lib64:${LD_LIBRARY_PATH}"
-      ```
-    - 进入data目录执行.py文件导出air：
-      ```
-      python es_gen_air.py
-      ```
-    - 执行结束后，在data目录下生成.air格式的模型文件，名称为graph.air。
-    - 执行ATC工具命令(关于ATC工具的详细说明，请前往[昇腾文档](https://www.hiascend.com/zh/document)搜索文档“ATC离线模型编译工具”)，`soc_version`请根据实际环境修改：
-      ```
-      atc --model=./graph.air --framework=1 --soc_version=xxx --output=./model
+      atc --model=./model.onnx --framework=5 --soc_version=xxx --output=./model
       ```
     - 日志中出现如下打印：
       ```
-      MoveReluBeforeConcatPass
-      Define Replacement for MoveReluBeforeConcatPass
-      Replacement of MoveReluBeforeConcatPass succeeded
+      ConvTransFormatPass is starting
+      Remove output edges success
+      Remove output edges success
+      ConvTransFormatPass completed
       ```
 
 3. 在线推理
@@ -132,9 +125,10 @@
        ```  
     - 日志中出现如下打印：
       ```
-      MoveReluBeforeConcatPass
-      Define Replacement for MoveReluBeforeConcatPass
-      Replacement of MoveReluBeforeConcatPass succeeded
+      ConvTransFormatPass is starting
+      Remove output edges success
+      Remove output edges success
+      ConvTransFormatPass completed
       ```
 
 4. 查看运行结果
@@ -142,9 +136,9 @@
     - ATC工具命令执行完成后，目录下生成一系列.pbtxt文件。
       对比以下dump图：
         - `ge_onnx_xxxxx_PreRunBegin.pbtxt`执行前dump图
-        - `ge_onnx_xxxxx_RunCustomPassBeforeInferShape.pbtxt`执行InferShape前的自定义pass dump图
+        - `ge_onnx_xxxxx_RunCustomPass_BeforeInferShape.pbtxt`执行InferShape后的自定义pass dump图
 
-      可以发现模型已按预期优化，即ReLu被移动到到Concat前。
+   可以发现模型已按预期优化，即卷积算子的`data_format`被修改为`NHWC`，卷积算子后的`transpose`被删除。
 
    - 若未获得预期结果，可设置如下环境变量（如使用atc命令，还需添加参数`--log=debug`）让日志打印到屏幕，来定位原因。
      ```bash
