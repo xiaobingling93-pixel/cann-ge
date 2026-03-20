@@ -15,6 +15,7 @@
 #include "common/helper/model_helper.h"
 #include "dflow/base/model/flow_model_om_loader.h"
 #include "dflow/base/model/flow_model_om_saver.h"
+#include "dflow/base/model/model_relation.h"
 #include "graph/build/memory/var_mem_assign_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_type_utils.h"
