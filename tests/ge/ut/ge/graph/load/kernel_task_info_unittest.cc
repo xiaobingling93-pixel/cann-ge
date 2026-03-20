@@ -2091,7 +2091,7 @@ TEST_F(UtestKernelTaskInfo, mc2_static_bin_reuse) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   model.op_list_[op_desc->GetId()] = op_desc;
@@ -2298,7 +2298,7 @@ TEST_F(UtestKernelTaskInfo, mc2_fusion_task_static_bin_reuse_with_sub_aicore_ccu
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   model.op_list_[op_desc->GetId()] = op_desc;
@@ -2605,7 +2605,7 @@ TEST_F(UtestKernelTaskInfo, mc2_fusion_task_static_bin_reuse_with_sub_aicore_aic
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   model.op_list_[op_desc->GetId()] = op_desc;
@@ -2804,7 +2804,7 @@ TEST_F(UtestKernelTaskInfo, mc2_fusion_task_stubfunc_with_sub_aicore_ccu) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   model.op_list_[op_desc->GetId()] = op_desc;
@@ -3657,7 +3657,7 @@ TEST_F(UtestKernelTaskInfo, init_mc2_cust_aicpu_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   KernelTaskInfo kernel_task_info;
@@ -3993,7 +3993,7 @@ TEST_F(UtestKernelTaskInfo, super_kernel_with_args_format_graph_load_and_success
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   DumpProperties properties;
@@ -4249,7 +4249,7 @@ TEST_F(UtestKernelTaskInfo, ifa_with_args_format_graph_load_and_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   KernelTaskInfo kernel_task_info;
@@ -4434,7 +4434,7 @@ TEST_F(UtestKernelTaskInfo, sk_sub_task_load_and_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
   KernelTaskInfo kernel_task_info;
   TaskRunParam task_run_param = {};
@@ -4608,7 +4608,7 @@ TEST_F(UtestKernelTaskInfo, mix_ifa_with_args_format_graph_load_and_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   KernelTaskInfo kernel_task_info;
@@ -4732,7 +4732,7 @@ TEST_F(UtestKernelTaskInfo, init_mc2_cust_aicpu_with_tilefwk_hiddeninput_success
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   KernelTaskInfo kernel_task_info;
@@ -4829,7 +4829,7 @@ TEST_F(UtestKernelTaskInfo, tiling_sink_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   model.op_list_[op_desc->GetId()] = op_desc;
@@ -5077,7 +5077,7 @@ TEST_F(UtestKernelTaskInfo, ifa_with_tiling_sink_graph_load_and_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   AttrUtils::SetStr(op_desc, ATTR_NAME_KERNEL_BIN_ID, "00_0_kernel");
@@ -5251,7 +5251,7 @@ TEST_F(UtestKernelTaskInfo, ifa_with_tiling_sink_graph_load_and_success_with_dfx
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   AttrUtils::SetStr(op_desc, ATTR_NAME_KERNEL_BIN_ID, "00_0_kernel");
@@ -5518,7 +5518,7 @@ TEST_F(UtestKernelTaskInfo, ifa_with_tiling_sink_graph_load_and_success_by_insta
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   AttrUtils::SetStr(op_desc, ATTR_NAME_KERNEL_BIN_ID, "00_0_kernel");

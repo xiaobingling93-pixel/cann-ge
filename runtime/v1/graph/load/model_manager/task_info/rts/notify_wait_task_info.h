@@ -13,6 +13,7 @@
 
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/load/model_manager/davinci_model.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class NotifyWaitTaskInfo : public TaskInfo {
@@ -29,7 +30,7 @@ class NotifyWaitTaskInfo : public TaskInfo {
  private:
   Status SetNotifyHandleByEngine(const std::string &custom_group_name);
   OpDescPtr op_desc_;
-  rtNotify_t notify_{nullptr};
+  aclrtNotify notify_{nullptr};
   uint32_t op_index_{0U};
   DavinciModel *davinci_model_{nullptr};
 };
