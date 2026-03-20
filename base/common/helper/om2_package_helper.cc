@@ -266,7 +266,10 @@ Status Om2PackageHelper::SaveTbeKernels(std::shared_ptr<ZipArchiveWriter> &zip_w
   std::unordered_set<std::string> added_kernels;
   for (const auto &node : graph->GetNodes(graph->GetGraphUnknownFlag())) {
     std::string kernel_name;
-    (void)AttrUtils::GetStr(node->GetOpDesc(), kAttrKernelName, kernel_name);
+    const auto kernel_name_ptr = AttrUtils::GetStr(node->GetOpDesc(), kAttrKernelName);
+    if (kernel_name_ptr != nullptr) {
+      kernel_name = *kernel_name_ptr;
+    }
     const auto node_name = node->GetName();
     auto kernel_bin = tbe_kernel_store.FindKernel(kernel_name);
     if ((kernel_bin != nullptr) && (added_kernels.count(kernel_name) == 0)) {

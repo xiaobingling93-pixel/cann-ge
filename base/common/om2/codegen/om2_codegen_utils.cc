@@ -38,8 +38,11 @@ std::string Om2CodegenUtils::GetOpName(const OpDescPtr &op_desc) {
 
 ge::Status Om2CodegenUtils::GetMagic(const OpDescPtr &op_desc, std::string &magic) {
   std::string json_string;
-  GE_IF_BOOL_EXEC(AttrUtils::GetStr(op_desc, TVM_ATTR_NAME_MAGIC, json_string),
-                  GELOGI("[OM2] Get json_string of tvm_magic from op_desc."));
+  const std::string *json_string_ptr = AttrUtils::GetStr(op_desc, TVM_ATTR_NAME_MAGIC);
+  if (json_string_ptr != nullptr) {
+    GELOGI("[OM2] Get json_string of tvm_magic from op_desc.");
+    json_string = *json_string_ptr;
+  }
   static const std::unordered_map<std::string, std::string> rt_to_acl_magic = {
       {"RT_DEV_BINARY_MAGIC_ELF", "ACL_RT_BINARY_MAGIC_ELF_AICORE"},
       {"RT_DEV_BINARY_MAGIC_ELF_AIVEC", "ACL_RT_BINARY_MAGIC_ELF_VECTOR_CORE"},
@@ -70,7 +73,7 @@ bool Om2CodegenUtils::IsSupportedTask(ModelTaskType model_task_type) {
          model_task_type == ModelTaskType::MODEL_TASK_FUSION_END;
 }
 
-bool Om2CodegenUtils::RequireBinaryKernel(ModelTaskType model_task_type) {
+bool Om2CodegenUtils::RequireBinaryKernel(const ModelTaskType model_task_type) {
   return model_task_type == ModelTaskType::MODEL_TASK_KERNEL ||
          model_task_type == ModelTaskType::MODEL_TASK_ALL_KERNEL ||
          model_task_type == ModelTaskType::MODEL_TASK_VECTOR_KERNEL ||

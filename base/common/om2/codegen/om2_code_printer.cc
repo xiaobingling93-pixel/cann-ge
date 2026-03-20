@@ -11,6 +11,7 @@
 #include <fstream>
 #include "om2_code_printer.h"
 #include "common/checker.h"
+#include "graph_metadef/graph/utils/file_utils.h"
 
 namespace ge {
 
@@ -34,18 +35,21 @@ void Om2CodePrinter::InitDefaultFileInfo(const std::string &model_name, const st
 }
 
 Status Om2CodePrinter::WriteFiles(const std::string &target_path) {
+  const std::string real_target_path = RealPath(target_path.c_str());
+  GE_ASSERT_TRUE(!real_target_path.empty(), "[OM2] Failed to get real path for output directory: %s",
+                 target_path.c_str());
+  const std::string normalized_target_path =
+      (real_target_path.back() == '/') ? real_target_path : real_target_path + "/";
   for (const auto &generated_file_info : output_) {
     if (generated_file_info.file_name.empty()) {
       continue;
     }
-    const auto &file_path = target_path + generated_file_info.file_name;
+    const auto &file_path = normalized_target_path + generated_file_info.file_name;
     const auto &file_content = generated_file_info.content.str();
-    {
-      std::ofstream om2_file(file_path);
-      GE_ASSERT_TRUE(om2_file.good(), "Failed to open file: %s", file_path.c_str());
-      om2_file << file_content << std::endl;
-      GELOGI("[OM2] File %s is successfully written.", file_path.c_str());
-    }
+    std::ofstream om2_file(file_path);
+    GE_ASSERT_TRUE(om2_file.good(), "Failed to open file: %s", file_path.c_str());
+    om2_file << file_content << std::endl;
+    GELOGI("[OM2] File %s is successfully written.", file_path.c_str());
   }
   return SUCCESS;
 }

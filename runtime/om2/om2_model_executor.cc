@@ -319,7 +319,7 @@ ge::Status Om2ModelExecutor::Run(std::vector<gert::Tensor *> &inputs, std::vecto
   return impl_->Run(inputs, outputs);
 }
 
-ge::Status Om2ModelExecutor::RunAsync(void *stream, std::vector<gert::Tensor *> &inputs,
+ge::Status Om2ModelExecutor::RunAsync(void *const stream, std::vector<gert::Tensor *> &inputs,
                                       std::vector<gert::Tensor *> &outputs) const {
   return impl_->RunAsync(stream, inputs, outputs);
 }
@@ -395,7 +395,7 @@ std::unique_ptr<Om2ModelExecutor> LoadOm2ExecutorFromData(ge::ModelData &model_d
   return executor;
 }
 
-ge::Status IsOm2Model(const void *const data, const size_t size, bool &is_support) {
+ge::Status IsOm2Model(const void *data, size_t size, bool &is_support) {
   if (data == nullptr) {
     REPORT_PREDEFINED_ERR_MSG("E10001", std::vector<const char *>({"parameter", "value", "reason"}),
                                     std::vector<const char *>({"data", "nullptr", "Model data cannot be nullptr."}));

@@ -15,7 +15,6 @@
 #include "common/ge_visibility.h"
 #include "common/ge_common/ge_types.h"
 #include "graph/ge_tensor.h"
-#include "graph/tensor.h"
 
 namespace gert {
 class VISIBILITY_EXPORT Om2ModelExecutor {
@@ -30,7 +29,7 @@ class VISIBILITY_EXPORT Om2ModelExecutor {
 
   ge::Status Load(ge::ModelData &model_data) const;
   ge::Status Run(std::vector<gert::Tensor *> &inputs, std::vector<gert::Tensor *> &outputs) const;
-  ge::Status RunAsync(void *stream, std::vector<gert::Tensor *> &inputs, std::vector<gert::Tensor *> &outputs) const;
+  ge::Status RunAsync(void *const stream, std::vector<gert::Tensor *> &inputs, std::vector<gert::Tensor *> &outputs) const;
   ge::Status GetModelDescInfo(std::vector<ge::TensorDesc> &input_desc, std::vector<ge::TensorDesc> &output_desc,
                               bool new_model_desc = false) const;
   ge::Status GetModelAttrs(std::vector<std::string> &dynamic_output_shape) const;

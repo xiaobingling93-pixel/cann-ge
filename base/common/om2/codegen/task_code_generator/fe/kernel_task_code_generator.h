@@ -63,37 +63,38 @@ class KernelTaskCodeGenerator : public TaskCodeGenerator {
   Status AssembleAicpuArgsCode(TaskDistributionContext &context, const std::string iow_addr_var_name, const std::string args_var_name, std::string &aicpu_args_code);
   Status GenArgsCode(TaskDistributionContext &context);
   void AssembleLaunchKernelConfig(const OpDescPtr &op_desc, const domi::TaskDef &task_def,
-                                  Om2LaunchKernelParam &launch_param);
+                                  Om2LaunchKernelParam &launch_param) const;
   Status InitAicpuTaskExtInfo(uint8_t *ext_info, size_t ext_info_len, const OpDescPtr op_desc,
                               const domi::TaskDef &task_def, int32_t &session_info_offset);
   Status UpdateShapeAndType(const std::vector<int64_t> &dims, const DataType data_type,
                             AicpuShapeAndType &shape_and_type) const;
-  Status UpdateShapeAndType(const GeShape &shape, const DataType data_type, AicpuShapeAndType *const shape_and_type);
-  Status ParseArgsFormat(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder);
+  Status UpdateShapeAndType(const GeShape &shape, const DataType data_type, AicpuShapeAndType *const shape_and_type) const;
+  Status ParseArgsFormat(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder) const;
   size_t GetArgsSizeByFormat(const OpDescPtr op_desc, ArgsFormatInfo &args_format_holder) const;
-  size_t GetExtraArgsSize(const OpDescPtr &op_desc, const ccKernelType kernel_type, ArgsFormatInfo &args_format_holder);
+  size_t GetExtraArgsSize(const OpDescPtr &op_desc, const ccKernelType kernel_type,
+                          const ArgsFormatInfo &args_format_holder) const;
   Status GenInputOutputAddrByInstanceIndex(TaskDistributionContext &context, size_t inst_idx, bool is_input);
   Status GenWorkspaceAddr(TaskDistributionContext &context, int32_t ir_idx);
-  Status GenInputOutputAddr(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder, size_t ir_idx, bool is_input);
+  Status GenInputOutputAddr(TaskDistributionContext &context, const ArgsFormatInfo &args_format_holder, size_t ir_idx, bool is_input);
   Status GenArgsByArgsFormat(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder);
   void GenCustomValue(TaskDistributionContext &context, const uint64_t custom_value);
   void AppendPlaceholder(TaskDistributionContext &context);
   Status AssembleShapeInfoAddrs(TaskDistributionContext &context, const std::vector<ArgDesc> &dynamic_args_desc,
                                 const std::vector<size_t> &level2_addr_idx, ArgsFormatInfo &args_format_holder);
   void AppendIoAddrNodes(TaskDistributionContext &context, const AddrGenInfo &src, uint64_t args_len = kAddressLen);
-  Status CheckTaskSupport(TaskDistributionContext &context);
+  Status CheckTaskSupport(TaskDistributionContext &context) const;
   Status GetKernelTaskMeta(const domi::TaskDef &task_def, domi::KernelContext &kernel_context,
                            uint32_t &args_size, uint32_t &kernel_type) const;
-  std::string EmitLaunchConfigSetupCode(size_t op_index, const Om2LaunchKernelConfig &launch_config);
-  std::string SerializeBytesToOctalString(const std::vector<uint8_t> &buffer);
-  Status ParseExtShape(AicpuExtInfo &aicpu_ext_info, const uint32_t num_inputs,
+  std::string EmitLaunchConfigSetupCode(size_t op_index, const Om2LaunchKernelConfig &launch_config) const;
+  std::string SerializeBytesToOctalString(const std::vector<uint8_t> &buffer) const;
+  Status ParseExtShape(AicpuExtInfo &aicpu_ext_info, const uint32_t num_tensor,
     const std::string &node_name, const bool all_shape, const OpDescPtr &op_desc);
-  Status ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name);
-  Status ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name);
+  Status ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name) const;
+  Status ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name) const;
   Status ParseExtInfo(uint8_t *ext_info, const size_t ext_info_len, const OpDescPtr &op_desc,
     int32_t &session_info_offset, const uint32_t num_inputs, const uint32_t num_outputs, const std::string &node_name,
     const bool all_shape);
-  Status GenKernelTaskDistributeCode(TaskDistributionImplContext &context);
+  Status GenKernelTaskDistributeCode(TaskDistributionImplContext &context) const;
   Status GenTaskDistributionCodeForAicpu(TaskDistributionContext &context, const std::string &args_var_names,
     std::stringstream &code_stream, const std::string &kernel_name);
  private:

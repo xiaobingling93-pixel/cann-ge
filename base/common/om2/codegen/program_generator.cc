@@ -844,7 +844,8 @@ Status BuildOpInputEdges(const ComputeGraphPtr &compute_graph,
       if (peer_out_anchor == nullptr) {
         continue;
       }
-      NodePtr src_node = peer_out_anchor->GetOwnerNode();
+      Node *src_node = peer_out_anchor->GetOwnerNodeBarePtr();
+      GE_ASSERT_NOTNULL(src_node);
       const auto &src_op_desc = src_node->GetOpDesc();
       if (src_op_desc == nullptr) {
         continue;

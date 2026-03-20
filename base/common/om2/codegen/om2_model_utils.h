@@ -66,22 +66,22 @@ class Om2ModelUtils {
                                         size_t non_const_idx, const std::vector<int64_t> &input_offsets,
                                         std::string &input_ptr_name, std::vector<AstNode *> &input_nodes);
 
-  static Status ValidateInputMemTypeList(const TaskDistributionContext &context, bool has_mem_type_attr,
-                                         const std::vector<int64_t> &v_memory_type, size_t inputs_size);
-  static Status BuildSingleInputAddrNode(TaskDistributionContext &context, size_t input_idx,
+  static Status ValidateInputMemTypeList(const TaskDistributionContext &context, const bool has_mem_type_attr,
+                                         const std::vector<int64_t> &v_memory_type, const size_t inputs_size);
+  static Status BuildSingleInputAddrNode(TaskDistributionContext &context, const size_t input_idx,
                                          InputAddrBuildParams &params, AddrGenInfo &input_addr_node);
 
   static Status ValidateOutputAddrParams(TaskDistributionContext &context, const std::vector<int64_t> &v_output_offset,
-                                         size_t outputs_size, bool has_mem_type_attr,
+                                         const size_t outputs_size, const bool has_mem_type_attr,
                                          const std::vector<int64_t> &v_memory_type);
-  static Status BuildMaterializedOutputAddrNode(TaskDistributionContext &context, size_t output_idx,
+  static Status BuildMaterializedOutputAddrNode(TaskDistributionContext &context, const size_t output_idx,
                                                 const std::vector<int64_t> &v_output_offset,
                                                 const std::vector<int64_t> &v_memory_type,
                                                 AddrGenInfo &output_addr_node);
 
   static Status ValidateWorkspaceMemTypeParams(TaskDistributionContext &context,
                                                const WorkspaceMemTypeParams &params);
-  static Status BuildSingleWorkspaceAddrNode(TaskDistributionContext &context, size_t workspace_idx,
+  static Status BuildSingleWorkspaceAddrNode(TaskDistributionContext &context, const size_t workspace_idx,
                                              const WorkspaceAddrBuildParams &params, AddrGenInfo &workspace_addr_node);
 };
 } // namespace ge
