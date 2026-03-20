@@ -151,7 +151,8 @@ std::string GetOutputName(const NodePtr &src_node, uint32_t idx) {
         idx < ir_output_2_range.second.first + ir_output_2_range.second.second) {
       GE_ASSERT_TRUE(ir_output_2_range.first < ir_outputs.size());
       if (ir_outputs.at(ir_output_2_range.first).second == ge::IrOutputType::kIrOutputDynamic) {
-        return ir_outputs.at(ir_output_2_range.first).first + "[" + std::to_string(idx - ir_output_2_range.first) + "]";
+        return ir_outputs.at(ir_output_2_range.first).first + "[" +
+               std::to_string(idx - ir_output_2_range.second.first) + "]";
       }
     }
   }
@@ -160,6 +161,21 @@ std::string GetOutputName(const NodePtr &src_node, uint32_t idx) {
   auto out_name_iter = idx2name.find(idx);
   GE_ASSERT_TRUE(out_name_iter != idx2name.end());
   return out_name_iter->second;
+}
+
+bool GetDynamicOutputCount(const OpDescPtr &op_desc, uint32_t &dynamic_output_count) {
+  GE_ASSERT_NOTNULL(op_desc);
+  const auto &ir_outputs = op_desc->GetIrOutputs();
+  if (ir_outputs.size() != 1U || ir_outputs[0U].second != ge::IrOutputType::kIrOutputDynamic) {
+    return false;
+  }
+
+  std::map<size_t, std::pair<size_t, size_t>> ir_output_2_ranges;
+  GE_ASSERT_GRAPH_SUCCESS(ge::OpDescUtils::GetIrOutputDescRange(op_desc, ir_output_2_ranges));
+  const auto range_iter = ir_output_2_ranges.find(0U);
+  GE_ASSERT_TRUE(range_iter != ir_output_2_ranges.end());
+  dynamic_output_count = static_cast<uint32_t>(range_iter->second.second);
+  return true;
 }
 
 std::string GetPythonNodeNameByOriginName(const std::string &origin_name,
@@ -253,16 +269,26 @@ Status PythonCodeDumper::GenerateNodeCode(const NodePtr &node, std::ostream &out
   GE_ASSERT_NOTNULL(node);
   GELOGD("Start to gen node code for %s %s", node->GetNamePtr(), node->GetTypePtr());
   node_name_of_python_ = name_generator_->GenerateUniqueName(*node);
-  if (node->GetInDataNodesSize() == 0U) {
-    output_file << node_name_of_python_ << " = ascir.ops." << node->GetType() << "(" << "\"" << node->GetName() << "\""
-                << ", graph)" << std::endl;
-  } else {
-    // 有数据输入的节点，不需要graph的入参，通过连边时加入graph中
-    output_file << node_name_of_python_ << " = ascir.ops." << node->GetType() << "(" << "\"" << node->GetName() << "\""
-                << ")" << std::endl;
-  }
   auto op_desc = node->GetOpDesc();
   GE_ASSERT_NOTNULL(op_desc);
+  uint32_t dynamic_output_count = 0U;
+  const auto has_dynamic_output = GetDynamicOutputCount(op_desc, dynamic_output_count);
+  if (node->GetInDataNodesSize() == 0U) {
+    output_file << node_name_of_python_ << " = ascir.ops." << node->GetType() << "(" << "\"" << node->GetName()
+                << "\"";
+    if (has_dynamic_output) {
+      output_file << ", " << dynamic_output_count;
+    }
+    output_file << ", graph)" << std::endl;
+  } else {
+    // 有数据输入的节点，不需要graph的入参，通过连边时加入graph中
+    output_file << node_name_of_python_ << " = ascir.ops." << node->GetType() << "(" << "\"" << node->GetName()
+                << "\"";
+    if (has_dynamic_output) {
+      output_file << ", " << dynamic_output_count;
+    }
+    output_file << ")" << std::endl;
+  }
   auto &&node_attr_group = op_desc->GetOrCreateAttrsGroup<AscNodeAttr>();
   GE_ASSERT_NOTNULL(node_attr_group);
   if (!node_attr_group->sched.axis.empty()) {
@@ -355,16 +381,10 @@ Status PythonCodeDumper::GenerateTensorCode(const NodePtr &node, std::ostream &o
   GELOGD("Start to gen tensor code for %s %s", node->GetNamePtr(), node->GetTypePtr());
   auto op_desc = node->GetOpDesc();
   GE_ASSERT_NOTNULL(op_desc);
-  const auto &ir_outputs = op_desc->GetIrOutputs();
-  if (ir_outputs.size() != op_desc->GetAllOutputsDescSize()) {
-    GELOGW("%s %s has output ir size %zu but has out tensor desc size %zu", op_desc->GetNamePtr(),
-           op_desc->GetTypePtr(), ir_outputs.size(), op_desc->GetAllOutputsDescSize());
-    return SUCCESS;
-  }
 
-  size_t output_index = 0;
+  size_t output_index = 0U;
   for (const auto &tensor_desc : op_desc->GetAllOutputsDescPtr()) {
-    const auto &out_name = ir_outputs[output_index++].first;
+    const auto out_name = GetOutputName(node, static_cast<uint32_t>(output_index++));
     auto dtype = static_cast<ge::DataType>(tensor_desc->GetDataType());
     auto python_dtype = GenerateDataTypeCode(dtype);
     output_file << node_name_of_python_ << "." << out_name << ".dtype = " << python_dtype << std::endl;

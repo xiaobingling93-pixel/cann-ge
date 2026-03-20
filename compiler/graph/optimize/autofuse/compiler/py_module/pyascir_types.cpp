@@ -9,6 +9,9 @@
  */
 
 #include "pyascir.h"
+
+#include <algorithm>
+
 #include "ascir_ops.h"
 #include "ascir_ops_utils.h"
 #include "ascgen_log.h"
@@ -112,8 +115,97 @@ bool CollectInputDtypes(const ge::AscNodePtr &node, std::vector<ge::DataType> &i
   return true;
 }
 
+bool HasDynamicOutput(const ge::OpDescPtr &op_desc) {
+  const auto &ir_outputs = op_desc->GetIrOutputs();
+  return std::any_of(ir_outputs.begin(), ir_outputs.end(), [](const auto &output_def) {
+    return output_def.second == ge::IrOutputType::kIrOutputDynamic;
+  });
+}
+
+bool DoDynamicOutputInference(const ge::AscNodePtr &node, InferDtypeFunc infer_func,
+                              const std::vector<ge::DataType> &input_dtypes,
+                              std::vector<ge::DataType> &output_dtyps) {
+  auto op_desc = node->GetOpDesc();
+  PY_ASSERT_NOTNULL(op_desc, "op_desc is null!");
+  const auto &ir_outputs = op_desc->GetIrOutputs();
+  std::map<size_t, std::pair<size_t, size_t>> ir_output_2_range;
+  PY_ASSERT_GRAPH_SUCCESS(ge::OpDescUtils::GetIrOutputDescRange(op_desc, ir_output_2_range),
+                          "Op %s %s has invalid ir desc", op_desc->GetNamePtr(), op_desc->GetTypePtr());
+
+  bool has_complete_output_dtypes = true;
+  for (size_t ir_output_index = 0UL; ir_output_index < ir_outputs.size(); ++ir_output_index) {
+    const auto range_iter = ir_output_2_range.find(ir_output_index);
+    PY_ASSERT(range_iter != ir_output_2_range.end(), "Invalid ir_output_index: %zu", ir_output_index);
+
+    const auto start_index = range_iter->second.first;
+    const auto count = range_iter->second.second;
+    std::set<ge::DataType> unique_dtypes;
+    for (size_t output_index = start_index; output_index < start_index + count; ++output_index) {
+      PY_ASSERT(output_index < op_desc->GetOutputsSize(), "Invalid output index: %zu", output_index);
+      const auto dtype = node->outputs[output_index].attr.dtype;
+      if (dtype == ge::DT_UNDEFINED) {
+        has_complete_output_dtypes = false;
+        unique_dtypes.clear();
+        break;
+      }
+      unique_dtypes.insert(dtype);
+    }
+    if (!has_complete_output_dtypes) {
+      output_dtyps.clear();
+      break;
+    }
+    if (unique_dtypes.empty()) {
+      has_complete_output_dtypes = false;
+      output_dtyps.clear();
+      break;
+    }
+    PY_ASSERT(unique_dtypes.size() == 1U, "%s dynamic_output should have uniform dtypes",
+              op_desc->GetNamePtr());
+    output_dtyps.push_back(*unique_dtypes.begin());
+  }
+  if (!has_complete_output_dtypes) {
+    output_dtyps.clear();
+  }
+
+  std::string npu_arch;
+  PY_ASSERT_SUCCESS(ge::PlatformContext::GetInstance().GetCurrentPlatformString(npu_arch),
+                    "Failed to get npu_arch");
+
+  if (has_complete_output_dtypes) {
+    PY_ASSERT_SUCCESS(infer_func(input_dtypes, output_dtyps, npu_arch),
+                      "Check dtype failed for %s %s; input_dtypes: %s, output_dytpes: %s", node->GetNamePtr(),
+                      node->GetTypePtr(), ge::loop::StrJoin(input_dtypes).c_str(),
+                      ge::loop::StrJoin(output_dtyps).c_str());
+    return true;
+  }
+
+  PY_ASSERT_SUCCESS(infer_func(input_dtypes, output_dtyps, npu_arch),
+                    "Infer dtype failed for %s %s; input_dtypes: %s is not supportted now", node->GetNamePtr(),
+                    node->GetTypePtr(), ge::loop::StrJoin(input_dtypes).c_str(),
+                    ge::loop::StrJoin(output_dtyps).c_str());
+
+  PY_ASSERT_EQ(output_dtyps.size(), ir_outputs.size());
+  std::vector<ge::DataType> expanded_output_dtypes;
+  for (size_t ir_output_index = 0UL; ir_output_index < ir_outputs.size(); ++ir_output_index) {
+    const auto range_iter = ir_output_2_range.find(ir_output_index);
+    PY_ASSERT(range_iter != ir_output_2_range.end(), "Invalid ir_output_index: %zu", ir_output_index);
+    expanded_output_dtypes.insert(expanded_output_dtypes.end(), range_iter->second.second, output_dtyps[ir_output_index]);
+  }
+
+  PY_ASSERT_EQ(expanded_output_dtypes.size(), op_desc->GetOutputsSize());
+  for (size_t i = 0UL; i < expanded_output_dtypes.size(); ++i) {
+    op_desc->MutableOutputDesc(i)->SetDataType(expanded_output_dtypes[i]);
+  }
+  return true;
+}
+
 bool DoInference(const ge::AscNodePtr &node, InferDtypeFunc infer_func, const std::vector<ge::DataType> &input_dtypes,
                  std::vector<ge::DataType> &output_dtyps) {
+  auto op_desc = node->GetOpDesc();
+  PY_ASSERT_NOTNULL(op_desc, "op_desc is null!");
+  if (HasDynamicOutput(op_desc)) {
+    return DoDynamicOutputInference(node, infer_func, input_dtypes, output_dtyps);
+  }
   // 获取 npu_arch
   std::string npu_arch;
   PY_ASSERT_SUCCESS(ge::PlatformContext::GetInstance().GetCurrentPlatformString(npu_arch),
@@ -142,8 +234,6 @@ bool DoInference(const ge::AscNodePtr &node, InferDtypeFunc infer_func, const st
                     node->GetTypePtr(), ge::loop::StrJoin(input_dtypes).c_str(),
                     ge::loop::StrJoin(output_dtyps).c_str());
 
-  auto op_desc = node->GetOpDesc();
-  PY_ASSERT_NOTNULL(op_desc, "op_desc is null!");
   PY_ASSERT_EQ(output_dtyps.size(), op_desc->GetOutputsSize());
   for (size_t i = 0UL; i < output_dtyps.size(); ++i) {
     op_desc->MutableOutputDesc(i)->SetDataType(output_dtyps[i]);

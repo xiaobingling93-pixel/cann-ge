@@ -1082,6 +1082,75 @@ class TestAutofuseLoadConcatStore():
         schedule_results = fuser.schedule(hint_graph)
 
 
+class TestAutofuseLoadSplitStore():
+    @staticmethod
+    def construct_graph():
+        graph = ascir.HintGraph("LoadSplitStore")
+        s0 = graph.create_size("s0")
+        s1 = graph.create_size("s1")
+        z0 = graph.create_axis("z0", s0)
+        z1 = graph.create_axis("z1", s1 * 2)
+
+        data = ascir.ops.Data("data", graph)
+        data.y.dtype = ascir.dtypes.float16
+
+        load = ascir.ops.Load("load")
+        load.attr.sched.axis = [z0, z1]
+        load.x = data.y
+        load.y.axis = [z0, z1]
+        load.y.strides = [s1 * 2, ascir.SizeExpr(1)]
+        load.y.size = [s0, s1 * 2]
+        load.infer_dtype()
+
+        split = ascir.ops.Split("split", 2)
+        assert len(split.y) == 2
+        split.attr.sched.axis = [z0, z1]
+        split.x = load.y
+        for output in split.y:
+            output.axis = [z0, z1]
+            output.strides = [s1, ascir.SizeExpr(1)]
+            output.size = [s0, s1]
+        split.infer_dtype()
+        assert split.y[0].dtype == ascir.dtypes.float16
+        assert split.y[1].dtype == ascir.dtypes.float16
+
+        store0 = ascir.ops.Store("store0")
+        store0.attr.sched.axis = [z0, z1]
+        store0.x = split.y[0]
+        store0.y.axis = [z0, z1]
+        store0.y.strides = [s1, ascir.SizeExpr(1)]
+        store0.y.size = [s0, s1]
+
+        store1 = ascir.ops.Store("store1")
+        store1.attr.sched.axis = [z0, z1]
+        store1.x = split.y[1]
+        store1.y.axis = [z0, z1]
+        store1.y.strides = [s1, ascir.SizeExpr(1)]
+        store1.y.size = [s0, s1]
+
+        output0 = ascir.ops.Output("output0")
+        output0.attr.ir_attr.index = 0
+        output0.x = store0.y
+
+        output1 = ascir.ops.Output("output1")
+        output1.attr.ir_attr.index = 1
+        output1.x = store1.y
+
+        graph.infer_dtypes()
+        return graph
+
+    def test_construct_graph(self):
+        # Split currently resolves to the v35 registration in this build, which
+        # only supports v2 platforms such as 5102/3510.
+        ascir.utils.set_platform("5102")
+        try:
+            graph = self.construct_graph()
+            debug_graph = ascir.utils.debug_str(graph)
+            assert debug_graph != ""
+        finally:
+            ascir.utils.set_platform("2201")
+
+
 class TestWorkspaceOptimize():
     @staticmethod
     def construct_graph():
