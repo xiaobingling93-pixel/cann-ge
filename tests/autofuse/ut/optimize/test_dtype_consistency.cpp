@@ -1090,26 +1090,636 @@ TEST_F(TestDtypeConsistency, UnsupportedCastConversion) {
   EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
 }
 
-TEST_F(TestDtypeConsistency, TryMergeWithUpstreamCast) {
-  AscGraph graph("test_merge_upstream_multiple");
+// ============================================================================
+// 以下测试用例针对 Cast 合并的精度安全问题
+// ============================================================================
+
+// Test 29: 安全的有符号整数扩展合并 - int8 -> int16，下游需要 int16
+// 场景：load(int8) -> cast(int8->int16) -> mul(需要int16)
+// 由于 cast 的输出 int16 已经满足 mul 的需求，不会触发合并
+// 这个测试验证同类型时不触发合并逻辑
+TEST_F(TestDtypeConsistency, SafeIntWidening_NoMergeNeeded) {
+  AscGraph graph("test_safe_int_no_merge");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_INT16;
+
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_INT8}, {ge::DT_INT8}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_INT16, ge::DT_INT16}, {ge::DT_INT16}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_INT16}, {ge::DT_INT16}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(int8->int16) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_int8_to_int16 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_INT8 && node->outputs[0].attr.dtype == ge::DT_INT16) {
+          has_int8_to_int16 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_int8_to_int16);
+}
+
+// Test 30: 跨类别 Cast 合并测试 - int8 -> uint8 -> 下游需要 int16
+// 由于 int8->uint8 不保持值，不应合并为 int8->int16
+TEST_F(TestDtypeConsistency, CrossCategoryCast_ShouldInsertNewCast) {
+  AscGraph graph("test_cross_category_insert");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_INT8;
+
+  // 跨类别 cast：int8 -> uint8
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_UINT8;
+
+  // mul 需要 int16（与 cast1 输出的 uint8 不同）
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_INT8}, {ge::DT_INT8}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_INT16, ge::DT_INT16}, {ge::DT_INT16}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_INT16}, {ge::DT_INT16}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // 由于 int8->uint8 不保持值，不应该合并为 int8->int16
+  // 应该保留 cast1(int8->uint8) 并插入新的 cast(uint8->int16)
+  auto all_nodes = graph.GetAllNodes();
+  bool has_int8_to_int16 = false;
+  bool has_int8_to_uint8 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_INT8 && node->outputs[0].attr.dtype == ge::DT_INT16) {
+          has_int8_to_int16 = true;
+        }
+        if (node->inputs[0].attr.dtype == ge::DT_INT8 && node->outputs[0].attr.dtype == ge::DT_UINT8) {
+          has_int8_to_uint8 = true;
+        }
+      }
+    }
+  }
+  // 不应该有直接的 int8->int16（因为那意味着跨类别合并）
+  EXPECT_FALSE(has_int8_to_int16);
+}
+
+// Test 31: 安全的有符号整数扩展 - int16 -> int32，下游需要 int32
+// 场景：load(int16) -> cast(int16->int32) -> mul(需要int32)
+// cast1 的输出 int32 已经满足 mul 的需求，不会触发合并，保留 cast1
+TEST_F(TestDtypeConsistency, SafeIntWidening_CastPreserved) {
+  AscGraph graph("test_safe_int_widening");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_INT32;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_INT32;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_INT32;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_INT32;
+
+  // mul 需要 int32（与 cast1 输出的 int32 相同）
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_INT16}, {ge::DT_INT16}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_INT32, ge::DT_INT32}, {ge::DT_INT32}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_INT32}, {ge::DT_INT32}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(int16->int32) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_int16_to_int32 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_INT16 && node->outputs[0].attr.dtype == ge::DT_INT32) {
+          has_int16_to_int32 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_int16_to_int32);
+}
+
+// Test 32: 安全的浮点扩展 - fp32 -> fp64，下游需要 fp64
+// 场景：load(fp32) -> cast(fp32->fp64) -> mul(需要fp64)
+// cast1 的输出 fp64 已经满足 mul 的需求，不会触发合并，保留 cast1
+TEST_F(TestDtypeConsistency, SafeFloatWidening_F64_CastPreserved) {
+  AscGraph graph("test_safe_fp_widening_f64");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_DOUBLE;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_DOUBLE;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_DOUBLE;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_DOUBLE;
+
+  // mul 需要 fp64（与 cast1 输出的 fp64 相同）
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_DOUBLE, ge::DT_DOUBLE}, {ge::DT_DOUBLE}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_DOUBLE}, {ge::DT_DOUBLE}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(fp32->fp64) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_fp32_to_fp64 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_FLOAT && node->outputs[0].attr.dtype == ge::DT_DOUBLE) {
+          has_fp32_to_fp64 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_fp32_to_fp64);
+}
+
+// Test 33: 安全的浮点扩展合并 - fp16 -> fp32，下游需要 fp32（与 Test 17 类似）
+TEST_F(TestDtypeConsistency, SafeFloatWidening_NoMergeNeeded) {
+  AscGraph graph("test_safe_fp_no_merge");
 
   ge::ascir_op::Data data0("data0", graph);
   data0.ir_attr.SetIndex(0);
   data0.y.dtype = ge::DT_FLOAT16;
 
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_FLOAT16;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_FLOAT;
+
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_FLOAT16}, {ge::DT_FLOAT16}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_FLOAT, ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(fp16->fp32) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_fp16_to_fp32 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_FLOAT16 && node->outputs[0].attr.dtype == ge::DT_FLOAT) {
+          has_fp16_to_fp32 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_fp16_to_fp32);
+}
+
+// Test 34: 无符号整数扩展 - uint8 -> uint16，下游需要 uint16
+TEST_F(TestDtypeConsistency, SafeUnsignedWidening_NoMergeNeeded) {
+  AscGraph graph("test_safe_uint_no_merge");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_UINT16;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_UINT16;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_UINT16;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_UINT16;
+
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_UINT8}, {ge::DT_UINT8}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_UINT16, ge::DT_UINT16}, {ge::DT_UINT16}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_UINT16}, {ge::DT_UINT16}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(uint8->uint16) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_uint8_to_uint16 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_UINT8 && node->outputs[0].attr.dtype == ge::DT_UINT16) {
+          has_uint8_to_uint16 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_uint8_to_uint16);
+}
+
+// Test 35: BF16 扩展测试 - bf16 -> fp32，下游需要 fp32
+TEST_F(TestDtypeConsistency, BF16Widening_NoMergeNeeded) {
+  AscGraph graph("test_bf16_no_merge");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_BF16;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_BF16;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_FLOAT;
+
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_BF16}, {ge::DT_BF16}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_FLOAT, ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(bf16->fp32) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_bf16_to_fp32 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_BF16 && node->outputs[0].attr.dtype == ge::DT_FLOAT) {
+          has_bf16_to_fp32 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_bf16_to_fp32);
+}
+
+// Test 36: 安全合并场景 - int8 -> int16，下游需要 int16（与 Test 17 类似但用 int）
+// cast1 的输出 int16 已经满足 mul 的需求，保留 cast1
+TEST_F(TestDtypeConsistency, SafeInt8ToInt16_CastPreserved) {
+  AscGraph graph("test_safe_int8_to_int16");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_INT16;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_INT16;
+
+  // mul 需要 int16（与 cast1 输出的 int16 相同）
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_INT8}, {ge::DT_INT8}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_INT16, ge::DT_INT16}, {ge::DT_INT16}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_INT16}, {ge::DT_INT16}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(int8->int16) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_int8_to_int16 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_INT8 && node->outputs[0].attr.dtype == ge::DT_INT16) {
+          has_int8_to_int16 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_int8_to_int16);
+}
+
+// Test 37: 跨类别不应合并 - int8 -> uint8，下游需要 uint8
+// 不应该合并为 int8->uint8（已经是 int8->uint8，保持不变）
+TEST_F(TestDtypeConsistency, CrossCategoryCast_NotMergeToInt8) {
+  AscGraph graph("test_cross_no_merge_int8");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Cast cast1("cast1");
+  cast1.x = load.y;
+  cast1.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Mul mul("mul");
+  mul.x1 = cast1.y;
+  mul.x2 = cast1.y;
+  mul.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Store store("store");
+  store.x = mul.y;
+  store.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_UINT8;
+
+  // mul 需要 uint8（与 cast1 输出相同），不触发合并
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_INT8}, {ge::DT_INT8}});
+  mock_requirements.push_back({graph.FindNode("mul"), {ge::DT_UINT8, ge::DT_UINT8}, {ge::DT_UINT8}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_UINT8}, {ge::DT_UINT8}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+
+  // cast1(int8->uint8) 应该保留
+  auto all_nodes = graph.GetAllNodes();
+  bool has_int8_to_uint8 = false;
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_INT8 && node->outputs[0].attr.dtype == ge::DT_UINT8) {
+          has_int8_to_uint8 = true;
+        }
+      }
+    }
+  }
+  EXPECT_TRUE(has_int8_to_uint8);
+}
+
+// Test 38: FloorDiv chain with existing Cast nodes - FloorDiv needs FP32 processing
+// Graph: Load(FP16) -> FloorDiv(FP16) -> Cast(FP16->FP32) -> FloorDiv(FP32) -> Store(FP32)
+// FloorDiv_0 needs FP32, so Cast(FP16->FP32) is inserted before it
+// Existing Cast(FP16->FP32) can be reused for FloorDiv_1
+TEST_F(TestDtypeConsistency, FloorDivChainWithExistingCast) {
+  AscGraph graph("test_floordiv_cast_chain");
+
+  ge::ascir_op::Data data0("data0", graph);
+  data0.ir_attr.SetIndex(0);
+  data0.y.dtype = ge::DT_FLOAT16;
+
+  ge::ascir_op::Load load("load0");
+  load.x = data0.y;
+  load.y.dtype = ge::DT_FLOAT16;
+
+  // Scalar for FloorDiv divisor
+  ge::ascir_op::Scalar scalar0("scalar0", graph);
+  scalar0.y.dtype = ge::DT_FLOAT16;
+
+  ge::ascir_op::Broadcast broadcast0("broadcast0");
+  broadcast0.x = scalar0.y;
+  broadcast0.y.dtype = ge::DT_FLOAT16;
+
+  // FloorDiv_0: FP16 input, needs FP32 for computation
+  ge::ascir_op::FloorDiv floordiv0("floordiv0");
+  floordiv0.x1 = load.y;
+  floordiv0.x2 = broadcast0.y;
+  floordiv0.y.dtype = ge::DT_FLOAT16;
+
+  // Existing Cast: FP16 -> FP32
   ge::ascir_op::Cast cast0("cast0");
-  cast0.x = data0.y;
+  cast0.x = floordiv0.y;
   cast0.y.dtype = ge::DT_FLOAT;
 
-  // 手动添加一个 cast
-  ge::ascir_op::Cast cast1("cast1");
-  cast1.x = cast0.y;
-  cast1.y.dtype = ge::DT_INT64;
+  // Scalar for FloorDiv_1 divisor
+  ge::ascir_op::Scalar scalar1("scalar1", graph);
+  scalar1.y.dtype = ge::DT_FLOAT;
 
-  auto node0 = graph.FindNode("cast0");
-  auto node1 = graph.FindNode("cast1");
+  ge::ascir_op::Broadcast broadcast1("broadcast1");
+  broadcast1.x = scalar1.y;
+  broadcast1.y.dtype = ge::DT_FLOAT;
 
-  EXPECT_TRUE(optimize::DtypeConsistency::TryMergeWithUpstreamCast(graph, node0, node1, 0, DT_INT64));
+  // FloorDiv_1: needs FP32 (matches cast0 output)
+  ge::ascir_op::FloorDiv floordiv1("floordiv1");
+  floordiv1.x1 = cast0.y;
+  floordiv1.x2 = broadcast1.y;
+  floordiv1.y.dtype = ge::DT_FLOAT;
 
+  ge::ascir_op::Store store("store");
+  store.x = floordiv1.y;
+  store.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.y.dtype = ge::DT_FLOAT;
+
+  // Mock requirements: FloorDiv ops need FP32 for computation
+  std::vector<optimize::NodeDtypeRequirement> mock_requirements;
+  mock_requirements.push_back({graph.FindNode("load0"), {ge::DT_FLOAT16}, {ge::DT_FLOAT16}});
+  mock_requirements.push_back({graph.FindNode("broadcast0"), {ge::DT_FLOAT16}, {ge::DT_FLOAT16}});
+  mock_requirements.push_back({graph.FindNode("floordiv0"), {ge::DT_FLOAT, ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("cast0"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("broadcast1"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("floordiv1"), {ge::DT_FLOAT, ge::DT_FLOAT}, {ge::DT_FLOAT}});
+  mock_requirements.push_back({graph.FindNode("store"), {ge::DT_FLOAT}, {ge::DT_FLOAT}});
+
+  EXPECT_EQ(optimize::DtypeConsistency::ApplyDtypeConversions(graph, mock_requirements), ge::SUCCESS);
+  EXPECT_EQ(optimize::DtypeConsistency::CancelRedundantCast(graph), ge::SUCCESS);
+  EXPECT_EQ(optimize::ScheduleUtils::TopologicalSorting(graph), ge::SUCCESS);
+
+  // Verify:
+  // - FloorDiv_0 should have Cast before it (FP16->FP32) and after it (FP32->FP16 for cast0 input)
+  // - FloorDiv_1 should use cast0 output directly (already FP32)
+  auto all_nodes = graph.GetAllNodes();
+  size_t cast_count = 0;
+  bool floordiv0_is_float = false;
+  bool floordiv1_is_float = false;
+  bool has_fp16_to_fp32 = false;
+
+  for (const auto &node : all_nodes) {
+    if (ge::ops::IsOps<Cast>(node)) {
+      cast_count++;
+      auto in_anchor = node->GetInDataAnchor(0);
+      auto out_anchor = node->GetOutDataAnchor(0);
+      if (in_anchor != nullptr && in_anchor->GetPeerOutAnchor() != nullptr && out_anchor != nullptr &&
+          !out_anchor->GetPeerInDataAnchors().empty()) {
+        if (node->inputs[0].attr.dtype == ge::DT_FLOAT16 && node->outputs[0].attr.dtype == ge::DT_FLOAT) {
+          has_fp16_to_fp32 = true;
+        }
+      }
+    }
+    if (node->GetName() == "floordiv0") {
+      if (node->inputs[0].attr.dtype == ge::DT_FLOAT && node->outputs[0].attr.dtype == ge::DT_FLOAT) {
+        floordiv0_is_float = true;
+      }
+    }
+    if (node->GetName() == "floordiv1") {
+      if (node->inputs[0].attr.dtype == ge::DT_FLOAT && node->outputs[0].attr.dtype == ge::DT_FLOAT) {
+        floordiv1_is_float = true;
+      }
+    }
+  }
+
+  // FloorDiv_0 should be converted to FP32
+  EXPECT_TRUE(floordiv0_is_float);
+  // FloorDiv_1 is already FP32 (cast0 output)
+  EXPECT_TRUE(floordiv1_is_float);
+  // Should have FP16->FP32 cast
+  EXPECT_TRUE(has_fp16_to_fp32);
 }
+
 }  // namespace
