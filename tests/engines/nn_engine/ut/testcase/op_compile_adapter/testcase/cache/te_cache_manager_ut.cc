@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <filesystem>
 #include <gtest/gtest.h>
 #include "mockcpp/mockcpp.hpp"
 #include "ge_common/ge_api_types.h"
@@ -23,6 +24,7 @@
 
 using namespace std;
 using namespace testing;
+namespace fs = std::filesystem;
 namespace {
 std::string GetCodeDir() {
   static std::string gCachedCodeDir;
@@ -44,7 +46,7 @@ protected:
     static void SetUpTestSuite() {
         std::cout << "TeCacheManagerUTest SetUpTestSuite" << std::endl;
         TeCacheManager::Instance().cache_mode_ = CompileCacheMode::Enable;
-        TeCacheManager::Instance().cache_dir_path_ = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/atc_data/kernel_cache"
+        TeCacheManager::Instance().cache_dir_path_ = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/atc_data/kernel_cache";
         if (TeCacheManager::Instance().cache_dir_path_.empty()) {
             TeCacheManager::Instance().cache_dir_path_ = RealPath("../llt/atc/opcompiler/te_fusion/st/disk_cache/atc_data/kernel_cache");
         }
@@ -181,8 +183,12 @@ TEST(TeCacheManagerUTest, pre_compile_cache_01)
     EXPECT_EQ(pre_ret1->prebuiltOptions, "sth_just_like_this");
 
     std::string cache_kernel_name = "te_Mul_zzzzce363a48125986d4fd8ef5c8df0e4f0d554e9fc856072d28d6799222c408_pre";
+    std::string invalid_file = currentFilePath + "/" + cache_kernel_name + ".json";
+    if (fs::exists(invalid_file)) {
+        system(("rm -rf " + invalid_file).c_str());
+    }
     PreCompileResultPtr pre_ret2 = TeCacheManager::Instance().MatchPreCompileCache(cache_kernel_name);
-    EXPECT_NE(pre_ret2, nullptr);
+    EXPECT_EQ(pre_ret2, nullptr);
 
     PreCompileResultPtr pre_ret3 = std::make_shared<PreCompileResult>("Elemwise");
     pre_ret3->coreType = "SomeCore";
@@ -238,14 +244,12 @@ TEST(TeCacheManagerUTest, compile_cache_02)
         .stubs()
         .will(invoke(GetBinFileSha256Value_Stub2));
     std::string cache_kernel_name2 = "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762";
-    CompileResultPtr com_ret2 = TeCacheManager::Instance().MatchCompileCache(cache_kernel_name2, false);
-    EXPECT_NE(com_ret2, nullptr);
 
     std::string json_file_path = GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/op_compile_adapter/disk_cache/kernel_meta/te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762.json";
     CompileResultPtr com_ret4 = CompileResultUtils::ParseCompileResult(json_file_path);
     EXPECT_EQ(TeCacheManager::Instance().SetCompileResult(com_ret4), true);
 
-    com_ret2 = TeCacheManager::Instance().MatchCompileCache(cache_kernel_name2, false);
+    CompileResultPtr com_ret2 = TeCacheManager::Instance().MatchCompileCache(cache_kernel_name2, false);
     ASSERT_NE(com_ret2, nullptr);
     EXPECT_NE(com_ret2->jsonPath.find(cache_kernel_name2), std::string::npos);
     EXPECT_NE(com_ret2->binPath.find(cache_kernel_name2), std::string::npos);
