@@ -132,8 +132,9 @@ bash Ascend-cann-A3-ops_${cann_version}_linux-${arch}.run --install --quiet --in
 * `cann-udf-compat.tar.gz`会在业务启动时加载至Device，加载过程中默认会由驱动进行安全验签，确保包可信。
 * 开发者下载本仓源码自行编译产生`cann-udf-compat.tar.gz` 并不含签名头，为此需要关闭驱动安全验签的机制。
 * 关闭验签方式：
-  配套使用HDK 25.5.T2.B001或以上版本，并通过该HDK配套的npu-smi工具关闭验签。详见[设置自定义验签能力使能状态](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/3152813c?idPath=23710424|251366513|254884019|261408772|252764743), [设置验签模式](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/a484ba7b?idPath=23710424|251366513|254884019|261408772|252764743)命令文档，以root用户在物理机上执行。  
+  关闭验签功能依赖Ascend NPU驱动软件包（Ascend HDK 25.5.T2.B001或以上版本），可以通过该Ascend HDK配套的npu-smi工具查询版本和关闭验签，详见[查询基本信息](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/4a8adb57?idPath=23710424|251366513|254884019|261408772|252764743)，[设置自定义验签能力使能状态](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/3152813c?idPath=23710424|251366513|254884019|261408772|252764743)，[设置验签模式](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/a484ba7b?idPath=23710424|251366513|254884019|261408772|252764743)命令文档，需要以root用户在物理机上执行。  
   以device 0为例 （其中 -i 后面的参数是device id）：  
+  npu-smi info     # 查询基本信息，包含驱动版本  
   npu-smi set -t custom-op-secverify-enable -i ***0*** -d 1     # 使能自定义验签  
   npu-smi set -t custom-op-secverify-mode -i ***0*** -d 0      # 设置成"关闭验签模式"
 
