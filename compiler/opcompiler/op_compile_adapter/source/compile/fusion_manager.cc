@@ -959,7 +959,7 @@ bool TeFusionManager::DfsFindOuterInput(const ge::Node * curNode, size_t outputI
                        inputIdx, curNode->GetName().c_str());
             return false;
         }
-        TE_DBGLOG("This node: %s's relationMapPtr info：[%d-%d]", curNode->GetName().c_str(), outputIdx, inputIdx);
+        TE_DBGLOG("This node: %s's relationMapPtr info:[%d-%d]", curNode->GetName().c_str(), outputIdx, inputIdx);
         const auto &inAnchor = curNode->GetInDataAnchor(inputIdx);
         dfsRes = DfsFindOuterInputSingleAnchor(inAnchor, allNodes, curNode, outputIdx, dfsMaxCnt);
         if (dfsRes) {
