@@ -34,7 +34,8 @@ struct RunMemcpyCode {
 };
 
 Status AppendDataNodeMemcpyCode(const OpDescPtr &op_desc, const uint32_t input_data_index,
-                                RunMemcpyCode &run_memcpy_code, std::set<int64_t> &model_io_offsets) {
+                               const uint32_t update_host_args_index, RunMemcpyCode &run_memcpy_code,
+                               std::set<int64_t> &model_io_offsets) {
   uint32_t tmp_index = input_data_index;
   if (AttrUtils::GetInt(op_desc, ATTR_NAME_INDEX, tmp_index)) {
     GELOGD("[OM2] Get new index %u, old %u", tmp_index, input_data_index);
@@ -43,29 +44,29 @@ Status AppendDataNodeMemcpyCode(const OpDescPtr &op_desc, const uint32_t input_d
   GE_ASSERT_TRUE(!output_offsets.empty());
   model_io_offsets.emplace(output_offsets[0]);
 
-  const auto &addr_var_name = "dev_input" + std::to_string(input_data_index) + "_ptr";
   const auto &tensor_var_name = "input_data_" + std::to_string(input_data_index) + "_tensor";
-  run_memcpy_code.input_memcpy_sync << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, " << output_offsets[0]
-                                    << ");" << std::endl;
   run_memcpy_code.input_memcpy_sync << "  auto " << tensor_var_name << " = reinterpret_cast<gert::Tensor *>(input_data["
                                     << tmp_index << "]);" << std::endl;
-  run_memcpy_code.input_memcpy_sync << "  OM2_CHK_STATUS(aclrtMemcpy(" << addr_var_name << ", " << tensor_var_name
-                                    << "->GetSize(), " << tensor_var_name << "->GetAddr(), " << tensor_var_name
-                                    << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));" << std::endl;
 
-  run_memcpy_code.input_memcpy_async << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                     << output_offsets[0] << ");" << std::endl;
+  run_memcpy_code.input_memcpy_sync << "  OM2_CHK_STATUS(args_table_.UpdateHostArgs("
+                                    << update_host_args_index << ","
+                                    << " reinterpret_cast<uintptr_t>("
+                                    << tensor_var_name << "->GetAddr())));"
+                                    << std::endl;
   run_memcpy_code.input_memcpy_async << "  auto " << tensor_var_name
                                      << " = reinterpret_cast<gert::Tensor *>(input_data[" << tmp_index << "]);"
                                      << std::endl;
-  run_memcpy_code.input_memcpy_async << "  OM2_CHK_STATUS(aclrtMemcpyAsync(" << addr_var_name << ", " << tensor_var_name
-                                     << "->GetSize(), " << tensor_var_name << "->GetAddr(), " << tensor_var_name
-                                     << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));" << std::endl;
+
+  run_memcpy_code.input_memcpy_async << "  OM2_CHK_STATUS(args_table_.UpdateHostArgs("
+                                     << update_host_args_index << ","
+                                     << " reinterpret_cast<uintptr_t>("
+                                     << tensor_var_name << "->GetAddr())));"
+                                     << std::endl;
   return SUCCESS;
 }
 
-void AppendNetOutputMemcpyCode(const OpDescPtr &op_desc, uint32_t &output_data_index, RunMemcpyCode &run_memcpy_code,
-                               std::set<int64_t> &model_io_offsets) {
+void AppendNetOutputMemcpyCode(const OpDescPtr &op_desc, uint32_t &output_data_index, uint32_t &update_host_args_index,
+                               RunMemcpyCode &run_memcpy_code, std::set<int64_t> &model_io_offsets) {
   const auto input_offsets = op_desc->GetInputOffset();
   for (size_t i = 0U; i < op_desc->GetAllInputsSize(); ++i) {
     const GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(static_cast<uint32_t>(i));
@@ -73,44 +74,49 @@ void AppendNetOutputMemcpyCode(const OpDescPtr &op_desc, uint32_t &output_data_i
                     GELOGD("[OM2] Op: %s, Index: %zu, has no input", op_desc->GetName().c_str(), i);
                     continue);
     model_io_offsets.emplace(input_offsets[i]);
-    const auto &addr_var_name = "dev_output" + std::to_string(output_data_index) + "_ptr";
+
     const auto &tensor_var_name = "output_data_" + std::to_string(output_data_index) + "_tensor";
-    run_memcpy_code.output_memcpy_sync << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                       << input_offsets[i] << ");" << std::endl;
     run_memcpy_code.output_memcpy_sync << "  auto " << tensor_var_name
                                        << " = reinterpret_cast<gert::Tensor *>(output_data[" << output_data_index
                                        << "]);" << std::endl;
-    run_memcpy_code.output_memcpy_sync << "  OM2_CHK_STATUS(aclrtMemcpy(" << tensor_var_name << "->GetAddr(), "
-                                       << tensor_var_name << "->GetSize(), " << addr_var_name << ", " << tensor_var_name
-                                       << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));" << std::endl;
-
-    run_memcpy_code.output_memcpy_async << "  auto " << addr_var_name << " = GET_ADDR(total_dev_mem_ptr_, "
-                                        << input_offsets[i] << ");" << std::endl;
+    run_memcpy_code.output_memcpy_sync << "  OM2_CHK_STATUS(args_table_.UpdateHostArgs("
+                                       << update_host_args_index << ","
+                                       << " reinterpret_cast<uintptr_t>("
+                                       << tensor_var_name << "->GetAddr())));"
+                                       << std::endl;
     run_memcpy_code.output_memcpy_async << "  auto " << tensor_var_name
                                         << " = reinterpret_cast<gert::Tensor *>(output_data[" << output_data_index
                                         << "]);" << std::endl;
-    run_memcpy_code.output_memcpy_async << "  OM2_CHK_STATUS(aclrtMemcpyAsync(" << tensor_var_name << "->GetAddr(), "
-                                        << tensor_var_name << "->GetSize(), " << addr_var_name << ", " << tensor_var_name
-                                        << "->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));" << std::endl;
+    run_memcpy_code.output_memcpy_async << "  OM2_CHK_STATUS(args_table_.UpdateHostArgs("
+                                        << update_host_args_index << ","
+                                        <<" reinterpret_cast<uintptr_t>("
+                                        << tensor_var_name << "->GetAddr())));"
+                                        << std::endl;
     ++output_data_index;
+    ++update_host_args_index;
   }
 }
 
 Status CollectRunMemcpyCode(const ComputeGraphPtr &compute_graph, RunMemcpyCode &run_memcpy_code,
-                            std::set<int64_t> &model_io_offsets) {
+                           std::set<int64_t> &model_io_offsets, std::vector<ge::NodePtr> &data_nodes,
+                           std::vector<ge::NodePtr> &netoutput_nodes) {
   GE_ASSERT_NOTNULL(compute_graph);
   uint32_t input_data_index = 0U;
   uint32_t output_data_index = 0U;
+  uint32_t update_host_args_index = 0U;
   for (const auto &node : compute_graph->GetDirectNode()) {
     const auto &op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
     if (OpTypeUtils::IsDataNode(op_desc->GetType())) {
-      GE_ASSERT_SUCCESS(AppendDataNodeMemcpyCode(op_desc, input_data_index, run_memcpy_code, model_io_offsets));
+      GE_ASSERT_SUCCESS(AppendDataNodeMemcpyCode(op_desc, input_data_index, update_host_args_index, run_memcpy_code, model_io_offsets));
+      data_nodes.push_back(node);
       ++input_data_index;
+      ++update_host_args_index;
       continue;
     }
     if (OpTypeUtils::IsGraphOutputNode(op_desc->GetType())) {  // 当前考虑静态，模型中只有一个NETOUTPUT
-      AppendNetOutputMemcpyCode(op_desc, output_data_index, run_memcpy_code, model_io_offsets);
+      AppendNetOutputMemcpyCode(op_desc, output_data_index, update_host_args_index, run_memcpy_code, model_io_offsets);
+      netoutput_nodes.push_back(node);
     }
   }
   return SUCCESS;
@@ -128,11 +134,11 @@ void EmitRunEntryFunctionsCode(const RunMemcpyCode &run_memcpy_code, std::string
   }
 )";
   code << run_memcpy_code.input_memcpy_async.str();
+  code << run_memcpy_code.output_memcpy_async.str();
   code << R"(
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
 )";
-  code << run_memcpy_code.output_memcpy_async.str();
   code << R"(
   return ACL_SUCCESS;
 }
@@ -147,11 +153,11 @@ aclError Om2Model::Run(
   }
 )";
   code << run_memcpy_code.input_memcpy_sync.str();
+  code << run_memcpy_code.output_memcpy_sync.str();
   code << R"(
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
 )";
-  code << run_memcpy_code.output_memcpy_sync.str();
   code << R"(
   return ACL_SUCCESS;
 }
@@ -278,7 +284,42 @@ void EmitAicpuKernelTaskDistributeCode(std::stringstream &code) {
 )";
 }
 
-void EmitArgsTableMappings(const ge::ArgsInfo &args_info, std::stringstream &code_stream) {
+Status SortModeIoAddrOffsets(const std::vector<ge::NodePtr> &data_nodes,
+                  const std::vector<ge::NodePtr> &netoutput_nodes, std::vector<uint64_t> &sort_mode_io_addr_offsets) {
+  std::map<uint32_t, uint64_t> data_node_map;
+  for (const auto &node : data_nodes) {
+    const auto &op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    uint32_t data_node_attr_index;
+    if (!AttrUtils::GetInt(op_desc, ATTR_NAME_INDEX, data_node_attr_index)){
+      GELOGE(FAILED, "[OM2] Failed to get data node attr index, node=%s", node->GetName().c_str());
+      return FAILED;
+    }
+    const auto output_offsets = op_desc->GetOutputOffset();
+    GE_ASSERT_TRUE(!output_offsets.empty());
+    data_node_map.insert({data_node_attr_index, output_offsets[0]});
+  }
+  for (const auto& node : data_node_map) {
+    sort_mode_io_addr_offsets.push_back(node.second);
+  }
+
+  for (const auto &node : netoutput_nodes) {
+    const auto &op_desc = node->GetOpDesc();
+    GE_ASSERT_NOTNULL(op_desc);
+    const auto input_offsets = op_desc->GetInputOffset();
+    for (size_t i = 0U; i < op_desc->GetAllInputsSize(); ++i) {
+      const GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(static_cast<uint32_t>(i));
+      GE_IF_BOOL_EXEC(tensor_desc == nullptr,
+                      GELOGD("[OM2] Op: %s, Index: %zu, has no input", op_desc->GetName().c_str(), i);
+                      continue);
+      sort_mode_io_addr_offsets.push_back(input_offsets[i]);
+    }
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
+Status EmitArgsTableMappings(const ge::ArgsInfo &args_info, std::stringstream &code_stream,
+                           std::vector<ge::NodePtr> &data_nodes, std::vector<ge::NodePtr> &netoutput_nodes) {
   EMIT_CODE(code_stream, "  args_info_ = {");
   for (size_t i = 0UL; i < args_info.args_offset.size(); ++i) {
     EMIT_CODE(code_stream, "    {GetHostArgAddr(" + std::to_string(args_info.args_offset[i]) + "), GetDevArgAddr(" +
@@ -286,11 +327,26 @@ void EmitArgsTableMappings(const ge::ArgsInfo &args_info, std::stringstream &cod
                                std::to_string(args_info.args_sizes[i]) + "},");
   }
   EMIT_CODE(code_stream, "  };");
+
+  std::vector<uint64_t> sort_mode_io_addr_offsets;
+  GE_ASSERT_SUCCESS(SortModeIoAddrOffsets(data_nodes, netoutput_nodes, sort_mode_io_addr_offsets));
   EMIT_CODE(code_stream, "  iow_args_addrs_ = {");
-  for (size_t i = 0UL; i < args_info.io_addr_offset.size(); ++i) {
-    EMIT_CODE(code_stream, "    GetHostArgAddr(" + std::to_string(args_info.io_addr_offset[i]) + "),");
+  for (size_t i = 0UL; i < sort_mode_io_addr_offsets.size(); ++i) {
+    std::string code_output = "    {";
+    auto ranges = args_info.io_addr_offset_map.equal_range(sort_mode_io_addr_offsets.at(i));
+    bool is_first = true;
+    for (auto it = ranges.first; it != ranges.second; ++it) {
+      if (!is_first) {
+        code_output += ", ";
+      }
+      code_output += "GetHostArgAddr(" + std::to_string(it->second) + ")";
+      is_first = false;
+    }
+    EMIT_CODE(code_stream, code_output + "},");
   }
+
   EMIT_CODE(code_stream, "  };");
+  return ge::GRAPH_SUCCESS;
 }
 
 void EmitArgsTableMemberFunctionsCode(std::stringstream &code) {
@@ -316,6 +372,16 @@ void *Om2ArgsTable::GetHostArgAddr(size_t offset) {
     return nullptr;
   }
   return GET_ADDR(host_args_.data(), offset);
+}
+
+aclError Om2ArgsTable::UpdateHostArgs(size_t index, const uintptr_t addr) {
+ 	if (index >= iow_args_addrs_.size()) {
+ 	   return ACL_ERROR_FAILURE;
+ 	}
+  for (void* host_addr : iow_args_addrs_.at(index)) {
+     std::memcpy(host_addr, &addr, sizeof(addr));
+  }
+ 	return ACL_SUCCESS;
 }
 
 aclError Om2ArgsTable::CopyArgsToDevice() {
@@ -807,7 +873,7 @@ Status ProgramGenerator::GenArgsTableImpl(std::vector<AstNode *> &ast_nodes) {
     "  OM2_CHK_STATUS(aclrtMalloc(&dev_args_, args_size_, ACL_MEM_MALLOC_HUGE_FIRST));"));
   
   std::stringstream code_stream;
-  EmitArgsTableMappings(args_info_, code_stream);
+  GE_ASSERT_SUCCESS(EmitArgsTableMappings(args_info_, code_stream, data_nodes_, netoutput_nodes_));
   EMIT_CODE(code_stream, "  return ACL_SUCCESS;");
   EMIT_CODE(code_stream, "}");
   ast_nodes.push_back(RAW_CODE_STMT(ast_ctx_, code_stream.str()));
@@ -826,6 +892,8 @@ Status ProgramGenerator::Init(const GeModelPtr &model) {
   args_info_ = {};
   aicpu_task_num_ = 0U;
   model_io_offsets_.clear();
+  data_nodes_.clear();
+  netoutput_nodes_.clear();
 
   GE_ASSERT_NOTNULL(ge_model_);
   GE_ASSERT_SUCCESS(PrepareGraphData());
@@ -1002,13 +1070,14 @@ void ProgramGenerator::GenInterfaceHeaderOm2ArgsTableClass(Program &program) {
   ArgsInfo *GetArgsInfo(size_t index);
   void *GetDevArgAddr(size_t offset);
   void *GetHostArgAddr(size_t offset);
+  aclError UpdateHostArgs(size_t index, const uintptr_t addr);
   aclError CopyArgsToDevice();
  private:
   int64_t args_size_;
   std::vector<ArgsInfo> args_info_;
   std::vector<uint8_t> host_args_;
   void *dev_args_;
-  std::vector<void *> iow_args_addrs_;
+  std::vector<std::vector<void *>> iow_args_addrs_;
 };)";
   WriteInterfaceHeader(program, RAW_CODE_STMT(ast_ctx_, om2ArgsTableStr));
 }
@@ -1224,7 +1293,7 @@ Status ProgramGenerator::ProcessLoadTask(const size_t task_index, domi::TaskDef 
 Status ProgramGenerator::GenRunImpl(std::vector<AstNode *> &load_impl_code) {
   RunMemcpyCode run_memcpy_code;
   const auto compute_graph = ge_model_->GetGraph();
-  GE_ASSERT_SUCCESS(CollectRunMemcpyCode(compute_graph, run_memcpy_code, model_io_offsets_));
+  GE_ASSERT_SUCCESS(CollectRunMemcpyCode(compute_graph, run_memcpy_code, model_io_offsets_, data_nodes_, netoutput_nodes_));
   std::stringstream run_entry_code;
   EmitRunEntryFunctionsCode(run_memcpy_code, run_entry_code);
   load_impl_code.push_back(RAW_CODE_STMT(ast_ctx_, run_entry_code.str()));

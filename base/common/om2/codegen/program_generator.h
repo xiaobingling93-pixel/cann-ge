@@ -84,6 +84,8 @@ class ProgramGenerator {
   uint32_t aicpu_task_num_ = 0U;
   uint64_t args_table_index_ = 0U;
   std::set<int64_t> model_io_offsets_;
+  std::vector<ge::NodePtr> data_nodes_;
+  std::vector<ge::NodePtr> netoutput_nodes_;
 };
 }  // namespace ge
 

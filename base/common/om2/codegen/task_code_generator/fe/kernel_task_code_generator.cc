@@ -320,7 +320,7 @@ Status KernelTaskCodeGenerator::AssembleAicpuArgsCode(TaskDistributionContext &c
     auto ext_info = context.task_def.kernel().kernel_ext_info();
     context.args_info.args_sizes.push_back(args_size);
     context.args_info.args_offset.push_back(context.args_info.host_args_len);
-    // aicpu场景考虑一下什么时候在io_addr_offset记录model io地址
+    // aicpu场景考虑一下什么时候在io_addr_offsets记录model io地址
     context.args_info.host_args_len += args_size;
     auto ext_info_size = static_cast<size_t>(ext_info.size());
     GELOGD("[OM2] args size %u, ext info size %u.", args_size, ext_info_size);
@@ -914,7 +914,8 @@ void KernelTaskCodeGenerator::AppendIoAddrNodes(TaskDistributionContext &context
                                               src.nodes.cend());
   args_addr_nodes_.back().var_name = src.var_name;
   if (src.mem_type == Om2MemoryAppType::kMemoryTypeModelIo) {
-    context.args_info.io_addr_offset.push_back(context.args_info.host_args_len + host_args_offset_);
+    context.args_info.io_addr_offset_map.emplace(src.compile_state_io_addr_offset,
+                                                  context.args_info.host_args_len + host_args_offset_);
   }
   host_args_offset_ += args_len;
 }

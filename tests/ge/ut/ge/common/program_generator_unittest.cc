@@ -634,13 +634,14 @@ class Om2ArgsTable {
   ArgsInfo *GetArgsInfo(size_t index);
   void *GetDevArgAddr(size_t offset);
   void *GetHostArgAddr(size_t offset);
+  aclError UpdateHostArgs(size_t index, const uintptr_t addr);
   aclError CopyArgsToDevice();
  private:
   int64_t args_size_;
   std::vector<ArgsInfo> args_info_;
   std::vector<uint8_t> host_args_;
   void *dev_args_;
-  std::vector<void *> iow_args_addrs_;
+  std::vector<std::vector<void *>> iow_args_addrs_;
 };
 
 class Om2Model {
@@ -846,9 +847,9 @@ aclError Om2ArgsTable::Init() {
     {GetHostArgAddr(0), GetDevArgAddr(0), 168},
   };
   iow_args_addrs_ = {
-    GetHostArgAddr(0),
-    GetHostArgAddr(8),
-    GetHostArgAddr(16),
+    {GetHostArgAddr(0), GetHostArgAddr(8), GetHostArgAddr(16)},
+    {GetHostArgAddr(0), GetHostArgAddr(8), GetHostArgAddr(16)},
+    {GetHostArgAddr(0), GetHostArgAddr(8), GetHostArgAddr(16)},
   };
   return ACL_SUCCESS;
 }
@@ -875,6 +876,16 @@ void *Om2ArgsTable::GetHostArgAddr(size_t offset) {
     return nullptr;
   }
   return GET_ADDR(host_args_.data(), offset);
+}
+
+aclError Om2ArgsTable::UpdateHostArgs(size_t index, const uintptr_t addr) {
+ 	if (index >= iow_args_addrs_.size()) {
+ 	   return ACL_ERROR_FAILURE;
+ 	}
+  for (void* host_addr : iow_args_addrs_.at(index)) {
+     std::memcpy(host_addr, &addr, sizeof(addr));
+  }
+ 	return ACL_SUCCESS;
 }
 
 aclError Om2ArgsTable::CopyArgsToDevice() {
@@ -980,18 +991,15 @@ aclError Om2Model::RunAsync(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
 
   return ACL_SUCCESS;
 }
@@ -1004,18 +1012,15 @@ aclError Om2Model::Run(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
 
   return ACL_SUCCESS;
 }
@@ -1165,18 +1170,15 @@ aclError Om2Model::RunAsync(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
 
   return ACL_SUCCESS;
 }
@@ -1189,18 +1191,15 @@ aclError Om2Model::Run(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
 
   return ACL_SUCCESS;
 }
@@ -1419,18 +1418,15 @@ aclError Om2Model::RunAsync(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
 
   return ACL_SUCCESS;
 }
@@ -1443,18 +1439,15 @@ aclError Om2Model::Run(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
 
   return ACL_SUCCESS;
 }
@@ -1613,18 +1606,15 @@ aclError Om2Model::RunAsync(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecuteAsync(model_handle_, exe_stream));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpyAsync(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE, exe_stream));
 
   return ACL_SUCCESS;
 }
@@ -1637,18 +1627,15 @@ aclError Om2Model::Run(
   if (input_count != om2::INPUT_NUM || output_count != om2::OUTPUT_NUM) {
     return ACL_ERROR_FAILURE;
   }
-  auto dev_input0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
   auto input_data_0_tensor = reinterpret_cast<gert::Tensor *>(input_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input0_ptr, input_data_0_tensor->GetSize(), input_data_0_tensor->GetAddr(), input_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
-  auto dev_input1_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(0, reinterpret_cast<uintptr_t>(input_data_0_tensor->GetAddr())));
   auto input_data_1_tensor = reinterpret_cast<gert::Tensor *>(input_data[1]);
-  OM2_CHK_STATUS(aclrtMemcpy(dev_input1_ptr, input_data_1_tensor->GetSize(), input_data_1_tensor->GetAddr(), input_data_1_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(1, reinterpret_cast<uintptr_t>(input_data_1_tensor->GetAddr())));
+  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
+  OM2_CHK_STATUS(args_table_.UpdateHostArgs(2, reinterpret_cast<uintptr_t>(output_data_0_tensor->GetAddr())));
 
   OM2_CHK_STATUS(args_table_.CopyArgsToDevice());
   OM2_CHK_STATUS(aclmdlRIExecute(model_handle_, -1));
-  auto dev_output0_ptr = GET_ADDR(total_dev_mem_ptr_, 1024);
-  auto output_data_0_tensor = reinterpret_cast<gert::Tensor *>(output_data[0]);
-  OM2_CHK_STATUS(aclrtMemcpy(output_data_0_tensor->GetAddr(), output_data_0_tensor->GetSize(), dev_output0_ptr, output_data_0_tensor->GetSize(), ACL_MEMCPY_DEVICE_TO_DEVICE));
 
   return ACL_SUCCESS;
 }

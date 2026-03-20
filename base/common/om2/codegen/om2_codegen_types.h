@@ -41,7 +41,7 @@ struct Om2RuntimeParam {
 struct ArgsInfo {
   std::vector<uint64_t> args_sizes;
   std::vector<uint64_t> args_offset;
-  std::vector<uint64_t> io_addr_offset;
+  std::multimap<uint64_t, uint64_t> io_addr_offset_map; // mapping between compiled offset addr to host arg offset addr
   uint64_t host_args_len = 0U;
 };
 
@@ -77,6 +77,7 @@ struct AddrGenInfo {
   std::vector<AstNode *> nodes;
   std::string var_name;
   Om2MemoryAppType mem_type;
+  int64_t compile_state_io_addr_offset;
 };
 } // namespace ge
 
