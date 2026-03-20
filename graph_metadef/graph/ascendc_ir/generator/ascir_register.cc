@@ -147,6 +147,11 @@ AscirRegister &AscirRegister::Attr<float>(ge::AscendString &&name) {
 }
 
 template<>
+AscirRegister &AscirRegister::Attr<bool>(ge::AscendString &&name) {
+  return Attr(name.GetString(), "bool", "Bool");
+}
+
+template<>
 AscirRegister &AscirRegister::Attr<ge::DataType>(ge::AscendString &&name) {
   return Attr(name.GetString(), "ge::DataType", "Int");
 }

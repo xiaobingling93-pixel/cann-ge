@@ -252,7 +252,7 @@ CseVar LoadGatherOp::Compute(const LoopCtx &ctx) const {
   const TensorLoopDesc loop_desc_params(params_repeats, params_strides);
   const TensorLoopDesc loop_desc_indices(indices_repeats, indices_strides);
 
-  return Ops()->GatherLoad(buffer_params, buffer_indices, loop_desc_params, loop_desc_indices, axis_);
+  return Ops()->GatherLoad(buffer_params, buffer_indices, loop_desc_params, loop_desc_indices, axis_, negative_index_support_);
 }
 
 bool LoadGatherOp::InferDataType(const std::vector<DataType> &input_dtypes,

@@ -28,7 +28,7 @@ class OpOverrides {
   virtual CseVar Load(const std::string &buffer, const TensorLoopDesc &loop_desc,
                       const TensorLoopDesc &loaded_loop_desc, const Expression &offset) = 0;
   virtual CseVar GatherLoad(const std::string &params, const std::string &indices,
-              const TensorLoopDesc &loop_desc_params, const TensorLoopDesc &loop_desc_indices, int64_t axis) = 0;
+              const TensorLoopDesc &loop_desc_params, const TensorLoopDesc &loop_desc_indices, int64_t axis, bool negative_index_support) = 0;
   virtual CseVar Store(const std::string &buffer, const CseVar &src, const TensorLoopDesc &loop_desc,
                        const Expression &offset) = 0;
   virtual CseVar StoreReduction(const std::string &buffer, const CseVar &src, ReduceType reduce_type,

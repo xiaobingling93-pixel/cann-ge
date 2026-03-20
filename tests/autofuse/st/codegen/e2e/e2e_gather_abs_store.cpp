@@ -47,6 +47,7 @@ void GatherAbsStore_BeforeAutofuse(ge::AscGraph &graph) {
   gather.x2 = x2.y;
   gather.attr.sched.axis = {z1.id, z2.id};
   gather.ir_attr.SetAxis(0);
+  gather.ir_attr.SetNegative_index_support(false);
   gather.y.dtype = ge::DT_FLOAT;
   *gather.y.axis = {z1.id, z2.id};
   *gather.y.repeats = {s1, s2};

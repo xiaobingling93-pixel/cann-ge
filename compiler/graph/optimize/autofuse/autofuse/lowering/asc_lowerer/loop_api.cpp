@@ -210,7 +210,7 @@ LoopVar Load(const ge::InDataAnchorPtr &src) {
 }
 
 LoopVar GatherLoad(const ge::OutDataAnchorPtr &dst, const ge::InDataAnchorPtr &params,
-    const ge::InDataAnchorPtr &indices, int64_t axis) {
+    const ge::InDataAnchorPtr &indices, int64_t axis, bool negative_index_support) {
   std::vector<Expression> dims;
   GE_WARN_ASSERT(GetBufferShape(dst, dims) == GRAPH_SUCCESS,
     "Drop lower result of %s as it has no sym shape", BufferName(dst).c_str());
@@ -234,7 +234,7 @@ LoopVar GatherLoad(const ge::OutDataAnchorPtr &dst, const ge::InDataAnchorPtr &p
       BufferName(buffer).c_str());
   }
   GE_WARN_ASSERT(outputs.size() == inputs.size());
-  auto loop_var = LoopVar(std::make_shared<LoadGatherOp>(dst.get(), outputs, inputs, dims, axis));
+  auto loop_var = LoopVar(std::make_shared<LoadGatherOp>(dst.get(), outputs, inputs, dims, axis, negative_index_support));
   return loop_var;
 }
 

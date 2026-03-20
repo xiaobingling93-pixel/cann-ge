@@ -34,6 +34,7 @@ private:
   Status GetGatherCase(const Tensor &x1, std::string &result) const;
   ge::ComputeType compute_type;
   int64_t axis = 0;
+  bool negative_index_support = false;
 };
 }
 #endif // __AUTOFUSE_REG_GATHER_API_CALL_H__

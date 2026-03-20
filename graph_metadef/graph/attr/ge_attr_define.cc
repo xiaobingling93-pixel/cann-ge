@@ -933,6 +933,7 @@ const std::string ATTR_NAME_SPLIT_SHAPEN_ORIGIN_NAME = "_split_shapen_origin_nam
 const std::string GATHERV2_ATTR_NAME_TAXIS = "Taxis";
 const std::string GATHERV2_ATTR_NAME_TINDICES = "Tindices";
 const std::string GATHERV2_ATTR_NAME_TPARAMS = "Tparams";
+const std::string GATHERV2_ATTR_NAME_NEGATIVE_INDEX_SUPPORT = "negative_index_support";
 
 //  Reshape attr def
 const std::string RESHAPE_ATTR_NAME_INPUT_DESC = "input_desc_reshape";

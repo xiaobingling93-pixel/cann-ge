@@ -697,6 +697,7 @@ REG_ASC_IR(Gather)
     .DataType("T1", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_BF16, DT_FLOAT})
     .DataType("T2", TensorType{DT_INT32, DT_INT64})
     .Attr<int64_t>("axis")
+    .Attr<bool>("negative_index_support")
     .ComputeType(ge::ComputeType::kComputeGather)
     .Impl(v1_soc_versions,
           {ge::ascir::AscIrImplCreator<ge::ascir::GatherAscIrAttImpl>(),

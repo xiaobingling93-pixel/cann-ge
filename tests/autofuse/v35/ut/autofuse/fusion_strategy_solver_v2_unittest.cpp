@@ -1068,6 +1068,7 @@ class UtestFusionStrategySolverV2 : public testing::Test {
     gather.x1 = {x1.y};
     gather.x2 = {x2.y};
     gather.ir_attr.SetAxis(1);
+  gather.ir_attr.SetNegative_index_support(false);
     gather.attr.sched.axis = {a.id, b.id, c.id, d.id, e.id};
     *gather.y.axis = {a.id, b.id, c.id, d.id, e.id};
     *gather.y.repeats = {A, B, C, D, E};
@@ -1131,6 +1132,7 @@ class UtestFusionStrategySolverV2 : public testing::Test {
     gather.x1 = {x1.y};
     gather.x2 = {x2.y};
     gather.ir_attr.SetAxis(1);
+  gather.ir_attr.SetNegative_index_support(false);
     gather.attr.sched.axis = {a.id, b.id, c.id, d.id, e.id};
     *gather.y.axis = {a.id, b.id, c.id, d.id, e.id};
     *gather.y.repeats = {A, B, C, D, ONE};

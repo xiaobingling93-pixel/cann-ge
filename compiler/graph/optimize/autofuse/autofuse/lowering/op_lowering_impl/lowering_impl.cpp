@@ -870,8 +870,13 @@ graphStatus LowerGather(const NodePtr &node) {
   int64_t op_impl_mode = -1L;
   int64_t batch_dims = -1L;
   int64_t input_nums = 0L;
+  bool negative_index_support = false;
   ge::AttrUtils::GetInt(gather_op_desc, "_op_impl_mode_enum", op_impl_mode);
   ge::AttrUtils::GetInt(gather_op_desc, "batch_dims", batch_dims);
+  ge::AttrUtils::GetBool(gather_op_desc, "negative_index_support", negative_index_support);
+  GE_WARN_ASSERT(negative_index_support == false || op_impl_mode != gather_mode_two,
+                 "Skip lowering node %s, as: Gather with negative_index_support must be in high_precision mode, not high_performance mode",
+                 node->GetNamePtr());
   GE_WARN_ASSERT(op_impl_mode != gather_mode_two, "Skip lowering node %s, as: Gather is in high_performance mode",
                  node->GetNamePtr());
   GE_WARN_ASSERT(batch_dims == 0, "Skip lowering node %s, as: Batch dims is not 0", node->GetNamePtr());
@@ -885,7 +890,7 @@ graphStatus LowerGather(const NodePtr &node) {
   }
 
   if (input_nums == gather_data_num_two) {  // lowering for Gather
-    auto loop_var = loop::GatherLoad(node->GetOutDataAnchor(0), node->GetInDataAnchor(0), node->GetInDataAnchor(1), 0);
+    auto loop_var = loop::GatherLoad(node->GetOutDataAnchor(0), node->GetInDataAnchor(0), node->GetInDataAnchor(1), 0, negative_index_support);
     (void)loop::Store(node->GetOutDataAnchor(0), loop_var).Realize();
   } else if (input_nums == gather_data_num_three) {  // lowering for GatherV2
     auto node_axis = node->GetInDataAnchor(2)->GetPeerOutAnchor();
@@ -906,11 +911,10 @@ graphStatus LowerGather(const NodePtr &node) {
                    axis[0], params_dims.size());
     const auto backend_spec = optimize::BackendSpec::GetInstance();
     GE_CHECK_NOTNULL(backend_spec);
-    GE_WARN_ASSERT(backend_spec->gather_spec.enable_non_tail_gather ||
-      axis[0] + 1 == static_cast<int64_t>(params_dims.size()),
+    GE_WARN_ASSERT(backend_spec->gather_spec.enable_non_tail_gather || axis[0] + 1 == static_cast<int64_t>(params_dims.size()),
              "Skip lowering node %s, as: Is not last dim gather", node->GetNamePtr());
     auto loop_var =
-        loop::GatherLoad(node->GetOutDataAnchor(0), node->GetInDataAnchor(0), node->GetInDataAnchor(1), axis[0]);
+        loop::GatherLoad(node->GetOutDataAnchor(0), node->GetInDataAnchor(0), node->GetInDataAnchor(1), axis[0], negative_index_support);       
     (void)loop::Store(node->GetOutDataAnchor(0), loop_var).Realize();
   }
   return GRAPH_SUCCESS;

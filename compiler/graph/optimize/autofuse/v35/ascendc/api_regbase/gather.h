@@ -176,42 +176,48 @@ inline __aicore__ void CommonCalOffset(uint32_t &dst_p, INDEX_SIZE_T &param_offs
   }
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase1(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset) {
   T2 param_offset = x2_gm[y_offset];
-  if (unlikely(param_offset < 0)) {
-    param_offset += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(param_offset < 0)) {
+      param_offset += x1_gather_dim_size;
+    }
   }
   dst[dst_p] = param_offset < 0 || param_offset >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase2(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x1_gather_dim_stride_m, const INDEX_SIZE_T &x1_gather_dim_stride_shift, const INDEX_SIZE_T &x1_gather_dim_stride) {
   INDEX_SIZE_T index_idx = Simt::UintDiv(y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift);
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset = index_value * x1_gather_dim_stride + (y_offset - index_idx * x1_gather_dim_stride);
   CommonCalOffset<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst_p, param_offset);
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase3(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x2_tensor_size_m, const INDEX_SIZE_T &x2_tensor_size_shift, const INDEX_SIZE_T &x2_tensor_size) {
   INDEX_SIZE_T tmp = Simt::UintDiv(y_offset, x2_tensor_size_m, x2_tensor_size_shift);
   INDEX_SIZE_T index_idx = y_offset - tmp * x2_tensor_size;
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset = tmp * x1_gather_dim_size + index_value;
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase4(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x2_tensor_size_m, const INDEX_SIZE_T &x2_tensor_size_shift, const INDEX_SIZE_T &x2_tensor_size,
                                   const INDEX_SIZE_T &x1_gather_dim_stride_m, const INDEX_SIZE_T &x1_gather_dim_stride_shift, const INDEX_SIZE_T &x1_gather_dim_stride) {
@@ -219,8 +225,10 @@ inline __aicore__ void CopyInCase4(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2
   INDEX_SIZE_T tmp1 = Simt::UintDiv(tmp, x2_tensor_size_m, x2_tensor_size_shift);
   INDEX_SIZE_T index_idx = tmp - tmp1 * x2_tensor_size;
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset =  tmp1 * x1_gather_dim_size * x1_gather_dim_stride + index_value * \
          x1_gather_dim_stride + (y_offset - tmp * x1_gather_dim_stride);
@@ -228,7 +236,7 @@ inline __aicore__ void CopyInCase4(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, uint32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, uint32_t SRC_NUMBER, bool negative_index_support>
 __simt_vf__ __aicore__ LAUNCH_BOUND(THREAD_NUMBER) inline void GatherSimt(__ubuf__ T1 *dst, __gm__ T1 *x1_gm, __gm__ T2 *x2_gm,
                                                       uint32_t ub_actual_size, INDEX_SIZE_T offset,
                                                       INDEX_SIZE_T x1_gather_dim_size,
@@ -246,57 +254,63 @@ __simt_vf__ __aicore__ LAUNCH_BOUND(THREAD_NUMBER) inline void GatherSimt(__ubuf
                                                                             PASS_VECTORIZED_AXIS_PARAMS_SIMT(5), PASS_VECTORIZED_AXIS_PARAMS_SIMT(6),
                                                                             PASS_VECTORIZED_AXIS_PARAMS_SIMT(7), PASS_VECTORIZED_AXIS_PARAMS_SIMT(8));
       if constexpr (CASE == CASE1) {
-        CopyInCase1<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset);
+        CopyInCase1<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset);
       }
       if constexpr (CASE == CASE2) {
-        CopyInCase2<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
+        CopyInCase2<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
       }
       if constexpr (CASE == CASE3) {
-        CopyInCase3<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size);
+        CopyInCase3<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size);
       }
       if constexpr (CASE == CASE4) {
-        CopyInCase4<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size,
+        CopyInCase4<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size,
                                                       x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
       }
     }
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase1ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset) {
   T2 param_offset = x2_gm[y_offset];
-  if (unlikely(param_offset < 0)) {
-    param_offset += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(param_offset < 0)) {
+      param_offset += x1_gather_dim_size;
+    }
   }
   dst[dst_p] = param_offset < 0 || param_offset >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase2ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x1_gather_dim_stride_m, const INDEX_SIZE_T &x1_gather_dim_stride_shift, const INDEX_SIZE_T &x1_gather_dim_stride) {
   INDEX_SIZE_T index_idx = Simt::UintDiv(y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift);
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset = index_value * x1_gather_dim_stride + (y_offset - index_idx * x1_gather_dim_stride);
   CommonCalOffset<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst_p, param_offset);
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase3ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x2_tensor_size_m, const INDEX_SIZE_T &x2_tensor_size_shift, const INDEX_SIZE_T &x2_tensor_size) {
   INDEX_SIZE_T tmp = Simt::UintDiv(y_offset, x2_tensor_size_m, x2_tensor_size_shift);
   INDEX_SIZE_T index_idx = y_offset - tmp * x2_tensor_size;
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset = tmp * x1_gather_dim_size + index_value;
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t SRC_NUMBER, bool negative_index_support>
 inline __aicore__ void CopyInCase4ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x1_gm, __gm__ T2 *x2_gm, uint32_t dst_p, const INDEX_SIZE_T & x1_gather_dim_size, const INDEX_SIZE_T &y_offset,
                                   const INDEX_SIZE_T &x2_tensor_size_m, const INDEX_SIZE_T &x2_tensor_size_shift, const INDEX_SIZE_T &x2_tensor_size,
                                   const INDEX_SIZE_T &x1_gather_dim_stride_m, const INDEX_SIZE_T &x1_gather_dim_stride_shift, const INDEX_SIZE_T &x1_gather_dim_stride) {
@@ -304,8 +318,10 @@ inline __aicore__ void CopyInCase4ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x
   INDEX_SIZE_T tmp1 = Simt::UintDiv(tmp, x2_tensor_size_m, x2_tensor_size_shift);
   INDEX_SIZE_T index_idx = tmp - tmp1 * x2_tensor_size;
   T2 index_value = x2_gm[index_idx];
-  if (unlikely(index_value < 0)) {
-    index_value += x1_gather_dim_size;
+  if constexpr (negative_index_support) {
+    if (unlikely(index_value < 0)) {
+      index_value += x1_gather_dim_size;
+    }
   }
   INDEX_SIZE_T param_offset =  tmp1 * x1_gather_dim_size * x1_gather_dim_stride + index_value * \
          x1_gather_dim_stride + (y_offset - tmp * x1_gather_dim_stride);
@@ -313,7 +329,7 @@ inline __aicore__ void CopyInCase4ParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x
   dst[dst_p] = index_value < 0 || index_value >= x1_gather_dim_size ? 0 : x1_gm[param_offset];
 }
 
-template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, uint32_t SRC_NUMBER>
+template <typename T1, typename T2, typename INDEX_SIZE_T, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, uint32_t SRC_NUMBER, bool negative_index_support>
 __simt_vf__ __aicore__ LAUNCH_BOUND(THREAD_NUMBER) inline void GatherSimtParamFullLoad(__ubuf__ T1 *dst, __ubuf__ T1 *x1_gm, __gm__ T2 *x2_gm,
                                                       uint32_t ub_actual_size, INDEX_SIZE_T offset,
                                                       INDEX_SIZE_T x1_gather_dim_size,
@@ -331,23 +347,23 @@ __simt_vf__ __aicore__ LAUNCH_BOUND(THREAD_NUMBER) inline void GatherSimtParamFu
                                                                             PASS_VECTORIZED_AXIS_PARAMS_SIMT(5), PASS_VECTORIZED_AXIS_PARAMS_SIMT(6),
                                                                             PASS_VECTORIZED_AXIS_PARAMS_SIMT(7), PASS_VECTORIZED_AXIS_PARAMS_SIMT(8));
       if constexpr (CASE == CASE1) {
-        CopyInCase1ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset);
+        CopyInCase1ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset);
       }
       if constexpr (CASE == CASE2) {
-        CopyInCase2ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
+        CopyInCase2ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
       }
       if constexpr (CASE == CASE3) {
-        CopyInCase3ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size);
+        CopyInCase3ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size);
       }
       if constexpr (CASE == CASE4) {
-        CopyInCase4ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size,
+        CopyInCase4ParamFullLoad<T1, T2, INDEX_SIZE_T, SRC_NUMBER, negative_index_support>(dst, x1_gm, x2_gm, dst_p, x1_gather_dim_size, y_offset, x2_tensor_size_m, x2_tensor_size_shift, x2_tensor_size,
                                                       x1_gather_dim_stride_m, x1_gather_dim_stride_shift, x1_gather_dim_stride);
       }
     }
 }
 
 /**************************************************************************************** 模板1 通用SIMT模板 *********************************************************************/
-template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE>
+template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, bool negative_index_support>
 inline __aicore__ void GatherExtendDefault(AscendC::LocalTensor<T1> &dst, const AscendC::GlobalTensor<T1> &src1, const AscendC::GlobalTensor<T2> &src2,
                               uint32_t ub_actual_size,uint64_t offset,
                               uint32_t x2_tensor_size, uint32_t x1_gather_dim_size, uint32_t x1_gather_dim_stride,
@@ -376,7 +392,7 @@ inline __aicore__ void GatherExtendDefault(AscendC::LocalTensor<T1> &dst, const 
                                                         PASS_VECTORIZED_AXIS_MAGIC_SHIFT_PARAMS(4), PASS_VECTORIZED_AXIS_MAGIC_SHIFT_PARAMS(5), PASS_VECTORIZED_AXIS_MAGIC_SHIFT_PARAMS(6),
                                                         PASS_VECTORIZED_AXIS_MAGIC_SHIFT_PARAMS(7), PASS_VECTORIZED_AXIS_MAGIC_SHIFT_PARAMS(8));
   int32_t event_id_v_to_mte3 = static_cast<int32_t>(GetTPipePtr()->FetchEventID(AscendC::HardEvent::V_MTE3));
-  AscendC::Simt::VF_CALL<GatherSimt<T1, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, 1>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, x1_gm, x2_gm, ub_actual_size,
+  AscendC::Simt::VF_CALL<GatherSimt<T1, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, 1, negative_index_support>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, x1_gm, x2_gm, ub_actual_size,
                 static_cast<uint32_t>(offset), static_cast<uint32_t>(x1_gather_dim_size),
                 static_cast<uint32_t>(x2_tensor_size_m), static_cast<uint32_t>(x2_tensor_size_shift), static_cast<uint32_t>(x2_tensor_size),
                 static_cast<uint32_t>(x1_gather_dim_stride_m), static_cast<uint32_t>(x1_gather_dim_stride_shift), static_cast<uint32_t>(x1_gather_dim_stride),
@@ -435,56 +451,53 @@ inline __aicore__ void DataCopySimdSimt(AscendC::LocalTensor<T1> &dst, const Asc
   }
 }
 
-template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE>
+template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, bool negative_index_support>
 inline __aicore__ void GatherExtendDataCopy(AscendC::LocalTensor<T1> &dst, const AscendC::GlobalTensor<T1> &src1, const AscendC::GlobalTensor<T2> &src2,
-                              uint32_t ub_actual_size,uint64_t offset,
-                              uint64_t x2_tensor_size, uint64_t x1_gather_dim_size, uint64_t x1_gather_dim_stride,
+                              uint32_t ub_actual_size,uint64_t offset,uint64_t x2_tensor_size, uint64_t x1_gather_dim_size, uint64_t x1_gather_dim_stride,
                               DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(1), DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(2),
                               DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(3), DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(4),
                               DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(5), DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(6),
                               DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(7), DECLARE_VECTORIZED_AXIS_PARAMS_SIMD(8)) {
-      uint64_t index_idx_from = (offset / x1_gather_dim_stride) % x2_tensor_size;
-      uint64_t index_idx_to = ((offset+ub_actual_size - 1) / x1_gather_dim_stride) % x2_tensor_size;
-      uint64_t pre_gather_idx_from =  (offset / x1_gather_dim_stride) / x2_tensor_size;
-      uint64_t pre_gather_idx_to =  ((offset+ub_actual_size - 1) / x1_gather_dim_stride) / x2_tensor_size;
-      if(pre_gather_idx_from == pre_gather_idx_to && index_idx_from < index_idx_to){
+    uint64_t index_idx_from = (offset / x1_gather_dim_stride) % x2_tensor_size;
+    uint64_t index_idx_to = ((offset+ub_actual_size - 1) / x1_gather_dim_stride) % x2_tensor_size;
+    uint64_t pre_gather_idx_from =  (offset / x1_gather_dim_stride) / x2_tensor_size;
+    uint64_t pre_gather_idx_to =  ((offset+ub_actual_size - 1) / x1_gather_dim_stride) / x2_tensor_size;
+    if(pre_gather_idx_from == pre_gather_idx_to && index_idx_from < index_idx_to){
         uint64_t back_gather_idx_first = offset % x1_gather_dim_stride;
         uint64_t back_gather_idx_last = (offset + ub_actual_size - 1) % x1_gather_dim_stride;
         uint64_t dst_p = 0;
         T2 index_value = src2.GetValue(index_idx_from);
-        index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value;
+        if constexpr (negative_index_support) { index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value; }
         bool is_out = index_value < 0 || index_value >= x1_gather_dim_size;
         uint64_t param_offset = pre_gather_idx_from * x1_gather_dim_size * x1_gather_dim_stride + index_value * x1_gather_dim_stride + back_gather_idx_first;
         DataCopySimdSimt<T1>(dst, src1, 0, param_offset, x1_gather_dim_stride - back_gather_idx_first, is_out);
         dst_p += (x1_gather_dim_stride - back_gather_idx_first);
         for (int i = index_idx_from + 1; i < index_idx_to; i++) {
-          index_value = src2.GetValue(i);
-          index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value;
-          is_out = index_value < 0 || index_value >= x1_gather_dim_size;
-          param_offset = pre_gather_idx_from * x1_gather_dim_size * x1_gather_dim_stride + index_value * x1_gather_dim_stride;
-          DataCopySimdSimt<T1>(dst, src1, dst_p, param_offset, x1_gather_dim_stride, is_out);
-          dst_p += x1_gather_dim_stride;
+            index_value = src2.GetValue(i);
+            if constexpr (negative_index_support) { index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value; }
+            is_out = index_value < 0 || index_value >= x1_gather_dim_size;
+            param_offset = pre_gather_idx_from * x1_gather_dim_size * x1_gather_dim_stride + index_value * x1_gather_dim_stride;
+            DataCopySimdSimt<T1>(dst, src1, dst_p, param_offset, x1_gather_dim_stride, is_out);
+            dst_p += x1_gather_dim_stride;
         }
         index_value = src2.GetValue(index_idx_to);
-        index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value;
+        if constexpr (negative_index_support) { index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value; }
         is_out = index_value < 0 || index_value >= x1_gather_dim_size;
         param_offset = pre_gather_idx_from * x1_gather_dim_size * x1_gather_dim_stride + index_value * x1_gather_dim_stride;
         DataCopySimdSimt<T1>(dst, src1, dst_p, param_offset, back_gather_idx_last + 1, is_out);
-      }
-      else if (pre_gather_idx_from == pre_gather_idx_to && index_idx_from == index_idx_to) {
+    } else if (pre_gather_idx_from == pre_gather_idx_to && index_idx_from == index_idx_to) {
         T2 index_value = src2.GetValue(index_idx_from);
-        index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value;
+        if constexpr (negative_index_support) { index_value = index_value < 0 ? index_value + x1_gather_dim_size : index_value; }
         bool is_out = index_value < 0 || index_value >= x1_gather_dim_size;
         uint64_t back_gather_idx_first = offset % x1_gather_dim_stride;
         uint64_t param_offset = pre_gather_idx_from * x1_gather_dim_size * x1_gather_dim_stride + index_value * x1_gather_dim_stride + back_gather_idx_first;
         DataCopySimdSimt<T1>(dst, src1, 0, param_offset, ub_actual_size, is_out);
-      }
-      else {
-        GatherExtendDefault<T1, T2, CASE, VECTORIZED_AXIS_SIZE>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
-                                                      PASS_VECTORIZED_AXIS_PARAMS_SIMD(1), PASS_VECTORIZED_AXIS_PARAMS_SIMD(2), PASS_VECTORIZED_AXIS_PARAMS_SIMD(3),
-                                                      PASS_VECTORIZED_AXIS_PARAMS_SIMD(4), PASS_VECTORIZED_AXIS_PARAMS_SIMD(5), PASS_VECTORIZED_AXIS_PARAMS_SIMD(6),
-                                                      PASS_VECTORIZED_AXIS_PARAMS_SIMD(7), PASS_VECTORIZED_AXIS_PARAMS_SIMD(8));
-      }
+    } else {
+        GatherExtendDefault<T1, T2, CASE, VECTORIZED_AXIS_SIZE, negative_index_support>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
+                                                    PASS_VECTORIZED_AXIS_PARAMS_SIMD(1), PASS_VECTORIZED_AXIS_PARAMS_SIMD(2), PASS_VECTORIZED_AXIS_PARAMS_SIMD(3),
+                                                    PASS_VECTORIZED_AXIS_PARAMS_SIMD(4), PASS_VECTORIZED_AXIS_PARAMS_SIMD(5), PASS_VECTORIZED_AXIS_PARAMS_SIMD(6),
+                                                    PASS_VECTORIZED_AXIS_PARAMS_SIMD(7), PASS_VECTORIZED_AXIS_PARAMS_SIMD(8));
+    }
 }
 /***********************************************************************************************************************************************************************************/
 
@@ -623,7 +636,7 @@ inline __aicore__ void VRegGather(__local_mem__ T1 *y_addr, __local_mem__ T1 *x_
        }
     }
 }
-template <typename T1, typename T2>
+template <typename T1, typename T2, bool negative_index_support>
 inline __aicore__ void GatherExtendVReg(int32_t offset, AscendC::LocalTensor<uint8_t> &tmp_buf, uint32_t gather_dim_size, const AscendC::LocalTensor<T1> &yLocal,  const AscendC::GlobalTensor<T1> &src1, const AscendC::GlobalTensor<T2> &src2, int32_t cols, uint32_t tmp_buf_size) {
 
     LocalTensor<T1> xLocal;
@@ -697,10 +710,14 @@ inline __aicore__ void GatherExtendVReg(int32_t offset, AscendC::LocalTensor<uin
           int32_t tmp_offset = base_offset + (INT64_OFFSET - base_offset % INT64_OFFSET);
           tmpLocal = tmp_buf[tmp_offset].template ReinterpretCast<int32_t>();
           Cast(tmpLocal, indicesLocal, AscendC::RoundMode::CAST_NONE, cur_out_cols);
-          ConvertNegIndices<T1, T2>(tmpLocal, cur_out_cols, gather_dim_size);
+          if constexpr (negative_index_support) {
+            ConvertNegIndices<T1, T2>(tmpLocal, cur_out_cols, gather_dim_size);
+          }
           indice_addr = (__local_mem__ int32_t *)tmpLocal[0].GetPhyAddr();
       } else {
-          ConvertNegIndices<T1, T2>(indicesLocal, cur_out_cols, gather_dim_size);
+          if constexpr (negative_index_support) {
+            ConvertNegIndices<T1, T2>(indicesLocal, cur_out_cols, gather_dim_size);
+          }
           indice_addr = (__local_mem__ int32_t *)indicesLocal[0].GetPhyAddr();
       }
       VRegGather<T1, T2>(y_addr, x_addr, indice_addr, num_per_loop, dim_size, vf_len, vf_loop_num);
@@ -712,7 +729,7 @@ inline __aicore__ void GatherExtendVReg(int32_t offset, AscendC::LocalTensor<uin
 /***********************************************************************************************************************************************************************************/
 
 /**************************************************************************************** 模板4 小尾轴场景，使用短向量搬运 *********************************************************************/
-template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE>
+template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, bool negative_index_support>
 inline __aicore__ void GatherExtendShortVector(AscendC::LocalTensor<T1> &dst, const AscendC::GlobalTensor<T1> &src1, const AscendC::GlobalTensor<T2> &src2,
                               uint32_t ub_actual_size,uint64_t offset,
                               uint32_t x2_tensor_size, uint32_t x1_gather_dim_size, uint32_t x1_gather_dim_stride,
@@ -760,7 +777,7 @@ inline __aicore__ void GatherExtendShortVector(AscendC::LocalTensor<T1> &dst, co
     AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(event_id_v_to_mte2);
     AscendC::DataCopyPad(xLocal, src1, param_src, param_src_pad);
     __ubuf__ int64_t *xAddr = (__ubuf__ int64_t *)xLocal.GetPhyAddr();
-    AscendC::Simt::VF_CALL<GatherSimtParamFullLoad<int64_t, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, sizeof(int64_t) / sizeof(T1)>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, xAddr, x2_gm, ub_actual_size,
+    AscendC::Simt::VF_CALL<GatherSimtParamFullLoad<int64_t, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, sizeof(int64_t) / sizeof(T1), negative_index_support>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, xAddr, x2_gm, ub_actual_size,
                   static_cast<uint32_t>(offset), static_cast<uint32_t>(x1_gather_dim_size),
                   static_cast<uint32_t>(x2_tensor_size_m), static_cast<uint32_t>(x2_tensor_size_shift), static_cast<uint32_t>(x2_tensor_size),
                   static_cast<uint32_t>(x1_gather_dim_stride_m), static_cast<uint32_t>(x1_gather_dim_stride_shift), static_cast<uint32_t>(x1_gather_dim_stride),
@@ -769,7 +786,7 @@ inline __aicore__ void GatherExtendShortVector(AscendC::LocalTensor<T1> &dst, co
                   PASS_VECTORIZED_AXIS_PARAMS_SIMT(5), PASS_VECTORIZED_AXIS_PARAMS_SIMT(6),
                   PASS_VECTORIZED_AXIS_PARAMS_SIMT(7), PASS_VECTORIZED_AXIS_PARAMS_SIMT(8));
   } else {
-    AscendC::Simt::VF_CALL<GatherSimt<int64_t, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, sizeof(int64_t) / sizeof(T1)>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, x1_gm, x2_gm, ub_actual_size,
+    AscendC::Simt::VF_CALL<GatherSimt<int64_t, T2, uint32_t, CASE, VECTORIZED_AXIS_SIZE, sizeof(int64_t) / sizeof(T1), negative_index_support>>(AscendC::Simt::Dim3(THREAD_NUMBER), dst_p, x1_gm, x2_gm, ub_actual_size,
                   static_cast<uint32_t>(offset), static_cast<uint32_t>(x1_gather_dim_size),
                   static_cast<uint32_t>(x2_tensor_size_m), static_cast<uint32_t>(x2_tensor_size_shift), static_cast<uint32_t>(x2_tensor_size),
                   static_cast<uint32_t>(x1_gather_dim_stride_m), static_cast<uint32_t>(x1_gather_dim_stride_shift), static_cast<uint32_t>(x1_gather_dim_stride),
@@ -783,7 +800,7 @@ inline __aicore__ void GatherExtendShortVector(AscendC::LocalTensor<T1> &dst, co
 }
 /***********************************************************************************************************************************************************************************/
 
-template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE>
+template <typename T1, typename T2, int32_t CASE, int32_t VECTORIZED_AXIS_SIZE, bool negative_index_support>
 inline __aicore__ void GatherExtend(AscendC::LocalTensor<T1> &dst, const AscendC::GlobalTensor<T1> &src1, const AscendC::GlobalTensor<T2> &src2,
                               uint32_t ub_actual_size,uint64_t offset,
                               uint64_t x2_tensor_size, uint64_t x1_gather_dim_size, uint64_t x1_gather_dim_stride,
@@ -795,14 +812,14 @@ inline __aicore__ void GatherExtend(AscendC::LocalTensor<T1> &dst, const AscendC
   {
     bool run_later = (VECTORIZED_AXIS_SIZE == 1 && param_size <= 30000 && param_axis_size == 1 && tmp_buf_size > 8192);
     if(run_later) {
-      GatherExtendVReg<T1, T2>(offset, tmp_buf, param_size, dst, src1, src2[offset], ub_actual_size, tmp_buf_size);
+      GatherExtendVReg<T1, T2, negative_index_support>(offset, tmp_buf, param_size, dst, src1, src2[offset], ub_actual_size, tmp_buf_size);
       return;
     }
   }
   {
     bool run_later = ub_actual_size > THREAD_NUMBER && VECTORIZED_AXIS_SIZE == 1 && Y_VECTORIZED_AXIS_SIZE_STRIDE(1) == 1 && x1_gather_dim_stride >= THREAD_NUMBER;
     if(run_later) {
-      GatherExtendDataCopy<T1, T2, CASE, VECTORIZED_AXIS_SIZE>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
+      GatherExtendDataCopy<T1, T2, CASE, VECTORIZED_AXIS_SIZE, negative_index_support>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
                                                 PASS_VECTORIZED_AXIS_PARAMS_SIMD(1), PASS_VECTORIZED_AXIS_PARAMS_SIMD(2), PASS_VECTORIZED_AXIS_PARAMS_SIMD(3),
                                                 PASS_VECTORIZED_AXIS_PARAMS_SIMD(4), PASS_VECTORIZED_AXIS_PARAMS_SIMD(5), PASS_VECTORIZED_AXIS_PARAMS_SIMD(6),
                                                 PASS_VECTORIZED_AXIS_PARAMS_SIMD(7), PASS_VECTORIZED_AXIS_PARAMS_SIMD(8));
@@ -816,7 +833,7 @@ inline __aicore__ void GatherExtend(AscendC::LocalTensor<T1> &dst, const AscendC
                      ub_actual_size % (sizeof(int64_t) / sizeof(T1)) == 0 &&
                      VECTORIZED_AXIS_SIZE(1) % (sizeof(int64_t) / sizeof(T1)) == 0;
     if (run_later) {
-      GatherExtendShortVector<T1, T2, CASE, VECTORIZED_AXIS_SIZE>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
+      GatherExtendShortVector<T1, T2, CASE, VECTORIZED_AXIS_SIZE, negative_index_support>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
                                           tmp_buf, tmp_buf_size, param_size, param_axis_size,
                                           PASS_VECTORIZED_AXIS_PARAMS_SIMD(1), PASS_VECTORIZED_AXIS_PARAMS_SIMD(2), PASS_VECTORIZED_AXIS_PARAMS_SIMD(3),
                                           PASS_VECTORIZED_AXIS_PARAMS_SIMD(4), PASS_VECTORIZED_AXIS_PARAMS_SIMD(5), PASS_VECTORIZED_AXIS_PARAMS_SIMD(6),
@@ -824,7 +841,7 @@ inline __aicore__ void GatherExtend(AscendC::LocalTensor<T1> &dst, const AscendC
       return;
     }
   }
-  GatherExtendDefault<T1, T2, CASE, VECTORIZED_AXIS_SIZE>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
+  GatherExtendDefault<T1, T2, CASE, VECTORIZED_AXIS_SIZE, negative_index_support>(dst, src1, src2, ub_actual_size, offset, x2_tensor_size, x1_gather_dim_size, x1_gather_dim_stride,
                                             PASS_VECTORIZED_AXIS_PARAMS_SIMD(1), PASS_VECTORIZED_AXIS_PARAMS_SIMD(2), PASS_VECTORIZED_AXIS_PARAMS_SIMD(3),
                                             PASS_VECTORIZED_AXIS_PARAMS_SIMD(4), PASS_VECTORIZED_AXIS_PARAMS_SIMD(5), PASS_VECTORIZED_AXIS_PARAMS_SIMD(6),
                                             PASS_VECTORIZED_AXIS_PARAMS_SIMD(7), PASS_VECTORIZED_AXIS_PARAMS_SIMD(8));
