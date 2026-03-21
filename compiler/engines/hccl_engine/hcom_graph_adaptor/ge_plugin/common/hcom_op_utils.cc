@@ -698,7 +698,7 @@ HcclResult HcomOpUtils::CalcAllReduceCount(const ge::OpDescPtr &op, const std::s
   return HCCL_SUCCESS;
 }
  	 
-// 除了allreduce算子以为的通用算子count计算
+// 除了allreduce算子以外的通用算子count计算
 HcclResult HcomOpUtils::CalcCommonCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                         u32 dataTypeSize, u32 rankSize, u64 &count) {
   constexpr u32 alignSize = 512; // 对齐大小为512字节的倍数

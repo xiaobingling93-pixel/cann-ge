@@ -249,7 +249,7 @@ HcclCMDType HcomOpsKernelBuilder::GetOpType(const std::string &sCollectiveType) 
 HcclResult HcomOpsKernelBuilder::CheckSuperKernelEligibility(ge::Node &node, const ge::OpDescPtr &opDescPtr,
                                                             std::string &sCollectiveType,
                                                             std::string &superKernelScope, HcclCMDType &opType,
-                                                            bool &needProcess) {
+                                                            bool &needProcess) const {
   needProcess = false;
   
   // 步骤1：检查算子描述是否有效
@@ -299,7 +299,7 @@ HcclResult HcomOpsKernelBuilder::CheckSuperKernelEligibility(ge::Node &node, con
 
 HcclResult HcomOpsKernelBuilder::SetAivSuperKernelBinaryAttrFor950(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
                                                               HcclDataType dataType, const std::string &algName,
-                                                              std::string &funcName, const std::string & binPath) {
+                                                              std::string &funcName, const std::string & binPath) const {
   auto itMap = AivSuperKernelMapV2.find(opType);
   auto it = (itMap->second).find(algName);
   if (it != (itMap->second).end()) {
@@ -317,7 +317,7 @@ HcclResult HcomOpsKernelBuilder::SetAivSuperKernelBinaryAttrFor950(const ge::OpD
 
 HcclResult HcomOpsKernelBuilder::SetAivSuperKernelBinaryAttrForDeter(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
                                                               const std::string &algName, std::string &funcName,
-                                                              const std::string & binPath) {
+                                                              const std::string & binPath) const {
   auto itMap = AivSuperKernelDeterMap.find(opType);
   auto it = (itMap->second).find(algName);
   if (it != (itMap->second).end()) {
@@ -389,7 +389,7 @@ HcclResult HcomOpsKernelBuilder::SetAivSuperKernelBinaryAttrs(const ge::OpDescPt
 // 设置SuperKernel Block维度以计算并设置AIV核数（block维度）
 HcclResult HcomOpsKernelBuilder::SetSuperKernelBlockDim(const ge::OpDescPtr &opDescPtr, const std::string &group,
                                                         HcclCMDType opType, u64 count, void *counts, HcclDataType dataType,
-                                                        u32 aivCoreLimit, char *algName, u32 rankSize) {
+                                                        u32 aivCoreLimit, char *algName, u32 rankSize) const {
   // 计算AIV核数
   u32 blockDim;
   CHK_RET(HcomCalcAivCoreNum(group.c_str(), opType, count, counts, dataType, aivCoreLimit, algName, &blockDim));
@@ -450,7 +450,7 @@ HcclResult HcomOpsKernelBuilder::SetSuperKernelScopeAttr(ge::Node &node) {
 }
 
 // 获取SuperKernel算法路径以AIV SuperKernel二进制文件的存放路径
-HcclResult HcomOpsKernelBuilder::SKGetAlgPath(HcclCMDType opType, std::string &binaryPath) {
+HcclResult HcomOpsKernelBuilder::SKGetAlgPath(HcclCMDType opType, std::string &binaryPath) const {
   HCCL_DEBUG("[AIV][SKGetAlgPath] opType[%d] binaryPath[%s]", opType, binaryPath.c_str());
   std::string libPath;
   CHK_RET(GetLdLibraryPath(libPath));

@@ -26,7 +26,7 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
                           std::vector<domi::TaskDef> &taskDefList) override;
 
  protected:
-  HcclResult CheckSupportedOP(const std::string &sCollectiveType) const;
+  HcclResult CheckSupportedOP(const std::string &sCollectiveType) const override;
 
  private:
   HcclResult HcomCalcOpRunningParam(ge::Node &node);
@@ -48,20 +48,20 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
                                             HcclReduceOp &reduction);
   HcclResult CheckSuperKernelEligibility(ge::Node &node, const ge::OpDescPtr &opDescPtr,
                                          std::string &sCollectiveType, std::string &superKernelScope,
-                                         HcclCMDType &opType, bool &needProcess);
+                                         HcclCMDType &opType, bool &needProcess) const;
   HcclResult SetAivSuperKernelBinaryAttrs(const ge::OpDescPtr &opDescPtr, HcclCMDType opType, HcclDataType dataType,
                                           const std::string &algName, std::string &funcName);
   HcclResult SetAivSuperKernelBinaryAttrFor950(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
                                                HcclDataType dataType, const std::string &algName,
-                                               std::string &funcName, const std::string & binPath);
+                                               std::string &funcName, const std::string & binPath) const;
   HcclResult SetAivSuperKernelBinaryAttrForDeter(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
                                                  const std::string &algName, std::string &funcName,
-                                                 const std::string & binPath);
+                                                 const std::string & binPath) const;
   HcclResult SetSuperKernelBlockDim(const ge::OpDescPtr &opDescPtr, const std::string &group, HcclCMDType opType,
                                     u64 count, void *counts, HcclDataType dataType, u32 aivCoreLimit, char *algName,
-                                    u32 rankSize);
+                                    u32 rankSize) const;
   HcclResult SetSuperKernelScopeAttr(ge::Node &node);
-  HcclResult SKGetAlgPath(HcclCMDType opType, std::string &binaryPath);
+  HcclResult SKGetAlgPath(HcclCMDType opType, std::string &binaryPath) const;
   HcclResult GetHcomReceiveOpOutputSize(const ge::OpDescPtr &op, u32 dataTypeSize, u64 &outputSize);
   HcclResult GetRootGraphID(const ge::Node &node, uint32_t &graphId);
   HcclResult GetCommFromOpDesc(const ge::OpDescPtr &op, int64_t &hcomComm, std::string &sGroup);
