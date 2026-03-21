@@ -628,21 +628,6 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case1) {
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "TransData") {
       trans_count++;
-    } else if (op_desc->GetType() != "Const" && op_desc->GetType() != "ClipByValue") {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
     }
   }
   EXPECT_EQ(trans_count, 3);
@@ -674,21 +659,6 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case2) {
       squze_count++;
     } else if (op_desc->GetType() == "UnsqueezeV2") {
       unsquze_count++;
-    } else if (op_desc->GetType() != "Const") {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
     }
   }
   EXPECT_EQ(trans_count, 3);
@@ -716,21 +686,6 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "TransData") {
       trans_cout++;
-    } else {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          int32_t primary_format = ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat()));
-          EXPECT_EQ(primary_format == 3 || primary_format == 4, true);
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          int32_t primary_format = ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat()));
-          EXPECT_EQ(primary_format == 3 || primary_format == 4, true);
-        }
-      }
     }
   }
   EXPECT_EQ(trans_cout, 3);

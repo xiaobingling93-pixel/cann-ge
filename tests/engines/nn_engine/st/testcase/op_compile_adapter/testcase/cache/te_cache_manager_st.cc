@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <filesystem>
 #include <gtest/gtest.h>
 #include <mockcpp/mockcpp.hpp>
 #include <mockcpp/ChainingMockHelper.h>
@@ -25,6 +26,7 @@
 
 using namespace std;
 using namespace testing;
+namespace fs = std::filesystem;
 namespace te {
 namespace fusion {
 class TeCacheManagerSTest : public testing::Test
@@ -177,6 +179,10 @@ TEST(TeCacheManagerSTest, pre_compile_cache_01)
     EXPECT_EQ(pre_ret1->prebuiltOptions, "sth_just_like_this");
 
     std::string cache_kernel_name = "te_Mul_zzzzce363a48125986d4fd8ef5c8df0e4f0d554e9fc856072d28d6799222c408_pre";
+    std::string invalid_file = TeCacheManager::Instance().cache_dir_path_ + "/" + cache_kernel_name + ".json";
+    if (fs::exists(invalid_file)) {
+        system(("rm -rf " + invalid_file).c_str());
+    }
     PreCompileResultPtr pre_ret2 = TeCacheManager::Instance().MatchPreCompileCache(cache_kernel_name);
     EXPECT_EQ(pre_ret2, nullptr);
 
