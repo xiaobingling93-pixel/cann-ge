@@ -50,9 +50,15 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
                                          std::string &sCollectiveType, std::string &superKernelScope,
                                          HcclCMDType &opType, bool &needProcess);
   HcclResult SetAivSuperKernelBinaryAttrs(const ge::OpDescPtr &opDescPtr, HcclCMDType opType, HcclDataType dataType,
-                                          const std::string &algName);
+                                          const std::string &algName, std::string &funcName);
+  HcclResult SetAivSuperKernelBinaryAttrFor950(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
+                                               HcclDataType dataType, const std::string &algName,
+                                               std::string &funcName, const std::string & binPath);
+  HcclResult SetAivSuperKernelBinaryAttrForDeter(const ge::OpDescPtr &opDescPtr, HcclCMDType opType,
+                                                 const std::string &algName, std::string &funcName,
+                                                 const std::string & binPath);
   HcclResult SetSuperKernelBlockDim(const ge::OpDescPtr &opDescPtr, const std::string &group, HcclCMDType opType,
-                                    u64 count, HcclDataType dataType, u32 aivCoreLimit, char *algName,
+                                    u64 count, void *counts, HcclDataType dataType, u32 aivCoreLimit, char *algName,
                                     u32 rankSize);
   HcclResult SetSuperKernelScopeAttr(ge::Node &node);
   HcclResult SKGetAlgPath(HcclCMDType opType, std::string &binaryPath);
@@ -84,10 +90,11 @@ class HcomOpsKernelBuilder : public HCCLOpsKernelBuilder {
   HcclResult GetNeedMapRankFromDesc(const ge::OpDescPtr &op, bool &needMapRank);
   HcclResult GenerateTaskPrivateDef(const ge::Node &node, HCCL_KERNEL_INFO_PRIVATE_DEF &privateDefBuf,
                                     domi::TaskDef &taskDef, const std::string sCollectiveType);
-  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv, int64_t &hcomComm,
-                            std::string &sGroup, u32 &rankSize, u64 &count, HcclDataType &dataType, HcclCMDType &opType,
-                            HcclReduceOp &reduction, u32 &aivCoreLimit, char *algName);
-  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv); // 保持向后兼容
+  HcclResult PrepareSelectAivParam(ge::Node &node, const std::string& sCollectiveType,
+                                   int64_t &hcomComm, std::string &sGroup, u32 &rankSize,
+                                   u64 &count, void *&counts, HcclDataType &dataType, HcclCMDType &opType,
+                                   HcclReduceOp &reduction, u32 &aivCoreLimit);
+  HcclResult JudgeIsAivMode(ge::Node &node, const std::string& sCollectiveType, bool &ifAiv);
   HcclResult GetCountsFromOpDesc(const ge::Node &node, void *&counts, HcclCMDType opType);
   HcclResult SetAttachedStreamInfoList(ge::Node &node, const std::string &group);  // 设置附属从流信息
   HcclResult TaskDefSetNumBlocks(const ge::Node &node, domi::TaskDef &taskDef, const std::string sCollectiveType,
