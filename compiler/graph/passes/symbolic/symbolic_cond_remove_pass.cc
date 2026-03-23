@@ -99,7 +99,7 @@ std::string InputValueForCondSource::GetSourceStr() const {
     }())";
 }
 
-Status SymbolicCondRemovePass::GetCondIndexSymbol(const NodePtr &cond_input, Expression &cond_index_sym) {
+Status SymbolicCondRemovePass::GetCondIndexSymbol(const NodePtr &cond_input, Expression &cond_index_sym, const std::string &node_type) {
   auto op_desc = cond_input->GetOpDesc();
   GE_ASSERT_NOTNULL(op_desc);
   int32_t data_index = -1;
@@ -115,6 +115,12 @@ Status SymbolicCondRemovePass::GetCondIndexSymbol(const NodePtr &cond_input, Exp
       cond_index_sym = created_sym[data_index];
     } else {
       auto cond_value = CondRemovePass::GetCondIndex(&tensor);
+      if (cond_value < 0) {
+        if (kCaseOpTypes.find(node_type) != kCaseOpTypes.end()) {
+          GELOGI("Get cond index[%d] from node[%s][%s] success, cond_index is negative.", cond_value, cond_input->GetNamePtr(), cond_input->GetTypePtr());
+          return UNSUPPORTED;
+        }
+      }
       GELOGD("Get cond index[%d] from node[%s][%s] success, ", cond_value, cond_input->GetNamePtr(), cond_input->GetTypePtr());
       auto value_source = MakeShared<InputValueForCondSource>(data_index, cond_value);
       auto shape_env = GetCurShapeEnvContext();
@@ -147,11 +153,19 @@ Status SymbolicCondRemovePass::Run(NodePtr &node) {
     GELOGI("CondNode[%s] input[%s] is not Data.", node->GetNamePtr(), cond_input_node->GetNamePtr());
     return SUCCESS;
   }
+  const auto &node_type = node->GetType();
 
   Expression cond_index_sym;
-  GE_ASSERT_SUCCESS(GetCondIndexSymbol(cond_input_node, cond_index_sym));
 
-  const auto &node_type = node->GetType();
+  auto ret = GetCondIndexSymbol(cond_input_node, cond_index_sym, node_type);
+  if (ret == UNSUPPORTED) {
+    GELOGI("condIndex of cond[%s] is negative, skip.", node->GetNamePtr());
+    return SUCCESS;
+  } else if (ret != SUCCESS) {
+    GELOGI("Get condIndex of cond[%s] failed.", node->GetNamePtr());
+    return ret;
+  }
+
   uint32_t cond_index_val = 0;
   ComputeGraphPtr chosen_graph = nullptr;
   if (kCaseOpTypes.find(node_type) != kCaseOpTypes.end()) {
