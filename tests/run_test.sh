@@ -19,15 +19,18 @@ BUILD_PATH="${BASEPATH}/${BUILD_RELATIVE_PATH}"
 echo "PYTHONPATH:${PYTHONPATH}"
 echo "LD_LIBRARY_PATH:${LD_LIBRARY_PATH}"
 echo "LD_PRELOAD:${LD_PRELOAD}"
+echo "ASCEND_OPP_PATH:${ASCEND_OPP_PATH}"
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 # delete ascend dir in LD_LIBRARY_PATH for test
 export LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | sed -e 's/:*[^:]*Ascend[^:]*:*//g' -e 's/^://' -e 's/:$//')
 export LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | sed -e 's/:*[^:]*cann[^:]*:*//g' -e 's/^://' -e 's/:$//')
 unset LD_PRELOAD
+unset ASCEND_OPP_PATH
 echo "PYTHONPATH:${PYTHONPATH}"
 echo "LD_LIBRARY_PATH:${LD_LIBRARY_PATH}"
 echo "LD_PRELOAD:${LD_PRELOAD}"
+echo "ASCEND_OPP_PATH:${ASCEND_OPP_PATH}"
 
 # print usage message
 usage() {
