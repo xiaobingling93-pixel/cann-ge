@@ -22,6 +22,10 @@ set(ascendc_api_regbase_extend_src
         div.h
         sign.h
         reduce_init.h
+        atan2.h
+        copy_sign.h
+        erfcx.h
+        expm.h
 )
 
 set(generated_regbase_files)

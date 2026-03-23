@@ -433,6 +433,16 @@ def Ceil(owner_graph: ascir.HintGraph,
     return _common_in_1_out_1_normal_op("Ceil", owner_graph, x, axis=axis, size=size, stride=stride)
 
 
+def Ceil2Int(owner_graph: ascir.HintGraph,
+               x: ascir.OpsOperatorOutput,
+               *,
+               axis: List[ascir.Axis],
+               size: Optional[List[ascir.SizeExpr]] = None,
+               stride: Optional[List[ascir.SizeExpr]] = None
+               ) -> ascir.OpsOperatorOutput:
+    return _common_in_1_out_1_normal_op("Ceil2Int", owner_graph, x, axis=axis, size=size, stride=stride)
+
+
 def Cos(owner_graph: ascir.HintGraph,
                x: ascir.OpsOperatorOutput,
                *,
@@ -461,6 +471,28 @@ def Cosh(owner_graph: ascir.HintGraph,
          stride: Optional[List[ascir.SizeExpr]] = None
          ) -> ascir.OpsOperatorOutput:
     return _common_in_1_out_1_normal_op("Cosh", owner_graph, x, axis=axis, size=size, stride=stride)
+
+
+def Atan2(owner_graph: ascir.HintGraph,
+                x1: ascir.OpsOperatorOutput,
+                x2: ascir.OpsOperatorOutput,
+                *,
+                axis: List[ascir.Axis],
+                size: Optional[List[ascir.SizeExpr]] = None,
+                stride: Optional[List[ascir.SizeExpr]] = None
+                ) -> ascir.OpsOperatorOutput:
+    return _common_in_2_out_1_normal_op("Atan2", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
+
+
+def CopySign(owner_graph: ascir.HintGraph,
+                x1: ascir.OpsOperatorOutput,
+                x2: ascir.OpsOperatorOutput,
+                *,
+                axis: List[ascir.Axis],
+                size: Optional[List[ascir.SizeExpr]] = None,
+                stride: Optional[List[ascir.SizeExpr]] = None
+                ) -> ascir.OpsOperatorOutput:
+    return _common_in_2_out_1_normal_op("CopySign", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
 
 
 def Sqrt(owner_graph: ascir.HintGraph,
@@ -550,6 +582,16 @@ def Erf(owner_graph: ascir.HintGraph,
         stride: Optional[List[ascir.SizeExpr]] = None
         ) -> ascir.OpsOperatorOutput:
     return _common_in_1_out_1_normal_op("Erf", owner_graph, x, axis=axis, size=size, stride=stride)
+
+
+def Erfcx(owner_graph: ascir.HintGraph,
+          x: ascir.OpsOperatorOutput,
+          *,
+          axis: List[ascir.Axis],
+          size: Optional[List[ascir.SizeExpr]] = None,
+          stride: Optional[List[ascir.SizeExpr]] = None
+          ) -> ascir.OpsOperatorOutput:
+    return _common_in_1_out_1_normal_op("Erfcx", owner_graph, x, axis=axis, size=size, stride=stride)
 
 
 def Sign(owner_graph: ascir.HintGraph,
@@ -994,6 +1036,16 @@ def Ln(owner_graph: ascir.HintGraph,
        stride: Optional[List[ascir.SizeExpr]] = None
        ) -> ascir.OpsOperatorOutput:
     return _common_in_1_out_1_normal_op("Ln", owner_graph, x, axis=axis, size=size, stride=stride)
+
+
+def Expm(owner_graph: ascir.HintGraph,
+         x: ascir.OpsOperatorOutput,
+         *,
+         axis: List[ascir.Axis],
+         size: Optional[List[ascir.SizeExpr]] = None,
+         stride: Optional[List[ascir.SizeExpr]] = None
+         ) -> ascir.OpsOperatorOutput:
+    return _common_in_1_out_1_normal_op("Expm", owner_graph, x, axis=axis, size=size, stride=stride)
 
 
 def Log2(owner_graph: ascir.HintGraph,

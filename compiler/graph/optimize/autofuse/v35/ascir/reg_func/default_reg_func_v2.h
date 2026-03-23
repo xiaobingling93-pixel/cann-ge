@@ -38,6 +38,7 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcCoshTmpSizeV2(const ge::AscNode
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcDigammaTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcErfcTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAcoshTmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAtan2TmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcCeilTmpSizeV2(const ge::AscNode &node);
 }  // namespace ascir
 }  // namespace ge

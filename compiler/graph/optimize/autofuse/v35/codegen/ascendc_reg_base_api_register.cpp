@@ -87,6 +87,18 @@ Register::Register() {
   const std::string kAscendcSplitRegBaseStr = {
 #include "split_reg_base.h"
   };
+  const std::string kAscendcAtan2RegBaseStr = {
+#include "atan2_reg_base.h"
+  };
+  const std::string kAscendcCopySignRegBaseStr = {
+#include "copy_sign_reg_base.h"
+  };
+  const std::string kAscendcErfcxRegBaseStr = {
+#include "erfcx_reg_base.h"
+  };
+  const std::string kAscendcExpmRegBaseStr = {
+#include "expm_reg_base.h"
+  };
   std::unordered_map<std::string, std::string> api_to_file{
       {"cast_reg_base.h", kAscendcCastRegStr},
       {"compare_reg_base.h", kAscendcCompareRegStr},
@@ -111,6 +123,10 @@ Register::Register() {
       {"split_reg_base.h", kAscendcSplitRegBaseStr},
       {"sub_reg_base.h", kAscendcSubRegBaseStr},
       {"div_reg_base.h", kAscendcDivRegBaseStr},
+      {"atan2_reg_base.h", kAscendcAtan2RegBaseStr},
+      {"copy_sign_reg_base.h", kAscendcCopySignRegBaseStr},
+      {"erfcx_reg_base.h", kAscendcErfcxRegBaseStr},
+      {"expm_reg_base.h", kAscendcExpmRegBaseStr},
   };
 
   AscendCApiRegistry::GetInstance().RegisterApi(api_to_file);
