@@ -19,46 +19,6 @@
 
 namespace ge {
 namespace asc_adapt {
-inline Status GetTransposeInfos(
-    AscGraph &asc_graph, bool &has_only_one_transpose,
-    std::unordered_map<NodePtr, std::vector<std::pair<int64_t, int64_t>>> &fallback_node_to_transpose_info) {
-  TensorAttrInfo temp_graph_attr;
-  GE_ASSERT_SUCCESS(BackendUtils::GetGraphAttrInfo(asc_graph, temp_graph_attr));
-  int64_t swap_count_tal = 0;
-  for (const auto &node : asc_graph.GetAllNodes()) {
-    if ((node->GetType() != kLoadType) && (node->GetType() != kStoreType) && (node->GetType() != kGatherType)) {
-      continue;
-    }
-    const auto cur_op_desc = node->GetOpDesc();
-    GE_ASSERT_NOTNULL(cur_op_desc);
-    const auto cur_output_desc = cur_op_desc->MutableOutputDesc(0);
-    GE_ASSERT_NOTNULL(cur_output_desc);
-    const auto cur_output_attr = cur_output_desc->GetAttrsGroup<AscTensorAttr>();
-    GE_ASSERT_NOTNULL(cur_output_attr);
-    int64_t swap_count = 0;
-    std::vector<std::pair<int64_t, int64_t>> transpose_info;
-    // 前面走常规反推流程已经给load和store补过轴了
-    if ((node->GetType() == kLoadType) || (node->GetType() == kGatherType)) {
-      GE_ASSERT_SUCCESS(
-          BackendUtils::MinSwapCount(cur_output_attr->axis, temp_graph_attr.axis, swap_count, transpose_info));
-    } else {  // if is store
-      GE_ASSERT_SUCCESS(
-          BackendUtils::MinSwapCount(temp_graph_attr.axis, cur_output_attr->axis, swap_count, transpose_info));
-    }
-    if (!transpose_info.empty()) {
-      fallback_node_to_transpose_info.emplace(node, transpose_info);
-      GELOGI("node %s(%s) need to add transpose node with axis id %s in graph %s.", node->GetName().c_str(),
-             node->GetType().c_str(), AutofuseUtils::VectorPairToStr(transpose_info).c_str(),
-             asc_graph.GetName().c_str());
-      swap_count_tal += 1;  // 后端需要把多个轴变化的transpose用一个transpose来表示，此处一个transpose_info统计一次
-    }
-  }
-  if (swap_count_tal == 1) {
-    has_only_one_transpose = true;
-  }
-  return SUCCESS;
-}
-
 inline Status InsertTransposeToNode(AscGraph &asc_graph, const NodePtr &node,
                                        std::vector<std::pair<int64_t, int64_t>> &transpose_info) {
   ViewOpAttrInfo attr_info;
@@ -481,7 +441,7 @@ inline Status TransposeBackward(AscGraph &asc_graph, [[maybe_unused]] const Node
   bool has_only_one_transpose = false;
   std::unordered_map<NodePtr, std::vector<std::pair<int64_t, int64_t>>> fallback_node_to_transpose_info;
   GE_ASSERT_SUCCESS(
-      GetTransposeInfos(asc_graph, has_only_one_transpose, fallback_node_to_transpose_info));
+      BackendUtils::GetTransposeInfos(asc_graph, has_only_one_transpose, fallback_node_to_transpose_info));
   if (fallback_node_to_transpose_info.empty()) {
     GELOGI("graph %s fuse type has no transpose, don't transpose backward.", asc_graph.GetName().c_str());
     return SUCCESS;

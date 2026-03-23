@@ -3185,4 +3185,49 @@ void BackendUtils::SetReduceOriginalAxisInfo(AutofuseInnerAttrs &attr_new, const
   }
 }
 
+Status GetNodeTransposeInfo(const NodePtr &node, const TensorAttrInfo &temp_graph_attr,
+                                     std::vector<std::pair<int64_t, int64_t>> &transpose_info) {
+  const auto cur_op_desc = node->GetOpDesc();
+  GE_ASSERT_NOTNULL(cur_op_desc);
+  const auto cur_output_desc = cur_op_desc->MutableOutputDesc(0);
+  GE_ASSERT_NOTNULL(cur_output_desc);
+  const auto cur_output_attr = cur_output_desc->GetAttrsGroup<AscTensorAttr>();
+  GE_ASSERT_NOTNULL(cur_output_attr);
+  int64_t swap = 0;
+  if ((node->GetType() == kLoadType) || (node->GetType() == kGatherType)) {
+    GE_ASSERT_SUCCESS(BackendUtils::MinSwapCount(cur_output_attr->axis, temp_graph_attr.axis, swap, transpose_info));
+  } else {  // if is store
+    GE_ASSERT_SUCCESS(BackendUtils::MinSwapCount(temp_graph_attr.axis, cur_output_attr->axis, swap, transpose_info));
+  }
+  return SUCCESS;
+}
+
+bool IsFallBackTransposeNode(const NodePtr &node) {
+  return (node->GetType() == kLoadType) || (node->GetType() == kStoreType) || (node->GetType() == kGatherType);
+}
+
+Status BackendUtils::GetTransposeInfos(
+    AscGraph &asc_graph, bool &has_only_one_transpose,
+    std::unordered_map<NodePtr, std::vector<std::pair<int64_t, int64_t>>> &fallback_node_to_transpose_info) {
+  TensorAttrInfo temp_graph_attr;
+  GE_ASSERT_SUCCESS(BackendUtils::GetGraphAttrInfo(asc_graph, temp_graph_attr));
+  int64_t swap_count_tal = 0;
+  for (const auto &node : asc_graph.GetAllNodes()) {
+    if (!IsFallBackTransposeNode(node)) {
+      continue;
+    }
+    std::vector<std::pair<int64_t, int64_t>> transpose_info;
+    GE_ASSERT_SUCCESS(GetNodeTransposeInfo(node, temp_graph_attr, transpose_info));
+    if (transpose_info.empty()) {
+      continue;
+    }
+    fallback_node_to_transpose_info.emplace(node, transpose_info);
+    GELOGI("node %s(%s) need to add transpose node with axis id %s in graph %s.", node->GetName().c_str(),
+           node->GetType().c_str(), AutofuseUtils::VectorPairToStr(transpose_info).c_str(),
+           asc_graph.GetName().c_str());
+    swap_count_tal += 1;
+  }
+  has_only_one_transpose = (swap_count_tal == 1);
+  return SUCCESS;
+}
 }  // namespace ge
