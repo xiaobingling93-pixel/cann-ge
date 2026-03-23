@@ -217,6 +217,7 @@ TEST_F(SuperkernelTaskBuilderST, superkernel_plus_case3) {
   ge::RunContext context;
   context.dataMemBase = &base;
   context.weightMemBase = &base;
+  context.dataMemSize = 20480;
   std::vector<domi::TaskDef> tasks;
   FillGraphNodeParaType(graph_ptr);
   ge::ComputeGraphPtr sub_graph_ptr = CreateGraphWithType(2);

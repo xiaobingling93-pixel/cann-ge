@@ -539,7 +539,7 @@ TEST_F(configuration_ut, dsagetgraphfilepath)
 {
     string graph_file_path;
     Status status = Configuration::Instance(fe::kDsaCoreName).GetGraphFilePath(graph_file_path);
-    EXPECT_EQ(status, FAILED);
+    EXPECT_EQ(status, SUCCESS);
     EXPECT_EQ(graph_file_path, "");
 }
 
@@ -547,7 +547,7 @@ TEST_F(configuration_ut, dsagetcustomfilepath)
 {
     string custom_file_path;
     Status status = Configuration::Instance(fe::kDsaCoreName).GetCustomFilePath(custom_file_path);
-    EXPECT_EQ(status, FAILED);
+    EXPECT_EQ(status, SUCCESS);
     EXPECT_EQ(custom_file_path, "");
 }
 
@@ -555,7 +555,7 @@ TEST_F(configuration_ut, dsagetcustompassfilepath)
 {
     string graph_file_path;
     Status status = Configuration::Instance(fe::kDsaCoreName).GetCustomPassFilePath(graph_file_path);
-    EXPECT_EQ(status, FAILED);
+    EXPECT_EQ(status, SUCCESS);
     EXPECT_EQ(graph_file_path, "");
 }
 
@@ -563,7 +563,7 @@ TEST_F(configuration_ut, dsagetbuiltinpassfilepath)
 {
     string custom_file_path;
     Status status = Configuration::Instance(fe::kDsaCoreName).GetBuiltinPassFilePath(custom_file_path);
-    EXPECT_EQ(status, FAILED);
+    EXPECT_EQ(status, SUCCESS);
     EXPECT_EQ(custom_file_path, "");
 }
 

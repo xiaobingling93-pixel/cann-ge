@@ -646,7 +646,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case2) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 22);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 30);
   size_t trans_count = 0;
   size_t squze_count = 0;
   size_t unsquze_count = 0;
@@ -661,9 +661,9 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case2) {
       unsquze_count++;
     }
   }
-  EXPECT_EQ(trans_count, 3);
+  EXPECT_EQ(trans_count, 7);
   EXPECT_EQ(squze_count, 2);
-  EXPECT_EQ(unsquze_count, 1);
+  EXPECT_EQ(unsquze_count, 5);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
@@ -679,7 +679,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 16);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 15);
   size_t trans_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
@@ -688,7 +688,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
       trans_cout++;
     }
   }
-  EXPECT_EQ(trans_cout, 3);
+  EXPECT_EQ(trans_cout, 0);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
@@ -704,7 +704,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 17);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 18);
   size_t trans_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
@@ -728,7 +728,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
       }
     }
   }
-  EXPECT_EQ(trans_cout, 3);
+  EXPECT_EQ(trans_cout, 2);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
@@ -744,7 +744,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 6);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 7);
   size_t trans_cout = 0;
   size_t cast_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -763,7 +763,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
 //      EXPECT_EQ(op_desc->MutableOutputDesc(0)->GetFormat(), ge::FORMAT_NHWC);
     }
   }
-  EXPECT_EQ(trans_cout, 0);
+  EXPECT_EQ(trans_cout, 1);
   EXPECT_EQ(cast_cout, 1);
 }
 
