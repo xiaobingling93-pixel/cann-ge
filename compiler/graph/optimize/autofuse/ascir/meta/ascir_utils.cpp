@@ -978,16 +978,24 @@ ge::TriBool AreConcatInputShapesEqual(const ge::AscNodePtr &node) {
   return is_equal;
 }
 
-bool AreAllInputsLoad(const ge::NodePtr &node) {
+bool AreAllInputDistinct(const ge::NodePtr &node) {
   GE_ASSERT_NOTNULL(node);
   std::set<const ge::Node *> distinct_nodes;
   for (const auto &in_node : node->GetInDataNodes()) {
-    if (!ge::ops::IsOps<ge::ascir_op::Load>(in_node)) {
-      GELOGD("%s: contain non-Load input", node->GetNamePtr());
-      return false;
-    }
     if (!distinct_nodes.emplace(in_node.get()).second) {
       GELOGD("%s: multiple inputs share same input: %s", node->GetNamePtr(), in_node->GetNamePtr());
+      return false;
+    }
+  }
+  return true;
+}
+
+bool AreAllInputsFromPosition(const ge::AscNodePtr &node, Position position) {
+  GE_ASSERT_NOTNULL(node);
+  for (uint32_t i = 0U; i < node->inputs.Size(); ++i) {
+    const auto &input = node->inputs[i];
+    if (input.attr.mem.position != position) {
+      GELOGD("%s: input[%u] not from position: %d", node->GetNamePtr(), static_cast<int32_t>(position));
       return false;
     }
   }
@@ -1022,5 +1030,4 @@ void ResetDumpConfig() {
   g_current_fused_graph_name.clear();
   g_current_fused_graph_dump_index = 0UL;
 }
-
 }  // namespace ascir::utils
