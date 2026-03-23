@@ -5698,7 +5698,7 @@ TEST_F(DavinciModelTest, init_mc2_cust_aicpu_with_tilefwk_hiddeninput_success) {
   model.stream_list_ = {stream1, stream2};
 
   rtNotify_t rt_notify = nullptr;
-  rtNotifyCreate(0, &rt_notify);
+  aclrtCreateNotify(&rt_notify, 0U);
   model.notify_list_ = {rt_notify};
 
   KernelTaskInfo kernel_task_info;

@@ -269,10 +269,12 @@ GeRootModelPtr CreateGeRootModelWithAicoreOpOfDynamicIo() {
   auto data_x_desc = std::make_shared<OpDesc>("data_x", DATA);
   (void)data_x_desc->AddInputDesc(tensor_desc);
   (void)data_x_desc->AddOutputDesc(tensor_desc);
+  AttrUtils::SetInt(data_x_desc, ATTR_NAME_INDEX, 0);
   auto data_x = graph->AddNode(data_x_desc);
   auto data_dx_desc = std::make_shared<OpDesc>("data_dx", DATA);
   (void)data_dx_desc->AddInputDesc(tensor_desc);
   (void)data_dx_desc->AddOutputDesc(tensor_desc);
+  AttrUtils::SetInt(data_dx_desc, ATTR_NAME_INDEX, 1);
   auto data_dx = graph->AddNode(data_dx_desc);
   auto op_desc = std::make_shared<OpDesc>("add1", "Add");
   (void)op_desc->AddInputDesc("x", tensor_desc);

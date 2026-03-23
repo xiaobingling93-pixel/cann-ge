@@ -387,6 +387,7 @@ struct ApiAttr {
   ge::Expression offset;
   float negative_slope = 0.0;
   int64_t gather_axis = 0;
+  bool negative_index_support = false;
 };
 
 enum class ApiScene : int8_t {

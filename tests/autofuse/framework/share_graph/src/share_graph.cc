@@ -6489,6 +6489,7 @@ static void LoadGatherAbsStore_BeforeAutofuse(ge::AscGraph &graph, int64_t gathe
    gather.x1 = x1.y;
    gather.x2 = x2.y;
    gather.ir_attr.SetAxis(gather_axis);
+   gather.ir_attr.SetNegative_index_support(false);
    gather.attr.sched.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
    *gather.y.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
    *gather.y.repeats = {s0, s1, s5, s6, s3, s4};
@@ -6580,6 +6581,7 @@ static void LoadGatherTailAbsStore_BeforeAutofuse(ge::AscGraph &graph, int64_t g
    gather.x1 = x1.y;
    gather.x2 = x2.y;
    gather.ir_attr.SetAxis(gather_axis);
+   gather.ir_attr.SetNegative_index_support(false);
    gather.attr.sched.axis = {z0.id, z1.id, z3.id, z4.id};
    *gather.y.axis = {z0.id, z1.id, z3.id, z4.id};
    *gather.y.repeats = {s0, s1, s3, s4};
@@ -6685,6 +6687,7 @@ static void ConstructVVAscGraphAxisInfoForOneAxisGather(ge::AscGraph &graph, siz
       const auto &attr = op->GetAttrsGroup<AscNodeAttr>();
       auto gather_ir_attr = dynamic_cast<ascir_op::Gather::AscGatherIrAttrDef *>(attr->ir_attr.get());
       gather_ir_attr->SetAxis(0);
+      gather_ir_attr->SetNegative_index_support(false);
     }
   }
 }
@@ -6772,6 +6775,7 @@ static void GatherReduceStore_BeforeAutofuse(ge::AscGraph &graph, int64_t gather
    gather.x1 = x1.y;
    gather.x2 = x2.y;
    gather.ir_attr.SetAxis(0);
+   gather.ir_attr.SetNegative_index_support(false);
    gather.attr.sched.axis = {z2.id, z3.id, z1.id};
    *gather.y.axis = {z2.id, z3.id, z1.id};
    *gather.y.repeats = {s2, s3, s1};

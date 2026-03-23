@@ -74,6 +74,100 @@ void ConvertModelRealtion(const ModelRelation &model_relation,
   auto *proto_root_model_endpoint_info = model_relation_def.mutable_root_model_endpoint_info();
   ConvertModelQueueInfo(model_relation.root_model_endpoint_info, *proto_root_model_endpoint_info);
 }
+
+Status AddFlowModelCompileResource(const FlowModelPtr &flow_model, flow_model::proto::FlowModelDef &flow_model_def) {
+  auto *const execution_runtime = ExecutionRuntime::GetInstance();
+  auto *const compile_res_info = flow_model_def.mutable_compile_resource();
+  auto *const running_res_list_proto = compile_res_info->mutable_dev_to_resource_list();
+  const auto &submodels = flow_model->GetSubmodels();
+  std::set<std::string> logic_dev_lists;
+  for (const auto &submodel_iter : submodels) {
+    const auto &submodel = submodel_iter.second;
+    const auto &logic_device_id = submodel->GetLogicDeviceId();
+    const auto &deploy_resource = submodel->GetDeployResource();
+    GELOGI("Get logic device id: %s from submodel", logic_device_id.c_str());
+    const auto vec_after_split = StringUtils::Split(logic_device_id, ',');
+    if ((!logic_device_id.empty()) && (!vec_after_split.empty())) {
+      (void)logic_dev_lists.insert(vec_after_split.cbegin(), vec_after_split.cend());
+    }
+    if ((vec_after_split.empty()) || (deploy_resource == nullptr)) {
+      continue;
+    }
+    for (const auto &dev_id : vec_after_split) {
+      for (const auto &res : deploy_resource->resource_list) {
+        auto *const running_res_proto = (*running_res_list_proto)[dev_id].add_running_resource();
+        running_res_proto->set_type(res.first);
+        running_res_proto->set_value(res.second);
+      }
+    }
+  }
+  if (execution_runtime != nullptr) {
+    const auto &host_res_type = execution_runtime->GetCompileHostResourceType();
+    const auto &logic_dev_id_to_res_type = execution_runtime->GetCompileDeviceInfo();
+    if (host_res_type.empty() && logic_dev_id_to_res_type.empty()) {
+      GELOGI("Needn't to record resource info result of compile resource empty");
+    } else if ((!host_res_type.empty()) && (!logic_dev_id_to_res_type.empty())) {
+      compile_res_info->set_host_resource_type(host_res_type);
+      auto *const proto_dev_to_type = compile_res_info->mutable_logic_device_id_to_resource_type();
+      for (const auto &dev_to_type : logic_dev_id_to_res_type) {
+        // In load balance mode: logic device id is empty. Record all compile resource
+        if ((!logic_dev_lists.empty()) && (logic_dev_lists.count(dev_to_type.first) == 0UL)) {
+          GELOGD("Logic device id %s is not assign to any submodel.", dev_to_type.first.c_str());
+          continue;
+        }
+        (*proto_dev_to_type)[dev_to_type.first] = dev_to_type.second;
+      }
+      GELOGI("Save compile info : host resource type %s, device resource number %zu in offline model success.",
+             host_res_type.c_str(), logic_dev_id_to_res_type.size());
+    } else {
+      GELOGW("Host resource type %s is empty or device resource number %zu is zero",
+             host_res_type.c_str(), logic_dev_id_to_res_type.size());
+    }
+  }
+  return SUCCESS;
+}
+
+Status SaveOmDataToFile(const std::shared_ptr<PneModel> &submodel,
+                        flow_model::proto::SubmodelDef &submodel_def,
+                        ModelBufferData &serialize_buff,
+                        const std::string &split_om_data_base_dir) {
+  GE_CHECK_NOTNULL(submodel);
+  const auto root_graph = submodel->GetRootGraph();
+  GE_CHECK_NOTNULL(root_graph);
+  const std::string &normalize_name = submodel->GetNormalizedModelName();
+  const std::string &graph_name = root_graph->GetName();
+  const std::string file_name = normalize_name.empty() ? (graph_name + ".om") :
+                               (normalize_name  + ".om");
+  // file path is graph_name/file_name.om  base dir is ./cache_dir/graph_key
+  submodel_def.set_om_data_file_path(graph_name + "/" + file_name);
+  const std::string split_om_data_dir = split_om_data_base_dir + graph_name;
+  GE_ASSERT_TRUE((CreateDir(split_om_data_dir) == 0),
+                  "Create directory failed, path: %s.", split_om_data_dir.c_str());
+  const std::string om_file_name = split_om_data_dir + "/" + file_name;
+  // UDF model(not builtin) cp tar.gz to om ; UDF(builtin) or NPU CPU model save from memory
+  if ((submodel->GetModelType() == PNE_ID_UDF) && (!submodel->GetIsBuiltinModel())) {
+    const std::string release_pkg = submodel->GetSavedModelPath();
+    if (mmAccess(release_pkg.c_str()) != EN_OK) {
+      GELOGE(FAILED, "Can not find release pkg file by path:%s.", release_pkg.c_str());
+      return FAILED;
+    }
+    if (release_pkg != om_file_name) {
+      // for subgraph cache mode, release_pkg is equal to om file name
+      std::regex dir_pattern(R"([A-Za-z0-9./+\-_]+)");
+      std::smatch match_result;
+      GE_CHK_BOOL_RET_STATUS(std::regex_match(om_file_name, match_result, dir_pattern), PARAM_INVALID,
+                             "Invalid target om file path: %s", om_file_name.c_str());
+      GELOGI("Copy release pkg: %s to cache file: %s.", release_pkg.c_str(), om_file_name.c_str());
+      const std::string cmd = "cp " + release_pkg + " " +  om_file_name;
+      GE_CHK_BOOL_RET_STATUS(system(cmd.c_str()) == 0, FAILED, "Failed to execute cmd[%s].", cmd.c_str());
+    }
+  } else {
+    GELOGI("Write om data to file: %s. Set submodel def file name: %s", om_file_name.c_str(), file_name.c_str());
+    GE_ASSERT_GRAPH_SUCCESS(SaveBinToFile(reinterpret_cast<char_t *>(serialize_buff.data.get()),
+        serialize_buff.length, om_file_name), "Failed to save model data to file %s.", om_file_name.c_str());
+  }
+  return SUCCESS;
+}
 }  // namespace
 
 Status FlowModelOmSaver::SaveToOm(const std::string &output_file, const std::string &split_om_data_base_dir) {
@@ -149,63 +243,12 @@ Status FlowModelOmSaver::AddFlowModelPartition() {
     (*proto_models_esched_priority)[models_esched_priority.first] = proto_esched_priority;
   }
 
-  GE_CHK_STATUS_RET(AddFlowModelCompileResource(flow_model_def), "[Add][CompileResource] to flow model failed.");
+  GE_CHK_STATUS_RET(AddFlowModelCompileResource(flow_model_, flow_model_def), "[Add][CompileResource] to flow model failed.");
   GE_CHK_STATUS_RET(AddPartition(flow_model_def, FLOW_MODEL), "[Add][FlowModelDef]Failed, model=%s",
                     flow_model_->GetModelName().c_str());
   return SUCCESS;
 }
 
-Status FlowModelOmSaver::AddFlowModelCompileResource(flow_model::proto::FlowModelDef &flow_model_def) const {
-  auto *const execution_runtime = ExecutionRuntime::GetInstance();
-  auto *const compile_res_info = flow_model_def.mutable_compile_resource();
-  auto *const running_res_list_proto = compile_res_info->mutable_dev_to_resource_list();
-  const auto &submodels = flow_model_->GetSubmodels();
-  std::set<std::string> logic_dev_lists;
-  for (const auto &submodel_iter : submodels) {
-    const auto &submodel = submodel_iter.second;
-    const auto &logic_device_id = submodel->GetLogicDeviceId();
-    const auto &deploy_resource = submodel->GetDeployResource();
-    GELOGI("Get logic device id: %s from submodel", logic_device_id.c_str());
-    const auto vec_after_split = StringUtils::Split(logic_device_id, ',');
-    if ((!logic_device_id.empty()) && (!vec_after_split.empty())) {
-      (void)logic_dev_lists.insert(vec_after_split.cbegin(), vec_after_split.cend());
-    }
-    if ((vec_after_split.empty()) || (deploy_resource == nullptr)) {
-      continue;
-    }
-    for (const auto &dev_id : vec_after_split) {
-      for (const auto &res : deploy_resource->resource_list) {
-        auto *const running_res_proto = (*running_res_list_proto)[dev_id].add_running_resource();
-        running_res_proto->set_type(res.first);
-        running_res_proto->set_value(res.second);
-      }
-    }
-  }
-  if (execution_runtime != nullptr) {
-    const auto &host_res_type = execution_runtime->GetCompileHostResourceType();
-    const auto &logic_dev_id_to_res_type = execution_runtime->GetCompileDeviceInfo();
-    if (host_res_type.empty() && logic_dev_id_to_res_type.empty()) {
-      GELOGI("Needn't to record resource info result of compile resource empty");
-    } else if ((!host_res_type.empty()) && (!logic_dev_id_to_res_type.empty())) {
-      compile_res_info->set_host_resource_type(host_res_type);
-      auto *const proto_dev_to_type = compile_res_info->mutable_logic_device_id_to_resource_type();
-      for (const auto &dev_to_type : logic_dev_id_to_res_type) {
-        // In load balance mode: logic device id is empty. Record all compile resource
-        if ((!logic_dev_lists.empty()) && (logic_dev_lists.count(dev_to_type.first) == 0UL)) {
-          GELOGD("Logic decvice id %s is not assign to any submodel.", dev_to_type.first.c_str());
-          continue;
-        }
-        (*proto_dev_to_type)[dev_to_type.first] = dev_to_type.second;
-      }
-      GELOGI("Save compile info : host resource type %s, device resource number %zu in offline model success.",
-             host_res_type.c_str(), logic_dev_id_to_res_type.size());
-    } else {
-      GELOGW("Host resource type %s is empty or device resource number %zu is zero",
-             host_res_type.c_str(), logic_dev_id_to_res_type.size());
-    }
-  }
-  return SUCCESS;
-}
 
 Status FlowModelOmSaver::AddFlowSubModelPartitions(const std::string &split_om_data_base_dir) {
   const auto &submodels = flow_model_->GetSubmodels();
@@ -260,48 +303,6 @@ Status FlowModelOmSaver::AddFlowSubModelPartitions(const std::string &split_om_d
                       submodel->GetModelType().c_str());
     GELOGD("add flow submodel partition end, model=%s, model_type=%s", submodel->GetModelName().c_str(),
            submodel->GetModelType().c_str());
-  }
-  return SUCCESS;
-}
-
-Status FlowModelOmSaver::SaveOmDataToFile(const std::shared_ptr<PneModel> &submodel,
-                                          flow_model::proto::SubmodelDef &submodel_def,
-                                          ModelBufferData &serialize_buff,
-                                          const std::string &split_om_data_base_dir) const {
-  GE_CHECK_NOTNULL(submodel);
-  const auto root_graph = submodel->GetRootGraph();
-  GE_CHECK_NOTNULL(root_graph);
-  const std::string &normalize_name = submodel->GetNormalizedModelName();
-  const std::string &graph_name = root_graph->GetName();
-  const std::string file_name = normalize_name.empty() ? (graph_name + ".om") :
-                               (normalize_name  + ".om");
-  // file path is graph_name/file_name.om  base dir is ./cache_dir/graph_key
-  submodel_def.set_om_data_file_path(graph_name + "/" + file_name);
-  const std::string split_om_data_dir = split_om_data_base_dir + graph_name;
-  GE_ASSERT_TRUE((CreateDir(split_om_data_dir) == 0),
-                  "Create direct failed, path: %s.", split_om_data_dir.c_str());
-  const std::string om_file_name = split_om_data_dir + "/" + file_name;
-  // UDF model(not builtin) cp tar.gz to om ; UDF(buitin) or NPU CPU model save from memory
-  if ((submodel->GetModelType() == PNE_ID_UDF) && (!submodel->GetIsBuiltinModel())) {
-    const std::string release_pkg = submodel->GetSavedModelPath();
-    if (mmAccess(release_pkg.c_str()) != EN_OK) {
-      GELOGE(FAILED, "Can not find release pkg file by path:%s.", release_pkg.c_str());
-      return FAILED;
-    }
-    if (release_pkg != om_file_name) {
-      // for subgraph cache mode, release_pkg is equal to om file name
-      std::regex dir_pattern(R"([A-Za-z0-9./+\-_]+)");
-      std::smatch match_result;
-      GE_CHK_BOOL_RET_STATUS(std::regex_match(om_file_name, match_result, dir_pattern), PARAM_INVALID,
-                             "Invalid target om file path: %s", om_file_name.c_str());
-      GELOGI("Copy release pkg: %s to cache file: %s.", release_pkg.c_str(), om_file_name.c_str());
-      const std::string cmd = "cp " + release_pkg + " " +  om_file_name;
-      GE_CHK_BOOL_RET_STATUS(system(cmd.c_str()) == 0, FAILED, "Failed to execute cmd[%s].", cmd.c_str());
-    }
-  } else {
-    GELOGI("Write om data to file: %s. Set submodel def file name: %s", om_file_name.c_str(), file_name.c_str());
-    GE_ASSERT_GRAPH_SUCCESS(SaveBinToFile(reinterpret_cast<char_t *>(serialize_buff.data.get()),
-        serialize_buff.length, om_file_name), "Failed to save model data to file %s.", om_file_name.c_str());
   }
   return SUCCESS;
 }

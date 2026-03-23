@@ -14,7 +14,6 @@
 #include <cstdint>
 
 #include "securec.h"
-#include "ge_common/ge_api_types.h"
 #include "common/checker.h"
 
 namespace ge {
@@ -26,14 +25,14 @@ class AstNodePool {
   AstNodePool(const AstNodePool &) = delete;
   AstNodePool &operator=(const AstNodePool &) = delete;
 
-  uint8_t *Allocate(size_t mem_size);
+  uint8_t *Allocate(const size_t mem_size);
 
   size_t GetMemoryUsage() const {
     return total_mem_usage_;
   }
 
  private:
-  size_t CreateNewBlock(size_t min_size);
+  size_t CreateNewBlock(const size_t min_size);
   static size_t AlignTo(const size_t size, const size_t alignment) {
     return (size + alignment - 1) & ~(alignment - 1);
   }

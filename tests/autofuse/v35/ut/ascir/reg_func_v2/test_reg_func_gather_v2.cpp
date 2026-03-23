@@ -169,6 +169,7 @@ void CreateGraphStaticMiddleAxis(ge::AscGraph &graph, int32_t param_axis_1, int3
   gather.attr.sched.axis = {z1.id, z2.id};
   gather.y.dtype = T1;
   gather.ir_attr.SetAxis(0);
+  gather.ir_attr.SetNegative_index_support(false);
   *gather.y.axis = {z1.id, z2.id};
   *gather.y.repeats = {s1, s2};
   *gather.y.strides = {s2, One};
@@ -223,6 +224,7 @@ void CreateGraphStaticTailAxis(ge::AscGraph &graph, int32_t param_axis_1, int32_
   gather.attr.sched.axis = {z1.id, z2.id};
   gather.y.dtype = T1;
   gather.ir_attr.SetAxis(1);
+  gather.ir_attr.SetNegative_index_support(false);
   *gather.y.axis = {z1.id, z2.id};
   *gather.y.repeats = {s1, s2};
   *gather.y.strides = {s2, One};

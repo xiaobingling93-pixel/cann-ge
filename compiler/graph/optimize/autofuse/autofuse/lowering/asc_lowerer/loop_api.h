@@ -142,7 +142,7 @@ inline bool UnimplementInferDatatype(const std::vector<DataType> &inputs, std::v
 
 LoopVar Load(const ge::InDataAnchorPtr &src);
 LoopVar GatherLoad(const ge::OutDataAnchorPtr &dst, const ge::InDataAnchorPtr &params,
-    const ge::InDataAnchorPtr &indices, int64_t axis);
+    const ge::InDataAnchorPtr &indices, int64_t axis, bool negative_index_support);
 KernelBox Store(const ge::OutDataAnchorPtr &dst, const LoopVar &src);
 KernelBox StoreReduction(ReduceType type, const ge::OutDataAnchorPtr &dst, const LoopVar &src,
                          const std::vector<Expression> &src_dims, const std::vector<size_t> &reduced_axis);

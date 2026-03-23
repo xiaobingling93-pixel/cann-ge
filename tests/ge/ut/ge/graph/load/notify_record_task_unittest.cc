@@ -40,7 +40,7 @@ TEST_F(UtestNotifyRecordTask, init_and_distribute_notify_record_task_info) {
   model.stream_list_ = { stream };
 
   rtNotify_t notify = nullptr;
-  rtNotifyCreate(0, &notify);
+  aclrtCreateNotify(&notify, 0U);
   model.notify_list_ = { notify };
 
   model.op_list_[0] = CreateOpDesc("op_name", "op_type");

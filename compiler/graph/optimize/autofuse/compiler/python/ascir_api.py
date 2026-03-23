@@ -958,9 +958,21 @@ def Gather(owner_graph: ascir.HintGraph,
            *,
            axis: List[ascir.Axis],
            size: Optional[List[ascir.SizeExpr]] = None,
-           stride: Optional[List[ascir.SizeExpr]] = None
+           stride: Optional[List[ascir.SizeExpr]] = None,
+           negative_index_support: bool = False
            ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("Gather", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
+    name = _generate_op_name(owner_graph, "Gather".lower())
+    op = ascir.ops.Gather(name)
+    meta = _get_metadata(owner_graph)
+    meta.ops.append(op)
+
+    op.attr.ir_attr.negative_index_support = negative_index_support
+    op.attr.sched.axis = axis
+    op.x1 = x1
+    op.x2 = x2
+    _infer_or_set_view(op.y, axis, size, stride)
+    op.infer_dtype()
+    return op.y
 
 
 def BitwiseAnd(owner_graph: ascir.HintGraph,

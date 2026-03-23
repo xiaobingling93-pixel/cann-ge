@@ -17,11 +17,9 @@
 
 ## 环境要求<a name="section383335652346"></a>
 
--   操作系统及架构：CentOS x86系统、CentOS aarch64系统、Euleros x86系统、Euleros aarch64系统
--   编译器：g++
--   芯片：all
--   python及依赖的库：python3.7.5、tensorflow1.15.0
--   已完成昇腾AI软件栈在开发环境上的部署
+- 编译器：GCC >= 7.3.x
+- 使用python及其依赖库版本：python>=3.9 、pytorch>=2.1
+- 已完成[相关环境准备](../../../../docs/build.md)。
 
 
 ## 程序编译<a name="section6645633456813"></a>

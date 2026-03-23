@@ -603,7 +603,8 @@ const std::set<std::string> session_options = {OPTION_GRAPH_RUN_MODE,
   configure_option::INPUT_BATCH_CPY,
   OPTION_ALLOW_MULTI_GRAPH_PARALLEL_COMPILE,
   OPTIMIZATION_SWITCH,
-  OUTPUT_DATATYPE
+  OUTPUT_DATATYPE,
+  TILING_SCHEDULE_OPTIMIZE
 };
 
 const std::set<std::string> graph_options = {OPTION_EXEC_DEVICE_ID,
@@ -791,7 +792,8 @@ const std::set<std::string> graph_options = {OPTION_EXEC_DEVICE_ID,
   configure_option::INPUT_BATCH_CPY,
   OPTIMIZATION_SWITCH,
   OUTPUT_DATATYPE,
-  OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES
+  OPTION_OUTPUT_REUSE_INPUT_MEM_INDEXES,
+  TILING_SCHEDULE_OPTIMIZE
 };
 
 static Status CheckSupportedOptions(const std::map<std::string, std::string> &input_options,

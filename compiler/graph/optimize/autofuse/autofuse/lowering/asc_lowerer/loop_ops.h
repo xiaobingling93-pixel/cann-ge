@@ -257,8 +257,8 @@ struct GatherInput {
 class LoadGatherOp : public LoopOp {
  public:
   explicit LoadGatherOp(const ge::OutDataAnchor *dst, const std::vector<ge::OutDataAnchorPtr> &outputs,
-                        std::vector<GatherInput> inputs, std::vector<Expression> dims, int64_t axis)
-      : dst_(dst), outputs_(outputs), ginputs_(inputs), dims_(dims), axis_(axis) {}
+                        std::vector<GatherInput> inputs, std::vector<Expression> dims, int64_t axis, bool negative_index_support)
+      : dst_(dst), outputs_(outputs), ginputs_(inputs), dims_(dims), axis_(axis), negative_index_support_(negative_index_support) {}
 
   [[nodiscard]] CseVar Compute(const LoopCtx &ctx) const override;
 
@@ -325,6 +325,7 @@ private:
   std::vector<GatherInput> ginputs_;
   std::vector<Expression> dims_;
   int64_t axis_;
+  bool negative_index_support_;
 };
 
 class StoreOp : public LoopOp {

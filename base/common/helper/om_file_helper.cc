@@ -17,13 +17,13 @@
 #include "common/math/math_util.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "ge/ge_error_codes.h"
-#include "runtime/rt.h"
+#include "acl/acl_rt.h"
 
 namespace {
 constexpr uint32_t kOptionalNum = 2U;
 constexpr uint32_t kMaxIncreasePartitionNum = 2U;  // 新增partition类型时需要修改
-constexpr const char_t *kSocVersion = "soc_version";
-constexpr const char_t *kArchType = "arch_type";
+constexpr const char *kSocVersion = "soc_version";
+constexpr const char *kArchType = "arch_type";
 }
 namespace ge {
 static bool IsPartitionTableNumValid(const uint32_t partition_num, const uint32_t increase_partition_num) {
@@ -261,11 +261,16 @@ Status OmFileLoadHelper::LoadModelPartitionTable(const uint8_t *const model_data
 
 Status OmFileLoadHelper::CheckModelCompatibility(const Model &model) const {
   std::string model_soc_version;
-  std::string model_arch_type;
   (void) AttrUtils::GetStr(model, kSocVersion, model_soc_version);
-  (void) AttrUtils::GetStr(model, kArchType, model_arch_type);
-  GE_CHK_RT_RET(rtModelCheckCompatibility(model_soc_version.c_str(), model_arch_type.c_str()));
-  GELOGD("soc_version:%s, arch_type:%s check valid", model_soc_version.c_str(), model_arch_type.c_str());
+  if (model_soc_version.empty()) {  // 原接口rtModelCheckCompatibility逻辑，当model_soc_version为空时接口返回成功
+    GELOGW("Model soc version is empty, skip compatibility check.");
+    return SUCCESS;
+  }
+  int32_t compatible = 0;
+  GE_ASSERT_RT_OK(aclrtCheckArchCompatibility(model_soc_version.c_str(), &compatible));
+  GELOGI("The soc version [%s]. Check compatibility is %d.", model_soc_version.c_str(), compatible);
+  GE_ASSERT_TRUE(compatible == 1, "Model soc version[%s] is not support in this device",
+      model_soc_version.c_str()); // 1 for compatible, 0 for incompatible
   return SUCCESS;
 }
 

@@ -386,7 +386,7 @@ void DavinciModel::DestroyResources() {
     }
 
     for (size_t i = 0U; i < notify_list_.size(); ++i) {
-      GE_LOGW_IF(rtNotifyDestroy(notify_list_[i]) != RT_ERROR_NONE, "Destroy notify failed, index: %zu", i);
+      GE_LOGW_IF(aclrtDestroyNotify(notify_list_[i]) != ACL_SUCCESS, "Destroy notify failed, index: %zu", i);
     }
 
     for (size_t i = 0U; i < event_list_.size(); ++i) {
@@ -1466,12 +1466,12 @@ Status DavinciModel::InitRuntimeResource() {
 
   uint32_t i = 0U;
   if (runtime_param_.notify_types.empty()) {
-    runtime_param_.notify_types.resize(runtime_param_.notify_num, RT_NOTIFY_DEFAULT);
+    runtime_param_.notify_types.resize(runtime_param_.notify_num, ACL_RT_NOTIFY_EXPORT_FLAG_DEFAULT);
   }
   GE_ASSERT_EQ(runtime_param_.notify_num, static_cast<uint32_t>(runtime_param_.notify_types.size()));
   while (i < runtime_param_.notify_num) {
-    rtNotify_t rt_notify = nullptr;
-    GE_ASSERT_RT_OK(rtNotifyCreate(static_cast<int32_t>(device_id_), &rt_notify));
+    aclrtNotify rt_notify = nullptr;
+    GE_ASSERT_RT_OK(aclrtCreateNotify(&rt_notify, static_cast<uint32_t>(ACL_NOTIFY_DEFAULT)));
     notify_list_.push_back(rt_notify);
     ++i;
   }

@@ -8,12 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <vector>
+#include <string>
+using StringVector = std::vector<std::string>;
 #include "graph_optimizer/fe_graph_optimizer.h"
 
 #include <cfloat>
 #include <memory>
 #include <mutex>
-#include <vector>
 #include <iostream>
 #include "common/fe_inner_attr_define.h"
 #include "common/fe_utils.h"

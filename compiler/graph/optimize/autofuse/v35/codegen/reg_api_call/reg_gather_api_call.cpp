@@ -146,7 +146,8 @@ Status GatherRegApiCall::GenerateComputeTypeGather(const TPipe &tpipe, const std
       std::string param_last_axis_size = tpipe.tiler.Size(x1.axis_size[x1_axis_size - 1], true);
       x1_offset = first_merge_axis + " * " + param_last_axis_size;
       ss << this->api_name_ << "(" << y << ", " << x1 << "[" << x1_offset << "], " << x2 << "[" << x2_offset << "], "
-         << param_last_axis_size << ", " << y.actual_size << ", " << tpipe.tmp_buf << "_" << std::to_string(tmp_buf_id) << ");" << std::endl;
+         << param_last_axis_size << ", " << y.actual_size << ", " << tpipe.tmp_buf << "_" << std::to_string(tmp_buf_id)
+         << ");" << std::endl;
     }
   }
   result = ss.str();
@@ -171,7 +172,7 @@ Status GatherRegApiCall::GenerateComputeTypeLoad(const TPipe &tpipe, const std::
     GELOGE(ge::FAILED, "gather_dim status need add");
     return ge::FAILED;
   }
-  ss << case_ << ", " << y.vectorized_axis.size() << ">(";
+  ss << case_ << ", " << y.vectorized_axis.size() << ", " << this->negative_index_support << ">(";
   ss << y <<  ", " << x1 << ", " << x2 << ", ";
   for (int i = y.vectorized_axis.size() - 1; i >= 0; i--) {
     auto vectorized_axis = tpipe.tiler.GetAxis(y.vectorized_axis[i]);
@@ -237,7 +238,13 @@ Status GatherRegApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::A
 Status GatherRegApiCall::ParseAttr(const ascir::NodeView &node) {
   GE_CHK_GRAPH_STATUS_RET(node->attr.ir_attr->GetAttrValue("axis", this->axis),
                           "Failed to get Gahter axis attr, node = %s", node->GetNamePtr());
-  GELOGI("name:%s, axis:%lld", node->GetNamePtr(), this->axis);
+  if (node->attr.api.compute_type == ge::ComputeType::kComputeLoad) { 
+      GE_CHK_GRAPH_STATUS_RET(node->attr.ir_attr->GetAttrValue("negative_index_support", this->negative_index_support),
+                            "Failed to get Gather negative_index_support attr, node = %s", node->GetNamePtr());
+      GELOGI("name:%s, axis:%lld, negative_index_support:%d", node->GetNamePtr(), this->axis, this->negative_index_support);
+  } else {
+      GELOGI("name:%s, axis:%lld", node->GetNamePtr(), this->axis);
+  }
   this->compute_type = node->attr.api.compute_type;
   return ge::SUCCESS;
 }

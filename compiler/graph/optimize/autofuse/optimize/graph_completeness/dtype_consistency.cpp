@@ -20,6 +20,59 @@
 using namespace ge::ascir_op;
 
 namespace {
+bool IsSignedIntegerType(ge::DataType dtype) {
+  return (dtype == ge::DT_INT8) || (dtype == ge::DT_INT16) ||
+         (dtype == ge::DT_INT32) || (dtype == ge::DT_INT64) ||
+         (dtype == ge::DT_INT4) || (dtype == ge::DT_INT2);
+}
+
+bool IsUnsignedIntegerType(ge::DataType dtype) {
+  return (dtype == ge::DT_UINT8) || (dtype == ge::DT_UINT16) ||
+         (dtype == ge::DT_UINT32) || (dtype == ge::DT_UINT64) ||
+         (dtype == ge::DT_UINT1) || (dtype == ge::DT_UINT2);
+}
+
+bool IsFloatingType(ge::DataType dtype) {
+  return (dtype == ge::DT_FLOAT16) || (dtype == ge::DT_FLOAT) ||
+         (dtype == ge::DT_DOUBLE) || (dtype == ge::DT_BF16);
+}
+
+int32_t GetDTypeSize(ge::DataType dtype) {
+  return ge::GetSizeByDataType(dtype);
+}
+
+// 判断 from_type -> to_type 的 Cast 是否保持所有值不变
+// 规则1：同一类型类别内位宽递增（原规则）
+// 规则2：位宽递增（用于 TryMergeWithUpstreamCast 中 A->B 和 A->C 都递增的场景）
+bool IsCastPreservesValues(ge::DataType from_type, ge::DataType to_type) {
+  if (from_type == to_type) {
+    return true;
+  }
+
+  // 浮点类型扩展：fp16 -> fp32 -> fp64 保持值
+  if (IsFloatingType(from_type) && IsFloatingType(to_type)) {
+    return GetDTypeSize(from_type) <= GetDTypeSize(to_type);
+  }
+
+  // 有符号整数扩展：int8 -> int16 -> int32 -> int64 保持值
+  if (IsSignedIntegerType(from_type) && IsSignedIntegerType(to_type)) {
+    return GetDTypeSize(from_type) <= GetDTypeSize(to_type);
+  }
+
+  // 无符号整数扩展：uint8 -> uint16 -> uint32 -> uint64 保持值
+  if (IsUnsignedIntegerType(from_type) && IsUnsignedIntegerType(to_type)) {
+    return GetDTypeSize(from_type) <= GetDTypeSize(to_type);
+  }
+  return false;
+}
+
+bool IsDTypeSizeChainIncreasing(ge::DataType dtype_a, ge::DataType dtype_b, ge::DataType dtype_c) {
+  auto width_a = ge::GetSizeByDataType(dtype_a);
+  auto width_b = ge::GetSizeByDataType(dtype_b);
+  auto width_c = ge::GetSizeByDataType(dtype_c);
+  return width_a < width_b && width_b < width_c;
+}
+
 Status RemoveDuplicateCast(const ge::AscNodePtr &keep_cast, const ge::AscNodePtr &remove_cast,
                            const ge::OutDataAnchorPtr &src_out_anchor) {
   auto keep_out_anchor = keep_cast->GetOutDataAnchor(0);
@@ -62,7 +115,7 @@ Status DtypeConsistency::CollectDtypeRequirements(ge::AscGraph &graph,
                                                   std::vector<NodeDtypeRequirement> &requirements) {
   auto all_nodes = graph.GetAllNodes();
   for (const auto &node : all_nodes) {
-    if (ScheduleUtils::IsBuffer(node) || ge::ops::IsOps<Cast>(node)) {
+    if (ScheduleUtils::IsBuffer(node)) {
       continue;
     }
     GE_ASSERT_NOTNULL(node);
@@ -152,49 +205,66 @@ bool DtypeConsistency::TryMergeWithUpstreamCast(ge::AscGraph &graph, const ge::A
                                                 const ge::AscNodePtr &downstream_node, size_t input_idx,
                                                 ge::DataType target_dtype) {
   auto orig_src_dtype = upstream_cast->inputs[0].attr.dtype;
-  std::vector<ge::DataType> merge_input_dtypes = {orig_src_dtype};
-  std::vector<ge::DataType> merge_output_dtypes = {target_dtype};
-  if ((orig_src_dtype != target_dtype) &&
-    ScheduleUtils::CallAscirInferDataType<ge::ascir_op::Cast>(merge_input_dtypes, merge_output_dtypes) != ge::SUCCESS) {
+  auto intermediate_dtype = upstream_cast->outputs[0].attr.dtype;
+  // 合并条件（满足其一即可）：
+  // 1. 同一类型类别内位宽递增（A->B 和 A->C 都满足 IsCastPreservesValues）
+  // 2. 位宽始终递增
+  bool same_category_widening = IsCastPreservesValues(orig_src_dtype, intermediate_dtype) &&
+                                IsCastPreservesValues(orig_src_dtype, target_dtype);
+  bool bitwidth_chain_increasing = IsDTypeSizeChainIncreasing(orig_src_dtype, intermediate_dtype, target_dtype);
+  if (!same_category_widening && !bitwidth_chain_increasing) {
     return false;
   }
 
-  // Check if the original cast has multiple downstream consumers
-  auto orig_cast_out_anchor = upstream_cast->GetOutDataAnchor(0);
-  auto orig_cast_peer_anchors = orig_cast_out_anchor->GetPeerInDataAnchorsPtr();
-  bool has_multiple_consumers = orig_cast_peer_anchors.size() > 1U;
+  // 额外检查：合并后的 A->C 必须是合法的 Cast
+  std::vector<ge::DataType> merge_input_dtypes = {orig_src_dtype};
+  std::vector<ge::DataType> merge_output_dtypes = {target_dtype};
+  if ((orig_src_dtype != target_dtype) &&
+      ScheduleUtils::CallAscirInferDataType<ge::ascir_op::Cast>(merge_input_dtypes, merge_output_dtypes) !=
+      ge::SUCCESS) {
+    return false;
+  }
 
+  auto orig_cast_out_anchor = upstream_cast->GetOutDataAnchor(0);
+  bool has_multiple_consumers = orig_cast_out_anchor->GetPeerInDataAnchorsPtr().size() > 1U;
   auto in_anchor = downstream_node->GetInDataAnchor(static_cast<int32_t>(input_idx));
   GE_ASSERT_NOTNULL(in_anchor);
 
   if (!has_multiple_consumers) {
-    // Only one downstream consumer, can directly modify the original cast's output dtype
-    GELOGD("Merge cast (single consumer) for node [%s] input [%zu]: [%s] -> [%s] -> [%s] => [%s] -> [%s]",
-           downstream_node->GetNamePtr(), input_idx, ge::TypeUtils::DataTypeToSerialString(orig_src_dtype).c_str(),
-           ge::TypeUtils::DataTypeToSerialString(upstream_cast->outputs[0].attr.dtype).c_str(),
-           ge::TypeUtils::DataTypeToSerialString(target_dtype).c_str(),
-           ge::TypeUtils::DataTypeToSerialString(orig_src_dtype).c_str(),
-           ge::TypeUtils::DataTypeToSerialString(target_dtype).c_str());
-    upstream_cast->outputs[0].attr.dtype = target_dtype;
-    downstream_node->inputs[input_idx].attr.dtype = target_dtype;
-    return true;
+    return MergeCastWithSingleConsumer(upstream_cast, downstream_node, input_idx, target_dtype);
   }
+  return MergeCastWithMultipleConsumers(graph, upstream_cast, downstream_node, input_idx, target_dtype);
+}
 
-  // Multiple downstream consumers, create a new merged cast and disconnect the edge
-  GELOGD("Merge cast (multiple consumers) for node [%s] input [%zu]: [%s] -> [%s] -> [%s] => [%s] -> [%s]",
+bool DtypeConsistency::MergeCastWithSingleConsumer(const ge::AscNodePtr &upstream_cast,
+                                                   const ge::AscNodePtr &downstream_node, size_t input_idx,
+                                                   ge::DataType target_dtype) {
+  auto orig_src_dtype = upstream_cast->inputs[0].attr.dtype;
+  GELOGD("Merge cast (single consumer) for node [%s] input [%zu]: [%s] -> [%s]",
          downstream_node->GetNamePtr(), input_idx, ge::TypeUtils::DataTypeToSerialString(orig_src_dtype).c_str(),
-         ge::TypeUtils::DataTypeToSerialString(upstream_cast->outputs[0].attr.dtype).c_str(),
-         ge::TypeUtils::DataTypeToSerialString(target_dtype).c_str(),
-         ge::TypeUtils::DataTypeToSerialString(orig_src_dtype).c_str(),
+         ge::TypeUtils::DataTypeToSerialString(target_dtype).c_str());
+  upstream_cast->outputs[0].attr.dtype = target_dtype;
+  downstream_node->inputs[input_idx].attr.dtype = target_dtype;
+  return true;
+}
+
+bool DtypeConsistency::MergeCastWithMultipleConsumers(ge::AscGraph &graph, const ge::AscNodePtr &upstream_cast,
+                                                      const ge::AscNodePtr &downstream_node, size_t input_idx,
+                                                      ge::DataType target_dtype) {
+  auto orig_src_dtype = upstream_cast->inputs[0].attr.dtype;
+  GELOGD("Merge cast (multiple consumers) for node [%s] input [%zu]: [%s] -> [%s]",
+         downstream_node->GetNamePtr(), input_idx, ge::TypeUtils::DataTypeToSerialString(orig_src_dtype).c_str(),
          ge::TypeUtils::DataTypeToSerialString(target_dtype).c_str());
 
-  // Get the original cast's input
   auto orig_cast_in_anchor = upstream_cast->GetInDataAnchor(0);
   GE_ASSERT_NOTNULL(orig_cast_in_anchor);
   auto orig_src_out_anchor = orig_cast_in_anchor->GetPeerOutAnchor();
   GE_ASSERT_NOTNULL(orig_src_out_anchor);
 
-  // Create a new merged cast
+  auto orig_cast_out_anchor = upstream_cast->GetOutDataAnchor(0);
+  auto in_anchor = downstream_node->GetInDataAnchor(static_cast<int32_t>(input_idx));
+  GE_ASSERT_NOTNULL(in_anchor);
+
   std::string merged_cast_name = std::string(upstream_cast->GetName()) + "_merged_to_" + downstream_node->GetName();
   Cast merged_cast_node(merged_cast_name.c_str());
   auto merged_cast_ptr = graph.AddNode(merged_cast_node);
@@ -203,12 +273,9 @@ bool DtypeConsistency::TryMergeWithUpstreamCast(ge::AscGraph &graph, const ge::A
   merged_cast_ptr->outputs[0].attr = downstream_node->inputs[input_idx].attr;
   merged_cast_ptr->outputs[0].attr.dtype = target_dtype;
 
-  // Disconnect the edge from original cast to current node
   GE_ASSERT_SUCCESS(ge::GraphUtils::RemoveEdge(orig_cast_out_anchor, in_anchor));
-  // Connect the new cast to the original cast's input and the current node
   GE_ASSERT_SUCCESS(ge::GraphUtils::AddEdge(orig_src_out_anchor, merged_cast_ptr->GetInDataAnchor(0)));
   GE_ASSERT_SUCCESS(ge::GraphUtils::AddEdge(merged_cast_ptr->GetOutDataAnchor(0), in_anchor));
-
   return true;
 }
 

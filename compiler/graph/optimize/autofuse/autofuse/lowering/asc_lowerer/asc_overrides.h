@@ -243,8 +243,8 @@ class AscOverrides final : public OpOverrides {
   }
 
   CseVar GatherLoad(const std::string &params, const std::string &indices,
-            const TensorLoopDesc &loop_desc_params, const TensorLoopDesc &loop_desc_indices, int64_t axis) override {
-    const auto cse_key = CseKey<ascir_op::Gather>(params, indices, loop_desc_params, loop_desc_indices, axis); // 所有入参
+            const TensorLoopDesc &loop_desc_params, const TensorLoopDesc &loop_desc_indices, int64_t axis, bool negative_index_support) override {
+    const auto cse_key = CseKey<ascir_op::Gather>(params, indices, loop_desc_params, loop_desc_indices, axis, negative_index_support); // 所有入参
     auto cached = LookUp(cse_key);
     if (cached.IsValid()) {
       return cached;
@@ -269,6 +269,7 @@ class AscOverrides final : public OpOverrides {
 
     GE_WARN_ASSERT(gatherload.Src() != nullptr);
     GET_IR_ATTR(Gather, gatherload.Src())->SetAxis(axis);
+    GET_IR_ATTR(Gather, gatherload.Src())->SetNegative_index_support(negative_index_support);
 
     gatherload.SetTensorLoop(asc_axis_, asc_axis_repeats_, ContiguousStrides(asc_axis_repeats_));
     return MakeCse(cse_key, gatherload);

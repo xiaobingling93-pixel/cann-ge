@@ -4763,6 +4763,7 @@ class AutoFusionVector {
   result << "inline __aicore__ void auto_fusion_vector_stage2(int64_t offset, int64_t curAivM, int64_t curAivN, "
             "int64_t shapeN, int64_t shapeM, int64_t curAlignN, int64_t stageSize) {";
   result << std::endl;
+  result << "int64_t batch_num = offset / shapeN / shapeM;" << std::endl;
   GE_CHK_STATUS_RET(this->root_loop.Generate(this->tiler, this->tpipe, tmp, ComputeStage::kCVFuseStage2),
                     "Codegen root loop Generate failed");
   result << tmp;

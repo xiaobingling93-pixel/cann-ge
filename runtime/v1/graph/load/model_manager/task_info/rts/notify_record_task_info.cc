@@ -64,10 +64,10 @@ Status NotifyRecordTaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("NotifyRecordTaskInfo Distribute Start.");
   SetTaskTag(op_desc_->GetName().c_str());
-  const rtError_t rt_ret = rtNotifyRecord(notify_, stream_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtNotifyRecord failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][rtNotifyRecord] failed, ret:%d", rt_ret);
+  const auto rt_ret = aclrtRecordNotify(notify_, stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtRecordNotify failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtRecordNotify] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 

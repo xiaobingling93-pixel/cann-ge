@@ -13,7 +13,6 @@
 
 #include "dflow/inc/data_flow/model/flow_model.h"
 #include "google/protobuf/message.h"
-#include "model_relation.h"
 #include "framework/common/helper/om_file_helper.h"
 #include "graph/buffer.h"
 
@@ -31,14 +30,12 @@ class FlowModelOmSaver {
   Status AddModelDefPartition();
   Status AddFlowModelPartition();
   Status AddFlowSubModelPartitions(const std::string &split_om_data_base_dir = "");
-  Status AddFlowModelCompileResource(flow_model::proto::FlowModelDef &flow_model_def) const;
   Status UpdateModelHeader();
   Status AddPartition(const google::protobuf::Message &partition_msg, ModelPartitionType partition_type);
   Status AddPartition(Buffer &buffer, ModelPartitionType partition_type);
   Status SaveFlowModelToFile(const std::string &output_file);
   Status SaveFlowModelToDataBuffer(ModelBufferData &model_buff);
-  Status SaveOmDataToFile(const std::shared_ptr<PneModel> &submodel, flow_model::proto::SubmodelDef &submodel_def,
-                          ModelBufferData &serialize_buff, const std::string &split_om_data_base_dir) const;
+
   /**
    * @brief fix non standard graph load failed.
    * flow model is seperate by partitionCall, graph output node and subgraph is incorrect.

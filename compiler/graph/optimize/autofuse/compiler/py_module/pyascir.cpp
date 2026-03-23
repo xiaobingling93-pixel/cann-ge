@@ -10,6 +10,7 @@
 
 #include "pyascir.h"
 
+#include <limits>
 #include <Python.h>
 #include <structmember.h>
 #include <google/protobuf/text_format.h>
@@ -49,6 +50,7 @@ inline constexpr char kOutputOpType[] = "Output";
 inline constexpr char kDataOpType[] = "Data";
 inline constexpr char kAscGraphAttr[] = "ascgraph";
 inline constexpr char kNegativeSlopeAttr[] = "negative_slope";
+inline constexpr char kNegativeIndexSupportAttr[] = "negative_index_support";
 inline constexpr char kAlphaAttr[] = "alpha";
 struct DTypeEntry {
   const char *py_name{nullptr};
@@ -695,6 +697,97 @@ struct OpsOperatorTypeObject {
 };
 
 template <typename OpType>
+bool InitDynamicOutputs(OpType *op, const OpsOperatorTypeObject &ops_type, uint32_t dynamic_output_num) {
+  if (ops_type.output_defs.size() != 1U) {
+    std::stringstream ss;
+    ss << "Dynamic output op should have exactly one ir output, actual " << ops_type.output_defs.size();
+    PyErr_Format(PyExc_TypeError, "%s", ss.str().c_str());
+    GELOGE(ge::FAILED, "%s", ss.str().c_str());
+    return false;
+  }
+  op->DynamicOutputRegister(ops_type.output_defs[0U].first.c_str(), dynamic_output_num);
+  return true;
+}
+
+template <>
+bool InitDynamicOutputs(ge::ascir_op::Split *op, const OpsOperatorTypeObject &ops_type, uint32_t dynamic_output_num) {
+  (void)ops_type;
+  op->InstanceOutputy(dynamic_output_num);
+  return true;
+}
+
+bool ParseOpsOperatorInitArgs(PyObject *args, bool support_dynamic_output, const char *&name,
+                              uint32_t &dynamic_output_num, PyObject *&graph_object) {
+  const auto arg_count = PyTuple_Size(args);
+  const auto max_arg_count = support_dynamic_output ? 3 : 2;
+  if (arg_count < 1 || arg_count > max_arg_count) {
+    PyErr_Format(PyExc_TypeError, support_dynamic_output ? "Operator expects (name[, output_num][, graph])"
+                                                         : "Operator expects (name[, graph])");
+    return false;
+  }
+
+  auto name_obj = PyTuple_GetItem(args, 0);
+  if (name_obj == nullptr || PyUnicode_Check(name_obj) == kPythonFail) {
+    PyErr_SetString(PyExc_TypeError, "Operator name must be str.");
+    return false;
+  }
+  name = PyUnicode_AsUTF8(name_obj);
+  if (name == nullptr) {
+    return false;
+  }
+
+  bool has_dynamic_output_num = false;
+  for (Py_ssize_t i = 1; i < arg_count; ++i) {
+    auto item = PyTuple_GetItem(args, i);
+    PY_ASSERT_NOTNULL(item);
+    if (support_dynamic_output && PyLong_Check(item) == kPythonSuccess) {
+      if (has_dynamic_output_num) {
+        PyErr_SetString(PyExc_TypeError, "Dynamic output num is duplicated.");
+        return false;
+      }
+      const auto output_num = PyLong_AsUnsignedLong(item);
+      if (PyErr_Occurred() != nullptr) {
+        return false;
+      }
+      if (output_num > std::numeric_limits<uint32_t>::max()) {
+        PyErr_SetString(PyExc_OverflowError, "Dynamic output num is out of range.");
+        return false;
+      }
+      dynamic_output_num = static_cast<uint32_t>(output_num);
+      has_dynamic_output_num = true;
+      continue;
+    }
+
+    const auto is_hint_graph =
+        PyObject_IsInstance(item, ge::PtrToPtr<PyTypeObject, PyObject>(&pyascir::HintGraph::type));
+    if (is_hint_graph == kPythonError) {
+      return false;
+    }
+    const auto is_fused_graph =
+        PyObject_IsInstance(item, ge::PtrToPtr<PyTypeObject, PyObject>(&pyascir::FusedGraph::type));
+    if (is_fused_graph == kPythonError) {
+      return false;
+    }
+    if (is_hint_graph != 0 || is_fused_graph != 0) {
+      if (graph_object != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "Graph arg is duplicated.");
+        return false;
+      }
+      graph_object = item;
+      continue;
+    }
+
+    PyErr_Format(PyExc_TypeError, support_dynamic_output ? "Operator expects (name[, output_num][, graph])"
+                                                         : "Operator expects (name[, graph])");
+    return false;
+  }
+  return true;
+}
+
+template <typename OpType>
+bool SetupOutputs(PyObject *self_pyobject, OpType *op);
+
+template <typename OpType>
 class OpsOperator {
  public:
   struct Object {
@@ -727,15 +820,24 @@ class OpsOperator {
 
   static int OpsOperator_init(PyObject *self_pyobject, PyObject *args, PyObject *kwargs) {
     (void)kwargs;
-    std::string name;
-    auto name_ptr = name.c_str();
+    const char *name_ptr = "";
+    uint32_t dynamic_output_num = 0U;
     PyObject *graph_object{nullptr};
-    if (PyArg_ParseTuple(args, "s|O", &name_ptr, &graph_object) == 0) {
+    auto ops_type = OpsOperatorTypeObject::GetOpsType(Py_TYPE(self_pyobject));
+    const auto has_dynamic_output = ops_type.output_defs.size() == 1U &&
+                                    ops_type.output_defs[0U].second == ge::kIrOutputDynamic;
+    if (!ParseOpsOperatorInitArgs(args, has_dynamic_output, name_ptr, dynamic_output_num, graph_object)) {
       return -1;
     }
 
     auto op = new OpType(name_ptr);
-    auto ops_type = OpsOperatorTypeObject::GetOpsType(Py_TYPE(self_pyobject));
+    PY_ASSERT_NOTNULL(op);
+    if (has_dynamic_output && dynamic_output_num > 0U) {
+      if (!InitDynamicOutputs(op, ops_type, dynamic_output_num)) {
+        delete op;
+        return -1;
+      }
+    }
     // Ascir only need start node to pass graph as in_param
     if (ops_type.input_defs.empty()) {
       PY_ASSERT_NOTNULL(graph_object);
@@ -763,6 +865,13 @@ class OpsOperator {
     self->op_base.op = op;
     self->op = op;
     self->attr = AscNodeAttr::FromAscNode<OpType>(op->attr, op_type.GetString());
+    if (has_dynamic_output) {
+      if (!SetupOutputs<OpType>(self_pyobject, op)) {
+		delete op;
+		return -1;
+	  }
+      return 0;
+    }
     for (size_t i = 0UL; i < op->GetOutputsSize(); ++i) {
       PY_ASSERT(i < ops_type.output_defs.size());
       PY_ASSERT(ops_type.output_defs[i].second != ge::kIrOutputDynamic,
@@ -1027,6 +1136,8 @@ DEFINE_IR_ATTR_ACCESSORS(IndexExpr, AscIndexExprIrAttrDef, kExprAttr, int64_t, P
                          PyLong_AsLong, SetExpr, GetExpr)
 DEFINE_IR_ATTR_ACCESSORS(Gather, AscGatherIrAttrDef, kAxisAttr, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,
                          SetAxis, GetAxis)
+DEFINE_IR_ATTR_ACCESSORS(Gather, AscGatherIrAttrDef, kNegativeIndexSupportAttr, bool, PyBool_Check, PyBool_FromLong, PyObject_IsTrue,
+                         SetNegative_index_support, GetNegative_index_support)                  
 DEFINE_IR_ATTR_ACCESSORS(MatMul, AscMatMulIrAttrDef, kHasRelu, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,
                          SetHas_relu, GetHas_relu)
 DEFINE_IR_ATTR_ACCESSORS(MatMul, AscMatMulIrAttrDef, kTransposeX1, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,

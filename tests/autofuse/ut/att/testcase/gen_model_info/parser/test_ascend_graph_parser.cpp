@@ -39,7 +39,7 @@ Status BuildGatherAscendGraphND(AscGraph &graph) {
     LOOP(*ndbT) {
       auto load1 = Load("load1", data1).TQue(Position::kPositionVecIn, 1, 1);
       auto load2 = Load("load2", data2).TQue(Position::kPositionVecIn, 1, 1);
-      auto gather = Gather("gather1", load1, load2, 0);
+      auto gather = Gather("gather1", load1, load2, 0, false);
       auto store1 = Store("store1", gather);
       GE_ASSERT_SUCCESS(att::GraphConstructUtils::UpdateOutputTensorAxes({*ndB, *ndbT, *ndb, *ndbt},
                                                                          {load1, load2, gather, store1}, 2));

@@ -34,6 +34,8 @@ const std::string kAttrNameAtomicWspMode = "wspMode";
 constexpr char_t const *kMaxTilingSize = "op_para_size";
 constexpr char_t const *kMaxAtomicCleanTilingSize = "atomic_op_para_size";
 constexpr uint32_t kUBAlignedLen = 32U;
+constexpr int32_t kSessionInfoOffset = 8;
+constexpr int32_t kWidthPerChar = 3;
 
 std::string GetConfigString(const Om2LaunchKernelConfig &cfg) {
   std::ostringstream oss;
@@ -60,8 +62,8 @@ void AppendShapeDesc(const ge::GeTensorDesc &tensor_desc, std::vector<int64_t> &
 }
 
 bool IsWspAddrFolded(const OpDescPtr &op_desc) {
-  std::string wsp_mode = kWspUnfoldedMode;
-  return ge::AttrUtils::GetStr(op_desc, kAttrNameAtomicWspMode, wsp_mode) && (wsp_mode == kWspFoldedMode);
+  const string *wsp_mode = ge::AttrUtils::GetStr(op_desc, kAttrNameAtomicWspMode);
+  return (wsp_mode != nullptr) && (*wsp_mode == kWspFoldedMode);
 }
 
 std::string GenShapeData(const std::vector<int64_t>& shape) {
@@ -78,7 +80,7 @@ std::string GenShapeData(const std::vector<int64_t>& shape) {
 }
 }  // namespace
 
-Status KernelTaskCodeGenerator::CheckTaskSupport(TaskDistributionContext &context) {
+Status KernelTaskCodeGenerator::CheckTaskSupport(TaskDistributionContext &context) const {
   if (Om2CodegenUtils::OpNeedPrint(context.op_desc)) {
     REPORT_INNER_ERR_MSG("E19999", "Unsupport scenario for dfx.");
     GELOGE(FAILED, "Unsupport scenario for dfx.");
@@ -186,7 +188,7 @@ Status KernelTaskCodeGenerator::GenTaskDistributionCode(TaskDistributionContext 
   return SUCCESS;
 }
 
-Status KernelTaskCodeGenerator::GenKernelTaskDistributeCode(TaskDistributionImplContext &context) {
+Status KernelTaskCodeGenerator::GenKernelTaskDistributeCode(TaskDistributionImplContext &context) const {
   std::stringstream code_stream;
   code_stream << R"(aclError KernelTaskDistribute(const std::vector<uint64_t>& io_addrs, ArgsInfo *args_info, aclrtFuncHandle func_handle,
                               uint32_t block_dim, aclrtStream stream, aclrtLaunchKernelCfg *config) {
@@ -320,7 +322,7 @@ Status KernelTaskCodeGenerator::AssembleAicpuArgsCode(TaskDistributionContext &c
     auto ext_info = context.task_def.kernel().kernel_ext_info();
     context.args_info.args_sizes.push_back(args_size);
     context.args_info.args_offset.push_back(context.args_info.host_args_len);
-    // aicpu场景考虑一下什么时候在io_addr_offset记录model io地址
+    // aicpu场景考虑一下什么时候在io_addr_offsets记录model io地址
     context.args_info.host_args_len += args_size;
     auto ext_info_size = static_cast<size_t>(ext_info.size());
     GELOGD("[OM2] args size %u, ext info size %u.", args_size, ext_info_size);
@@ -377,17 +379,17 @@ Status KernelTaskCodeGenerator::GetKernelTaskMeta(const domi::TaskDef &task_def,
   return SUCCESS;
 }
 
-std::string KernelTaskCodeGenerator::SerializeBytesToOctalString(const std::vector<uint8_t> &buffer) {
+std::string KernelTaskCodeGenerator::SerializeBytesToOctalString(const std::vector<uint8_t> &buffer) const {
   std::ostringstream code_stream;
   for (size_t i = 0; i < buffer.size(); ++i) {
     code_stream << "\\";
-    code_stream << std::oct << std::setw(3) << std::setfill('0') << static_cast<int>(buffer[i]);
+    code_stream << std::oct << std::setw(kWidthPerChar) << std::setfill('0') << static_cast<int>(buffer[i]);
   }
   return code_stream.str();
 }
 
 std::string KernelTaskCodeGenerator::EmitLaunchConfigSetupCode(size_t op_index,
-                                                               const Om2LaunchKernelConfig &launch_config) {
+                                                               const Om2LaunchKernelConfig &launch_config) const {
   std::stringstream code_stream;
   const std::string cfg_holder_var_name = "op" + std::to_string(op_index) + "_cfg_holder";
   code_stream << "  LaunchKernelCfgHolder " << cfg_holder_var_name << ";\n";
@@ -410,7 +412,7 @@ int64_t KernelTaskCodeGenerator::ParseOpIndex(const domi::TaskDef &task_def) {
 }
 
 void KernelTaskCodeGenerator::AssembleLaunchKernelConfig(const OpDescPtr &op_desc, const domi::TaskDef &task_def,
-                                                         Om2LaunchKernelParam &launch_param) {
+                                                         Om2LaunchKernelParam &launch_param) const {
   const auto task_type = static_cast<ModelTaskType>(task_def.type());
   launch_param.stream_id = task_def.stream_id();
   auto &cfg = launch_param.launch_config;
@@ -463,7 +465,7 @@ Status KernelTaskCodeGenerator::UpdateShapeAndType(const std::vector<int64_t> &d
 }
 
 Status KernelTaskCodeGenerator::UpdateShapeAndType(const GeShape &shape, const DataType data_type,
-                                               AicpuShapeAndType *const shape_and_type) {
+                                               AicpuShapeAndType *const shape_and_type) const {
   static_cast<void>(data_type);
   const auto dim_num = shape.GetDimNum();
   if (dim_num > aicpu::FWKAdapter::kMaxShapeDims) {
@@ -519,7 +521,7 @@ Status KernelTaskCodeGenerator::ParseExtShape(AicpuExtInfo &aicpu_ext_info, cons
   return SUCCESS;
 }
 
-Status KernelTaskCodeGenerator::ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name)
+Status KernelTaskCodeGenerator::ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, const std::string &node_name) const
 {
   GE_IF_BOOL_EXEC(aicpu_ext_info.infoLen != sizeof(uint64_t),
                   REPORT_INNER_ERR_MSG("E19999",
@@ -537,7 +539,7 @@ Status KernelTaskCodeGenerator::ParseExtBitmap(AicpuExtInfo &aicpu_ext_info, con
   return SUCCESS;
 }
 
-Status KernelTaskCodeGenerator::ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name)
+Status KernelTaskCodeGenerator::ParseExtTopicType(AicpuExtInfo &aicpu_ext_info, const std::string &node_name) const
 {
   if (aicpu_ext_info.infoLen != sizeof(int32_t)) {
     REPORT_INNER_ERR_MSG("E19999",
@@ -601,7 +603,7 @@ Status KernelTaskCodeGenerator::ParseExtInfo(uint8_t *ext_info, const size_t ext
                                         "[OM2] Parse ext output shape failed, Node[%s].", node_name.c_str());
         break;
       case aicpu::FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
-        session_info_offset = offset + 8;
+        session_info_offset = offset + kSessionInfoOffset;
         break;
       case aicpu::FWKAdapter::FWK_ADPT_EXT_BITMAP:
         GE_CHK_STATUS_RET(ParseExtBitmap(aicpu_ext_info, node_name.c_str()),
@@ -657,7 +659,8 @@ Status KernelTaskCodeGenerator::InitAicpuTaskExtInfo(uint8_t *ext_info, size_t e
   return SUCCESS;
 }
 
-Status KernelTaskCodeGenerator::ParseArgsFormat(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder) {
+Status KernelTaskCodeGenerator::ParseArgsFormat(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder)
+  const {
   (void)OpDescUtils::GetIrInputInstanceDescRange(context.op_desc, args_format_holder.ir_input_2_range);
   (void)OpDescUtils::GetIrOutputDescRange(context.op_desc, args_format_holder.ir_output_2_range);
   auto &arg_descs = args_format_holder.arg_descs;
@@ -715,7 +718,7 @@ size_t KernelTaskCodeGenerator::GetArgsSizeByFormat(const OpDescPtr op_desc, Arg
 }
 
 size_t KernelTaskCodeGenerator::GetExtraArgsSize(const OpDescPtr &op_desc, const ccKernelType kernel_type,
-                                                 ArgsFormatInfo &args_format_holder) {
+                                                 const ArgsFormatInfo &args_format_holder) const {
   size_t extra_size = 0UL;
   int32_t max_tiling_len{-1};
   (void)AttrUtils::GetInt(op_desc, kMaxTilingSize, max_tiling_len);
@@ -753,7 +756,7 @@ Status KernelTaskCodeGenerator::GenInputOutputAddrByInstanceIndex(TaskDistributi
   return SUCCESS;
 }
 
-Status KernelTaskCodeGenerator::GenInputOutputAddr(TaskDistributionContext &context, ArgsFormatInfo &args_format_holder,
+Status KernelTaskCodeGenerator::GenInputOutputAddr(TaskDistributionContext &context, const ArgsFormatInfo &args_format_holder,
                                                    size_t ir_idx, bool is_input) {
   const std::map<size_t, std::pair<size_t, size_t>> &ir_2_range =
       is_input ? args_format_holder.ir_input_2_range : args_format_holder.ir_output_2_range;
@@ -914,7 +917,8 @@ void KernelTaskCodeGenerator::AppendIoAddrNodes(TaskDistributionContext &context
                                               src.nodes.cend());
   args_addr_nodes_.back().var_name = src.var_name;
   if (src.mem_type == Om2MemoryAppType::kMemoryTypeModelIo) {
-    context.args_info.io_addr_offset.push_back(context.args_info.host_args_len + host_args_offset_);
+    context.args_info.io_addr_offset_map.emplace(src.compile_state_io_addr_offset,
+                                                  context.args_info.host_args_len + host_args_offset_);
   }
   host_args_offset_ += args_len;
 }

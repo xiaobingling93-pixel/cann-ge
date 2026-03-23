@@ -683,6 +683,7 @@ TEST_F(TestOptimizerV2, GatherReduceFuse) {
   gather.x1 = data0.y;
   gather.x2 = data1.y;
   gather.ir_attr.SetAxis(2);
+  gather.ir_attr.SetNegative_index_support(false);
   gather.attr.sched.axis = {z0.id, z1.id, z3.id};
   gather.y.dtype = ge::DT_FLOAT;
   *gather.y.axis = {z0.id, z1.id, z3.id};

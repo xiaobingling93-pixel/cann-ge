@@ -12,12 +12,10 @@
 #define BASE_COMMON_OM2_CODEGEN_AST_AST_NODES_H
 
 #include <string>
-#include <cstring>
 
 #include "ast_context.h"
 #include "common/checker.h"
 #include "common/om2/codegen/emitter/code_emitter.h"
-#include "ge_common/ge_api_types.h"
 
 namespace ge {
 #define RAW_CODE_STMT(ctx, cpp_code) \
@@ -45,7 +43,7 @@ class RawCodeStmt final : public Stmt {
 
   static RawCodeStmt *Create(AstContext &ctx, const std::map<RawCodeLangType, std::string> &codes);
 
-  StringRef GetCode(RawCodeLangType lang) const;
+  StringRef GetCode(const RawCodeLangType lang) const;
 
   Status Accept(CodeEmitter &emitter, std::string &output) const override {
     return emitter.Emit(*this, output);

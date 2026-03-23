@@ -65,6 +65,7 @@ void CreateGraph(ge::AscGraph &graph, int axis = 0) {
   *gather.y.repeats = {indices_first_exp, indices_second_exp};
   *gather.y.strides = {indices_second_exp, One};
   gather.ir_attr.SetAxis(axis);
+  gather.ir_attr.SetNegative_index_support(false);
 
   store.x = gather.y;
   store.attr.sched.axis = {z1.id, z2.id};
@@ -109,6 +110,7 @@ void CreateManyAxisGraph(ge::AscGraph &graph, std::vector<ge::Axis> &axes, std::
   *gather.y.repeats = {exps[2], exps[3]};
   *gather.y.strides = {exps[3], exps[4]};
   gather.ir_attr.SetAxis(1);
+  gather.ir_attr.SetNegative_index_support(false);
 
   store.x = gather.y;
   store.attr.sched.axis = {axes[2].id, axes[3].id};
@@ -164,6 +166,7 @@ std::vector<ge::AxisId> CreateGraphAttrAxisIsNotLastAxisAndOneVecAxis(ge::AscGra
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(gather_axis);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
   *gather_.y.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
   *gather_.y.repeats = {s0, s1, s5, s6, s3, s4};
@@ -340,6 +343,7 @@ std::vector<ge::AxisId> CreateGraphAttrAxisIsNotLastAxisAndTwoVecAxis(ge::AscGra
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(gather_axis);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
   *gather_.y.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
   *gather_.y.repeats = {s0, s1, s5, s6, s3, s4};
@@ -519,6 +523,7 @@ std::vector<ge::AxisId> CreateGraphAttrAxisIsLastAxisAndParamHasMoreThanOneAxis(
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(gather_axis);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z1.id, z2.id, z3.id, z5.id, z6.id};
   *gather_.y.axis = {z0.id, z1.id, z2.id, z3.id, z5.id, z6.id};
   *gather_.y.repeats = {s0, s1, s2, s3, s5, s6};
@@ -690,6 +695,7 @@ std::vector<ge::AxisId> CreateGraphGatherWithComputeType_Mid_Axis(ge::AscGraph &
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(1);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z3.id, z4.id, z2.id};
   *gather_.y.axis = {z0.id, z3.id, z4.id, z2.id};
   *gather_.y.repeats = {s0, s3, s4, s2};
@@ -852,6 +858,7 @@ std::vector<ge::AxisId> CreateGraphGatherWithComputeType_First_Axis(ge::AscGraph
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(0);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z2.id, z1.id};
   *gather_.y.axis = {z2.id, z1.id};
   *gather_.y.repeats = {s2, s1};
@@ -1010,6 +1017,7 @@ std::vector<ge::AxisId> CreateGraphGatherWithComputeType_Single_Axis(ge::AscGrap
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(0);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z1.id};
   *gather_.y.axis = {z1.id};
   *gather_.y.repeats = {s1};
@@ -1165,6 +1173,7 @@ std::vector<ge::AxisId> CreateGraphGatherWithComputeType_Tail_Axis(ge::AscGraph 
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(1);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z2.id};
   *gather_.y.axis = {z0.id, z2.id};
   *gather_.y.repeats = {s0, s2};
@@ -1325,6 +1334,7 @@ std::vector<ge::AxisId> CreateGraphGatherWithComputeType_Failed(ge::AscGraph &gr
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(-1);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z0.id, z2.id};
   *gather_.y.axis = {z0.id, z2.id};
   *gather_.y.repeats = {s0, s2};
@@ -1485,6 +1495,7 @@ std::vector<ge::AxisId> CreateGraphAttrAxisIsLastAxisAndParamHasOnlyOneAxis(ge::
   gather_.x1 = x1_.y;
   gather_.x2 = x2_.y;
   gather_.ir_attr.SetAxis(gather_axis);
+  gather_.ir_attr.SetNegative_index_support(false);
   gather_.attr.sched.axis = {z1.id};
   *gather_.y.axis = {z1.id};
   *gather_.y.repeats = {s1};

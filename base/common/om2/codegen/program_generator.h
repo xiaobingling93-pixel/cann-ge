@@ -28,7 +28,7 @@ namespace ge {
 
 class ProgramGenerator {
  public:
-  Status Init(const GeModelPtr &ge_model);
+  Status Init(const GeModelPtr &model);
   Status GenerateInterfaceHeader(Program &program);
   Status GenerateResourcesSource(Program &program);
   Status GenerateKernelRegSource(Program &program);
@@ -50,7 +50,7 @@ class ProgramGenerator {
   Status InitRuntimeParams();
   Status CreateTaskCodeGenerators();
   OpDescPtr FindOpDescByIndex(int64_t op_index) const;
-  Status ProcessLoadTask(size_t task_index, domi::TaskDef &task_def, LoadTaskParams &params);
+  Status ProcessLoadTask(const size_t task_index, domi::TaskDef &task_def, LoadTaskParams &params);
 
   void GenKernelRegConsts(Program &program);
   void GenKernelRegCommonFuncs(Program &program);
@@ -84,6 +84,8 @@ class ProgramGenerator {
   uint32_t aicpu_task_num_ = 0U;
   uint64_t args_table_index_ = 0U;
   std::set<int64_t> model_io_offsets_;
+  std::vector<ge::NodePtr> data_nodes_;
+  std::vector<ge::NodePtr> netoutput_nodes_;
 };
 }  // namespace ge
 

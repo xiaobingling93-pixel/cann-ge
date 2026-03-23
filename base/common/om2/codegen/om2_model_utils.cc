@@ -162,6 +162,7 @@ Status Om2ModelUtils::BuildSingleInputAddrNode(TaskDistributionContext &context,
     }
     if (context.model_io_offsets.find(input_offset) != context.model_io_offsets.end()) {
       input_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
+      input_addr_node.compile_state_io_addr_offset = input_offset;
     }
     GE_ASSERT_SUCCESS(GetOrCreateInputVarName(context, input_idx, params.non_const_index, params.input_offsets,
                                               input_ptr_name, input_addr_node.nodes));
@@ -231,6 +232,7 @@ Status Om2ModelUtils::BuildMaterializedOutputAddrNode(TaskDistributionContext &c
   }
   if (context.model_io_offsets.find(v_output_offset[output_idx]) != context.model_io_offsets.end()) {
     output_addr_node.mem_type = Om2MemoryAppType::kMemoryTypeModelIo;
+    output_addr_node.compile_state_io_addr_offset = v_output_offset[output_idx];
   }
   const auto op_index = context.op_index;
   std::string output_ptr_name = "op" + std::to_string(op_index) + "_output" + std::to_string(output_idx);

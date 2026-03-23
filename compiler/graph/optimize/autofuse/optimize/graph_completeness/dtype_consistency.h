@@ -45,6 +45,15 @@ class DtypeConsistency {
                                        const ge::AscNodePtr &downstream_node, size_t input_idx,
                                        ge::DataType target_dtype);
 
+  // Merge cast when there's only one downstream consumer
+  static bool MergeCastWithSingleConsumer(const ge::AscNodePtr &upstream_cast, const ge::AscNodePtr &downstream_node,
+                                          size_t input_idx, ge::DataType target_dtype);
+
+  // Merge cast when there are multiple downstream consumers
+  static bool MergeCastWithMultipleConsumers(ge::AscGraph &graph, const ge::AscNodePtr &upstream_cast,
+                                             const ge::AscNodePtr &downstream_node, size_t input_idx,
+                                             ge::DataType target_dtype);
+
   // Insert a new cast node
   static ge::Status InsertCastNode(ge::AscGraph &graph, const ge::AscNodePtr &src_node, const ge::AscNodePtr &dst_node,
                                    size_t input_idx, ge::DataType target_dtype);

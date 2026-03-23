@@ -32,13 +32,13 @@ class GE_FUNC_VISIBILITY Om2PackageHelper : public ModelSaveHelper {
 
  private:
   static Status SaveConstants(std::shared_ptr<ZipArchiveWriter> &zip_writer, const GeModelPtr &ge_model,
-                              size_t model_index);
+                              const size_t model_index);
   static Status SaveTbeKernels(std::shared_ptr<ZipArchiveWriter> &zip_writer, const GeModelPtr &ge_model);
   static Status SaveModelInfo(std::shared_ptr<ZipArchiveWriter> &zip_writer, const GeModelPtr &ge_model,
-                              size_t model_index);
+                              const size_t model_index);
   static Status SaveManifest(std::shared_ptr<ZipArchiveWriter> &zip_writer, const GeRootModelPtr &ge_root_model);
   static Status SaveCodegenArtifacts(std::shared_ptr<ZipArchiveWriter> &zip_writer, const GeModelPtr &ge_model,
-                                     size_t model_indx);
+                                     const size_t model_indx);
 
  private:
   bool is_offline_{true};
