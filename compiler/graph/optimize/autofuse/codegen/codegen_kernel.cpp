@@ -4654,12 +4654,12 @@ Status TPipe::BlkTensorAssign(std::string &result) const {
   return ge::SUCCESS;
 }
 
-Status Loop::ActualSizeDefine(const Tiler &tiler, const TPipe &tpipe, std::string &result) {
+Status Loop::ActualSizeDefine(const Tiler &tiler, const TPipe &tpipe, std::string dtype_name, std::string &result) {
   std::stringstream ss;
   if (this->axis_id == ge::kIdNone) {
     for (const auto &body : this->bodys) {
       if (body.type == LoopType::LOOP) {
-        GE_CHK_STATUS_RET(body.loop->ActualSizeDefine(tiler, tpipe, result), "Get axis id failed.");
+        GE_CHK_STATUS_RET(body.loop->ActualSizeDefine(tiler, tpipe, dtype_name, result), "Get axis id failed.");
       }
     }
     return ge::SUCCESS;
@@ -4669,7 +4669,7 @@ Status Loop::ActualSizeDefine(const Tiler &tiler, const TPipe &tpipe, std::strin
     const auto &tile_inner = tiler.GetAxis(axis.split_pair_other_id);
     ge::Expression actual_size = ge::Symbol(tile_inner.actual_size.name.c_str());
     tpipe.tiler.actual_sizes.emplace_back(std::make_pair(tile_inner.size_expr, actual_size));
-    ss << tile_inner.actual_size.AsArg() << " = stage_size;" << std::endl;
+    ss << tile_inner.actual_size.AsArg() << " = stage_size / sizeof(" << dtype_name << ");" << std::endl;
   }
   result = ss.str();
   return ge::SUCCESS;
@@ -4775,11 +4775,11 @@ class AutoFusionVector {
   result << "stage_size_type = static_cast<int64_t>(autofuse_tiling_size.STAGE_SIZE_NAME > 144 ? " << std::endl;
   result << "autofuse_tiling_size.STAGE_SIZE_NAME : basen_basem_align / sizeof(" << dtype_name << "));" << std::endl;
 
-  GE_CHK_STATUS_RET(this->root_loop.ActualSizeDefine(this->tiler, this->tpipe, tmp), "actual size define failed");
+  GE_CHK_STATUS_RET(this->root_loop.ActualSizeDefine(this->tiler, this->tpipe, dtype_name, tmp), "actual size define failed");
   result << tmp;
 
   result << ub_tensor->Str() << "_actual_size =  stage_size_type;" << std::endl << std::endl;
- 
+
   GE_CHK_STATUS_RET(this->tpipe.TensorSizeAssign(dtype_name, tmp), "Tensor size assign failed");
   result << tmp;
 
