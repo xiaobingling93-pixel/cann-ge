@@ -22,3 +22,6 @@ target_link_libraries(codegen_st PRIVATE
     json
     ascendc_api_extend
     GTest::gtest)
+
+add_test(NAME codegen_st COMMAND codegen_st --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/codegen_st.xml)
+set_tests_properties(codegen_st PROPERTIES LABELS "st;codegen_st")

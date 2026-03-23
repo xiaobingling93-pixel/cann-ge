@@ -115,3 +115,6 @@ target_link_libraries(att_st
         ascend_protobuf
         )
 add_dependencies(att_st ascir_builtin_ops)
+
+add_test(NAME att_st COMMAND att_st --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/att_st.xml)
+set_tests_properties(att_st PROPERTIES LABELS "st;att_st")

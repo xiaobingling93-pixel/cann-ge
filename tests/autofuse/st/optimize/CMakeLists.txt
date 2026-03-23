@@ -50,3 +50,6 @@ target_link_libraries(optimize_st ${ASCGEN_COMMON_LINK_OPTION}
         e2e
         GTest::gtest
 )
+
+add_test(NAME optimize_st COMMAND optimize_st --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/optimize_st.xml)
+set_tests_properties(optimize_st PROPERTIES LABELS "st;optimize_st")

@@ -72,3 +72,6 @@ target_link_libraries(autofusion_st ${ASCGEN_COMMON_LINK_OPTION}
         aihac_ir
         aihac_ir_register
 )
+
+add_test(NAME autofusion_st COMMAND autofusion_st --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/autofusion_st.xml)
+set_tests_properties(autofusion_st PROPERTIES LABELS "st;autofusion_st")
