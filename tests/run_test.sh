@@ -491,13 +491,28 @@ check_changed_files() {
       continue
     fi
 
+    # check if file is in .claude/ directory
+    if echo "$file" | grep -q "^\.claude/"; then
+      continue
+    fi
+
+    # check if file is in .opencode/ directory
+    if echo "$file" | grep -q "^\.opencode/"; then
+      continue
+    fi
+
+    # check if file is AGENTS.md (case insensitive)
+    if echo "$file" | grep -qi "^AGENTS\.md$"; then
+      continue
+    fi
+
     # if any file doesn't match the above patterns, don't skip build
     skip_build=false
     break
   done
 
   if [ "$skip_build" = true ]; then
-    echo "[INFO] Changed files only contain docs/, examples/, README.md or CONTRIBUTING.md, skipping test."
+    echo "[INFO] Changed files only contain docs/, examples/, .claude/, .opencode/, README.md, CONTRIBUTING.md or AGENTS.md, skipping test."
     echo "[INFO] Changed files: $changed_files"
     return 0
   fi
