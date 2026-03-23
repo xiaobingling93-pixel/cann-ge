@@ -19,7 +19,6 @@
 #include "common/scope_guard.h"
 #include "mmpa/mmpa_api.h"
 #include "graph_metadef/graph/utils/file_utils.h"
-#include "ge_common/string_util.h"
 
 namespace ge {
 namespace {
@@ -75,6 +74,13 @@ constexpr uint16_t kLfHeaderFixedSize = 30U;
 constexpr uint32_t kLfNameLenOffset = 26U;
 constexpr uint32_t kLfExtraLenOffset = 28U;
 constexpr uint32_t kLfHeaderMagicNum = 0x04034b50;
+// Byte/bit size definitions
+constexpr size_t kBitsPerByte = 8;
+constexpr size_t kBytesPerUint16 = sizeof(uint16_t);
+constexpr size_t kBytesPerUint32 = sizeof(uint32_t);
+constexpr size_t kBytesPerUint64 = sizeof(uint64_t);
+constexpr size_t kBitsPerUint16 = kBitsPerByte * kBytesPerUint16;
+constexpr size_t kBitsPerUint32 = kBitsPerByte * kBytesPerUint32;
 
 struct ZipEntryInfo {
   // Size of compressed data in bytes (actual length stored in file)
@@ -86,15 +92,15 @@ struct ZipEntryInfo {
 };
 
 uint16_t ReadLE16(const uint8_t *p) {
-  return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
+  return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << kBitsPerByte);
 }
 
 uint32_t ReadLE32(const uint8_t *p) {
-  return static_cast<uint32_t>(ReadLE16(p)) | (static_cast<uint32_t>(ReadLE16(p + 2)) << 16);
+  return static_cast<uint32_t>(ReadLE16(p)) | (static_cast<uint32_t>(ReadLE16(p + kBytesPerUint16)) << kBitsPerUint16);
 }
 
 uint64_t ReadLE64(const uint8_t *p) {
-  return static_cast<uint64_t>(ReadLE32(p)) | (static_cast<uint64_t>(ReadLE32(p + 4)) << 32);
+  return static_cast<uint64_t>(ReadLE32(p)) | (static_cast<uint64_t>(ReadLE32(p + kBytesPerUint32)) << kBitsPerUint32);
 }
 
 bool ParseCentralDirEntry(const MemoryFileReadonly &buffer, const uint64_t pos_in_central_dir, ZipEntryInfo &entry_info) {
@@ -118,23 +124,23 @@ bool ParseCentralDirEntry(const MemoryFileReadonly &buffer, const uint64_t pos_i
 
     const uint8_t *extra_buf = entry_buff + kCdHeaderFixedSize + name_len;
     size_t offset = 0;
-    while (offset + 4U <= extra_len) {
+    while (offset + kBytesPerUint32 <= extra_len) {
       const uint16_t header_id = ReadLE16(extra_buf + offset);
-      const uint16_t data_size = ReadLE16(extra_buf + offset + 2U);
-      offset += 4U;
+      const uint16_t data_size = ReadLE16(extra_buf + offset + kBytesPerUint16);
+      offset += kBytesPerUint32;
 
       if (header_id == kCdExtraMagicNum) {
-        if ((entry_info.uncompressed_size == MAXU32) && (offset + 8U <= extra_len)) {
+        if ((entry_info.uncompressed_size == MAXU32) && (offset + kBytesPerUint64 <= extra_len)) {
           entry_info.uncompressed_size = ReadLE64(extra_buf + offset);
-          offset += 8U;
+          offset += kBytesPerUint64;
         }
-        if ((entry_info.compressed_size == MAXU32) && (offset + 8U <= extra_len)) {
+        if ((entry_info.compressed_size == MAXU32) && (offset + kBytesPerUint64 <= extra_len)) {
           entry_info.compressed_size = ReadLE64(extra_buf + offset);
-          offset += 8U;
+          offset += kBytesPerUint64;
         }
-        if ((entry_info.local_file_header_offset == MAXU32) && (offset + 8U <= extra_len)) {
+        if ((entry_info.local_file_header_offset == MAXU32) && (offset + kBytesPerUint64 <= extra_len)) {
           entry_info.local_file_header_offset = ReadLE64(extra_buf + offset);
-          offset += 8U;
+          offset += kBytesPerUint64;
         }
         // Skip reading disk start number
         break;
@@ -322,7 +328,7 @@ bool ZipArchiveWriter::WriteFile(const std::string &entry_name, const std::strin
   GE_ASSERT_TRUE(IsMemFileOpened(), "Invalid status of archive [%s]", archive_path_.c_str());
   GE_ASSERT_TRUE(!entry_name.empty(), "Entry name cannot be empty");
   const std::string arc_name_with_prefix = base_name_ + "/" + entry_name;
-  if (files_written_.count(arc_name_with_prefix)) {
+  if (files_written_.count(arc_name_with_prefix) != 0) {
     GELOGW("Duplicate file entry '%s' detected and ignored, src_file_name [%s]", arc_name_with_prefix.c_str(),
            src_file_path.c_str());
     return true;

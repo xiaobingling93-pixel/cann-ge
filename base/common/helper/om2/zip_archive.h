@@ -29,7 +29,7 @@ class RAIIZipArchive {
    * @param data Pointer to the beginning of the ZIP data in memory.
    * @param length Size of the ZIP data in bytes.
    */
-  RAIIZipArchive(const uint8_t *data, size_t length);
+  RAIIZipArchive(const uint8_t *data, const size_t length);
 
   ~RAIIZipArchive();
   bool IsGood() const {
@@ -50,7 +50,8 @@ class RAIIZipArchive {
   UniqueByteBuffer ExtractToMem(const std::string &entry_name, size_t &buff_size) const;
 
  private:
-  UniqueByteBuffer FastReadRawDataToMem(const std::string &entry_name, size_t pos_in_central_dir, size_t buff_size) const;
+  UniqueByteBuffer FastReadRawDataToMem(const std::string &entry_name, const size_t pos_in_central_dir,
+                                        const size_t buff_size) const;
 
  private:
   MemoryFileReadonly mem_file_{};
@@ -61,7 +62,7 @@ class ZipArchiveWriter {
  public:
   explicit ZipArchiveWriter(const std::string &archive_path);
   ~ZipArchiveWriter();
-  bool WriteFile(const std::string &entry_name, const std::string &src_file_path, bool compress = true);
+  bool WriteFile(const std::string &entry_name, const std::string &src_file_path, const bool compress = true);
   /**
    * Write a memory buffer as a file entry into the opened zip archive.
    * @param entry_name  Name of the file inside the zip archive.
@@ -70,7 +71,7 @@ class ZipArchiveWriter {
    * @param compress  Whether to compress the data. If false, the compression method is STORED.
    * @return true on success, false if any error occurs.
    */
-  bool WriteBytes(const std::string &entry_name, const void *data, size_t data_size, bool compress = true);
+  bool WriteBytes(const std::string &entry_name, const void *data, const size_t data_size, const bool compress = true);
   bool SaveModelDataToFile();
   bool IsMemFileOpened() const {
     return (zip_handle_ != nullptr) && (mem_file_.buffer != nullptr);
