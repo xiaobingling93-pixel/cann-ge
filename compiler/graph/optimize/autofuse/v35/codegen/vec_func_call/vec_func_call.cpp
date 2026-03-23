@@ -337,7 +337,7 @@ void GenerateStridesEqualCheck(const std::vector<Tensor> &inputs, const std::vec
       all_stride_names.push_back(tensor_name.str() + "_stride_" + std::to_string(start_idx));
     }
   }
-  
+
   for (size_t j = 0; j < merge_info.outputs_strides.size(); j++) {
     size_t stride_size = merge_info.outputs_strides[j].size();
     size_t start_idx = stride_size <= kVFMaxLoop ? 0 : stride_size - kVFMaxLoop;
@@ -351,7 +351,7 @@ void GenerateStridesEqualCheck(const std::vector<Tensor> &inputs, const std::vec
       all_stride_names.push_back(tensor_name.str() + "_stride_" + std::to_string(start_idx));
     }
   }
-  
+
   if (all_stride_names.empty()) {
     ss << "  uint32_t strides_align = 0;\n  bool strides_equal = false;\n";
     return;
@@ -369,7 +369,7 @@ void GenerateStridesEqualCheck(const std::vector<Tensor> &inputs, const std::vec
   ss << ") {\n";
   ss << "    strides_equal = true;\n";
   ss << "  }\n";
-  
+
   return;
 }
 
@@ -377,7 +377,7 @@ void OptimizeMergeParamsAndLoopSize(const std::vector<std::string> &loop_size_ve
   if (loop_size_vec.size() < MAX_VF_AXIS_MERGE_SIZE) {
     return;
   }
-  
+
   const auto &loop_size_0 = loop_size_vec[0];
   const auto &loop_size_1 = loop_size_vec[1];
 
@@ -485,6 +485,7 @@ Status VfCall::Generate(const TPipe &tpipe, [[maybe_unused]] const std::vector<a
   size_t loop_num = merge_info.merge_repeats_str.size();
   ss << "#if defined(__DAV_C310__) || (defined(__NPU_ARCH__) && (__NPU_ARCH__ == 5102 || __NPU_ARCH__ == 3510))"
      << std::endl;
+  ss << "AscendC::SetCtrlSpr<60, 60>(0);" << std::endl;
   if (loop_num <= kVFMaxLoop) {
     std::vector<std::string> inputs_ub_offsets = {};
     std::vector<std::string> outputs_ub_offsets = {};

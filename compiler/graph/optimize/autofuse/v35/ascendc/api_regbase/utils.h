@@ -21,21 +21,21 @@ constexpr static AscendC::MicroAPI::CastTrait cast_trait_none = {
 
 constexpr static AscendC::MicroAPI::CastTrait cast_trait_float_2_half = {
   AscendC::MicroAPI::RegLayout::ZERO,
-  AscendC::MicroAPI::SatMode::SAT,
+  AscendC::MicroAPI::SatMode::NO_SAT,
   AscendC::MicroAPI::MaskMergeMode::ZEROING,
   AscendC::RoundMode::CAST_RINT,
 };
 
 constexpr static AscendC::MicroAPI::CastTrait cast_trait_float_2_int64 = {
   AscendC::MicroAPI::RegLayout::ZERO,
-  AscendC::MicroAPI::SatMode::SAT,
+  AscendC::MicroAPI::SatMode::NO_SAT,
   AscendC::MicroAPI::MaskMergeMode::ZEROING,
   AscendC::RoundMode::CAST_TRUNC,
 };
 
 constexpr static AscendC::MicroAPI::CastTrait cast_trait_float_2_int32 = {
   AscendC::MicroAPI::RegLayout::UNKNOWN,
-  AscendC::MicroAPI::SatMode::SAT,
+  AscendC::MicroAPI::SatMode::NO_SAT,
   AscendC::MicroAPI::MaskMergeMode::ZEROING,
   AscendC::RoundMode::CAST_TRUNC,
 };
@@ -49,7 +49,7 @@ constexpr static AscendC::MicroAPI::CastTrait cast_trait_int32_2_float = {
 
 constexpr static AscendC::MicroAPI::CastTrait cast_trait_int32_2_int16 = {
   AscendC::MicroAPI::RegLayout::ZERO,
-  AscendC::MicroAPI::SatMode::SAT,
+  AscendC::MicroAPI::SatMode::NO_SAT,
   AscendC::MicroAPI::MaskMergeMode::ZEROING,
   AscendC::RoundMode::CAST_NONE,
 };
