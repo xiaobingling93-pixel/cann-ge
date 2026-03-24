@@ -404,7 +404,6 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8) {
   x2.id = load2->outputs[0].attr.mem.tensor_id;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
@@ -442,7 +441,6 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8ToB16) {
   load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
@@ -478,7 +476,6 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B16) {
   load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
@@ -514,7 +511,6 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B32) {
   load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
@@ -550,7 +546,6 @@ TEST_F(ConcatRegApiCallUTest, Unalign_B64) {
   load2->outputs[0].attr.que.id = 1;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
@@ -584,7 +579,6 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B32_padded) {
   x2.id = load2->outputs[0].attr.mem.tensor_id;
   call.inputs.push_back(&x1);
   call.inputs.push_back(&x2);
-  call.is_input_tbuf_contiguous = true;
 
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);

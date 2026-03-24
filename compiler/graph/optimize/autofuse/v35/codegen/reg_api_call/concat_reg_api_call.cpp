@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -70,13 +70,12 @@ bool ConcatRegApiCall::IsShareInputs() const {
   return queue_ids.size() == 1UL;
 }
 
-bool ConcatRegApiCall::AreContiguousBufsPreferred() const {
-  GE_CHK_BOOL_RET_SPECIAL_STATUS(IsTile(), false, "%s all inputs are from single source");
-  const auto is_all_inputs_shape_equal = ascir::utils::AreConcatInputShapesEqual(node_);
-  GE_CHK_BOOL_RET_SPECIAL_STATUS((is_all_inputs_shape_equal == ge::TriBool::kFalse), false,
-                                 "%s can not use Gather, input shapes differ", node_->GetNamePtr());
-  GELOGD("%s may use Gather, contiguous input bufs are preferred", node_->GetNamePtr());
-  return true;
+bool ConcatRegApiCall::IsContiguousBufRequired() const {
+  const auto is_all_from_load = ascir::utils::AreAllInputsLoad(node_);
+  const auto can_use_gather = is_all_from_load &&
+                              (ascir::utils::AreConcatInputShapesEqual(node_) != ge::TriBool::kFalse) &&
+                              IsShareInputs();
+  return can_use_gather;
 }
 
 bool ConcatRegApiCall::CanConcatOneAxis(const std::vector<std::reference_wrapper<const Tensor>> &inputs,
@@ -226,14 +225,14 @@ ConcatApiCall::ConcatTiling ConcatRegApiCall::B8ToB16(const ConcatTiling &tiling
 }
 
 ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
-  GE_CHK_BOOL_RET_SPECIAL_STATUS(tiling.any_padded, ge::SUCCESS, "can not use Gather: input is padded");
-  if (IsTile()) {
-    tiling.all_inputs_shape_equal = ge::TriBool::kTrue;
-  } else {
-    GE_CHK_BOOL_RET_SPECIAL_STATUS((!is_input_tbuf_contiguous), ge::SUCCESS,
-                               "can not use Gather: input bufs can not be contiguous");
-    tiling.all_inputs_shape_equal = ascir::utils::AreConcatInputShapesEqual(node_);
-  }
+  GE_CHK_BOOL_RET_SPECIAL_STATUS(tiling.any_padded, ge::SUCCESS, "input is padded, can not use Gather");
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!ascir::utils::AreAllInputsLoad(node_)), ge::SUCCESS,
+                                 "contain non-Load or multi-ref input, can not use Gather");
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!IsShareInputs()), ge::SUCCESS,
+                                 "not sharing single input buffer, can not use Gather");
+  tiling.all_inputs_shape_equal = ascir::utils::AreConcatInputShapesEqual(node_);
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((tiling.all_inputs_shape_equal == ge::TriBool::kFalse), ge::SUCCESS,
+                                 "input shapes differ, can not use Gather");
   if (tiling.dst_col_size_expr.IsConstExpr()) {
     uint32_t dst_col_size = 0;
     GE_ASSERT_TRUE(tiling.dst_col_size_expr.GetConstValue(dst_col_size));
@@ -246,16 +245,6 @@ ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
   }
   tiling.can_use_gather = true;
   return ge::SUCCESS;
-}
-
-bool ConcatRegApiCall::IsTile() const {
-  std::set<const ge::OutDataAnchor *> src_anchors;
-  for (const auto &node_and_out_anchor : node_->GetInDataNodesAndAnchors()) {
-    src_anchors.emplace(node_and_out_anchor.second.get());
-  }
-  const bool is_tile = (src_anchors.size() == 1UL);
-  GELOGI("is tile by concat case = %d", static_cast<int32_t>(is_tile));
-  return is_tile;
 }
 
 std::string ConcatRegApiCall::GetTilingDataType(const ConcatTiling &tiling) {

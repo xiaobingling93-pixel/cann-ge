@@ -59,9 +59,7 @@ bool IsConcatAllInputsAligned(const ge::AscNode &node);
 
 ge::TriBool AreConcatInputShapesEqual(const ge::AscNodePtr &node);
 
-bool AreAllInputDistinct(const ge::NodePtr &node);
-
-bool AreAllInputsFromPosition(const ge::AscNodePtr &node, Position position);
+bool AreAllInputsLoad(const ge::NodePtr &node);
 
 /**
  * @brief 设置当前 fused_graph 名称，用于按图分目录 dump
