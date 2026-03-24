@@ -619,26 +619,97 @@ def check_dir_permissions(path):
         raise PermissionError(f"No execute permission for {path}")
 
 
-def replace_kernel(kernel_build_dir, graph_name):
+def get_replace_kernel_root():
     import re
     from pathlib import Path
     autofuse_dfx_flags_env = os.getenv("AUTOFUSE_DFX_FLAGS", "")
     if not autofuse_dfx_flags_env or "replace_kernel=" not in autofuse_dfx_flags_env:
-        return
+        return None
     pattern = r'replace_kernel=([^";]+)'
     match = re.search(pattern, autofuse_dfx_flags_env)
     if not match:
         logger.info("match env replace_kernel failed. AUTOFUSE_DFX_FLAGS is %s: ", autofuse_dfx_flags_env)
-        return
+        return None
     replace_kernel_path = match.group(1)
     kernel_path = Path(replace_kernel_path).expanduser().absolute()
     check_dir_permissions(kernel_path)
-    src_kernel_path = os.path.join(kernel_path, f"{graph_name}_op_kernel.cpp")
+    return kernel_path
+
+
+def replace_device_kernel(replace_root, kernel_build_dir, graph_name):
+    src_kernel_path = os.path.join(str(replace_root), f"{graph_name}_op_kernel.cpp")
     if not os.path.exists(src_kernel_path):
         return
     dst_kernel_path = os.path.join(kernel_build_dir, f"{graph_name}_op_kernel.cpp")
     shutil.copy(src_kernel_path, dst_kernel_path)
     logger.info("replace kernel: %s to %s", src_kernel_path, dst_kernel_path)
+
+
+def find_host_replace_source_dir(replace_root, graph_name):
+    from pathlib import Path
+    matched_dirs = sorted({candidate.parent for candidate in Path(replace_root).rglob(f"{graph_name}*_tiling_func*.cpp")
+                           if candidate.is_file()})
+    if len(matched_dirs) > 1:
+        raise RuntimeError(f"Multiple host replace source dirs matched for {graph_name}: "
+                           f"{[str(path) for path in matched_dirs]}")
+    return matched_dirs[0] if matched_dirs else None
+
+
+def cleanup_host_tiling_files(host_build_dir, graph_name):
+    from pathlib import Path
+    removed_files = []
+    for old_file in Path(host_build_dir).glob(f"{graph_name}*_tiling_func*.cpp"):
+        old_file.unlink()
+        removed_files.append(old_file.name)
+    return removed_files
+
+
+def replace_host_files(replace_root, host_build_dir, graph_name):
+    from pathlib import Path
+    source_dir = find_host_replace_source_dir(replace_root, graph_name)
+    if source_dir is None:
+        return
+    logger.info("replace host source dir: %s", source_dir)
+    logger.info("replace host target dir: %s", host_build_dir)
+    removed_files = cleanup_host_tiling_files(host_build_dir, graph_name)
+    logger.info("cleanup stale host tiling files: %s", removed_files)
+    host_build_path = Path(host_build_dir)
+    copied_files = []
+    for src in source_dir.glob(f"{graph_name}*_tiling_func*.cpp"):
+        shutil.copy(str(src), str(host_build_path / src.name))
+        copied_files.append(src.name)
+    for header_name in ["autofuse_tiling_data.h", "autofuse_tiling_func_common.h", "autofuse_cube_tiling_data.h"]:
+        header_path = source_dir / header_name
+        if header_path.exists():
+            shutil.copy(str(header_path), str(host_build_path / header_name))
+            copied_files.append(header_name)
+    logger.info("copied host files: %s", copied_files)
+
+
+def replace_kernel(kernel_build_dir, graph_name):
+    replace_root = get_replace_kernel_root()
+    if replace_root is None:
+        return
+    replace_device_kernel(replace_root, kernel_build_dir, graph_name)
+
+
+def get_host_build_dir(temp_dir, use_cv_common):
+    if use_cv_common and use_cv_common[0]:
+        return os.path.join(temp_dir, "host", "cv_common")
+    return os.path.join(temp_dir, "host")
+
+
+def get_device_build_dir(temp_dir, use_cv_common):
+    if use_cv_common and use_cv_common[0]:
+        return os.path.join(temp_dir, "device", "cv_common")
+    return os.path.join(temp_dir, "device")
+
+
+def replace_host_files_if_needed(replace_root, temp_dir, use_cv_common, graph_name):
+    if replace_root is None:
+        return
+    host_build_dir = get_host_build_dir(temp_dir, use_cv_common)
+    replace_host_files(replace_root, host_build_dir, graph_name)
 
 
 def generate_pgo_code(params, code_gen, pgo_dir, host_build_dir):
@@ -1203,47 +1274,40 @@ def copy_so_and_modify_json(host_build_dir, kernel_name, json_file):
 
 def asc_graph_compile(*args, temp_dir, params):
     """入口为asc graph场景"""
-    # 获取ascgraph信息
     graph_name, input_num, output_num, is_cube, cube_attrs = get_graph_basic_info(params, args)
     tiling_key_list, kernel_type_list = [-1], ["KERNEL_TYPE_AIV_ONLY"]
-    kernel_build_dir, host_build_dir = create_compile_dirs(temp_dir)
+    _, host_build_dir = create_compile_dirs(temp_dir)
     kernel_name = args[-1]
     code_gen = CodeGen()
 
-    # 生成device和host代码
     op_kernel_src, tiling_func_srcs = generate_device_and_host_code(
         graph_name=graph_name, temp_dir=temp_dir, params=params, code_gen=code_gen)
     static_compile_flag = is_static_compile(params, tiling_func_srcs)
     use_list_tensor_desc = op_kernel_src.find('kernel_operator_list_tensor_intf.h') > 0
     enable_parallel_compile = op_kernel_src.rfind('void fake_tiling_ids()') > 0
     use_cv_common = [False]
+    replace_root = get_replace_kernel_root()
 
-    # 处理cube/静态编译分支
     if is_cube and static_compile_flag:
         ascbc_cube_kernel_tiling_pro(args, temp_dir=temp_dir, graph_name=graph_name, kernel_name=kernel_name,
                                      input_num=input_num, output_num=output_num,
                                      use_list_tensor_desc=use_list_tensor_desc, cube_attrs=cube_attrs,
                                      tiling_key_list=tiling_key_list, use_cv_common=use_cv_common)
+        replace_host_files_if_needed(replace_root, temp_dir, use_cv_common, graph_name)
         static_shape_compile(kernel_name=kernel_name, temp_dir=temp_dir, graph_name=graph_name,
                              tiling_key_list=tiling_key_list, kernel_type_list=kernel_type_list,
                              use_cv_common=use_cv_common, is_cube=is_cube)
     elif static_compile_flag:
-        #PGO需要使用非const tiling编译的kernel进行调优
         pgo_env = get_pgo_env_flag()
-        # 使能并行编译时，生成的模板较多，此时pgo生成解集超大，暂不放开，避免影响pgo整体调优能力
-        # tensorlist场景pgo暂不支持，待适配后放开
         if pgo_env and not enable_parallel_compile and not use_list_tensor_desc:
             asc_pgo_exec(*args, temp_dir=temp_dir, params=params, op_kernel_src=op_kernel_src, code_gen=CodeGen())
+        replace_host_files_if_needed(replace_root, temp_dir, use_cv_common, graph_name)
         timestamp_set(True, graph_name, "CompileHost")
         static_shape_compile(kernel_name=kernel_name, temp_dir=temp_dir, graph_name=graph_name,
                              tiling_key_list=tiling_key_list, kernel_type_list=kernel_type_list)
         timestamp_set(False, graph_name, "CompileHost")
 
-    # 编译device代码
-    if use_cv_common and use_cv_common[0]:
-        kernel_build_dir = os.path.join(temp_dir, "device", "cv_common")
-    else:
-        kernel_build_dir = os.path.join(temp_dir, "device")
+    kernel_build_dir = get_device_build_dir(temp_dir, use_cv_common)
     replace_kernel(kernel_build_dir=kernel_build_dir, graph_name=graph_name)
     timestamp_set(True, graph_name, "CompileDevice")
     kernel_file, json_file = ascbc_kernel_compile(args, graph_name=graph_name, kernel_name=kernel_name,
@@ -1254,10 +1318,7 @@ def asc_graph_compile(*args, temp_dir, params):
                                                   tiling_key=tiling_key_list[0], kernel_type=kernel_type_list[0],
                                                   is_cube=is_cube)
     timestamp_set(False, graph_name, "CompileDevice")
-    if use_cv_common and use_cv_common[0]:
-        host_build_dir = os.path.join(temp_dir, "host", "cv_common")
-    else:
-        host_build_dir = os.path.join(temp_dir, "host")
+    host_build_dir = get_host_build_dir(temp_dir, use_cv_common)
     asc_graph_compile_post(host_build_dir, code_gen, graph_name, kernel_file,
                            json_file, kernel_name, static_compile_flag, is_cube)
 
@@ -1327,7 +1388,11 @@ def asc_codegen_compile(*args, **kwargs):
             CommonUtility.print_compile_log("", f"compute_graph and symbol_source_info do not exist",
                                             AscendCLogLevel.LOG_ERROR)
             raise Exception("An error occurred autofuse compile for check extra_params")
-        compute_graph_compile(*args, temp_dir=temp_dir, params=extra_params, vector_core_num=vector_core_num, device_id=device_id)
+        compute_graph_compile(*args,
+                              temp_dir=temp_dir,
+                              params=extra_params,
+                              vector_core_num=vector_core_num,
+                              device_id=device_id)
 
 
     kernel_meta_dir = get_current_build_config("kernel_meta_parent_dir")
