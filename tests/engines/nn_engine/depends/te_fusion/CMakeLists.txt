@@ -77,6 +77,10 @@ target_compile_definitions(te_fusion_stub PRIVATE
 target_compile_options(te_fusion_stub PRIVATE
         -Dgoogle=ascend_private)
 
+target_link_directories(te_fusion_stub PRIVATE
+        ${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(te_fusion_stub
     PRIVATE
         intf_llt_pub

@@ -23,6 +23,10 @@ target_compile_definitions(graph_tuner_stub PRIVATE
 target_compile_options(graph_tuner_stub PRIVATE
         -Dgoogle=ascend_private)
 
+target_link_directories(graph_tuner_stub PRIVATE
+        ${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(graph_tuner_stub
     PRIVATE
         intf_llt_pub
