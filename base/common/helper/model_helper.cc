@@ -44,7 +44,9 @@
 
 namespace {
 constexpr uint32_t kOriginalOmPartitionNum = 1U;
+constexpr int32_t kModuleTypeAicore = 4;
 constexpr int32_t kModuleTypeVectorCore = 7;
+constexpr int32_t kInfoTypeCoreNum = 3;
 const string kOpsProto = "libopsproto_rt2.0.so";
 const string kOpMaster = "libopmaster_rt2.0.so";
 const string kInner = "built-in";
@@ -1597,8 +1599,8 @@ Status ModelHelper::InitRuntimePlatform() {
   GE_ASSERT_RT_OK(rtGetAiCoreCount(&aicore_num));
   int64_t vec_core_num = 0U;
   // some chips has no vector core
-  GE_ASSERT_RT_OK(aclrtGetDeviceInfo(static_cast<uint32_t>(device_id),
- 	                                   ACL_DEV_ATTR_VECTOR_CORE_NUM, &vec_core_num));
+  GE_ASSERT_RT_OK(rtGetDeviceInfo(static_cast<uint32_t>(device_id),
+                                  kModuleTypeVectorCore, kInfoTypeCoreNum, &vec_core_num));
 
   fe::PlatFormInfos platform_infos;
   GE_ASSERT_TRUE(
@@ -1722,8 +1724,7 @@ Status ModelHelper::UpdatePlatfromInfoWithRuntime(const int32_t device_id, const
     return SUCCESS;
   }
   int64_t aic_core_cnt = 0;
-  if (aclrtGetDeviceInfo(static_cast<uint32_t>(device_id),
-      ACL_DEV_ATTR_AICORE_CORE_NUM, &aic_core_cnt) != ACL_SUCCESS) {
+  if (rtGetDeviceInfo(static_cast<uint32_t>(device_id), kModuleTypeAicore, kInfoTypeCoreNum, &aic_core_cnt) != RT_ERROR_NONE) {
     GELOGE(FAILED, "Failed to get AICore count from device.");
     return FAILED;
   }
@@ -1734,7 +1735,7 @@ Status ModelHelper::UpdatePlatfromInfoWithRuntime(const int32_t device_id, const
 
   int64_t vector_core_cnt = kModuleTypeVectorCore;
   // some chips have no vector core
-  (void)aclrtGetDeviceInfo(static_cast<uint32_t>(device_id), ACL_DEV_ATTR_VECTOR_CORE_NUM, &vector_core_cnt);
+  (void)rtGetDeviceInfo(static_cast<uint32_t>(device_id), kModuleTypeVectorCore, kInfoTypeCoreNum, &vector_core_cnt);
 
   // 用从rts获取到的核数刷新platform info
   UpdateCoreCountWithRuntime(AICORE_NUM, ai_core_cnt_ini, aic_core_cnt,
