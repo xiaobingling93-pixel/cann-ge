@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -215,7 +215,7 @@ TEST_F(UtestCondRemovePass, if_cond_int_const_fail_2) {
 TEST_F(UtestCondRemovePass, case_const_multidata_succ) {
   GeTensorDesc tensor(GeShape(), ge::FORMAT_NCHW, ge::DT_INT32);
   ComputeGraphPtr graph = std::make_shared<ComputeGraph>("test_graph");
-  
+
   vector<int32_t> data_vec = {1};
   GeTensorDesc tensor_desc(GeShape({1}), ge::FORMAT_NCHW, ge::DT_INT32);
   GeTensorPtr value_tensor =
@@ -298,41 +298,41 @@ TEST_F(UtestCondRemovePass, test_get_idx_succ) {
   GeTensorPtr value_tensor;
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, -1);
-  
+
   value_tensor = ConstructTensorPtr<int64_t>(DT_INT64);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<uint32_t>(DT_UINT32);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<int16_t>(DT_INT16);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<int8_t>(DT_INT8);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<double>(DT_DOUBLE);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<float>(DT_FLOAT);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   value_tensor = ConstructTensorPtr<float>(DT_DUAL);
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   vector<int32_t> datas = {0};
   GeTensorDesc tensor_desc(GeShape({1}), ge::FORMAT_NCHW, DT_BOOL);
   value_tensor = std::make_shared<GeTensor>(tensor_desc, (uint8_t *)datas.data(), datas.size() * sizeof(int32_t));
   ret = pass.GetCondIndex(value_tensor.get());
   EXPECT_EQ(ret, 0);
-  
+
   GeTensorDesc str_tensor_desc(GeShape({1}), ge::FORMAT_NCHW, DT_STRING);
   value_tensor = std::make_shared<GeTensor>(str_tensor_desc, (uint8_t *)datas.data(), datas.size() * sizeof(int32_t));
   ret = pass.GetCondIndex(value_tensor.get());
