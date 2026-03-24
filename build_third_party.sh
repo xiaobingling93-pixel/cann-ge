@@ -27,7 +27,7 @@ CMAKE_TOOLCHAIN_FILE=$6
 VERBOSE=""
 
 if [ -n "${CMAKE_TOOLCHAIN_FILE}" ]; then
-  export LLVM_PATH="${BASEPATH}/../build/bin/os/aos_llvm_libs/aos_llvm_x86_ubuntu_20_04_adk/llvm/bin"
+  export LLVM_PATH="${BASEPATH}/../build/bin/os/pegasus_llvm_libs/pegasus_llvm_x86_ubuntu_22_04_adk/hcc_arm64le_llvm/bin"
   echo "[MDC compile] Set LLVM_PATH to ${LLVM_PATH}"
 fi
 

@@ -103,7 +103,7 @@ parse_cmake_extra_args() {
                 ;;
             "CMAKE_TOOLCHAIN_FILE")
                 CMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_PREFIX}/${value}"
-                export LLVM_PATH="${BASEPATH}/../build/bin/os/aos_llvm_libs/aos_llvm_x86_ubuntu_20_04_adk/llvm/bin"
+                export LLVM_PATH="${BASEPATH}/../build/bin/os/pegasus_llvm_libs/pegasus_llvm_x86_ubuntu_22_04_adk/hcc_arm64le_llvm/bin"
                 echo "[MDC compile] Set CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}."
                 ;;
             *)
