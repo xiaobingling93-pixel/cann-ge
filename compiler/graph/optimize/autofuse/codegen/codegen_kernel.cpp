@@ -48,6 +48,59 @@ constexpr const char kInputTensorDescName[] = "input_tensor_desc";
 constexpr const char kOutputTensorDescName[] = "output_tensor_desc";
 const std::string kKernelTaskTypeAIVOnly = "KERNEL_TYPE_AIV_ONLY";
 const std::string kKernelTaskTypeMixAIVOneZero = "KERNEL_TYPE_MIX_AIV_1_0";
+
+bool IsShareInputs(const ge::AscNodePtr &node) {
+  std::set<int64_t> queue_ids;
+  for (uint32_t i = 0; i < node->inputs.Size(); ++i) {
+    queue_ids.emplace(node->inputs[i].attr.que.id);
+  }
+  return queue_ids.size() == 1UL;
+}
+
+Status RequireContiguousInputBufs(const ge::AscNodePtr &node, ApiCall &api_call, TPipe &tpipe) {
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!ascir::utils::AreAllInputDistinct(node)), ge::SUCCESS,
+                                 "%s can not require contiguous inputs, contain multi-ref input", node->GetNamePtr());
+  if (ascir::utils::AreAllInputsFromPosition(node, ge::Position::kPositionVecIn)) {
+    GE_CHK_BOOL_RET_SPECIAL_STATUS((!IsShareInputs(node)), ge::SUCCESS,
+                                   "%s(%s) can not require contiguous inputs, not sharing single input TQue",
+                                   node->GetNamePtr(), api_call.api_name_.c_str());
+    GELOGD("%s(%s) can require contiguous inputs, all inputs are from single shared TQue");
+    for (size_t i = 0; i < api_call.inputs.size(); ++i) {
+      auto &in_tensor = api_call.inputs[i];
+      in_tensor->share_order = static_cast<int32_t>(i);
+    }
+    api_call.is_input_tbuf_contiguous = true;
+    return ge::SUCCESS;
+  }
+
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!ascir::utils::AreAllInputsFromPosition(node, ge::Position::kPositionVecCalc)),
+                                 ge::SUCCESS,
+                                 "%s(%s) can not require contiguous inputs, inputs come from multiple position",
+                                 node->GetNamePtr(), api_call.api_name_.c_str());
+  std::vector<ascir::BufId> input_buf_ids;
+  for (const auto &input : api_call.inputs) {
+    const auto input_tensor = tpipe.GetTensor(input->id);
+    GE_ASSERT_NOTNULL(input_tensor);
+    GE_CHK_BOOL_RET_SPECIAL_STATUS(input_tensor->alloc_type != ge::AllocType::kAllocTypeBuffer, ge::SUCCESS,
+                                   "%s(%s) can not require contiguous TBufs, input contains non-TBuf",
+                                   node->GetNamePtr(), api_call.api_name_.c_str());
+    const auto &buf = tpipe.GetBuf(input_tensor->buf_id);
+    const auto ref_count = buf.merge_scopes.size() + buf.not_merge_tensors.size() + buf.tmp_buf_size_list.size();
+    GE_CHK_BOOL_RET_SPECIAL_STATUS(
+        (ref_count > 1UL), ge::SUCCESS,
+        "%s(%s) can not require contiguous TBufs, input buf is reused with other tensors, buf_id = %ld",
+        node->GetNamePtr(), api_call.api_name_.c_str(), input_tensor->buf_id);
+    input_buf_ids.emplace_back(input_tensor->buf_id);
+  }
+  GE_CHK_BOOL_RET_SPECIAL_STATUS((!tpipe.contiguous_buf_ids.empty()), ge::SUCCESS,
+                                 "%s(%s) can not require contiguous tbufs, already required by other ApiCall",
+                                 node->GetNamePtr(), api_call.api_name_.c_str());
+  tpipe.contiguous_buf_ids = std::move(input_buf_ids);
+  api_call.is_input_tbuf_contiguous = true;
+  GELOGD("%s(%s) can require contiguous input TBuf, buf list = %s", node->GetNamePtr(), api_call.api_name_.c_str(),
+         ge::ToString(tpipe.contiguous_buf_ids).c_str());
+  return ge::SUCCESS;
+}
 }  // namespace
 
 std::ostream &operator<<(std::ostream &os, const Code &obj) {
@@ -1464,7 +1517,19 @@ Status TPipe::LocalTBufAlloc(const TBuf &buf, std::string &result, const bool wi
 Status TPipe::LocalTBufAllocLoopTwice(std::string &result, const bool with_define) const {
   stringstream ss;
   std::string tmp;
+  // 优先分配需要连续的TBuf, 不会与tmp buf进行复用
+  for (const auto buf_id : this->contiguous_buf_ids) {
+    const auto it = this->bufs.find(buf_id);
+    GE_ASSERT_TRUE(it != this->bufs.cend(), "buf not found, buf_id = %ld", buf_id);
+    const auto &buf = it->second;
+    GE_CHK_STATUS_RET(this->LocalTBufAlloc(buf, tmp, with_define), "Codegen TBuf alloc failed(no tmp buf).");
+    ss << tmp;
+  }
+  std::set<ascir::BufId> allocated{this->contiguous_buf_ids.cbegin(), this->contiguous_buf_ids.cend()};
   for (auto &pair : this->bufs) {
+    if (allocated.find(pair.first) != allocated.end()) {
+      continue;
+    }
     auto &buf = pair.second;
     if (!buf.tmp_buf_reuse) {
       GE_CHK_STATUS_RET(this->LocalTBufAlloc(buf, tmp, with_define), "Codegen TBuf alloc failed(no tmp buf).");
@@ -2477,8 +2542,7 @@ Status Loop::ConstructFromNodes(ascir::NodeViewVisitorConst nodes, const Tiler &
     call->axis = current_loop->axis_id;
     call->depth = current_axis.size();
     InitApiCallContext(node, tpipe, call, lifecycle_edge);
-    const auto is_cont_buf_required = call->IsContiguousBufRequired();
-    int32_t input_index = 0;
+    const auto are_cont_bufs_preferred = call->AreContiguousBufsPreferred();
     for (auto in : node->inputs()) {
       if (in == nullptr) {
         call->inputs.emplace_back(nullptr);
@@ -2492,16 +2556,14 @@ Status Loop::ConstructFromNodes(ascir::NodeViewVisitorConst nodes, const Tiler &
 
       auto in_index = ge::ascir::AscTensorUtils::Index(*in);
       auto in_tensor = &in_call->second->outputs[in_index];
-      if (is_cont_buf_required) {
-        in_tensor->share_order = input_index;
-      }
       in_tensor->reads.push_back(call);
       call->inputs.emplace_back(in_tensor);
       GELOGI("node[%s] input tensor id[%ld] from call type[%s] outputs[%d], read by call type[%s]", node->GetNamePtr(),
              in->attr.mem.tensor_id, in_call->second->type.c_str(), in_index, call->type.c_str());
-      ++input_index;
     }
-
+    if (are_cont_bufs_preferred) {
+      GE_ASSERT_SUCCESS(RequireContiguousInputBufs(node, *call, tpipe));
+    }
     if (IsOps<Output>(node)) {
       continue;
     }

@@ -24,7 +24,7 @@ class ConcatRegApiCall : public ConcatApiCall {
                   const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                   const std::vector<std::reference_wrapper<const Tensor>> &outputs,
                   std::string &result) const override;
-  bool IsContiguousBufRequired() const override;
+  bool AreContiguousBufsPreferred() const override;
 
  protected:
   Status ParseAttr(const ascir::NodeView &node) override;
@@ -34,26 +34,25 @@ class ConcatRegApiCall : public ConcatApiCall {
                                     const TPipe &t_pipe,
                                     std::stringstream &ss,
                                     const int64_t tmp_buf_id);
-  static ge::Status GenerateForGather(const vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y,
-                                      const ConcatApiCall::ConcatTiling &tiling, const TPipe &t_pipe,
-                                      std::stringstream &ss, const int64_t tmp_buf_id);
-
-  static void DefineConcatTiling(const ConcatTiling &tiling, const Tiler &tiler, std::stringstream &ss);
-  static void DefineConcatTilingGather(const ConcatTiling &tiling, const Tiler &tiler, std::stringstream &ss);
-  static void GenSrcAddrs(const std::vector<std::reference_wrapper<const Tensor>> &inputs,
-                          const std::string &dtype_name,
-                          std::stringstream &ss);
-  static bool NeedB8ToB16(const ConcatTiling &tiling);
-  static ConcatTiling B64ToB32(const ConcatTiling &tiling);
-  static ConcatTiling B8ToB16(const ConcatTiling &tiling);
-  ge::Status CanUseGather(ConcatTiling &tiling) const;
 
  private:
   static std::string GetTilingDataType(const ConcatTiling &tiling);
   static Status GenerateForOneAxis(const vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y,
                                    std::stringstream &ss);
   static bool CanConcatOneAxis(const std::vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y);
+  static ge::Status GenerateForGather(const vector<std::reference_wrapper<const Tensor>> &inputs, const Tensor &y,
+                                      const ConcatApiCall::ConcatTiling &tiling, const TPipe &t_pipe,
+                                      std::stringstream &ss, const int64_t tmp_buf_id);
+  static void DefineConcatTiling(const ConcatTiling &tiling, const Tiler &tiler, std::stringstream &ss);
+  static void DefineConcatTilingGather(const ConcatTiling &tiling, const Tiler &tiler, std::stringstream &ss);
+  static void GenSrcAddrs(const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                          const std::string &dtype_name, std::stringstream &ss);
+  static bool NeedB8ToB16(const ConcatTiling &tiling);
   bool IsShareInputs() const;
+  static ConcatTiling B64ToB32(const ConcatTiling &tiling);
+  static ConcatTiling B8ToB16(const ConcatTiling &tiling);
+  ge::Status CanUseGather(ConcatTiling &tiling) const;
+  bool IsTile() const;
 
   ascir::NodeView node_ = nullptr;
 };

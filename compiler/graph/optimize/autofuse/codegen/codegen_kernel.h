@@ -297,6 +297,7 @@ class TPipe : public Variable {
   ascir::CubeTemplateType cv_fusion_type{ascir::CubeTemplateType::kDefault};
   ascir::TensorId cube_output_tensor_id = ge::kIdNone;
   ascir::TensorId cube_output_que_id = ge::kIdNone;
+  std::vector<ascir::BufId> contiguous_buf_ids;
 
   TPipe(const std::string &tpipe_name, const Tiler &tpipe_tiler);
   Status AddTensor(const Tensor &tensor);
@@ -375,7 +376,7 @@ struct ApiTensor {
   struct ApiTensor* reuse_next;
   struct ApiTensor* share_prev;
   struct ApiTensor* share_next;
-  int32_t share_order;
+  mutable int32_t share_order;
   const ApiCall* write;
   std::vector<const ApiCall*> reads;
 
@@ -432,7 +433,7 @@ class ApiCall {
   virtual Status Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                           std::string &result) const;
   virtual Status GenerateMacro(std::string &result) const;
-  virtual bool IsContiguousBufRequired() const {
+  virtual bool AreContiguousBufsPreferred() const {
     return false;
   };
 
@@ -454,6 +455,7 @@ class ApiCall {
   std::vector<ApiTensor> outputs;
   std::vector<const ApiTensor *> inputs;
   bool enable_cache{false};
+  bool is_input_tbuf_contiguous = false;
   std::string enable_cache_with_condition;
   // 用于标记Call节点执行状态
   // broadcast cache场景：在Call节点外生成控制条件
