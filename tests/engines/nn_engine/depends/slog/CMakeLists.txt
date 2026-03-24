@@ -27,9 +27,13 @@ target_link_libraries(ge_graph_dsl PUBLIC slog_headers ge_graph_dsl_inc easy_gra
 
 target_include_directories(ge_graph_dsl PRIVATE
         ${ASCEND_INSTALL_PATH}/include
+        ${ASCEND_INSTALL_PATH}/pkg_inc
+        ${ASCEND_INSTALL_PATH}/pkg_inc/base
         ${FWK_TEST_PATH}/framework/ge_graph_dsl/include
         ${FWK_TEST_PATH}/framework/easy_graph/include
         ${FWK_TEST_PATH}/tests/framework/easy_graph/include
+        ${AIR_DIR}/graph_metadef
+        ${AIR_DIR}/inc/graph_metadef
         ${AIR_DIR}/inc/external
         ${AIR_DIR}/inc
         ${AIR_DIR}/inc/framework
