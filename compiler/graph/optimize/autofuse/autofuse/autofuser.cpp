@@ -31,6 +31,19 @@
 namespace ge {
 using namespace autofuse;
 namespace {
+ge::Status FuseSubgraphsAndRootGraph(const ge::ComputeGraphPtr &graph,
+                                     ge::FusionStrategySolver &fusion_strategy_solver) {
+  // 先遍历子图并执行融合
+  for (const auto &src_subgraph : graph->GetAllSubgraphs()) {
+    if (src_subgraph != nullptr) {
+      GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(src_subgraph));
+    }
+  }
+  // 后处理根图的融合
+  GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(graph));
+  return ge::SUCCESS;
+}
+
 ge::Status InitFuseGraphOpTensor(const ge::ComputeGraphPtr &graph) {
   gert::SymbolShape symbol_shape({ge::Symbol(1)});
   for (const auto &ascbc_node : graph->GetAllNodesPtr()) {
@@ -63,7 +76,7 @@ const static std::unordered_set<std::string> kUnsupportedV1CtrlOps{
     "Enter",        "RefEnter",     "NextIteration", "RefNextIteration"};
 
 static bool HasUnsupportedControlOp(const ComputeGraphPtr &graph) {
-  for (const auto &node : graph->GetDirectNode()) {
+  for (const auto &node : graph->GetAllNodes()) {
     if (kUnsupportedV1CtrlOps.count(node->GetType()) > 0UL) {
       GELOGD("Cannot apply can_fuse to graph [%s] with unsupported node [%s].", graph->GetName().c_str(),
              node->GetTypePtr());
@@ -154,7 +167,7 @@ ge::Status Autofuser::Fuse(const ge::ComputeGraphPtr &graph) const {
   bool disable_can_fuse = HasUnsupportedControlOp(graph);
   if (!disable_can_fuse) {
     ge::FusionStrategySolver fusion_strategy_solver(counter_);
-    GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(graph));
+    GE_ASSERT_SUCCESS(FuseSubgraphsAndRootGraph(graph, fusion_strategy_solver));
     GE_DUMP(graph, "AutoFuser_AfterFusionStrategySolve");
   } else {
     GELOGI("Skip can_fuse for graph %s as it contains v1 control types op", graph->GetName().c_str());
@@ -185,7 +198,7 @@ ge::Status Autofuser::FuseLite(const ge::ComputeGraphPtr &graph) const {
   AutofuseUtils::ClearUniqueNumber();
   GE_ASSERT_SUCCESS(asc_adapt::SaveReduceOriginalAxisToFuseAttr(graph));
   ge::FusionStrategySolver fusion_strategy_solver;
-  GE_ASSERT_SUCCESS(fusion_strategy_solver.Fuse(graph));
+  GE_ASSERT_SUCCESS(FuseSubgraphsAndRootGraph(graph, fusion_strategy_solver));
   GE_DUMP(graph, "AutoFuser_AfterFusionStrategySolve");
 
   AscBackendPostProcessor post_processor;

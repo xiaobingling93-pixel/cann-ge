@@ -438,7 +438,7 @@ Status CheckNodeDtype(const NodePtr &node) {
 }
 
 Status IsAllNodesInBlacklist(const AscGraph &asc_graph, bool &is_in_blacklist) {
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (IsInBlackList1(node)) {
       // 在内部写死升精度黑名单, doing nothing
     } else if (IsInBlackList2(node)) {
@@ -454,7 +454,7 @@ Status IsAllNodesInBlacklist(const AscGraph &asc_graph, bool &is_in_blacklist) {
 
 Status GetTypeToNodesFromGraph(AscGraph &asc_graph,
                                std::unordered_map<std::string, std::vector<NodePtr>> &type_to_nodes) {
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     // 输入和Output不需要升精度处理
     auto node_type = node->GetType();
     if (BackendUtils::IsOutputNode(node) || BackendUtils::IsInputNode(node)) {

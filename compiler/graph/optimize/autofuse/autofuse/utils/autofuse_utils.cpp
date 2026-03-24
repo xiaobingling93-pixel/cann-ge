@@ -503,7 +503,7 @@ Status AutofuseUtils::SerilizeAscBackend(ge::Node *node_ptr, std::string &output
     auto fused_compute_graph = BackendUtils::GetNodeFusedComputeGraph(node);
     GE_ASSERT_NOTNULL(fused_compute_graph);
     std::unordered_map<std::string, NodePtr> all_new_nodes;
-    for (const auto &asc_graph_node : fused_compute_graph->GetDirectNode()) {
+    for (const auto &asc_graph_node : fused_compute_graph->GetAllNodes()) {
       GE_ASSERT_NOTNULL(asc_graph_node);
       const auto &op_desc = asc_graph_node->GetOpDesc();
       NodePtr new_node;
@@ -518,7 +518,7 @@ Status AutofuseUtils::SerilizeAscBackend(ge::Node *node_ptr, std::string &output
       GE_ASSERT_NOTNULL(new_node);
       all_new_nodes[new_node->GetName()] = new_node;
     }
-    for (const auto &src_node : fused_compute_graph->GetDirectNode()) {
+    for (const auto &src_node : fused_compute_graph->GetAllNodes()) {
       GE_ASSERT_GRAPH_SUCCESS(GraphUtils::RelinkGraphEdges(src_node, "", all_new_nodes));
     }
   } else {

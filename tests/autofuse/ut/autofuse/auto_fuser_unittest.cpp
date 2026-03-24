@@ -179,6 +179,52 @@ ComputeGraphPtr BuildGraphWithSubGraph() {
   return root_graph;
 }
 
+ComputeGraphPtr BuildGraphWithSubGraphForFusion() {
+  auto es_graph = std::unique_ptr<es::Graph>(new es::Graph("root"));
+  auto data0 = es_graph->CreateInput(0, "data0", nullptr);
+  data0.SetSymbolShape({"512", "32"});
+  auto abs0 = es::Abs(data0);
+  abs0.SetSymbolShape({"512", "32"});
+  es_graph->SetOutput(abs0, 0);
+  auto cg = GraphUtilsEx::GetComputeGraph(*es_graph->Build());
+  // 创建子图 sub1
+  auto sub_graph1 = std::unique_ptr<es::Graph>(new es::Graph("sub1"));
+  auto sub_data1 = sub_graph1->CreateInput(0, "data1", nullptr);
+  sub_data1.SetSymbolShape({"512", "32"});
+  auto sub_abs1 = es::Abs(sub_data1);
+  sub_abs1.SetSymbolShape({"512", "32"});
+  auto sub_exp1 = es::Exp(sub_abs1);
+  sub_exp1.SetSymbolShape({"512", "32"});
+  sub_graph1->SetOutput(sub_exp1, 0);
+  auto sub_cg1 = GraphUtilsEx::GetComputeGraph(*sub_graph1->Build());
+  // 创建子图 sub2
+  auto sub_graph2 = std::unique_ptr<es::Graph>(new es::Graph("sub2"));
+  auto sub_data2 = sub_graph2->CreateInput(0, "data2", nullptr);
+  sub_data2.SetSymbolShape({"512", "32"});
+  auto sub_abs2 = es::Abs(sub_data2);
+  sub_abs2.SetSymbolShape({"512", "32"});
+  auto sub_exp2 = es::Exp(sub_abs2);
+  sub_exp2.SetSymbolShape({"512", "32"});
+  sub_graph2->SetOutput(sub_exp2, 0);
+  auto sub_cg2 = GraphUtilsEx::GetComputeGraph(*sub_graph2->Build());
+  // 关联子图到父节点
+  auto abs0_node = cg->FindNode("Abs_0");
+  if (abs0_node == nullptr) {
+    return nullptr;
+  }
+  abs0_node->GetOpDesc()->AddSubgraphName("branch1");
+  abs0_node->GetOpDesc()->SetSubgraphInstanceName(0, "sub1");
+  sub_cg1->SetParentNode(abs0_node);
+  sub_cg1->SetParentGraph(cg);
+  cg->AddSubgraph(sub_cg1);
+  abs0_node->GetOpDesc()->AddSubgraphName("branch2");
+  abs0_node->GetOpDesc()->SetSubgraphInstanceName(1, "sub2");
+  sub_cg2->SetParentNode(abs0_node);
+  sub_cg2->SetParentGraph(cg);
+  cg->AddSubgraph(sub_cg2);
+  return cg;
+}
+
 TEST_F(AutofuserTest, CreateOperatorOk) {
   auto cg = CreateGraphEleAndEle();
 
@@ -262,6 +308,29 @@ TEST_F(AutofuserTest, SubGraphOk) {
   ASSERT_EQ(autofuser.Fuse(cg), SUCCESS);
   for (const auto &subgraph : cg->GetAllSubgraphs()) {
     ASSERT_EQ(autofuser.Fuse(subgraph), SUCCESS);
+  }
+}
+
+TEST_F(AutofuserTest, SubgraphFusion) {
+  auto cg = BuildGraphWithSubGraphForFusion();
+  ASSERT_NE(cg, nullptr);
+  AutofuserOptions options;
+  Autofuser autofuser(options);
+  ASSERT_EQ(autofuser.Fuse(cg), SUCCESS);
+
+  // 验证子图中融合后是否有AscBackend节点
+  for (const auto &subgraph : cg->GetAllSubgraphs()) {
+    ASSERT_NE(subgraph, nullptr);
+    size_t asc_backend_node_count = 0;
+    for (const auto &node : subgraph->GetDirectNode()) {
+      if (node->GetType() == "AscBackend") {
+        asc_backend_node_count++;
+      }
+    }
+    if (subgraph->GetName() == "sub1") {
+      ASSERT_EQ(asc_backend_node_count, 1) << "Subgraph " << subgraph->GetName()
+                                           << " should have exactly 1 fused node, but found " << asc_backend_node_count;
+    }
   }
 }
 

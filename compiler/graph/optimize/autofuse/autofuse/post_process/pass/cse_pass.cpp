@@ -267,7 +267,7 @@ Status SubgraphCommonSubexpressionElimination(AscGraph &graph, [[maybe_unused]] 
   // here mark nodes to its topo idx, to make sure CSE optimize follow origin node seq
   std::unordered_map<NodePtr, size_t> nodes_2_topo_idx;
   CandidateNodes candidate_nodes;
-  for (const auto &node : AscGraphUtils::GetComputeGraph(graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(graph)->GetAllNodes()) {
     const auto op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
     nodes_2_topo_idx.emplace(node, op_desc->GetId());
@@ -276,7 +276,7 @@ Status SubgraphCommonSubexpressionElimination(AscGraph &graph, [[maybe_unused]] 
   }
 
   // collect node may match CSE
-  for (const auto &node : AscGraphUtils::GetComputeGraph(graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(graph)->GetAllNodes()) {
     GE_ASSERT_SUCCESS(CollectCandidate(node, nodes_2_topo_idx, candidate_nodes));
   }
 

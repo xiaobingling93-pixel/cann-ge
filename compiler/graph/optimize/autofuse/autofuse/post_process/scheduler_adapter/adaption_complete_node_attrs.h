@@ -160,7 +160,7 @@ inline Status CompleteNodeAttrsOnAscGraph(AscGraph &asc_graph, [[maybe_unused]] 
   GELOGI("max sched axis %s in graph %s.", AutofuseUtils::VectorToStr(graph_attr.axis).c_str(),
          asc_graph.GetName().c_str());
 
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     // torch data 没有任何轴或者node属性信息，直接跳过
     if (IsTorchDataType(node)) {
       GELOGI("torch node %s(%s) not complete node attr.", node->GetName().c_str(), node->GetType().c_str());
@@ -251,7 +251,7 @@ inline Status GetInvalidAxis(AscGraph &asc_graph, std::vector<int64_t> &graph_in
   GELOGI("before update with node tensor info, graph invalid axis id %s in graph %s.",
          (AutofuseUtils::VectorToStr(graph_invalid_axis_id)).c_str(), asc_graph.GetName().c_str());
 
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (graph_invalid_axis_id.empty()) {
       return SUCCESS;
     }
@@ -368,7 +368,7 @@ inline Status RemoveInvalidAxis(AscGraph &asc_graph, const std::vector<int64_t> 
     return SUCCESS;
   }
   GE_ASSERT_SUCCESS(RemoveGraphInvalidAxis(asc_graph, graph_invalid_axis_id));
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     // torch data 没有任何轴或者node属性信息，直接跳过； gather data在前面特殊处理了
     if (IsTorchDataType(node)) {
       continue;
@@ -428,7 +428,7 @@ inline Status UpdateGatherDataAxis(const AscGraph &asc_graph, const NodePtr &nod
 }
 
 inline Status FindAndUpdateGatherData(const AscGraph &asc_graph, std::vector<NodePtr> &gather_data2_nodes) {
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (node->GetType() == kGatherType) {
       // gather的data1和data2需要特殊补轴处理
       GE_ASSERT_SUCCESS(UpdateGatherDataAxis(asc_graph, node, gather_data2_nodes));
@@ -511,7 +511,7 @@ inline Status RemoveGatherInvalidAxis(const AscGraph &asc_graph, const std::vect
   if (graph_invalid_axis_id.empty()) {
     return SUCCESS;
   }
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (node->GetType() == kGatherType) {
       GE_ASSERT_SUCCESS(RemoveGatherDataInvalidAxis(asc_graph, node, graph_invalid_axis_id));
       GE_ASSERT_SUCCESS(RemoveGatherInvalidAxisIndex(asc_graph, node, graph_invalid_axis_id));
