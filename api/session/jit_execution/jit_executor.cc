@@ -147,7 +147,7 @@ std::unique_ptr<JitExecutor> JitExecutor::Create(GraphManager &graph_manager, Us
   GE_ASSERT_RT_OK(aclrtSetDevice(jit.get()->device_id_));
   GELOGI("Set device, device id:%u.", GetContext().DeviceId());
   GE_ASSERT_RT_OK(rtStreamCreate(&(jit.get()->stream_), 0));
-  GE_ASSERT_RT_OK(rtStreamSetMode(jit.get()->stream_, kStopOnFailure));
+  GE_ASSERT_RT_OK(aclrtSetStreamFailureMode(jit.get()->stream_, ACL_STOP_ON_FAILURE));
   // prepare allocator
   auto device_allocator = gert::AllocatorFactory::Create("usergraph", gert::kOnDeviceHbm);
   GE_ASSERT_NOTNULL(device_allocator);

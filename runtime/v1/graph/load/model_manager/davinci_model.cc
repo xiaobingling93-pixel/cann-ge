@@ -56,6 +56,7 @@
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/debug/ge_attr_define.h"
 #include "framework/common/util.h"
+#include "acl/acl_mdl.h"
 
 namespace ge {
 namespace {
@@ -419,7 +420,7 @@ void DavinciModel::DestroyResources() {
     l1_fusion_addr_ = nullptr;
 
     if (rt_model_handle_ != nullptr) {
-      GE_CHK_RT(rtModelDestroy(rt_model_handle_));
+      GE_CHK_RT(aclmdlRIDestroy(rt_model_handle_));
       rt_model_handle_ = nullptr;
     }
   }
@@ -457,7 +458,7 @@ void DavinciModel::ClearTaskAddrs() {
 
 void DavinciModel::UnbindHcomStream() {
   for (size_t i = 0U; i < all_hccl_stream_list_.size(); ++i) {
-    GE_LOGW_IF(rtModelUnbindStream(rt_model_handle_, all_hccl_stream_list_[i]) != RT_ERROR_NONE,
+    GE_LOGW_IF(aclmdlRIUnbindStream(rt_model_handle_, all_hccl_stream_list_[i]) != ACL_SUCCESS,
                "Unbind hccl stream from model failed, Index: %zu", i);
   }
 }
@@ -717,9 +718,12 @@ Status DavinciModel::BindModelStream() {
   for (const auto &pair : first_task_id_to_stream) {
     auto stream_id = pair.second;
     const auto bind_flag =
-        (active_stream_indication_.count(stream_id) == 0U) ? RT_HEAD_STREAM : RT_INVALID_FLAG;
-    GELOGI("rtModelBindStream[%zu] stream: %p, flag: %#x", stream_id, stream_list_[stream_id], static_cast<uint32_t>(bind_flag));
-    GE_CHK_RT_RET(rtModelBindStream(rt_model_handle_, stream_list_[stream_id], static_cast<uint32_t>(bind_flag)));
+        (active_stream_indication_.count(stream_id) == 0U) ?
+        ACL_MODEL_STREAM_FLAG_HEAD : ACL_MODEL_STREAM_FLAG_DEFAULT;
+    GELOGI("aclmdlRIBindStream[%zu] stream: %p, flag: %#x",
+        stream_id, stream_list_[stream_id], static_cast<uint32_t>(bind_flag));
+    GE_CHK_RT_RET(aclmdlRIBindStream(rt_model_handle_,
+        stream_list_[stream_id], static_cast<uint32_t>(bind_flag)));
   }
   is_stream_list_bind_ = true;
   return SUCCESS;
@@ -851,7 +855,7 @@ Status DavinciModel::DoTaskSink() {
 
   GE_CHK_STATUS_RET(UpdateStaticModelArgsByFm());
 
-  GE_CHK_RT_RET(rtModelLoadComplete(rt_model_handle_));
+  GE_CHK_RT_RET(aclmdlRIBuildEnd(rt_model_handle_, nullptr));
 
   GE_CHK_STATUS_RET(LoadWithHardwareQueue(), "[Init][LoadWithHardwareQueue] failed, model_id: %u.", model_id_);
 
@@ -1414,8 +1418,8 @@ Status DavinciModel::InitStreamInfoOfTask(const ComputeGraphPtr &compute_graph) 
 
 Status DavinciModel::InitRuntimeResource() {
   // create model_handle to load model
-  GE_CHK_RT_RET(rtModelCreate(&rt_model_handle_, 0U));
-  GE_CHK_RT_RET(rtSetModelName(rt_model_handle_, name_.c_str()));
+  GE_CHK_RT_RET(aclmdlRIBuildBegin(&rt_model_handle_, 0U));
+  GE_CHK_RT_RET(aclmdlRISetName(rt_model_handle_, name_.c_str()));
   GE_CHK_RT_RET(rtModelGetId(rt_model_handle_, &runtime_model_id_));
   std::vector<int64_t> huge_stream_list;
   (void)AttrUtils::GetListInt(ge_model_, ATTR_MODEL_HUGE_STREAM_LIST, huge_stream_list);
@@ -5593,7 +5597,7 @@ void DavinciModel::Run() {
     }
     if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
       is_stream_sync_timeout_ = true;
-      GE_LOGW_IF(rtModelAbort(rt_model_handle_) != RT_ERROR_NONE, "Abort model failed!");
+      GE_LOGW_IF(aclmdlRIAbort(rt_model_handle_) != ACL_SUCCESS, "Abort model failed!");
       REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, stream synchronize timeout:%dms, ret:%d.",
                         stream_sync_timeout_, rt_ret);
       GELOGE(FAILED, "[Invoke][rtStreamSynchronizeWithTimeout] failed, timeout:%dms, ret:%d.", stream_sync_timeout_,
@@ -5665,7 +5669,7 @@ Status DavinciModel::ModelRunStart() {
   GE_ASSERT_SUCCESS(
       reusable_stream_allocator_->GetOrCreateRtStream(rt_model_stream_, runtime_model_id_, priority_, stream_flags));
   is_inner_model_stream_ = true;
-  GE_CHK_RT_RET(rtStreamSetMode(rt_model_stream_, kStopOnFailure));
+  GE_CHK_RT_RET(aclrtSetStreamFailureMode(rt_model_stream_, ACL_STOP_ON_FAILURE));
   error_context_ = error_message::GetErrMgrContext();
   thread_id_ = std::thread(&DavinciModel::Run, this);
 
@@ -5701,23 +5705,23 @@ void DavinciModel::UnbindTaskSinkStream() {
       // unbind rt_model_handle and streams
       auto stream_id = iter.first;
       GE_LOGE_IF(static_cast<size_t>(stream_id) >= stream_list_.size(), "stream id %zu is invalid", stream_id);
-      GE_LOGW_IF(rtModelUnbindStream(rt_model_handle_, stream_list_[stream_id]) != RT_ERROR_NONE,
+      GE_LOGW_IF(aclmdlRIUnbindStream(rt_model_handle_, stream_list_[stream_id]) != ACL_SUCCESS,
                  "Unbind stream from model failed! Index: %zu", stream_id);
     }
   }
 
   if (is_inner_model_stream_) {
     if ((!input_queue_attrs_.empty()) || (!output_queue_attrs_.empty()) || is_stream_sync_timeout_) {
-      GE_LOGW_IF(rtModelUnbindStream(rt_model_handle_, rt_model_stream_) != RT_ERROR_NONE, "Unbind stream failed!");
+      GE_LOGW_IF(aclmdlRIUnbindStream(rt_model_handle_, rt_model_stream_) != ACL_SUCCESS, "Unbind stream failed!");
     }
   }
 
   if (is_pure_head_stream_ && (rt_head_stream_ != nullptr)) {
-    GE_LOGW_IF(rtModelUnbindStream(rt_model_handle_, rt_head_stream_) != RT_ERROR_NONE, "Unbind stream failed!");
+    GE_LOGW_IF(aclmdlRIUnbindStream(rt_model_handle_, rt_head_stream_) != ACL_SUCCESS, "Unbind stream failed!");
   }
 
   if (rt_entry_stream_ != nullptr) {
-    GE_LOGW_IF(rtModelUnbindStream(rt_model_handle_, rt_entry_stream_) != RT_ERROR_NONE, "Unbind stream failed!");
+    GE_LOGW_IF(aclmdlRIUnbindStream(rt_model_handle_, rt_entry_stream_) != ACL_SUCCESS, "Unbind stream failed!");
   }
   GELOGD("Npu model: %u success to unbind streams.", model_id_);
 }
@@ -7129,7 +7133,7 @@ void DavinciModel::FreeInnerFeatureMapMem() {
     const auto rt_ret = rtStreamSynchronizeWithTimeout(rt_model_stream_, stream_sync_timeout_);
     if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
       is_stream_sync_timeout_ = true;
-      GE_LOGE_IF(rtModelAbort(rt_model_handle_) != RT_ERROR_NONE, "Abort model failed!");
+      GE_LOGE_IF(aclmdlRIAbort(rt_model_handle_) != ACL_SUCCESS, "Abort model failed!");
       GELOGW("[Invoke][rtStreamSynchronizeWithTimeout] failed, timeout:%dms, ret:%d.", stream_sync_timeout_, rt_ret);
       FreeFeatureMapMem();
       return;
@@ -7587,7 +7591,7 @@ void DavinciModel::RecordProfileTime() {
 Status DavinciModel::CheckRtStreamSynchronize(rtError_t rt_ret) {
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
     is_stream_sync_timeout_ = true;
-    GE_LOGW_IF(rtModelAbort(rt_model_handle_) != RT_ERROR_NONE, "Abort model failed!");
+    GE_LOGW_IF(aclmdlRIAbort(rt_model_handle_) != ACL_SUCCESS, "Abort model failed!");
     GELOGE(FAILED, "[Invoke][rtStreamSynchronizeWithTimeout] failed, timeout:%dms, ret:%d.", stream_sync_timeout_,
             rt_ret);
     REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, stream synchronize timeout:%dms, ret:%d.",
@@ -7661,7 +7665,7 @@ Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode,
     const auto rt_ret = rtStreamSynchronizeWithTimeout(rt_model_stream_, stream_sync_timeout_);
     if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
       is_stream_sync_timeout_ = true;
-      GE_LOGW_IF(rtModelAbort(rt_model_handle_) != RT_ERROR_NONE, "Abort model failed!");
+      GE_LOGW_IF(aclmdlRIAbort(rt_model_handle_) != ACL_SUCCESS, "Abort model failed!");
       GELOGE(FAILED, "[Invoke][rtStreamSynchronizeWithTimeout] failed, timeout:%dms, ret:%d.", stream_sync_timeout_,
              rt_ret);
       REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, stream synchronize timeout:%dms, ret:%d.",
@@ -7768,7 +7772,7 @@ Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode, c
     const auto rt_ret = rtStreamSynchronizeWithTimeout(rt_model_stream_, stream_sync_timeout_);
     if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
       is_stream_sync_timeout_ = true;
-      GE_LOGW_IF(rtModelAbort(rt_model_handle_) != RT_ERROR_NONE, "Abort model failed!");
+      GE_LOGW_IF(aclmdlRIAbort(rt_model_handle_) != ACL_SUCCESS, "Abort model failed!");
       GELOGE(FAILED, "[Invoke][rtStreamSynchronizeWithTimeout] failed, timeout:%dms, ret:%d.", stream_sync_timeout_,
              rt_ret);
       REPORT_INNER_ERR_MSG("E19999", "rtStreamSynchronizeWithTimeout failed, stream synchronize timeout:%dms, ret:%d.",
@@ -7829,7 +7833,8 @@ Status DavinciModel::AddHeadStream() {
     GE_CHECK_NOTNULL(reusable_stream_allocator_);
     GE_ASSERT_SUCCESS(reusable_stream_allocator_->GetOrCreateRtStream(rt_head_stream_, runtime_model_id_, priority_,
                                                                       RT_STREAM_PERSISTENT));
-    GE_CHK_RT_RET(rtModelBindStream(rt_model_handle_, rt_head_stream_, static_cast<uint32_t>(RT_INVALID_FLAG)));
+    GE_CHK_RT_RET(aclmdlRIBindStream(rt_model_handle_, rt_head_stream_,
+        static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_DEFAULT)));
     is_pure_head_stream_ = true;
 
     for (const auto &s : active_stream_list_) {
@@ -7848,7 +7853,8 @@ Status DavinciModel::AddHeadStream() {
   // Create entry stream active head stream. AICPU stream.
   GE_ASSERT_SUCCESS(reusable_stream_allocator_->GetOrCreateRtStream(rt_entry_stream_, runtime_model_id_, priority_,
                                                                     RT_STREAM_AICPU));
-  GE_CHK_RT_RET(rtModelBindStream(rt_model_handle_, rt_entry_stream_, static_cast<uint32_t>(RT_HEAD_STREAM)));
+  GE_CHK_RT_RET(aclmdlRIBindStream(rt_model_handle_, rt_entry_stream_,
+      static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_HEAD)));
   return SUCCESS;
 }
 
