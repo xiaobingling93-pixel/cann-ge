@@ -127,7 +127,11 @@ class Om2ModelExecutor::Impl {
 
     GE_ASSERT_SUCCESS(ge::Om2Utils::CreateOm2WorkspaceDir(ws_dir_));
     ge::RAIIZipArchive archive(static_cast<uint8_t *>(model_data.model_data), model_data.model_len);
-    GE_ASSERT_TRUE(archive.IsGood());
+    if (!archive.IsGood()) {
+      GELOGE(ACL_ERROR_GE_PARAM_INVALID,
+             "[Check][Param] Invalid om2 model buffer or model length, archive init failed.");
+      return ACL_ERROR_GE_PARAM_INVALID;
+    }
     const auto file_names = archive.ListFiles();
 
     for (const auto &file_name : file_names) {
@@ -143,7 +147,15 @@ class Om2ModelExecutor::Impl {
       }
     }
     GE_ASSERT_TRUE(has_model_);
+    GE_ASSERT_SUCCESS(ParseArchiveFiles(archive, file_names, weight_buf, kernel_bin_info));
+    GE_ASSERT_TRUE(!run_model_info_.so_file.empty(), "[OM2] Om2 compiled so not found, need to check .om2 file.");
+    return ge::SUCCESS;
+  }
 
+ private:
+  ge::Status ParseArchiveFiles(ge::RAIIZipArchive &archive, const std::vector<std::string> &file_names,
+                               ge::UniqueByteBuffer &weight_buf,
+                               std::vector<KernelBinInfo> &kernel_bin_info) {
     for (const auto &file_name : file_names) {
       if (IsFileNameEndsWith(file_name, "manifest.json") || IsFileNameEndsWith(file_name, "model_meta.json")) {
         continue;
@@ -168,9 +180,10 @@ class Om2ModelExecutor::Impl {
         run_model_info_.so_file = ws_dir_ + file_name;
       }
     }
-    GE_ASSERT_TRUE(!run_model_info_.so_file.empty(), "[OM2] Om2 compiled so not found, need to check .om2 file.");
     return ge::SUCCESS;
   }
+
+ public:
 
   ge::Status LoadSharedObject() {
     GELOGI("[OM2] Begin loading so file %s", run_model_info_.so_file.c_str());
@@ -308,7 +321,8 @@ Om2ModelExecutor::~Om2ModelExecutor() {
 ge::Status Om2ModelExecutor::Load(ge::ModelData &model_data) const {
   ge::UniqueByteBuffer weight_buf;
   std::vector<KernelBinInfo> kernel_bin_info;
-  GE_ASSERT_SUCCESS(impl_->ParseModel(model_data, weight_buf, kernel_bin_info));
+  GE_CHK_STATUS_RET(impl_->ParseModel(model_data, weight_buf, kernel_bin_info),
+                    "[OM2][Load] Parse model failed.");
   GE_ASSERT_SUCCESS(impl_->LoadSharedObject());
   GE_ASSERT_SUCCESS(impl_->ResolveSymbols());
   GE_ASSERT_SUCCESS(impl_->CreateModel(weight_buf, kernel_bin_info));
