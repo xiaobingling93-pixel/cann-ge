@@ -35,36 +35,77 @@ inline __aicore__ void CompareNormalNoLoop(const AscendC::LocalTensor<uint8_t> &
   if (src1.GetSize() * sizeof(T) == 32){
     repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
   }
-  AscendC::PipeBarrier<PIPE_V>();
-  Compare(compare_out, src0, src1, mode, mask, repeat_times, repeat_params);
   // 处理 float/half 数据类型输入tensor存在NaN场景
+  // NE模式下，Compare对NaN总是返回0，需要先将NaN替换后再做Compare
   if constexpr ((AscendC::IsSameType<T, float>::value || AscendC::IsSameType<T, half>::value) && mode == CMPMODE::NE) {
-    LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
-    AscendC::PipeBarrier<PIPE_V>();
-    Compare(nan_mask, src0, src0, CMPMODE::EQ, mask, repeat_times, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
-    AscendC::PipeBarrier<PIPE_V>();
-    Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, repeat_times, {1, 1, 1, 8, 8, 8});
+    // 逐repeat处理，复用select_out存储处理后的数据
+    uint32_t elements_per_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(T);
+    // 计算Select每次处理的bit数（128个half = 128个bit）
+    uint32_t select_bits_per_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(half);
+    // 计算Cast的dst repeat stride（以32字节为单位）
+    uint8_t cast_dst_blk_stride = dst_repeat_stride;
     
-    BinaryRepeatParams nan_repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-    if (src1.GetSize() * sizeof(T) == 32) {
-      nan_repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+    for (uint8_t r = 0; r < repeat_times; r++) {
+      // select_out前半部分存储处理后的src0，后半部分存储处理后的src1
+      LocalTensor<T> src0_processed = select_out.ReinterpretCast<T>();
+      LocalTensor<T> src1_processed = src0_processed[elements_per_repeat];
+      LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
+      
+      // Step 1: 检测src0的NaN并替换
+      // Compare(src0, src0, EQ): NaN位置返回0，非NaN位置返回1
+      AscendC::PipeBarrier<PIPE_V>();
+      Compare(nan_mask, src0[r * elements_per_repeat], src0[r * elements_per_repeat], CMPMODE::EQ, 
+              mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+      AscendC::PipeBarrier<PIPE_V>();
+      // Select: 当selMask为1时选src0，为0时选scalar(1)，将NaN替换为1
+      Select(src0_processed, nan_mask, src0[r * elements_per_repeat], (T)1, 
+             SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+      
+      // Step 2: 检测src1的NaN并替换
+      BinaryRepeatParams src1_repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
+      if (src1.GetSize() * sizeof(T) == 32) {
+        src1_repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+      }
+      AscendC::PipeBarrier<PIPE_V>();
+      Compare(nan_mask, src1[r * elements_per_repeat], src1[r * elements_per_repeat], CMPMODE::EQ, 
+              mask, 1, src1_repeat_params);
+      AscendC::PipeBarrier<PIPE_V>();
+      Select(src1_processed, nan_mask, src1[r * elements_per_repeat], (T)1, 
+             SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, src1_repeat_params);
+      
+      // Step 3: 用处理后的数据重新做Compare
+      AscendC::PipeBarrier<PIPE_V>();
+      Compare(compare_out, src0_processed, src1_processed, mode, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+      
+      // Step 4: 将compare_out的bit结果转换为half格式，然后转换为uint8_t写入dst
+      // 先初始化select_out为1（用于Select的src1）
+      AscendC::PipeBarrier<PIPE_V>();
+      Duplicate<half, true>(select_out, (half)1, select_bits_per_repeat, 1, 1, 8);
+      // Select: compare_out的bit为1时选1，为0时选0
+      AscendC::PipeBarrier<PIPE_V>();
+      Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, 
+                                  SELMODE::VSEL_TENSOR_SCALAR_MODE, select_bits_per_repeat, 1, {1, 1, 1, 8, 8, 8});
+      // Cast: 将half转换为uint8_t，写入dst的正确位置
+      // dst偏移：每次repeat移动dst_repeat_stride个block（32字节）
+      // dst_repeat_stride单位是block，需要转换为uint8_t元素个数
+      AscendC::PipeBarrier<PIPE_V>();
+      Cast<uint8_t, half, true>(dst[r * dst_repeat_stride * ONE_BLK_SIZE], select_out, RoundMode::CAST_NONE, mask, 1, {1, 1, cast_dst_blk_stride, 8});
     }
+  } else {
     AscendC::PipeBarrier<PIPE_V>();
-    Compare(nan_mask, src1, src1, CMPMODE::EQ, mask, repeat_times, nan_repeat_params);
+    Compare(compare_out, src0, src1, mode, mask, repeat_times, repeat_params);
+    Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), select_repeat_times, 1, 8);
     AscendC::PipeBarrier<PIPE_V>();
-    Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, repeat_times, {1, 1, 1, 8, 8, 8});
+    repeat_params = {1, 1, 1, 8, 8, 8};
+    Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
+                                ONE_REPEAT_BYTE_SIZE / sizeof(half), select_repeat_times, repeat_params);
+    // 为了更高效，select的repeat进行完整的8个block，而与T无关，因为compare out上是连续的
+    // 因为可能一次select跨了多个src对应的repeat stride，所以repeat times可以更少
+    uint8_t select_out_stride = compare_element_num * sizeof(half) / ONE_BLK_SIZE; // select_out中有效数据的stride由compare的输出决定
+    UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, select_out_stride};
+    AscendC::PipeBarrier<PIPE_V>();
+    Cast<uint8_t, half, true>(dst, select_out, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
   }
-  Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), select_repeat_times, 1, 8);
-  AscendC::PipeBarrier<PIPE_V>();
-  repeat_params = {1, 1, 1, 8, 8, 8};
-  Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                              ONE_REPEAT_BYTE_SIZE / sizeof(half), select_repeat_times, repeat_params);
-  // 为了更高效，select的repeat进行完整的8个block，而与T无关，因为compare out上是连续的
-  // 因为可能一次select跨了多个src对应的repeat stride，所以repeat times可以更少
-  uint8_t select_out_stride = compare_element_num * sizeof(half) / ONE_BLK_SIZE; // select_out中有效数据的stride由compare的输出决定
-  UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, select_out_stride};
-  AscendC::PipeBarrier<PIPE_V>();
-  Cast<uint8_t, half, true>(dst, select_out, RoundMode::CAST_NONE, mask, repeat_times, unary_repeat_params);
 }
 
 
@@ -98,86 +139,153 @@ inline __aicore__ void CompareNormal(const AscendC::LocalTensor<uint8_t> &dst,  
 
       for (uint32_t outer_for = 0; outer_for < element_extent; outer_for++) {
         uint32_t mask = elem_in_one_repeat;
-        PipeBarrier<PIPE_V>();
-        BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-        if (src1.GetSize() * sizeof(T) == 32) {
-          repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-          Compare(compare_out, src0[outer_for * elem_in_one_repeat], src1[0], mode, mask, repeat_times, repeat_params);
-        } else {
-          Compare(compare_out, src0[outer_for * elem_in_one_repeat], src1[outer_for * elem_in_one_repeat], mode, mask,
-                  repeat_times, repeat_params);
-        }
         // 处理 T = float/half, mode = NE 存在NaN场景
+        // NE模式下，Compare对NaN总是返回0，需要先将NaN替换后再做Compare
         if constexpr ((AscendC::IsSameType<T, float>::value || AscendC::IsSameType<T, half>::value) && mode == CMPMODE::NE) {
-          LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
-          AscendC::PipeBarrier<PIPE_V>();
-          Compare(nan_mask, src0[outer_for * elem_in_one_repeat], src0[outer_for * elem_in_one_repeat],
-                  CMPMODE::EQ, mask, repeat_times, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
-          AscendC::PipeBarrier<PIPE_V>();
-          Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                 mask, repeat_times, {1, 1, 1, 8, 8, 8});
-          AscendC::PipeBarrier<PIPE_V>();
-          BinaryRepeatParams src1_nan_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-          if (src1.GetSize() * sizeof(T) == 32) {
-            src1_nan_params = {1, 1, 0, 8, src_repeat_stride, 0};
+          // 逐repeat处理，复用select_out存储处理后的数据
+          uint32_t select_bits_per_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(half);
+          for (uint8_t r = 0; r < repeat_times; r++) {
+            LocalTensor<T> src0_processed = select_out.ReinterpretCast<T>();
+            LocalTensor<T> src1_processed = src0_processed[elem_in_one_repeat];
+            LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
+            
+            // Step 1: 检测src0的NaN并替换
+            AscendC::PipeBarrier<PIPE_V>();
+            Compare(nan_mask, src0[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                    src0[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                    CMPMODE::EQ, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            AscendC::PipeBarrier<PIPE_V>();
+            Select(src0_processed, nan_mask, src0[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                   (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            
+            // Step 2: 检测src1的NaN并替换
+            BinaryRepeatParams src1_repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
+            if (src1.GetSize() * sizeof(T) == 32) {
+              src1_repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+              AscendC::PipeBarrier<PIPE_V>();
+              Compare(nan_mask, src1[0], src1[0], CMPMODE::EQ, mask, 1, src1_repeat_params);
+              AscendC::PipeBarrier<PIPE_V>();
+              Select(src1_processed, nan_mask, src1[0], (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, src1_repeat_params);
+            } else {
+              AscendC::PipeBarrier<PIPE_V>();
+              Compare(nan_mask, src1[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                      src1[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                      CMPMODE::EQ, mask, 1, src1_repeat_params);
+              AscendC::PipeBarrier<PIPE_V>();
+              Select(src1_processed, nan_mask, src1[outer_for * elem_in_one_repeat + r * elem_in_one_repeat],
+                     (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, src1_repeat_params);
+            }
+            
+            // Step 3: 用处理后的数据重新做Compare
+            AscendC::PipeBarrier<PIPE_V>();
+            Compare(compare_out, src0_processed, src1_processed, mode, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            
+            // Step 4: 将compare_out的bit结果转换为half格式，然后转换为uint8_t写入dst
+            AscendC::PipeBarrier<PIPE_V>();
+            Duplicate<half, true>(select_out, (half)1, select_bits_per_repeat, 1, 1, 8);
+            AscendC::PipeBarrier<PIPE_V>();
+            Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, 
+                                        SELMODE::VSEL_TENSOR_SCALAR_MODE, select_bits_per_repeat, 1, {1, 1, 1, 8, 8, 8});
+            AscendC::PipeBarrier<PIPE_V>();
+            Cast<uint8_t, half, true>(dst[outer_for * elem_in_one_repeat + r * dst_repeat_stride * ONE_BLK_SIZE], 
+                                      select_out, RoundMode::CAST_NONE, mask, 1, {1, 1, dst_repeat_stride, 8});
           }
-          Compare(nan_mask, src1, src1, CMPMODE::EQ, mask, repeat_times, src1_nan_params);
+        } else {
+          PipeBarrier<PIPE_V>();
+          BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
+          if (src1.GetSize() * sizeof(T) == 32) {
+            repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+            Compare(compare_out, src0[outer_for * elem_in_one_repeat], src1[0], mode, mask, repeat_times, repeat_params);
+          } else {
+            Compare(compare_out, src0[outer_for * elem_in_one_repeat], src1[outer_for * elem_in_one_repeat], mode, mask,
+                    repeat_times, repeat_params);
+          }
+          PipeBarrier<PIPE_V>();
+          Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), repeat_times, 1, 8);
           AscendC::PipeBarrier<PIPE_V>();
-          Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                 mask, repeat_times, {1, 1, 1, 8, 8, 8});
+          repeat_params = {1, 1, 1, 8, 8, 8};
+          Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
+                                      ONE_REPEAT_BYTE_SIZE / sizeof(uint8_t), repeat_times, repeat_params);
+          UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, 4};
+          AscendC::PipeBarrier<PIPE_V>();
+          Cast<uint8_t, half, true>(dst[outer_for * elem_in_one_repeat], select_out, RoundMode::CAST_NONE, mask,
+                                    repeat_times, unary_repeat_params);
         }
-        PipeBarrier<PIPE_V>();
-        Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), repeat_times, 1, 8);
-        AscendC::PipeBarrier<PIPE_V>();
-        repeat_params = {1, 1, 1, 8, 8, 8};
-        Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                                    ONE_REPEAT_BYTE_SIZE / sizeof(uint8_t), repeat_times, repeat_params);
-        UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-        AscendC::PipeBarrier<PIPE_V>();
-        Cast<uint8_t, half, true>(dst[outer_for * elem_in_one_repeat], select_out, RoundMode::CAST_NONE, mask,
-                                  repeat_times, unary_repeat_params);
       }
       if (element_reminder != 0) {
         uint32_t mask = element_reminder;
-        AscendC::PipeBarrier<PIPE_V>();
-        BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-        if (src1.GetSize() * sizeof(T) == 32) {
-          repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
-          Compare(compare_out, src0[element_extent * elem_in_one_repeat], src1[0], mode, mask, repeat_times,
-                  repeat_params);
-        } else {
-          Compare(compare_out, src0[element_extent * elem_in_one_repeat], src1[element_extent * elem_in_one_repeat],
-                  mode, mask, repeat_times, repeat_params);
-        }
         // 处理 T = float/half, mode = NE 存在NaN场景
         if constexpr ((AscendC::IsSameType<T, float>::value || AscendC::IsSameType<T, half>::value) && mode == CMPMODE::NE) {
-          LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
-          AscendC::PipeBarrier<PIPE_V>();
-          Compare(nan_mask, src0[element_extent * elem_in_one_repeat], src0[element_extent * elem_in_one_repeat],
-                  CMPMODE::EQ, mask, repeat_times, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
-          AscendC::PipeBarrier<PIPE_V>();
-          Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                 mask, repeat_times, {1, 1, 1, 8, 8, 8});
-          AscendC::PipeBarrier<PIPE_V>();
-          BinaryRepeatParams src1_nan_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
-          if (src1.GetSize() * sizeof(T) == 32) {
-            src1_nan_params = {1, 1, 0, 8, src_repeat_stride, 0};
+          // 逐repeat处理，复用select_out存储处理后的数据
+          uint32_t select_bits_per_repeat = ONE_REPEAT_BYTE_SIZE / sizeof(half);
+          for (uint8_t r = 0; r < repeat_times; r++) {
+            LocalTensor<T> src0_processed = select_out.ReinterpretCast<T>();
+            LocalTensor<T> src1_processed = src0_processed[elem_in_one_repeat];
+            LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
+            
+            // Step 1: 检测src0的NaN并替换
+            AscendC::PipeBarrier<PIPE_V>();
+            Compare(nan_mask, src0[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                    src0[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                    CMPMODE::EQ, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            AscendC::PipeBarrier<PIPE_V>();
+            Select(src0_processed, nan_mask, src0[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                   (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            
+            // Step 2: 检测src1的NaN并替换
+            BinaryRepeatParams src1_repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
+            if (src1.GetSize() * sizeof(T) == 32) {
+              src1_repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+              AscendC::PipeBarrier<PIPE_V>();
+              Compare(nan_mask, src1[0], src1[0], CMPMODE::EQ, mask, 1, src1_repeat_params);
+              AscendC::PipeBarrier<PIPE_V>();
+              Select(src1_processed, nan_mask, src1[0], (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, src1_repeat_params);
+            } else {
+              AscendC::PipeBarrier<PIPE_V>();
+              Compare(nan_mask, src1[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                      src1[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                      CMPMODE::EQ, mask, 1, src1_repeat_params);
+              AscendC::PipeBarrier<PIPE_V>();
+              Select(src1_processed, nan_mask, src1[element_extent * elem_in_one_repeat + r * elem_in_one_repeat],
+                     (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, mask, 1, src1_repeat_params);
+            }
+            
+            // Step 3: 用处理后的数据重新做Compare
+            AscendC::PipeBarrier<PIPE_V>();
+            Compare(compare_out, src0_processed, src1_processed, mode, mask, 1, {1, 1, 1, 8, src_repeat_stride, src_repeat_stride});
+            
+            // Step 4: 将compare_out的bit结果转换为half格式，然后转换为uint8_t写入dst
+            AscendC::PipeBarrier<PIPE_V>();
+            Duplicate<half, true>(select_out, (half)1, select_bits_per_repeat, 1, 1, 8);
+            AscendC::PipeBarrier<PIPE_V>();
+            Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, 
+                                        SELMODE::VSEL_TENSOR_SCALAR_MODE, select_bits_per_repeat, 1, {1, 1, 1, 8, 8, 8});
+            AscendC::PipeBarrier<PIPE_V>();
+            Cast<uint8_t, half, true>(dst[element_extent * elem_in_one_repeat + r * dst_repeat_stride * ONE_BLK_SIZE], 
+                                      select_out, RoundMode::CAST_NONE, mask, 1, {1, 1, dst_repeat_stride, 8});
           }
-          Compare(nan_mask, src1, src1, CMPMODE::EQ, mask, repeat_times, src1_nan_params);
+        } else {
           AscendC::PipeBarrier<PIPE_V>();
-          Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                 mask, repeat_times, {1, 1, 1, 8, 8, 8});
+          BinaryRepeatParams repeat_params = {1, 1, 1, 8, src_repeat_stride, src_repeat_stride};
+          if (src1.GetSize() * sizeof(T) == 32) {
+            repeat_params = {1, 1, 0, 8, src_repeat_stride, 0};
+            Compare(compare_out, src0[element_extent * elem_in_one_repeat], src1[0], mode, mask, repeat_times,
+                    repeat_params);
+          } else {
+            Compare(compare_out, src0[element_extent * elem_in_one_repeat], src1[element_extent * elem_in_one_repeat],
+                    mode, mask, repeat_times, repeat_params);
+          }
+          PipeBarrier<PIPE_V>();
+          Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), repeat_times, 1, 8);
+          repeat_params = {1, 1, 1, 8, 8, 8};
+          AscendC::PipeBarrier<PIPE_V>();
+          Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
+                                      ONE_REPEAT_BYTE_SIZE / sizeof(uint8_t), repeat_times, repeat_params);
+          UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, 4};
+          AscendC::PipeBarrier<PIPE_V>();
+          Cast<uint8_t, half, true>(dst[element_extent * elem_in_one_repeat], select_out, RoundMode::CAST_NONE, mask,
+                                    repeat_times, unary_repeat_params);
         }
-        PipeBarrier<PIPE_V>();
-        Duplicate<half, true>(select_out, 1, ONE_REPEAT_BYTE_SIZE / sizeof(half), repeat_times, 1, 8);
-        repeat_params = {1, 1, 1, 8, 8, 8};
-        AscendC::PipeBarrier<PIPE_V>();
-        Select<half, uint8_t, true>(select_out, compare_out, select_out, (half)0, SELMODE::VSEL_TENSOR_SCALAR_MODE,
-                                    ONE_REPEAT_BYTE_SIZE / sizeof(uint8_t), repeat_times, repeat_params);
-        UnaryRepeatParams unary_repeat_params = {1, 1, dst_repeat_stride, 4};
-        AscendC::PipeBarrier<PIPE_V>();
-        Cast<uint8_t, half, true>(dst[element_extent * elem_in_one_repeat], select_out, RoundMode::CAST_NONE, mask,
-                                  repeat_times, unary_repeat_params);
       }
     } else {
       uint32_t tmp_offset = 0;
@@ -188,39 +296,53 @@ inline __aicore__ void CompareNormal(const AscendC::LocalTensor<uint8_t> &dst,  
           tmp_buf[KernelUtils::BlkAlign<uint8_t>(tmp_offset)].template ReinterpretCast<half>();
       select_out.SetSize(last_axis);
       for (auto outer_for = 0; outer_for < repeat_times; outer_for++) {
-        PipeBarrier<PIPE_V>();
-        if (src1.GetSize() * sizeof(T) == 32) {
-          event_t eventid_v_to_s = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
-          SetFlag<HardEvent::V_S>(eventid_v_to_s);
-          WaitFlag<HardEvent::V_S>(eventid_v_to_s);
-          auto scalar_value = src1.GetValue(0);
-          event_t eventid_s_to_v = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
-          SetFlag<HardEvent::S_V>(eventid_s_to_v);
-          WaitFlag<HardEvent::S_V>(eventid_s_to_v);
-          CompareScalar(compare_out, src0[outer_for * input_last_dim_stride], scalar_value, mode, last_axis);
-        } else {
-          uint32_t calcount_aligned = (last_axis + elem_in_one_repeat - 1) / elem_in_one_repeat * elem_in_one_repeat;
-          Compare(compare_out, src0[outer_for * input_last_dim_stride], src1[outer_for * input_last_dim_stride], mode,
-                  calcount_aligned);
-        }
         // 处理 T = float/half, mode = NE 存在NaN场景
         if constexpr ((AscendC::IsSameType<T, float>::value || AscendC::IsSameType<T, half>::value) && mode == CMPMODE::NE) {
+          LocalTensor<T> src0_processed = select_out.ReinterpretCast<T>();
+          LocalTensor<T> src1_processed = src0_processed[last_axis];
           LocalTensor<uint8_t> nan_mask = select_out.ReinterpretCast<uint8_t>();
+          
+          // Step 1: 检测src0的NaN并替换
           AscendC::PipeBarrier<PIPE_V>();
           Compare(nan_mask, src0[outer_for * input_last_dim_stride],
                   src0[outer_for * input_last_dim_stride], CMPMODE::EQ, last_axis);
           AscendC::PipeBarrier<PIPE_V>();
-          Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
+          Select(src0_processed, nan_mask, src0[outer_for * input_last_dim_stride],
+                 (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
+          
+          // Step 2: 检测src1的NaN并替换
           AscendC::PipeBarrier<PIPE_V>();
           if (src1.GetSize() * sizeof(T) == 32) {
             Compare(nan_mask, src1, src1, CMPMODE::EQ, src1.GetSize());
             AscendC::PipeBarrier<PIPE_V>();
-            Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
+            Select(src1_processed, nan_mask, src1, (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
           } else {
             Compare(nan_mask, src1[outer_for * input_last_dim_stride],
                     src1[outer_for * input_last_dim_stride], CMPMODE::EQ, last_axis);
             AscendC::PipeBarrier<PIPE_V>();
-            Select(compare_out, nan_mask, compare_out, (uint8_t)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
+            Select(src1_processed, nan_mask, src1[outer_for * input_last_dim_stride],
+                   (T)1, SELMODE::VSEL_TENSOR_SCALAR_MODE, last_axis);
+          }
+          
+          // Step 3: 用处理后的数据重新做Compare
+          uint32_t calcount_aligned = (last_axis + elem_in_one_repeat - 1) / elem_in_one_repeat * elem_in_one_repeat;
+          AscendC::PipeBarrier<PIPE_V>();
+          Compare(compare_out, src0_processed, src1_processed, mode, calcount_aligned);
+        } else {
+          PipeBarrier<PIPE_V>();
+          if (src1.GetSize() * sizeof(T) == 32) {
+            event_t eventid_v_to_s = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
+            SetFlag<HardEvent::V_S>(eventid_v_to_s);
+            WaitFlag<HardEvent::V_S>(eventid_v_to_s);
+            auto scalar_value = src1.GetValue(0);
+            event_t eventid_s_to_v = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
+            SetFlag<HardEvent::S_V>(eventid_s_to_v);
+            WaitFlag<HardEvent::S_V>(eventid_s_to_v);
+            CompareScalar(compare_out, src0[outer_for * input_last_dim_stride], scalar_value, mode, last_axis);
+          } else {
+            uint32_t calcount_aligned = (last_axis + elem_in_one_repeat - 1) / elem_in_one_repeat * elem_in_one_repeat;
+            Compare(compare_out, src0[outer_for * input_last_dim_stride], src1[outer_for * input_last_dim_stride], mode,
+                    calcount_aligned);
           }
         }
         PipeBarrier<PIPE_V>();
