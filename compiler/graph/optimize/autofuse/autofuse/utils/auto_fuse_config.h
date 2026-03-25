@@ -204,7 +204,7 @@ class AutoFuseConfig {
   };
 
   struct LoweringStrategyConfig {
-    size_t max_fused_loop_ops{64U};   // loop融合循环节点的最大loop ops数
+    uint64_t max_fused_loop_ops{64U};   // loop融合循环节点的最大loop ops数
     size_t max_buffer_readers{4U};    // kernel box最大允许的读取node数量，超过该数量则会终止融合
     size_t max_k_for_vectorize_mm{32U};  // 在n=1时，k小于等于该值，则触发将mm转换为mul+reduce的vector计算
     size_t recomputation_threshold{1U};  // 单输出节点重计算阈值，节点输出output个数大于该值将realize
@@ -300,6 +300,52 @@ class AutoFuseConfig {
     }
     recomputation_threshold = 1U;
   }
+
+  void UpdateMaxFusionSizeConfig(const std::unordered_map<std::string, std::string> &all_flags) {
+    auto max_fusion_size_flag = all_flags.find("--max_fusion_size");
+    if (max_fusion_size_flag != all_flags.end()) {
+      const std::string &input = max_fusion_size_flag->second;
+      std::string numeric_part;
+
+      for (char c : input) {
+        if (std::isdigit(c)) {
+          numeric_part += c;
+        } else {
+          break;
+        }
+      }
+
+      if (numeric_part.empty()) {
+        GELOGW("Invalid max_fusion_size value: %s. Valid range: 0-18446744073709551615", input.c_str());
+        return;
+      }
+
+      if (numeric_part.length() < input.length()) {
+        char next_char = input[numeric_part.length()];
+        if (next_char != ';' && next_char != ',') {
+          GELOGW("Invalid max_fusion_size value: %s. Valid range: 0-18446744073709551615", input.c_str());
+          return;
+        }
+      }
+
+      std::stringstream ss(numeric_part);
+      uint64_t value;
+      ss >> value;
+      if (ss.fail()) {
+        GELOGW("Invalid max_fusion_size value: %s. Valid range: 0-18446744073709551615", input.c_str());
+        return;
+      }
+      std::string remaining;
+      ss >> remaining;
+      if (!remaining.empty()) {
+        GELOGW("Invalid max_fusion_size value: %s. Valid range: 0-18446744073709551615", input.c_str());
+        return;
+      }
+      this->fusion_strategy_solver_.max_fusion_size = value;
+      this->lowering_strategy_config_.max_fused_loop_ops = value;
+    }
+  }
+
   void UpdateAutoFuseConfigByEnv() {
     std::unordered_map<std::string, std::string> all_flags;
     (void)ReadAutoFuseEnv(all_flags);
@@ -330,6 +376,7 @@ class AutoFuseConfig {
     this->lowering_strategy_config_.experimental_lowering_matmul = enable_lowering_matmul;
     this->lowering_strategy_config_.recomputation_threshold = recomputation_threshold;
     UpdateImprovePrecisionBlacklist(all_flags);
+    UpdateMaxFusionSizeConfig(all_flags);
     return;
   }
 
