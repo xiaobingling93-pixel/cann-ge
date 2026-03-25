@@ -2252,6 +2252,34 @@ TEST_F(STEST_stream_allocator, task_exceed_limit_split_stream_succ) {
     EXPECT_EQ(relu3->GetOpDesc()->GetStreamId(), 1);
   };
 }
+
+TEST_F(STEST_stream_allocator, rts_not_split_stream_success) {
+  mmSetEnv("SET_CAPA_VALUE", "stream_unlimited_depth", 1);
+  auto graph = BuildGraphWithBigSqeNum();
+  map<string, string> options;
+  Session session(options);
+  auto ret = session.AddGraph(0, graph, options);
+  EXPECT_EQ(ret, SUCCESS);
+  // build input tensor
+  std::vector<InputTensorInfo> inputs;
+  // build_graph through session
+  ret = session.BuildGraph(0, inputs);
+  EXPECT_EQ(ret, SUCCESS);
+
+  CHECK_GRAPH(PreRunAfterBuild) {
+    auto relu1 = graph->FindNode("relu1");
+    ASSERT_NE(relu1, nullptr);
+    EXPECT_EQ(relu1->GetOpDesc()->GetStreamId(), 0);
+    auto relu2 = graph->FindNode("relu2");
+    ASSERT_NE(relu2, nullptr);
+    EXPECT_EQ(relu2->GetOpDesc()->GetStreamId(), 0);
+    auto relu3 = graph->FindNode("relu3");
+    ASSERT_NE(relu3, nullptr);
+    EXPECT_EQ(relu3->GetOpDesc()->GetStreamId(), 0);
+  };
+  mmSetEnv("SET_CAPA_VALUE", "", 1);
+}
+
 TEST_F(STEST_stream_allocator, single_stream_with_partitionedcall) {
   auto ge_env = GeRunningEnvFaker();
   ge_env.Reset()

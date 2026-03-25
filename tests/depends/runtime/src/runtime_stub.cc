@@ -1489,6 +1489,10 @@ rtError_t rtGetRtCapability(rtFeatureType_t featureType, int32_t featureInfo, in
   if (std::string(&record_path[0]).find("mock_fail") != std::string::npos) {
     *value = 1;
   }
+  if ((featureType == FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH) && (
+        std::string(&record_path[0]).find("stream_unlimited_depth") != std::string::npos)) {
+    *value = 1;
+  }
 
   return RT_ERROR_NONE;
 }
