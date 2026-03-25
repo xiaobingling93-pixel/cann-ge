@@ -386,4 +386,84 @@ TEST_F(AutofuserTest, CastCastRemoveOk) {
   auto after_autofuse_cast1 = cg->FindNode("Cast_0");
   ASSERT_EQ(after_autofuse_cast1, nullptr);
 }
+
+TEST_F(AutofuserTest, SimplifyNodeName_EmptyInput) {
+  std::string result = AutofuseUtils::SimplifyNodeName("");
+  ASSERT_EQ(result, "");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_NormalFormat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_1_Abs_Exp");
+  ASSERT_EQ(result, "autofuse_1_Abs_Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_NormalFormatWithDuplicateTypes) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_1_Abs_Abs_Exp");
+  ASSERT_EQ(result, "autofuse_1_2Abs_Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_NormalFormatAllSameType) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_1_Abs_Abs_Abs");
+  ASSERT_EQ(result, "autofuse_1_3Abs");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithoutConcat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Exp_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_Abs_Exp_Relu");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithConcat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Exp_Concat_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_Abs_Exp_Concat_Relu");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithDuplicateBeforeConcat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Abs_Exp_Concat_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_2Abs_Exp_Concat_Relu");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithDuplicateAfterConcat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Exp_Relu_Concat_Relu_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_Abs_Exp_Relu_Concat_2Relu");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithPack) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Abs_Exp_Pack_Relu_Relu_Abs_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_2Abs_Exp_Pack_3Relu_Abs");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_GeneralFormat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("test_autofuse_1_Abs_Exp");
+  ASSERT_EQ(result, "test_autofuse_1_Abs_Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_GeneralFormatWithContinuousTypes) {
+  std::string result = AutofuseUtils::SimplifyNodeName("test_autofuse_1_Abs_Abs_Exp");
+  ASSERT_EQ(result, "test_autofuse_1_2Abs_Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_GeneralFormatWithNonContinuousTypes) {
+  std::string result = AutofuseUtils::SimplifyNodeName("test_autofuse_1_Abs_Exp_Abs");
+  ASSERT_EQ(result, "test_autofuse_1_Abs_Exp_Abs");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_GeneralFormatNoNumber) {
+  std::string result = AutofuseUtils::SimplifyNodeName("test_autofuse_Abs_Exp");
+  ASSERT_EQ(result, "test_autofuse_Abs_Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_InvalidFormat) {
+  std::string result = AutofuseUtils::SimplifyNodeName("random_name");
+  ASSERT_EQ(result, "random_name");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_NormalFormatWithNumericPrefix) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_1_2Abs_3Exp");
+  ASSERT_EQ(result, "autofuse_1_2Abs_3Exp");
+}
+
+TEST_F(AutofuserTest, SimplifyNodeName_FusedFormatWithMultipleConcats) {
+  std::string result = AutofuseUtils::SimplifyNodeName("autofuse_fused_1_Abs_Concat_Exp_Concat_Relu");
+  ASSERT_EQ(result, "autofuse_fused_1_Abs_Concat_Exp_Concat_Relu");
+}
 }  // namespace ge
