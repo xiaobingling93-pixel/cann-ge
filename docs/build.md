@@ -168,17 +168,6 @@ bash scripts/check_env.sh
 - `<version>`表示版本号。
 - `<arch>`表示操作系统架构，取值包括x86_64与aarch64。
 
-####  关于签名的补充说明
-* 编译产生`cann-dflow-executor_<version>_<arch>.run`软件包中含有`cann-udf-compat.tar.gz`(UDF兼容升级包)。
-* `cann-udf-compat.tar.gz`会在业务启动时加载至Device，加载过程中默认会由驱动进行安全验签，确保包可信。
-* 开发者下载本仓源码自行编译产生`cann-udf-compat.tar.gz` 并不含签名头，为此需要关闭驱动安全验签的机制。
-* 关闭验签方式：
-  关闭验签功能依赖Ascend NPU驱动软件包（Ascend HDK 25.5.T2.B001或以上版本），可以通过该Ascend HDK配套的npu-smi工具查询版本和关闭验签，详见[查询基本信息](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/4a8adb57?idPath=23710424|251366513|254884019|261408772|252764743)，[设置自定义验签能力使能状态](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/3152813c?idPath=23710424|251366513|254884019|261408772|252764743)，[设置验签模式](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/a484ba7b?idPath=23710424|251366513|254884019|261408772|252764743)命令文档，需要以root用户在物理机上执行。  
-  以device 0为例 （其中 -i 后面的参数是device id）：  
-  npu-smi info     # 查询基本信息，包含驱动版本  
-  npu-smi set -t custom-op-secverify-enable -i ***0*** -d 1     # 使能自定义验签  
-  npu-smi set -t custom-op-secverify-mode -i ***0*** -d 0      # 设置成"关闭验签模式"
-
 ### 4.4 本地验证（UT/ST）
 
 > [!NOTE] 注意
@@ -246,8 +235,14 @@ bash scripts/check_env.sh
   ```
 
   > [!CAUTION]注意
-  > 此处的安装路径（无论默认还是指定）需与前面安装toolkit包时的路径保持一致。安装完成后，用户编译生成的`GE`软件包会替换已安装CANN开发套件包中的`GE`相关软件。
-
+  > * 此处的安装路径（无论默认还是指定）需与前面安装toolkit包时的路径保持一致。安装完成后，用户编译生成的`GE`软件包会替换已安装CANN开发套件包中的`GE`相关软件。
+  > * `cann-dflow-executor_<version>_<arch>.run`软件包仅在使用[dflow特性](https://hiascend.com/document/redirect/CannCommunityDataflow)时需要，若仅使用GE图编译和执行功能，可选择不安装。该包中含有`cann-udf-compat.tar.gz`(UDF兼容升级包)，会在业务启动时加载至Device侧，加载过程中驱动默认会进行安全验签，以确保包的可信性。开发者通过本仓源码自行编译产生的`cann-udf-compat.tar.gz`不含签名头，因此必须关闭驱动的安全验签机制才能使用。  
+      关闭验签方式：  
+      关闭验签功能依赖Ascend NPU驱动软件包（Ascend HDK 25.5.T2.B001及以上版本），可以通过该Ascend HDK配套的npu-smi工具查询版本和关闭验签，详见[查询基本信息](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/4a8adb57?idPath=23710424|251366513|254884019|261408772|252764743)，[设置自定义验签能力使能状态](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/3152813c?idPath=23710424|251366513|254884019|261408772|252764743)，[设置验签模式](https://support.huawei.com/enterprise/zh/doc/EDOC1100540362/a484ba7b?idPath=23710424|251366513|254884019|261408772|252764743)命令文档，需要以root用户在物理机上执行（由于权限问题，WebIDE暂不支持）。  
+      以device 0为例 （其中 -i 后面的参数是device id）：  
+      npu-smi info     # 查询基本信息，包含驱动版本  
+      npu-smi set -t custom-op-secverify-enable -i ***0*** -d 1     # 使能自定义验签  
+      npu-smi set -t custom-op-secverify-mode -i ***0*** -d 0      # 设置成"关闭验签模式"
 
 - 卸载
 
