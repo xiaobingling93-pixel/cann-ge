@@ -722,13 +722,13 @@ TEST_F(TestOptimizer, ConcatFirstDim) {
   y_op.x = store_op.y;
   y_op.ir_attr.SetIndex(0);
   auto store_node = graph.FindNode("store");
-
+  setenv("AUTOFUSE_DFX_FLAGS", "codegen_compile_debug=true;debug_dir=./TestDump", 1);
+  ::ascir::utils::ResetDumpConfig();
   ::ascir::FusedScheduledResult fused_scheduled_result;
   Status res = optimizer.Optimize(graph, fused_scheduled_result);
   EXPECT_EQ(res, 0);
   EXPECT_EQ(fused_scheduled_result.node_idx_to_scheduled_results[0].size(), 1);
   auto &schedule_result = fused_scheduled_result.node_idx_to_scheduled_results[0][0];
-
   std::vector<Expression> offsets;
   std::vector<Expression> expect = {Symbol(0), (s0 * s2), Symbol(0), (s0 * s2)};
   for (const auto &schedule_group : schedule_result.schedule_groups) {
@@ -742,7 +742,8 @@ TEST_F(TestOptimizer, ConcatFirstDim) {
       }
     }
   }
-
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  ::ascir::utils::ResetDumpConfig();
   for (size_t i = 0; i < offsets.size(); ++i) {
     EXPECT_SYMBOL_EQ(offsets[i], expect[i]);
   }

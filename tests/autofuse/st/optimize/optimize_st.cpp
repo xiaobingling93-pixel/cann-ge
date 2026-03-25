@@ -6296,7 +6296,8 @@ TEST_F(OptimizerSt, SliceSliceConcatD) {
   output_op.x = store_op.y;
   output_op.y.dtype = ge::DT_FLOAT;
   output_op.ir_attr.SetIndex(0);
-
+  setenv("AUTOFUSE_DFX_FLAGS", "codegen_compile_debug=true;debug_dir=./TestDump", 1);
+  ::ascir::utils::ResetDumpConfig();
   ::ascir::FusedScheduledResult fused_scheduled_result;
   EXPECT_EQ(optimizer.Optimize(graph, fused_scheduled_result), ge::SUCCESS);
   EXPECT_EQ(fused_scheduled_result.node_idx_to_scheduled_results.size(), 1UL);
@@ -6308,4 +6309,6 @@ TEST_F(OptimizerSt, SliceSliceConcatD) {
     auto load1_remove_pad_0 = impl_graph.FindNode("load1_remove_pad_0");
     EXPECT_NE(load1_remove_pad_0, nullptr);
   }
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  ::ascir::utils::ResetDumpConfig();
 }
