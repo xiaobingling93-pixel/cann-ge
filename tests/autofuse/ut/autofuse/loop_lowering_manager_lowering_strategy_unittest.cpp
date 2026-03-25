@@ -1759,4 +1759,42 @@ tmp5 = ge.AscBackend(autofuse_pointwise_2_Abs, [tmp4])
 tmp6 = ge.NetOutput(NetOutput, [tmp5])
 )");
 }
+
+TEST_F(LoopGraphLoweringStrategyUT, SkipFuseAsInSkipCfg) {
+  [this]() {
+    auto data0 = es_graph_->CreateInput(0, "data0", nullptr);
+    data0.SetSymbolShape({"s0", "s1", "s2"});
+    auto abs1 = es::Abs(data0);
+    abs1.SetSymbolShape({"s0", "s1", "s2"});
+    auto relu2 = es::Relu(abs1);
+    relu2.SetSymbolShape({"s0", "s1", "s2"});
+    es_graph_->SetOutput(relu2, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  auto abs1 = cg->FindNode("Abs_0");
+  auto relu2 = cg->FindNode("Relu_1");
+  ASSERT_NE(abs1, nullptr);
+  ASSERT_NE(relu2, nullptr);
+
+  AutoFuseConfig::MutableLoweringConfig().skip_node_types = {"Abs"};
+  AutoFuseConfig::MutableLoweringConfig().skip_node_names = {"Relu_1"};
+  ASSERT_EQ(LoweringManager::LoweringGraph(cg), GRAPH_SUCCESS);
+
+  AscBackendFuseConfig config;
+  config.min_ascend_ir_nodes = 1U;
+  ASSERT_EQ(LoweringManager::FusedLoopToAscBackendOp(cg, config), GRAPH_SUCCESS);
+
+  // 融合后的计算图应该没有AscBackend节点
+  size_t asc_backend_node_count = 0;
+  for (const auto &node : cg->GetDirectNode()) {
+    if (node->GetType() == "AscBackend") {
+      asc_backend_node_count++;
+    }
+  }
+  EXPECT_EQ(asc_backend_node_count, 0);
+  AutoFuseConfig::MutableLoweringConfig().skip_node_types = {};
+  AutoFuseConfig::MutableLoweringConfig().skip_node_names = {};
+}
 }  // namespace ge

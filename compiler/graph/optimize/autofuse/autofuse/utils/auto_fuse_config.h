@@ -19,6 +19,7 @@
 #include <limits>
 #include <unordered_map>
 #include <algorithm>
+#include <fstream>
 #include "base/base_types.h"
 #include "common/checker.h"
 #include "graph/types.h"
@@ -112,12 +113,12 @@ inline std::unordered_set<std::string> ReadImprovePrecisionBlacklist(std::string
 inline std::unordered_set<std::string> ReadImprovePrecisionBlacklist(const char *env_name) {
   std::string input = ReadStringEnv(env_name, "");
   std::unordered_set<std::string> tokens;
-
+  
   // 移除末尾的标点符号（如果存在）
   if (!input.empty() && std::ispunct(input.back())) {
     input.pop_back();
   }
-
+  
   // 使用 stringstream 分割字符串
   size_t start = 0;
   size_t end = input.find(',');
@@ -130,6 +131,61 @@ inline std::unordered_set<std::string> ReadImprovePrecisionBlacklist(const char 
   // 添加最后一个token
   tokens.insert(input.substr(start));
   return tokens;
+}
+
+inline void Trim(std::string &str) {
+  str.erase(0, str.find_first_not_of(" \t\r\n"));
+  str.erase(str.find_last_not_of(" \t\r\n") + 1);
+}
+
+inline void ParseSkipNodeNamesConfig(const std::string &config_path, 
+                                    std::unordered_set<std::string> &skip_node_types,
+                                    std::unordered_set<std::string> &skip_node_names) {
+  std::ifstream file(config_path);
+  if (!file.is_open()) {
+    GELOGW("Failed to open skip node names config file: %s", config_path.c_str());
+    return;
+  }
+  
+  std::string line;
+  enum class ParseSection {
+    NONE,
+    BY_NODE_TYPE,
+    BY_NODE_NAME
+  };
+  ParseSection current_section = ParseSection::NONE;
+  
+  while (std::getline(file, line)) {
+    Trim(line);
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+    
+    if (line[0] == '[' && line.back() == ']') {
+      std::string section_name = line.substr(1, line.length() - 2);
+      Trim(section_name);
+      if (section_name == "ByNodeType") {
+        current_section = ParseSection::BY_NODE_TYPE;
+      } else if (section_name == "ByNodeName") {
+        current_section = ParseSection::BY_NODE_NAME;
+      } else {
+        current_section = ParseSection::NONE;
+      }
+      continue;
+    }
+    
+    if (current_section == ParseSection::BY_NODE_TYPE) {
+      skip_node_types.insert(line);
+      GELOGD("Add skip node type: %s", line.c_str());
+    } else if (current_section == ParseSection::BY_NODE_NAME) {
+      skip_node_names.insert(line);
+      GELOGD("Add skip node name: %s", line.c_str());
+    }
+  }
+  
+  file.close();
+  GELOGI("Loaded skip node config from %s, skip types: %zu, skip names: %zu", 
+         config_path.c_str(), skip_node_types.size(), skip_node_names.size());
 }
 
 class AutoFuseConfig {
@@ -160,6 +216,8 @@ class AutoFuseConfig {
     bool experimental_lowering_gather{false};
     bool experimental_lowering_matmul{false};
     bool experimental_disable_lifting{false};
+    std::unordered_set<std::string> skip_node_types;     // 需要跳过lowering的节点类型
+    std::unordered_set<std::string> skip_node_names;     // 需要跳过lowering的节点名称
   };
 
  public:
@@ -281,6 +339,13 @@ class AutoFuseConfig {
     bool disable_lifting =
         all_flags.find("--disable_lifting") != all_flags.end() && all_flags["--disable_lifting"] == "true";
     this->lowering_strategy_config_.experimental_disable_lifting = disable_lifting;
+    
+    auto skip_node_names_cfg = all_flags.find("--skip_node_names_cfg");
+    if (skip_node_names_cfg != all_flags.end()) {
+      ParseSkipNodeNamesConfig(skip_node_names_cfg->second, 
+                               this->lowering_strategy_config_.skip_node_types,
+                               this->lowering_strategy_config_.skip_node_names);
+    }
     return;
   }
   LoweringStrategyConfig lowering_strategy_config_;
