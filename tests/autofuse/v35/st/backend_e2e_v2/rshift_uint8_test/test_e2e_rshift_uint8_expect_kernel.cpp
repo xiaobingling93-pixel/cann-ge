@@ -69,11 +69,11 @@ TEST_P(E2E_BackendRshiftUint8_Code, CalculateCorrect) {
   // 根据精度校验规则
   uint32_t diff_count = 0;
   for (int i = 0; i < test_size; i++) {
-      if (y[i] != expect[i]) {
-        // 打印相关数据，方便问题处理
-        printf("Index %d: input1=%d, input2=%d, y=%d, expect=%d, diff=%d\n", i, input1[i], input2[i], y[i], expect[i], std::fabs(y[i] - expect[i]));
-        diff_count++;
-      }
+    if (y[i] != expect[i]) {
+      // 打印相关数据，方便问题处理
+      printf("Index %d: input1=%d, input2=%d, y=%d, expect=%d, diff=%f\n", i, input1[i], input2[i], y[i], expect[i], std::fabs(y[i] - expect[i]));
+      diff_count++;
+    }
   }
 
   EXPECT_EQ(diff_count, 0) << " of " << test_size;

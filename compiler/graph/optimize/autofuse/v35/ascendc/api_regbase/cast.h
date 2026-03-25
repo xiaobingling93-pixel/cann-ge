@@ -575,11 +575,12 @@ __aicore__ inline void CastExtendImplOptimizeS64U8(__ubuf__ OutT *dstUb, __ubuf_
     }
 }
 
-template <typename InT, typename OutT, uint8_t dim>
+template <typename InT, typename OutT, uint8_t dim, AscendC::RoundMode round_mode = AscendC::RoundMode::UNKNOWN>
 __aicore__ inline void CastExtend(const AscendC::LocalTensor<OutT> &dst, const AscendC::LocalTensor<InT> &src,
     const uint32_t (&output_dims)[dim], const uint32_t (&output_stride)[dim], const uint32_t (&input_stride)[dim])
 {
-    constexpr AscendC::RoundMode roundMode = GetCastRoundMode<InT, OutT>();
+    constexpr AscendC::RoundMode roundMode = (round_mode == AscendC::RoundMode::UNKNOWN) ?
+                                              GetCastRoundMode<InT, OutT>() : round_mode;
     __ubuf__ InT *srcUb = (__ubuf__ InT *)src.GetPhyAddr();
     __ubuf__ OutT *dstUb = (__ubuf__ OutT *)dst.GetPhyAddr();
 
@@ -661,5 +662,12 @@ __aicore__ inline void CastExtend(const AscendC::LocalTensor<OutT> &dst, const A
             output_dims, output_stride, input_stride);
         AscendC::SetCtrlSpr<60, 60>(ctrl_value);
     }
+}
+
+template <typename InT, typename OutT, uint8_t dim>
+__aicore__ inline void Ceil2IntExtend(const AscendC::LocalTensor<OutT> &dst, const AscendC::LocalTensor<InT> &src,
+    const uint32_t (&output_dims)[dim], const uint32_t (&output_stride)[dim], const uint32_t (&input_stride)[dim])
+{
+    CastExtend<InT, OutT, dim, AscendC::RoundMode::CAST_CEIL>(dst, src, output_dims, output_stride, input_stride);
 }
 #endif

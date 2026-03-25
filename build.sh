@@ -103,7 +103,7 @@ parse_cmake_extra_args() {
                 ;;
             "CMAKE_TOOLCHAIN_FILE")
                 CMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_PREFIX}/${value}"
-                export LLVM_PATH="${BASEPATH}/../build/bin/os/aos_llvm_libs/aos_llvm_x86_ubuntu_20_04_adk/llvm/bin"
+                export LLVM_PATH="${BASEPATH}/../build/bin/os/pegasus_llvm_libs/pegasus_llvm_x86_ubuntu_22_04_adk/hcc_arm64le_llvm/bin"
                 echo "[MDC compile] Set CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}."
                 ;;
             *)
@@ -305,13 +305,28 @@ check_changed_files() {
       continue
     fi
 
+    # check if file is in .claude/ directory
+    if echo "$file" | grep -q "^\.claude/"; then
+      continue
+    fi
+
+    # check if file is in .opencode/ directory
+    if echo "$file" | grep -q "^\.opencode/"; then
+      continue
+    fi
+
+    # check if file is AGENTS.md (case insensitive)
+    if echo "$file" | grep -qi "^AGENTS\.md$"; then
+      continue
+    fi
+
     # if any file doesn't match the above patterns, don't skip build
     skip_build=false
     break
   done
 
   if [ "$skip_build" = true ]; then
-    echo "[INFO] Changed files only contain docs/, examples/, README.md or CONTRIBUTING.md, skipping build."
+    echo "[INFO] Changed files only contain docs/, examples/, .claude/, .opencode/, README.md, CONTRIBUTING.md or AGENTS.md, skipping build."
     echo "[INFO] Changed files: $changed_files"
     return 0
   fi

@@ -81,8 +81,8 @@ uint8_t AscSubgraphNodeCount(const NodePtr & AscNode , const string &node_type) 
 }  // namespace
 
 class LoweringAndCanfuseUT : public testing::Test {
- public:
- protected:
+  public:
+  protected:
   void SetUp() override {
     AutoFuseConfig::MutableConfig().GetMutableFusionStrategySolver().max_fusion_size = 64U;
     AutoFuseConfig::MutableConfig().MutableLoweringConfig().experimental_lowering_transpose = true;
@@ -97,6 +97,117 @@ class LoweringAndCanfuseUT : public testing::Test {
     dlog_setlevel(ASCGEN_MODULE_NAME, DLOG_ERROR, 0);
   }
   std::unique_ptr<es::Graph> es_graph_;
+
+  void BuildReluCastReshapeMultiRefConcatGraph() {
+    auto data0 = es_graph_->CreateInput(0, "data0", nullptr);
+    data0.SetSymbolShape({"512", "32"});
+
+    auto data4 = es_graph_->CreateInput(1, "data4", nullptr);
+    data4.SetSymbolShape({"512", "1", "32"});
+    auto data5 = es_graph_->CreateInput(2, "data5", nullptr);
+    data5.SetSymbolShape({"512", "1", "32"});
+    auto data6 = es_graph_->CreateInput(3, "data6", nullptr);
+    data6.SetSymbolShape({"512", "1", "32"});
+
+    auto relu = es::Relu(data0);
+    relu.SetSymbolShape({"512", "32"});
+    auto cast1 = es::Cast(relu, ge::DT_FLOAT16);
+    cast1.SetSymbolShape({"512", "32"});
+
+    auto expand_axis2 = CreateConst(*es_graph_, ge::DT_INT64, {1}, std::vector<int64_t>{2});
+    expand_axis2.SetSymbolShape({"1"});
+    auto expand2 = es::ExpandDims(cast1, expand_axis2);
+    expand2.SetSymbolShape({"512", "32", "1"});
+
+    auto cast3 = es::Cast(expand2, ge::DT_FLOAT);
+    cast3.SetSymbolShape({"512", "32", "1"});
+
+    auto expand_axis1 = CreateConst(*es_graph_, ge::DT_INT64, {1}, std::vector<int64_t>{1});
+    expand_axis1.SetSymbolShape({"1"});
+    auto expand1 = es::ExpandDims(cast1, expand_axis1);
+    expand1.SetSymbolShape({"512", "1", "32"});
+
+    auto cast2 = es::Cast(expand1, ge::DT_FLOAT);
+    cast2.SetSymbolShape({"512", "1", "32"});
+    auto concat = es::ConcatD({cast2, data4, data5, data6}, 1);
+    concat.SetSymbolShape({"512", "4", "32"});
+
+    es_graph_->SetOutput(concat, 0);
+    es_graph_->SetOutput(cast3, 1);
+  }
+
+  void PrintComputeGraphNodes(const ComputeGraphPtr &cg) {
+    for (const auto &node : cg->GetAllNodes()) {
+      std::cout << "Node: " << node->GetName() << ", Type: " << node->GetType() << std::endl;
+    }
+  }
+
+  void PrintAscBackendNodesInfo(const ComputeGraphPtr &cg) {
+    for (const auto &node : cg->GetDirectNode()) {
+      if (node->GetType() == "AscBackend") {
+        auto autofuse_attr = BackendUtils::GetNodeAutoFuseAttr(node);
+        ASSERT_NE(autofuse_attr, nullptr);
+
+        bool is_concat = autofuse_attr->HasFuseType(loop::FuseType::kConcat);
+        std::cout << "=== AscBackend: " << node->GetName() << ", is_concat: " << is_concat << " ===" << std::endl;
+
+        const auto attr = node->GetOpDesc()->GetAttrsGroup<ge::AutoFuseAttrs>();
+        ASSERT_NE(attr, nullptr);
+        ASSERT_NE(attr->GetAscGraph(), nullptr);
+
+        for (const auto &asc_node : attr->GetAscGraph()->GetAllNodes()) {
+          asc_adapt::TensorInfo tensor_desc;
+          ASSERT_EQ(asc_adapt::GetTensorInfo(asc_node, tensor_desc), SUCCESS);
+          std::cout << "  AscNode: " << asc_node->GetName() << ", Type: " << asc_node->GetType()
+                    << ", Repeats: " << AutofuseUtils::VectorToStr(tensor_desc.repeats) << std::endl;
+        }
+      }
+    }
+  }
+
+  void VerifyAscNodeNoSizeOneAxis(const NodePtr &asc_node, bool is_concat) {
+    asc_adapt::TensorInfo tensor_desc;
+    ASSERT_EQ(asc_adapt::GetTensorInfo(asc_node, tensor_desc), SUCCESS);
+    std::cout << "  AscNode: " << asc_node->GetName() << ", Type: " << asc_node->GetType()
+              << ", Repeats: " << AutofuseUtils::VectorToStr(tensor_desc.repeats) << std::endl;
+    if (!is_concat) {
+      for (size_t i = 0; i < tensor_desc.repeats.size(); ++i) {
+        EXPECT_NE(tensor_desc.repeats[i], 1) << "Found size=1 axis in " << asc_node->GetName();
+      }
+    }
+  }
+
+  void VerifyAscBackendNode(const NodePtr &node) {
+    auto autofuse_attr = BackendUtils::GetNodeAutoFuseAttr(node);
+    ASSERT_NE(autofuse_attr, nullptr);
+
+    bool is_concat = autofuse_attr->HasFuseType(loop::FuseType::kConcat);
+    std::cout << "=== AscBackend: " << node->GetName() << ", is_concat: " << is_concat << " ===" << std::endl;
+
+    const auto attr = node->GetOpDesc()->GetAttrsGroup<ge::AutoFuseAttrs>();
+    ASSERT_NE(attr, nullptr);
+    ASSERT_NE(attr->GetAscGraph(), nullptr);
+
+    for (const auto &asc_node : attr->GetAscGraph()->GetAllNodes()) {
+      VerifyAscNodeNoSizeOneAxis(asc_node, is_concat);
+    }
+  }
+
+  void VerifyFusedAscBackendNodes(const ComputeGraphPtr &cg) {
+    for (const auto &node : cg->GetDirectNode()) {
+      if (node->GetType() != "FusedAscBackend") {
+        continue;
+      }
+      std::cout << "=== FusedAscBackend: " << node->GetName() << " ===" << std::endl;
+      const auto attr = node->GetOpDescBarePtr()->GetAttrsGroup<AutoFuseAttrs>();
+      auto ge_or_fused_asc_backend_graph = attr->GetFuseComputeGraph();
+      for (const auto &node : ge_or_fused_asc_backend_graph->GetAllNodes()) {
+        if (node->GetType() == "AscBackend") {
+          VerifyAscBackendNode(node);
+        }
+      }
+    }
+  }
 };
 
 TEST_F(LoweringAndCanfuseUT, EleAndEleLoweringCanfuse) {
@@ -1330,4 +1441,31 @@ TEST_F(LoweringAndCanfuseUT, BroadcastWithReduceInSameAxis2) {
   VerifyBroadcastAndReduceNodes(cg, s0, s1, s2, ONE);
 }
 
+TEST_F(LoweringAndCanfuseUT, ReluCastReshapeMultiRefConcat) {
+  BuildReluCastReshapeMultiRefConcatGraph();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+
+  std::cout << "=== Before Lowering ===" << std::endl;
+  PrintComputeGraphNodes(cg);
+
+  ge::AscIrLowerer lowerer;
+  ASSERT_EQ(lowerer.Lowering(cg), GRAPH_SUCCESS);
+  ASSERT_EQ(asc_adapt::GeFallback(cg), GRAPH_SUCCESS);
+  PrintAscBackendNodesInfo(cg);
+
+  FusionStrategySolver fusion_strategy_solver;
+  FusionDeciderRegistry::Instance().Register(std::unique_ptr<FusionDecider>(new AscBackendFusionDecider()));
+  EXPECT_EQ(fusion_strategy_solver.Fuse(cg), SUCCESS);
+
+  AscBackendPostProcessor post_processor;
+  EXPECT_EQ(post_processor.Do(cg), SUCCESS);
+
+  std::cout << "=== After Post Process ===" << std::endl;
+  PrintComputeGraphNodes(cg);
+  VerifyFusedAscBackendNodes(cg);
+
+  SetCurShapeEnvContext(nullptr);
+}
 }  // namespace ge

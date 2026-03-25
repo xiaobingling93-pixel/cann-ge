@@ -172,7 +172,7 @@ bool CheckIfSliceNodeContainsBroadcast(const NodePtr &node) {
   if (node->GetType() == kFusedAscBackendType) {
     ComputeGraphPtr graph;
     GE_ASSERT_SUCCESS(BackendUtils::GetNodeFusedGraph(node, graph));
-    for (auto &sub_node : graph->GetDirectNode()) {
+    for (auto &sub_node : graph->GetAllNodes()) {
       GE_ASSERT_NOTNULL(sub_node);
       if (CheckIfSliceAscBackendNodeContainsBroadcast(sub_node)) {
         GELOGD("sub-node %s(%s) in the fused subgraph of node %s(%s) has fuse type slice, and ascgraph of sub-node %s "

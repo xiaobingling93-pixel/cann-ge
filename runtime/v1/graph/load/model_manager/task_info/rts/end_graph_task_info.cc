@@ -9,12 +9,9 @@
  */
 
 #include "graph/load/model_manager/task_info/rts/end_graph_task_info.h"
-
+#include "acl/acl_rt.h"
 #include "graph/load/model_manager/davinci_model.h"
 
-namespace {
-constexpr uint32_t kDumpFlag = 2U;
-}  // namespace
 namespace ge {
 Status EndGraphTaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *const davinci_model,
                               const PisToArgs &args, const PisToPersistentWorkspace &persistent_workspace,
@@ -36,23 +33,12 @@ Status EndGraphTaskInfo::Distribute() {
   GELOGI("EndGraphTaskInfo Distribute Start.");
   GE_CHECK_NOTNULL(davinci_model_);
   GE_ASSERT_SUCCESS(davinci_model_->SetStreamLockOrUnlocK(stream_, false));
-  rtError_t rt_ret;
-  if (davinci_model_->ModelNeedDump()) {
-    GELOGI("Start to call rtEndGraphEx");
-    rt_ret = rtEndGraphEx(davinci_model_->GetRtModelHandle(), stream_, kDumpFlag);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtEndGraphEx failed, ret:%d", rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtEndGraphEx] failed, ret:%d", rt_ret);
-      return RT_ERROR_TO_GE_STATUS(rt_ret);
-    }
-  } else {
-    GELOGI("Start to call rtEndGraph");
-    rt_ret = rtEndGraph(davinci_model_->GetRtModelHandle(), stream_);
-    if (rt_ret != RT_ERROR_NONE) {
-      REPORT_INNER_ERR_MSG("E19999", "Call rtEndGraph failed, ret:%d", rt_ret);
-      GELOGE(RT_FAILED, "[Call][RtEndGraph] failed, ret:%d", rt_ret);
-      return RT_ERROR_TO_GE_STATUS(rt_ret);
-    }
+  GELOGI("Start to call aclmdlRIEndTask");
+  const auto rt_ret = aclmdlRIEndTask(davinci_model_->GetRtModelHandle(), stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclmdlRIEndTask failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclmdlRIEndTask] failed, ret:%d", rt_ret);
+    return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));

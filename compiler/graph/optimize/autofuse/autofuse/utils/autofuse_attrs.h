@@ -210,8 +210,8 @@ class AutoFuseAttrs : public ge::AttrGroupsBase {
       auto graph_ptr = this->GetAscGraph();
       GE_ASSERT_NOTNULL(graph_ptr);
       auto &graph = *graph_ptr;
-      GELOGD("graph: %s, number of ir nodes: %d.", graph_ptr->GetName().c_str(), AscGraphUtils::GetComputeGraph(graph)->GetDirectNode().size());
-      for (const auto &ir_node : AscGraphUtils::GetComputeGraph(graph)->GetDirectNode()) {
+      GELOGD("graph: %s, number of ir nodes: %d.", graph_ptr->GetName().c_str(), AscGraphUtils::GetComputeGraph(graph)->GetAllNodes().size());
+      for (const auto &ir_node : AscGraphUtils::GetComputeGraph(graph)->GetAllNodes()) {
         GELOGD("ir node: %s(%s)", ir_node->GetType().c_str(), ir_node->GetName().c_str());
         if (ir_node->GetType() == kSplitTypeStub) {
           const auto &ir_desc = ir_node->GetOpDesc();

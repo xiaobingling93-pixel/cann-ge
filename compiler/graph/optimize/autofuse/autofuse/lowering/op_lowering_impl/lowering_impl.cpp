@@ -152,6 +152,10 @@ graphStatus CollectConcatInputs(const NodePtr &node, int64_t concat_dim_tensor_i
 }
 
 bool ConcatCanBeConvertedToBrc(const std::vector<InDataAnchorPtr> &inputs, int64_t concat_dim) {
+  constexpr size_t kConvertToBrcMinInputNum = 6UL;
+  GE_CHK_BOOL_RET_SPECIAL_STATUS(inputs.size() < kConvertToBrcMinInputNum, false,
+                                 "num_inputs(%zu) < %zu, do not convert to brc", inputs.size(),
+                                 kConvertToBrcMinInputNum);
   std::set<const OutDataAnchor *> distinct_src_anchors;
   for (const auto &input : inputs) {
     distinct_src_anchors.emplace(input->GetPeerOutAnchor().get());
@@ -219,6 +223,7 @@ graphStatus ParseConcatDim(const NodePtr &node, int64_t &concat_dim, int64_t &co
 
 graphStatus LowerConcat(const NodePtr &node) {
   constexpr size_t kMaxFreeSymbols = 16;
+  constexpr int32_t kAlgTranspose = 0;
   int64_t concat_dim = 0;
   int64_t concat_dim_tensor_index = -1L;
   GE_WARN_ASSERT(ParseConcatDim(node, concat_dim, concat_dim_tensor_index) == GRAPH_SUCCESS);
@@ -239,12 +244,12 @@ graphStatus LowerConcat(const NodePtr &node) {
     (void) loop::Store(node->GetOutDataAnchor(0), loop::Load(inputs[0]));
     return GRAPH_SUCCESS;
   }
-  if (ConcatCanBeConvertedToBrc(inputs, concat_dim)) {
+  const auto backend_spec = optimize::BackendSpec::GetInstance();
+  GE_WARN_ASSERT(backend_spec != nullptr);
+  if ((backend_spec->concat_alg != kAlgTranspose) && ConcatCanBeConvertedToBrc(inputs, concat_dim)) {
     GE_WARN_ASSERT_GRAPH_SUCCESS(ConcatToBroadcast(node));
     return GRAPH_SUCCESS;
   }
-  const auto backend_spec = optimize::BackendSpec::GetInstance();
-  GE_WARN_ASSERT(backend_spec != nullptr);
   // 每个动态shape的输入会单独分组，太多会导致编译时间过长，函数栈过大等问题，性能大概率也不好
   GE_WARN_ASSERT((dyn_input_num <= kMaxConcatDynInputNum) || (inputs.size() > backend_spec->concat_max_input_num),
                  "Skip lowering node %s, as too many dynamic inputs: %zu, exceeds max value: %zu", node->GetNamePtr(),

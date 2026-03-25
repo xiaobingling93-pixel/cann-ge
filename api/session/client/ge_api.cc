@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -79,7 +79,7 @@ std::map<ge::DataType, size_t> CONST_OPDATA_TYPE_SIZE_MAP = {
     {ge::DT_UINT64, kGesizeuint64}, {ge::DT_DOUBLE, kGesizedouble},     {ge::DT_BOOL, kGesizebool},
     {ge::DT_HIFLOAT8, kGesizefloat8}, {ge::DT_FLOAT8_E5M2, kGesizefloat8}, {ge::DT_FLOAT8_E4M3FN, kGesizefloat8},
     {ge::DT_FLOAT8_E8M0, kGesizefloat8}, {ge::DT_FLOAT6_E3M2, kGesizefloat8}, {ge::DT_FLOAT6_E2M3, kGesizefloat8},
-    {ge::DT_FLOAT4_E2M1, kGesizefloat8}, {ge::DT_FLOAT4_E1M2, kGesizefloat8},
+    {ge::DT_FLOAT4_E2M1, kGesizefloat8}, {ge::DT_FLOAT4_E1M2, kGesizefloat8}, {ge::DT_HIFLOAT4, kGesizefloat8},
 };
 
 // dfx for RunGraphAsync, log error on error return
@@ -514,7 +514,7 @@ static void PrintOutputResult(std::vector<Tensor> &outputs) {
       case DT_UINT8:
       case DT_HIFLOAT8: case DT_FLOAT8_E5M2: case DT_FLOAT8_E4M3FN:
       case DT_FLOAT8_E8M0: case DT_FLOAT6_E3M2: case DT_FLOAT6_E2M3:
-      case DT_FLOAT4_E2M1: case DT_FLOAT4_E1M2:
+      case DT_HIFLOAT4: case DT_FLOAT4_E2M1: case DT_FLOAT4_E1M2:
         GELOGI("output data[%zu]=%d", i, *(reinterpret_cast<int8_t *>(outputs[0].GetData()) + i));
         break;
       case DT_INT16:

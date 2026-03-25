@@ -150,7 +150,8 @@ Status BinaryApiCall::BrcInlineGenerate(const TPipe &tpipe, const std::vector<as
     if (ge::SymbolicUtils::StaticCheckEq(cur_axis_repeats, ge::sym::kSymbolOne) != ge::TriBool::kTrue) {
       break;
     }
-    v_strides = cur_axis_strides;
+    v_strides = ((ge::SymbolicUtils::StaticCheckEq(cur_axis_strides, ge::sym::kSymbolZero) != ge::TriBool::kTrue) ?
+                 cur_axis_strides : v_strides);
   }
 
   int64_t type_size = GetSizeByDataType(y.dtype);

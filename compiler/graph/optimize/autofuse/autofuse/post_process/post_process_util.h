@@ -191,7 +191,7 @@ inline Status ProcessAscBackendNodes(const ComputeGraphPtr &ge_or_fused_asc_back
 inline Status UpdateTopoId(const AscGraph &asc_graph, const int64_t topo_id, int64_t topo_id_increment) {
   auto compute_graph = AscGraphUtils::GetComputeGraph(asc_graph);
   GE_ASSERT_NOTNULL(compute_graph);
-  for (const auto &node : compute_graph->GetDirectNodePtr()) {
+  for (const auto &node : compute_graph->GetAllNodes()) {
     const auto &op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
     if (op_desc->GetId() > topo_id) {

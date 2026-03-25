@@ -819,7 +819,7 @@ Status ProgramGenerator::GenConstInputs(std::vector<AstNode *> &const_input_ast_
 Status BuildOpInputEdges(const ComputeGraphPtr &compute_graph,
                          std::unordered_map<int64_t, OpInputEdges> &op_id_to_input_edges) {
   GE_ASSERT_NOTNULL(compute_graph);
-  for (const auto &node : compute_graph->GetDirectNode()) {
+  for (const auto &node : compute_graph->GetAllNodes()) {
     const auto &op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
     int64_t op_id = op_desc->GetId();
@@ -830,7 +830,7 @@ Status BuildOpInputEdges(const ComputeGraphPtr &compute_graph,
     edges.output_var_names.resize(op_desc->GetOutputsSize());
     op_id_to_input_edges[op_id] = edges;
   }
-  for (const auto &node : compute_graph->GetDirectNode()) {
+  for (const auto &node : compute_graph->GetAllNodes()) {
     const auto &op_desc = node->GetOpDesc();
     GE_ASSERT_NOTNULL(op_desc);
     int64_t op_id = op_desc->GetId();

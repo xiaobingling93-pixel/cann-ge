@@ -7234,6 +7234,38 @@ TEST_F(SymbolicShapeInferenceST, NestCaseGraphTest) {
   DisableSliceScheduleEnv();
 }
 
+// index 小于0
+TEST_F(SymbolicShapeInferenceST, NestCaseGraphTestNegativeIndex) {
+  EnableSliceScheduleEnv();
+  auto root_graph = gert::ShareGraph::BuildNestCaseGraph();
+
+  // data
+  DataInfo di0 = {FORMAT_NCHW, DT_INT32, {}};
+  SetNoStorage(root_graph, "data_0", di0, 0);
+  // data1
+  DataInfo di1 = {FORMAT_NCHW, DT_INT32, {2, 3}};
+  SetNoStorage(root_graph, "data_1", di1, 1);
+
+  // data
+  std::vector<GeTensor> input_vec;
+  auto input0 = BuildGeTensor<int32_t, DT_INT32>({}, {-1});
+  auto input1 =  BuildGeTensor<int32_t, DT_INT32>({2, 3}, {});
+  input_vec.emplace_back(input0);
+  input_vec.emplace_back(input1);
+
+  SymbolicShapeSymbolizer symboilzer;
+  ASSERT_EQ(symboilzer.Symbolize(root_graph, input_vec), SUCCESS);
+  ASSERT_EQ(SymbolicInfoPreProcessor::Run(root_graph, input_vec), SUCCESS);
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(root_graph), SUCCESS);
+
+  ASSERT_NE(root_graph->FindNode("case1"), nullptr);
+
+  auto sqrt_node = root_graph->FindNode("batch2_subgraph_sqrt1");
+  ASSERT_EQ(sqrt_node, nullptr);
+  DisableSliceScheduleEnv();
+}
+
 // if的条件输入是其它算子的输出
 TEST_F(SymbolicShapeInferenceST, NestIfGraph1Test) {
   EnableSliceScheduleEnv();

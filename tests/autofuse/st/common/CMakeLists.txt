@@ -43,3 +43,5 @@ target_link_libraries(test_common_st ${ASCGEN_COMMON_LINK_OPTION}
         aihac_ir_register
 )
 
+add_test(NAME test_common_st COMMAND test_common_st --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/test_common_st.xml)
+set_tests_properties(test_common_st PROPERTIES LABELS "st;test_common_st")

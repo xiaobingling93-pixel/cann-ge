@@ -76,21 +76,21 @@ namespace att {
    const bool is_null_log = (GotLogLevel() == DLOG_NULL);
 
    const bool profiling_enabled = IsProfilingEnabled();
-   const std::string debug_log_define = is_null_log
+   const std::string debug_log_define = (is_null_log || profiling_enabled)
                                           ? R"(#define OP_LOGD(name, fmt, ...))"
                                           : R"(#define OP_LOGD(name, fmt, ...) GELOGD("[%s]" fmt, name, ##__VA_ARGS__))";
-   const std::string info_log_define = is_null_log
+   const std::string info_log_define = (is_null_log || profiling_enabled)
                                          ? R"(#define OP_LOGI(name, fmt, ...))"
                                          : R"(#define OP_LOGI(name, fmt, ...) GELOGI("[%s]" fmt, name, ##__VA_ARGS__))";
-   const std::string warn_log_define = is_null_log
+   const std::string warn_log_define = (is_null_log || profiling_enabled)
                                          ? R"(#define OP_LOGW(name, fmt, ...))"
                                          : R"(#define OP_LOGW(name, fmt, ...) GELOGW("[%s]" fmt, name, ##__VA_ARGS__))";
-   const std::string err_log_define = is_null_log
+   const std::string err_log_define = (is_null_log || profiling_enabled)
                                         ? R"(#define OP_LOGE(name, fmt, ...))"
                                         : R"(#define OP_LOGE(name, fmt, ...) GELOGE(-1, "[%s]" fmt, name, ##__VA_ARGS__))";
    std::string event_log_define = "#define OP_EVENT(name, fmt, ...)";
    const std::string event_append_log = (!is_null_log && profiling_enabled) ?
-     R"( GELOGI("[%s]" fmt, name, ##__VA_ARGS__)" : "";
+     R"( GELOGI("[%s]" fmt, name, ##__VA_ARGS__))" : "";
    event_log_define.append(event_append_log);
 
    print.AddLine(extend_define);

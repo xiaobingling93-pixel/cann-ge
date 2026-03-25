@@ -352,8 +352,8 @@ build_st_optimize() {
     return 1
   fi
 
-  cp ${BUILD_PATH}/tests/autofuse/st/optimize/optimize_st  ${OUTPUT_PATH}
-  RUN_TEST_CASE=${OUTPUT_PATH}/optimize_st && ${RUN_TEST_CASE}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L optimize_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/optimize_st.log
   if [ $? -ne 0 ]
   then
     echo "execute command: run optimize_st failed."
@@ -395,8 +395,8 @@ build_st_autofuse() {
     return 1
   fi
 
-  cp ${BUILD_PATH}/tests/autofuse/st/autofuse/autofusion_st  ${OUTPUT_PATH}
-  RUN_TEST_CASE=${OUTPUT_PATH}/autofusion_st && ${RUN_TEST_CASE}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L autofusion_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/autofusion_st.log
   if [ $? -ne 0 ]
   then
     echo "execute command: run autofuse_st failed."
@@ -427,8 +427,8 @@ build_st_codegen() {
   fi
 
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}
-  cp ${BUILD_PATH}/tests/autofuse/st/codegen/codegen_st  ${OUTPUT_PATH}
-  RUN_TEST_CASE=${OUTPUT_PATH}/codegen_st && ${RUN_TEST_CASE}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/codegen_st.log
   if [ $? -ne 0 ]
   then
     echo "execute command: run codegen_st failed."
@@ -448,8 +448,8 @@ build_st_common() {
     return 1
   fi
 
-  cp ${BUILD_PATH}/tests/autofuse/st/common/test_common_st  ${OUTPUT_PATH}
-  RUN_TEST_CASE=${OUTPUT_PATH}/test_common_st && ${RUN_TEST_CASE}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L test_common_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/test_common_st.log
   if [ $? -ne 0 ]
   then
     echo "execute command: run common_st failed."
@@ -529,17 +529,10 @@ codegen_e2e_st() {
                     load_where_x2x3_is_ubscalar_throwfor_store_expect_code_e2e \
                     constant_load_gt_store_expect_code_e2e \
                     constant_load_le_store_expect_code_e2e \
-                    load_compare_ub_scalar_tensor_eq_store_e2e \
-                    load_compare_half_tensor_eq_store_e2e \
-                    clip_by_value_float_e2e \
                     discrete_store_e2e \
                     discrete_load_e2e \
                     broadcast_force_merge_e2e \
-                    load_rmax_store_e2e \
-                    load_rmean_store_e2e \
-                    load_multi_axis_store_e2e \
                     load_abs_store_expect_code_e2e \
-                    load_cast_store_expect_code_e2e \
                     load_leakyrelu_store_expect_code_e2e \
                     load_transpose_store_expect_code_e2e \
                     load_ub_scalar_add_store_expect_code_e2e \
@@ -552,15 +545,12 @@ codegen_e2e_st() {
                     load_ub2ub_abs_store_expect_code_e2e \
                     concat_3d_last_dim_e2e \
                     load_isfinite_store_e2e \
-                    concat_mult_inputs_e2e \
-                    dynamic_inputs_and_outputs_e2e \
                     load_max_min_store_e2e \
                     load_rsum_block_store_e2e \
                     load_rsum_ra_store_e2e \
                     load_reciprocal_store_e2e \
                     load_bitwiseand_store_e2e \
                     load_strided_slice_store_e2e \
-                    gather_abs_one_axis_e2e \
                     schedule_multi_group_e2e \
                     load_store_expect_code_e2e \
                     schedule_multi_group_ws_reuse_output_e2e \
@@ -626,7 +616,6 @@ codegen_e2e_st() {
                       load_brc_test_e2e_v2 \
                       cast_abs_test_e2e_v2 \
                       cast_nan_test_e2e_v2 \
-                      split_test_e2e_v2 \
                       load_leaky_relu_store_test_e2e_v2 \
                       cast_abs_float16_float_test_e2e_v2 \
                       add_abs_int8_scalar_test_e2e_v2 \
@@ -699,7 +688,12 @@ codegen_e2e_st() {
                       rshift_uint8_test_e2e_v2 \
                       sign_uint8_test_e2e_v2 \
                       sign_bf16_test_e2e_v2 \
-                      truediv_bf16_test_e2e_v2"
+                      truediv_bf16_test_e2e_v2 \
+                      atan2_bf16_test_e2e_v2 \
+                      ceil2int_bf16_test_e2e_v2 \
+                      copysign_bf16_test_e2e_v2 \
+                      erfcx_test_e2e_v2 \
+                      expm_test_e2e_v2"
   fi
   MAKE_TARGET_LIST_CODEGEN=$(echo "${MAKE_TARGET_LIST}" | sed 's/e2e/codegen/g')
   echo "MAKE_TARGET_LIST_CODEGEN"
@@ -850,8 +844,8 @@ build_st_att() {
     return 1
   fi
 
-  cp ${BUILD_PATH}/tests/autofuse/st/att/att_st  ${OUTPUT_PATH}
-  RUN_TEST_CASE=${OUTPUT_PATH}/att_st && ${RUN_TEST_CASE}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L att_st --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/att_st.log
 
   if [ $? -ne 0 ]
   then

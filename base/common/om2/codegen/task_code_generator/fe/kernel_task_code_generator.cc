@@ -135,7 +135,7 @@ Status KernelTaskCodeGenerator::GenTaskDistributionCodeForAicpu(TaskDistribution
   AssembleLaunchKernelConfig(context.op_desc, context.task_def, param);
   code_stream << EmitLaunchConfigSetupCode(context.op_index, param.launch_config);
   code_stream << "  OM2_CHK_STATUS((AicpuKernelTaskDistribute("+ args_var_name +", args_table_.GetArgsInfo("
-              << context.args_table_index << "), func_handles_[" << context.func_handle_indices[kernel_name] << "], "
+              << context.args_table_index << "), func_handles_[" << context.func_handle_indices[aicpu_kernel_sign] << "], "
               << param.block_dim << ", stream_list_[" << param.stream_id << "], &" << cfg_holder_var_name
               << ".cfg)));\n";
   return SUCCESS;

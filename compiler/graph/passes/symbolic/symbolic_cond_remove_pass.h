@@ -32,7 +32,7 @@ class SymbolicCondRemovePass : public BaseNodePass {
   explicit SymbolicCondRemovePass(std::vector<GeTensor> graph_inputs) : graph_inputs_(std::move(graph_inputs)) {}
   Status Run(NodePtr &node) override;
  private:
-  Status GetCondIndexSymbol(const NodePtr &cond_input, Expression &cond_index_sym);
+  Status GetCondIndexSymbol(const NodePtr &cond_input, Expression &cond_index_sym, const std::string &node_type);
   std::vector<GeTensor> graph_inputs_;
   // key: data_idx, value: new sym
   std::unordered_map<int32_t, Expression> created_sym{};

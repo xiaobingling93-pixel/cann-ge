@@ -212,14 +212,14 @@ Status HybridModelAsyncExecutor::Init(const rtStream_t stream) {
       if (default_stream_guarder.default_stream == nullptr) {
         GE_CHK_RT_RET(rtStreamCreateWithFlags(&default_stream_guarder.default_stream,
                                               static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT), stream_flags));
-        GE_CHK_RT_RET(rtStreamSetMode(default_stream_guarder.default_stream, kStopOnFailure));
+        GE_CHK_RT_RET(aclrtSetStreamFailureMode(default_stream_guarder.default_stream, ACL_STOP_ON_FAILURE));
         GELOGD("Create default stream=%p, device id = %u", default_stream_guarder.default_stream, device_id_);
       }
       default_stream_guarder.stream_ref_count++;
       stream_ = default_stream_guarder.default_stream;
     } else {
       GE_CHK_RT_RET(rtStreamCreateWithFlags(&stream_, static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT), stream_flags));
-      GE_CHK_RT_RET(rtStreamSetMode(stream_, kStopOnFailure));
+      GE_CHK_RT_RET(aclrtSetStreamFailureMode(stream_, ACL_STOP_ON_FAILURE));
       GELOGD("Create stream=%p, device id = %u", stream_, device_id_);
       owner_stream_ = true;
     }

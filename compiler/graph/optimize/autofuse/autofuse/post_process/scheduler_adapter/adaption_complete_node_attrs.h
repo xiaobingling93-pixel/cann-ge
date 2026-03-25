@@ -160,7 +160,7 @@ inline Status CompleteNodeAttrsOnAscGraph(AscGraph &asc_graph, [[maybe_unused]] 
   GELOGI("max sched axis %s in graph %s.", AutofuseUtils::VectorToStr(graph_attr.axis).c_str(),
          asc_graph.GetName().c_str());
 
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     // torch data 没有任何轴或者node属性信息，直接跳过
     if (IsTorchDataType(node)) {
       GELOGI("torch node %s(%s) not complete node attr.", node->GetName().c_str(), node->GetType().c_str());
@@ -251,7 +251,7 @@ inline Status GetInvalidAxis(AscGraph &asc_graph, std::vector<int64_t> &graph_in
   GELOGI("before update with node tensor info, graph invalid axis id %s in graph %s.",
          (AutofuseUtils::VectorToStr(graph_invalid_axis_id)).c_str(), asc_graph.GetName().c_str());
 
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (graph_invalid_axis_id.empty()) {
       return SUCCESS;
     }
@@ -368,7 +368,7 @@ inline Status RemoveInvalidAxis(AscGraph &asc_graph, const std::vector<int64_t> 
     return SUCCESS;
   }
   GE_ASSERT_SUCCESS(RemoveGraphInvalidAxis(asc_graph, graph_invalid_axis_id));
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     // torch data 没有任何轴或者node属性信息，直接跳过； gather data在前面特殊处理了
     if (IsTorchDataType(node)) {
       continue;
@@ -428,7 +428,7 @@ inline Status UpdateGatherDataAxis(const AscGraph &asc_graph, const NodePtr &nod
 }
 
 inline Status FindAndUpdateGatherData(const AscGraph &asc_graph, std::vector<NodePtr> &gather_data2_nodes) {
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (node->GetType() == kGatherType) {
       // gather的data1和data2需要特殊补轴处理
       GE_ASSERT_SUCCESS(UpdateGatherDataAxis(asc_graph, node, gather_data2_nodes));
@@ -511,7 +511,7 @@ inline Status RemoveGatherInvalidAxis(const AscGraph &asc_graph, const std::vect
   if (graph_invalid_axis_id.empty()) {
     return SUCCESS;
   }
-  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetDirectNode()) {
+  for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (node->GetType() == kGatherType) {
       GE_ASSERT_SUCCESS(RemoveGatherDataInvalidAxis(asc_graph, node, graph_invalid_axis_id));
       GE_ASSERT_SUCCESS(RemoveGatherInvalidAxisIndex(asc_graph, node, graph_invalid_axis_id));
@@ -556,7 +556,25 @@ inline Status UpdateInvalidAxis(const AscGraph &asc_graph, std::vector<int64_t> 
   return SUCCESS;
 }
 
-inline Status GetAndRemoveInvalidAxis(AscGraph &asc_graph) {
+inline Status GetAndRemoveInvalidAxis(AscGraph &asc_graph, const NodePtr &asc_node, bool is_fused) {
+  if (is_fused) {
+    auto autofuse_attr = BackendUtils::GetNodeAutoFuseAttr(asc_node);
+    GE_ASSERT_NOTNULL(autofuse_attr);
+    // 0.1、处理FusedAscBackend里面的非concat的AscBackend
+    if (autofuse_attr->HasFuseType(loop::FuseType::kConcat)) {
+      GELOGI("graph %s fuse type is concat, don't RemoveInvalidAxis.", asc_graph.GetName().c_str());
+      return SUCCESS;
+    }
+    // 0.2、无轴交换的场景，在schedule做无效轴删除；有轴交换场景在后处理做无效轴删除
+    bool has_only_one_transpose = false;
+    std::unordered_map<NodePtr, std::vector<std::pair<int64_t, int64_t>>> fallback_node_to_transpose_info;
+    GE_ASSERT_SUCCESS(
+        BackendUtils::GetTransposeInfos(asc_graph, has_only_one_transpose, fallback_node_to_transpose_info));
+    if (fallback_node_to_transpose_info.empty()) {
+      GELOGI("graph %s fuse type has no transpose, don't RemoveInvalidAxis.", asc_graph.GetName().c_str());
+      return SUCCESS;
+    }
+  }
   // 1、无效轴处理流程前需要把gather的data1和data2特殊补轴处理,并找出data2节点
   std::vector<NodePtr> gather_data2_nodes;
   GE_ASSERT_SUCCESS(FindAndUpdateGatherData(asc_graph, gather_data2_nodes));
@@ -573,11 +591,12 @@ inline Status GetAndRemoveInvalidAxis(AscGraph &asc_graph) {
   return SUCCESS;
 }
 
-inline Status RemoveInvalidAxisOnAscGraph(const ComputeGraphPtr &graph) {
+inline Status RemoveInvalidAxisOnAscGraph(const ComputeGraphPtr &graph, bool is_fused) {
   for (const auto &node : graph->GetDirectNode()) {
     if (!BackendUtils::IsBackendFuseNode(node)) {
       continue;
     }
+    std::string proc_name= "remove_invalid_axis";
     if (node->GetType() == kAscBackendType) { // FusedAscBackend里面目前只有concat相关，FusedAscBackend在scheduler展开后做无效轴删除
       GELOGI("before remove invalid axis, AscBackend node(%s), type:%s.", node->GetName().c_str(),
              node->GetType().c_str());
@@ -587,9 +606,8 @@ inline Status RemoveInvalidAxisOnAscGraph(const ComputeGraphPtr &graph) {
       GE_ASSERT_NOTNULL(attr);
       GE_ASSERT_NOTNULL(attr->GetAscGraph());
       const auto fused_graph = AscGraphUtils::GetComputeGraph(*(attr->GetAscGraph()));
-      std::string proc_name= "remove_invalid_axis";
       GE_ASSERT_SUCCESS(CacheGraphBeforePostProcess(node, proc_name, fused_graph));
-      auto ret = GetAndRemoveInvalidAxis(*(attr->GetAscGraph()));
+      auto ret = GetAndRemoveInvalidAxis(*(attr->GetAscGraph()), node, is_fused);
       if (ret != SUCCESS) {
         GELOGE(FAILED, "AscBackend node(%s %s), post process(%s) failed, start to dump cache graphs;",
                node->GetName().c_str(), node->GetType().c_str(), proc_name.c_str());
@@ -599,6 +617,20 @@ inline Status RemoveInvalidAxisOnAscGraph(const ComputeGraphPtr &graph) {
       GELOGD("after remove invalid axis, dump node:%s(%s) asc graph info(with tensor attr info):", node->GetNamePtr(),
              node->GetType().c_str());
       BackendUtils::DumpAscGraph(node);
+    } else if (node->GetType() == kFusedAscBackendType) {  // FusedAscBackend无效轴删除解决输出多引用给两个reshape，分别在不同的位置加size为1的轴，再后融合concat场景，会反推出transpose，需要删除无效轴
+      GELOGI("FusedAscbackend node: %s(%s) start to run the process(%s).", node->GetName().c_str(),
+             node->GetType().c_str(), proc_name.c_str());
+      GE_ASSERT_NOTNULL(node->GetOpDescBarePtr());
+      const auto attr = node->GetOpDescBarePtr()->GetAttrsGroup<AutoFuseAttrs>();
+      GE_ASSERT_NOTNULL(attr);
+      GE_ASSERT_NOTNULL(attr->GetFuseComputeGraph());
+      auto ret = RemoveInvalidAxisOnAscGraph(attr->GetFuseComputeGraph(), true);
+      if (ret != SUCCESS) {
+        GELOGE(FAILED, "FusedAscBackend node: %s(%s), post process(%s) failed, start to dump cache graphs;",
+               node->GetName().c_str(), node->GetType().c_str(), proc_name.c_str());
+        GE_ASSERT_SUCCESS(DumpFusedCacheGraphForExceptionPostProcess((attr->GetFuseComputeGraph())->GetName()));
+        return ret;
+      }
     }
   }
   return SUCCESS;
@@ -612,7 +644,7 @@ inline Status CompleteNodeAttrsOnAscGraphForSched(const ComputeGraphPtr &ge_or_f
   //                 2）graph轴id 例如 id_n 对应的 repeat为1，stride为0
   //                 3）全图node的id_n对应的repeat均为1，stride均为0，此id_n才是无效轴
   //                 4）满足条件的id_n对应的graph轴、调度轴、tensor轴的id_n需要删除
-  GE_ASSERT_SUCCESS(RemoveInvalidAxisOnAscGraph(ge_or_fused_asc_backend_graph));
+  GE_ASSERT_SUCCESS(RemoveInvalidAxisOnAscGraph(ge_or_fused_asc_backend_graph, false));
   return SUCCESS;
 }
 }  // namespace asc_adapt

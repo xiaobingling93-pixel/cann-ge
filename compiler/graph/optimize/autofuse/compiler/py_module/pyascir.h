@@ -50,6 +50,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Cos)              \
   OP(Acos)             \
   OP(Cosh)             \
+  OP(Atan2)            \
   OP(Sqrt)             \
   OP(Rsqrt)            \
   OP(RemovePad)        \
@@ -69,6 +70,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Atanh)            \
   OP(Digamma)          \
   OP(Erfc)             \
+  OP(Erfcx)            \
   OP(RShift)           \
   OP(Isnan)            \
   OP(Max)              \
@@ -103,6 +105,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Transpose)        \
   OP(BitwiseAnd)       \
   OP(Ln)               \
+  OP(Expm)             \
   OP(Log2)             \
   OP(LShift)           \
   OP(Mod)              \
@@ -116,5 +119,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(FloorDiv)         \
   OP(Gelu)             \
   OP(Split)            \
-  OP(Axpy)
+  OP(Axpy)             \
+  OP(CopySign)         \
+  OP(Ceil2Int)
 #endif
