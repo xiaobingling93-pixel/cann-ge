@@ -1736,28 +1736,6 @@ Status ApiCall::ParseAttr(const ascir::NodeView &node) {
   return ge::SUCCESS;
 }
 
-Status ZerosLikeApicall(std::string binaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
-                        const std::vector<std::reference_wrapper<const Tensor>> &inputs,
-                        const std::vector<std::reference_wrapper<const Tensor>> &outputs, const ApiAttr &api_attr,
-                        std::string &result) {
-  (void)binaryname;
-  (void)api_attr;
-  auto x = inputs[0].get();
-  auto y = outputs[0].get();
-  stringstream ss;
-  std::string dtype_name;
-  GE_CHK_STATUS_RET(Tensor::DtypeName(y.dtype, dtype_name), "Codegen get data type:%d failed",
-                    static_cast<int32_t>(y.dtype));
-  std::string int64_tmp_buf = "";
-  if (y.dtype == ge::DT_INT64) {
-    int64_tmp_buf = ", " + tpipe.tmp_buf.name;
-  }
-  ss << "Duplicate(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], (" << dtype_name
-     << ")0, " << x.actual_size << int64_tmp_buf << ");" << std::endl;
-  result = ss.str();
-  return ge::SUCCESS;
-}
-
 Status ApiCall::PreProcess(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                            const std::vector<std::reference_wrapper<const Tensor>> &outputs,
                            std::string &result) const {
@@ -2783,12 +2761,6 @@ std::string Loop::GetReduceType() const {
   }
   GELOGI("No Reduce type found");
   return "";
-}
-
-bool Loop::IsReduceAxisNeedDivideSum(const TPipe &tpipe) const {
-  (void)tpipe;
-  auto reduce_type = GetReduceType();
-  return false;
 }
 
 /* 获取reduce api的输入/输出tensor */

@@ -419,35 +419,35 @@ TEST(CodegenKernel, Kernel_StaticShapeVecAxisConsistencyInValidCheck) {
 
   ge::ascir_op::Load load1_op("load1");
   ge::ascir_op::Load load2_op("load2");
-  ge::ascir_op::Pow pow_op("pow");
+  ge::ascir_op::BitwiseAnd bitwise_and_op("bitwise_and");
   ge::ascir_op::Store store_op("store");
   ge::ascir_op::Output y_op("y");
   y_op.ir_attr.SetIndex(0);
 
-  x1_op.y.dtype = ge::DT_FLOAT;
-  x2_op.y.dtype = ge::DT_FLOAT;
+  x1_op.y.dtype = ge::DT_INT32;
+  x2_op.y.dtype = ge::DT_INT32;
 
   load1_op.x = x1_op.y;
-  load1_op.y.dtype = ge::DT_FLOAT;
+  load1_op.y.dtype = ge::DT_INT32;
 
   load2_op.x = x2_op.y;
-  load2_op.y.dtype = ge::DT_FLOAT;
+  load2_op.y.dtype = ge::DT_INT32;
 
-  pow_op.x1 = load1_op.y;
-  pow_op.x2 = load2_op.y;
-  pow_op.y.dtype = ge::DT_FLOAT;
+  bitwise_and_op.x1 = load1_op.y;
+  bitwise_and_op.x2 = load2_op.y;
+  bitwise_and_op.y.dtype = ge::DT_INT32;
 
-  store_op.x = pow_op.y;
-  store_op.y.dtype = ge::DT_FLOAT;
+  store_op.x = bitwise_and_op.y;
+  store_op.y.dtype = ge::DT_INT32;
 
   y_op.x = store_op.y;
-  y_op.y.dtype = ge::DT_FLOAT;
+  y_op.y.dtype = ge::DT_INT32;
 
   auto x1 = graph.FindNode("x1");
   auto x2 = graph.FindNode("x2");
   auto load1 = graph.FindNode("load1");
   auto load2 = graph.FindNode("load2");
-  auto pow = graph.FindNode("pow");
+  auto bitwise_and = graph.FindNode("bitwise_and");
   auto store = graph.FindNode("store");
   auto y = graph.FindNode("y");
 
@@ -484,17 +484,17 @@ TEST(CodegenKernel, Kernel_StaticShapeVecAxisConsistencyInValidCheck) {
   load2->outputs[0].attr.que.buf_num = 2;
   load2->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
-  pow->attr.api.unit = ge::ComputeUnit::kUnitVector;
-  pow->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
-  pow->outputs[0].attr.vectorized_axis = {z2.id};
-  pow->outputs[0].attr.vectorized_strides = {One};
-  pow->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
-  pow->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
-  pow->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
-  pow->outputs[0].attr.mem.tensor_id = 4;
-  pow->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
-  pow->outputs[0].attr.que.id = 2;
-  pow->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+  bitwise_and->attr.api.unit = ge::ComputeUnit::kUnitVector;
+  bitwise_and->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  bitwise_and->outputs[0].attr.vectorized_axis = {z2.id};
+  bitwise_and->outputs[0].attr.vectorized_strides = {One};
+  bitwise_and->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  bitwise_and->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  bitwise_and->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
+  bitwise_and->outputs[0].attr.mem.tensor_id = 4;
+  bitwise_and->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  bitwise_and->outputs[0].attr.que.id = 2;
+  bitwise_and->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   store->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
   store->outputs[0].attr.mem.tensor_id = 5;
@@ -524,35 +524,35 @@ TEST(CodegenKernel, Kernel_DynamicShapeVecAxisConsistencyInValidCheck) {
 
   ge::ascir_op::Load load1_op("load1");
   ge::ascir_op::Load load2_op("load2");
-  ge::ascir_op::Pow pow_op("pow");
+  ge::ascir_op::BitwiseAnd bitwise_and_op("bitwise_and");
   ge::ascir_op::Store store_op("store");
   ge::ascir_op::Output y_op("y");
   y_op.ir_attr.SetIndex(0);
 
-  x1_op.y.dtype = ge::DT_FLOAT;
-  x2_op.y.dtype = ge::DT_FLOAT;
+  x1_op.y.dtype = ge::DT_INT32;
+  x2_op.y.dtype = ge::DT_INT32;
 
   load1_op.x = x1_op.y;
-  load1_op.y.dtype = ge::DT_FLOAT;
+  load1_op.y.dtype = ge::DT_INT32;
 
   load2_op.x = x2_op.y;
-  load2_op.y.dtype = ge::DT_FLOAT;
+  load2_op.y.dtype = ge::DT_INT32;
 
-  pow_op.x1 = load1_op.y;
-  pow_op.x2 = load2_op.y;
-  pow_op.y.dtype = ge::DT_FLOAT;
+  bitwise_and_op.x1 = load1_op.y;
+  bitwise_and_op.x2 = load2_op.y;
+  bitwise_and_op.y.dtype = ge::DT_INT32;
 
-  store_op.x = pow_op.y;
-  store_op.y.dtype = ge::DT_FLOAT;
+  store_op.x = bitwise_and_op.y;
+  store_op.y.dtype = ge::DT_INT32;
 
   y_op.x = store_op.y;
-  y_op.y.dtype = ge::DT_FLOAT;
+  y_op.y.dtype = ge::DT_INT32;
 
   auto x1 = graph.FindNode("x1");
   auto x2 = graph.FindNode("x2");
   auto load1 = graph.FindNode("load1");
   auto load2 = graph.FindNode("load2");
-  auto pow = graph.FindNode("pow");
+  auto bitwise_and = graph.FindNode("bitwise_and");
   auto store = graph.FindNode("store");
   auto y = graph.FindNode("y");
 
@@ -589,17 +589,17 @@ TEST(CodegenKernel, Kernel_DynamicShapeVecAxisConsistencyInValidCheck) {
   load2->outputs[0].attr.que.buf_num = 2;
   load2->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
-  pow->attr.api.unit = ge::ComputeUnit::kUnitVector;
-  pow->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
-  pow->outputs[0].attr.vectorized_axis = {z2.id};
-  pow->outputs[0].attr.vectorized_strides = {One};
-  pow->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
-  pow->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
-  pow->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
-  pow->outputs[0].attr.mem.tensor_id = 4;
-  pow->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
-  pow->outputs[0].attr.que.id = 2;
-  pow->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+  bitwise_and->attr.api.unit = ge::ComputeUnit::kUnitVector;
+  bitwise_and->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  bitwise_and->outputs[0].attr.vectorized_axis = {z2.id};
+  bitwise_and->outputs[0].attr.vectorized_strides = {One};
+  bitwise_and->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  bitwise_and->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  bitwise_and->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
+  bitwise_and->outputs[0].attr.mem.tensor_id = 4;
+  bitwise_and->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  bitwise_and->outputs[0].attr.que.id = 2;
+  bitwise_and->outputs[0].attr.opt.merge_scope = ge::kIdNone;
 
   store->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
   store->outputs[0].attr.mem.tensor_id = 5;
