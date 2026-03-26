@@ -2256,6 +2256,76 @@ TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForSqueeze) {
   ASSERT_EQ(func.first(infer_context), PARAM_INVALID);
 }
 
+TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForSqueezeV3) {
+  const auto func = GetInferFunc("SqueezeV3");
+  ASSERT_TRUE(func.first != nullptr);
+
+  InferSymbolShapeContextTestBuilder builder("SqueezeV3", "squeezeV3");
+
+  // 正常场景1：不传入axes值，压缩所有维度值等于1的维度
+  // 入参input_shape={s0, 1, s1, 1}  axes={}
+  // 期望out_shape={s0, s1}
+  ShapeEnvAttr shape_env;
+  ShapeEnvGuarder guarder(&shape_env);
+  auto s0 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 0));
+  auto s1 = shape_env.CreateSymbol(3, MakeShared<InputShapeSource>(0, 1));
+  auto input_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(1)});
+  auto infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  auto expect_shape = gert::SymbolShape({s0, s1});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 正常场景2：传入axis且所要压缩的维度值等于1
+  // 入参input_shape={s0, 1, s1, 1}  axes={3}
+  // 期望out_shape={s0, 1, s1}
+  builder.Destroy();
+  auto axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  auto axes = std::vector<Expression>{Symbol(3)};
+  infer_context = builder.AppendInputSymbolTensor(input_shape).AppendInputSymbolTensor(axes_shape, true, &axes).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  expect_shape = gert::SymbolShape({s0, ge::Symbol(1), s1});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 异常场景1：传入axis, 要压缩的维度值不等于1
+  // 入参input_shape={s0, 1, s1, 2}  axes={3}
+  // 推导失败
+  builder.Destroy();
+  input_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(2)});
+  axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  axes = std::vector<Expression>{Symbol(3)};
+  infer_context = builder.AppendInputSymbolTensor(input_shape).AppendInputSymbolTensor(axes_shape, true, &axes).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), PARAM_INVALID);
+
+  // 异常场景2：传入axis, 要压缩的维度值超过输入的shape dim num + axis 的size
+  // input_shape={s0, 1, s1, 2}  axes={5}
+  // 推导失败
+  builder.Destroy();
+  input_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(2)});
+  axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  axes = std::vector<Expression>{Symbol(5)};
+  infer_context = builder.AppendInputSymbolTensor(input_shape).AppendInputSymbolTensor(axes_shape, true, &axes).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), PARAM_INVALID);
+
+  // 异常场景3：传入axis, 但是axis的值是{}
+  // input_shape={s0, 1, s1, 2}  axes={}
+  // 不支持推导
+  builder.Destroy();
+  input_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(2)});
+  axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  infer_context = builder.AppendInputSymbolTensor(input_shape).AppendInputSymbolTensor(axes_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), UNSUPPORTED);
+
+  // 异常场景4：传入axis,但是axis的值不是常量，是符号化的值
+  // input_shape={s0, 1, s1, 2}  axes={ge::Symbol(1)}
+  // 不支持推导
+  builder.Destroy();
+  input_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(2)});
+  axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  axes = std::vector<Expression>{s0};
+  infer_context = builder.AppendInputSymbolTensor(input_shape).AppendInputSymbolTensor(axes_shape, true, &axes).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), UNSUPPORTED);
+}
+
 TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForUnSqueeze) {
   const auto func = GetInferFunc("Unsqueeze");
   ASSERT_TRUE(func.first != nullptr);
@@ -2301,6 +2371,68 @@ TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForUnSqueeze) {
 
   infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
   ASSERT_EQ(func.first(infer_context), PARAM_INVALID);
+}
+
+TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForUnsqueezeV3) {
+  const auto func = GetInferFunc("UnsqueezeV3");
+  ASSERT_TRUE(func.first != nullptr);
+
+  InferSymbolShapeContextTestBuilder builder("UnsqueezeV3", "unsqueezeV3");
+  ShapeEnvAttr shape_env;
+  ShapeEnvGuarder guarder(&shape_env);
+  auto s0 = shape_env.CreateSymbol(4, MakeShared<InputShapeSource>(0, 1));
+  auto s1 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 2));
+  auto s2 = shape_env.CreateSymbol(5, MakeShared<InputShapeSource>(0, 3));
+
+  // 正常场景1：传入axes为空，输出shape等于输入shape
+  auto input_shape = gert::SymbolShape({s0, s1, s2});
+  auto axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  auto axes = std::vector<Expression>{};
+  auto infer_context = builder.AppendInputSymbolTensor(input_shape)
+                           .AppendInputSymbolTensor(axes_shape, true, &axes)
+                           .OutputNum(1)
+                           .Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  auto expect_shape = gert::SymbolShape({s0, s1, s2});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 正常场景2：传入axes, 在对应维度上扩展新的维度1
+  // 入参input_shape={s0, s1, s2}, axes={1，3}
+  // 期望out_shape={s0, 1, s1, 1， s2}
+  builder.Destroy();
+  axes_shape = gert::SymbolShape({ge::Symbol(1), ge::Symbol(2)});
+  axes = std::vector<Expression>{Symbol(1), Symbol(3)};
+  infer_context = builder.AppendInputSymbolTensor(input_shape)
+                      .AppendInputSymbolTensor(axes_shape, true, &axes)
+                      .OutputNum(1)
+                      .Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  expect_shape = gert::SymbolShape({s0, ge::Symbol(1), s1, ge::Symbol(1), s2});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 异常场景1：传入axes，axes的值超过输入的shape dim num + axes 的size
+  // 入参input_shape={s0, s1, s2}, axes={5}
+  // 推导失败
+  builder.Destroy();
+  axes_shape = gert::SymbolShape({ge::Symbol(1), ge::Symbol(1)});
+  axes = std::vector<Expression>{Symbol(5)};
+  infer_context = builder.AppendInputSymbolTensor(input_shape)
+                      .AppendInputSymbolTensor(axes_shape, true, &axes)
+                      .OutputNum(1)
+                      .Build();
+  ASSERT_EQ(func.first(infer_context), PARAM_INVALID);
+
+  // 异常场景2：传入axes, axes的值不是常量
+  // 入参input_shape={s0, s1, s2}, axes={s0}
+  // 不支持推导
+  builder.Destroy();
+  axes_shape = gert::SymbolShape({ge::Symbol(1)});
+  axes = std::vector<Expression>{s0};
+  infer_context = builder.AppendInputSymbolTensor(input_shape)
+                      .AppendInputSymbolTensor(axes_shape, true, &axes)
+                      .OutputNum(1)
+                      .Build();
+  ASSERT_EQ(func.first(infer_context), UNSUPPORTED);
 }
 
 static void EXPECT_GatherV2CommonTest(int64_t axis, int64_t batch_dims, graphStatus status = GRAPH_SUCCESS,
@@ -5429,5 +5561,74 @@ TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForSparseSoftmaxCrossEntropyW
   ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
   ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), gert::SymbolShape({s0}).GetDims());
   ASSERT_EQ(infer_context->GetOutputSymbolShape(1)->GetDims(), gert::SymbolShape({s0, s1}).GetDims());
+}
+
+// set flattenV2 attrs
+void SetFlattenV2Attrs(InferSymbolShapeContextTestBuilder &builder, int axis, int end_axis) {
+  auto op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axis");
+  AttrUtils::SetInt(op_desc, "axis", axis);
+  op_desc->AppendIrAttrName("end_axis");
+  AttrUtils::SetInt(op_desc, "end_axis", end_axis);
+}
+
+TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForFlattenV2) {
+  const auto func = GetInferFunc("FlattenV2");
+  ASSERT_TRUE(func.first != nullptr);
+
+  InferSymbolShapeContextTestBuilder builder("FlattenV2", "flattenV2");
+
+  // 正常场景1：不传入axis和end_axis值，展平所有维度
+  // input_shape={s0, s1, s2} 
+  // 期望out_shape={s0, s1 * s2}
+  ShapeEnvAttr shape_env;
+  ShapeEnvGuarder guarder(&shape_env);
+  auto s0 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 0));
+  auto s1 = shape_env.CreateSymbol(3, MakeShared<InputShapeSource>(0, 1));
+  auto s2 = shape_env.CreateSymbol(3, MakeShared<InputShapeSource>(0, 2));
+  auto input_shape = gert::SymbolShape({s0, s1, s2});
+  auto op_desc = builder.GetOrCreateOpDescPtr();
+  SetFlattenV2Attrs(builder, 1, -1);
+  auto infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  auto expect_shape = gert::SymbolShape({s0, s1 * s2});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 正常场景2：传入axis和end_axis值，展平所有维度
+  // input_shape={s0, s1, s2, s3}  axis=2, end_axis=3
+  // 期望out_shape={s0, s1, s2 * s3}
+  builder.Destroy();
+  auto s3 = shape_env.CreateSymbol(4, MakeShared<InputShapeSource>(0, 3));
+  input_shape = gert::SymbolShape({s0, s1, s2, s3});
+  SetFlattenV2Attrs(builder, 2, 3);
+  infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  expect_shape = gert::SymbolShape({s0, s1, s2 * s3});
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape.GetDims());
+
+  // 异常场景1：axis值超出范围
+  builder.Destroy();
+  SetFlattenV2Attrs(builder, 4, 3);
+  infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::PARAM_INVALID);
+
+  // 异常场景2：end_axis值超出范围
+  builder.Destroy();
+  SetFlattenV2Attrs(builder, 2, 4);
+  infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::PARAM_INVALID);
+
+  // 异常场景3：axis大于end_axis
+  builder.Destroy();
+  SetFlattenV2Attrs(builder, 3, 2);
+  infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::PARAM_INVALID);
+
+  // 异常场景4：输入shape idm=1，axis和end_axis值都为默认值
+  builder.Destroy();
+  input_shape = gert::SymbolShape({s0});
+  SetFlattenV2Attrs(builder, 1, -1);
+  infer_context = builder.AppendInputSymbolTensor(input_shape).OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::PARAM_INVALID);
 }
 } // namespace ge
