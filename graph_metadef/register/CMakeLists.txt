@@ -8,7 +8,6 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
 set(SRC_LIST
     "register.cpp"
     "register_custom_pass.cpp"
@@ -243,7 +242,7 @@ target_include_directories(op_tiling_o2 PRIVATE
 )
 
 target_compile_options(op_tiling_o2 PRIVATE
-    -O2
+    ${OPTIMIZE_OPTION}
     $<$<AND:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,$<STREQUAL:${CMAKE_CONFIGURATION_TYPES},Debug>>:/MTd>
     $<$<AND:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,$<STREQUAL:${CMAKE_CONFIGURATION_TYPES},Release>>:/MT>
     $<$<OR:$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>,$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>: -fno-common -Wextra -Wfloat-equal>
@@ -342,9 +341,9 @@ target_include_directories(stub_register PRIVATE
     ${AIR_CODE_DIR}/inc
 )
 
-target_compile_options(stub_register PRIVATE
-    -Wfloat-equal
-    -fno-common
+add_library(stub_register_options INTERFACE)
+
+target_compile_options(stub_register_options INTERFACE
     -Os
     -Werror=return-type
     -Wno-unused-parameter
@@ -353,6 +352,7 @@ target_compile_options(stub_register PRIVATE
 target_link_libraries(stub_register
     PRIVATE
         intf_pub
+        stub_register_options
         slog_headers
         msprof_headers
         runtime_headers

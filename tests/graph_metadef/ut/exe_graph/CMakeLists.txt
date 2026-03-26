@@ -57,6 +57,7 @@ target_link_libraries(ut_exe_graph PRIVATE
         metadef_headers
         graph
         graph_base
+		unified_dlog
 		aihac_symbolizer
         -Wl,--as-needed
         )

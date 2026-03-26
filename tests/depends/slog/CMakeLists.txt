@@ -29,7 +29,7 @@ target_link_libraries(ascendalog PRIVATE intf_llt_pub
 # Only create unified_dlog target if it doesn't already exist (e.g., from CANN package)
 if(NOT TARGET unified_dlog)
 add_library(unified_dlog SHARED ${UNIFIED_DLOG_SRC_FILES})
-target_compile_definitions(ascendalog PRIVATE LOG_CPP)
+target_compile_definitions(unified_dlog PRIVATE)
 target_compile_options(unified_dlog PRIVATE -g -O0)
 target_link_libraries(unified_dlog PRIVATE
         PUBLIC slog_headers
@@ -37,7 +37,7 @@ target_link_libraries(unified_dlog PRIVATE
         )
 endif()
 
-stub_module(slog ascendalog)
+stub_module(slog unified_dlog)
 stub_module(slog_stub ascendalog)
 stub_module(parser_slog_stub ascendalog)
 stub_module(alog ascendalog)

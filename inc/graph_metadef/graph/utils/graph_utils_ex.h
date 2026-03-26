@@ -23,7 +23,7 @@ class GraphUtilsEx {
   static graphStatus InferShapeInNeed(const ComputeGraphPtr &graph);
 
   // Detach from GraphUtils
-  static ComputeGraphPtr GetComputeGraph(const Graph &graph);
+  __attribute__((weak)) static ComputeGraphPtr GetComputeGraph(const Graph &graph);
   static ComputeGraphPtr CreateGraphFromOperator(const std::string &name, const std::vector<Operator> &inputs);
 
   /**
@@ -43,12 +43,15 @@ class GraphUtilsEx {
   static ComputeGraphPtr CreateComputeGraphFromOperatorWithStableTopo(const std::string &name,
       const std::vector<Operator> &ops);
 
-  static Graph CreateGraphFromComputeGraph(const ComputeGraphPtr compute_graph);
+  __attribute__((weak)) static Graph CreateGraphFromComputeGraph(const ComputeGraphPtr compute_graph);
+  __attribute__((weak)) static Graph CreateGraph();
   static GraphPtr CreateGraphPtrFromComputeGraph(const ComputeGraphPtr compute_graph);
   static std::unique_ptr<Graph> CreateGraphUniquePtrFromComputeGraph(const ComputeGraphPtr &compute_graph);
   static void BreakConnect(const std::map<OperatorImplPtr, NodePtr> &all_nodes_infos);
   static graphStatus RecoverGraphOperators(const Graph &graph);
   static graphStatus CopyGraph(const Graph &src_graph, Graph &dst_graph);
+  __attribute__((weak)) static Operator CreateOperator(const char_t *const operator_name,
+                                                       const char_t *const operator_type);
 
   /**
    * 获取所有需要用户传入输入Tensor的Data节点，当前会排除掉分档场景新插入的Data节点

@@ -264,10 +264,9 @@ add_dependencies(ge_executor_shared
 target_compile_options(ge_executor_shared PRIVATE
     -fno-common
     -Werror
-    -O2
+    ${AIR_COMMON_DYNAMIC_COMPILE_OPTION}
     -Wextra
     -Wfloat-equal
-    -fvisibility=default
 )
 
 target_compile_definitions(ge_executor_shared PRIVATE

@@ -19,6 +19,7 @@ if (NOT ENABLE_OPEN_SRC)
 endif()
 
 message(STATUS "Variables in graph metadef project:")
+include(${AIR_CODE_DIR}/cmake/intf_pub_linux.cmake)
 include(${AIR_CODE_DIR}/cmake/function.cmake)
 add_subdirectory(proto)
 add_subdirectory(graph)

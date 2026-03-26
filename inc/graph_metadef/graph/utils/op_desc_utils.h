@@ -80,8 +80,8 @@ class OpDescUtils {
                                    const std::map<std::string, ge::Operator> &src_op_list,
                                    std::map<std::string, ge::Operator> &dst_op_list);
   static OpDescPtr CloneOpDesc(const ConstOpDescPtr &org_op_desc);
-  static OpDescPtr CopyOpDesc(const ConstOpDescPtr &org_op_desc);
-  static OpDescPtr CreateConstOp(const GeTensorPtr& tensor_ptr);
+  __attribute__((weak)) static OpDescPtr CopyOpDesc(const ConstOpDescPtr &org_op_desc);
+  __attribute__((weak)) static OpDescPtr CreateConstOp(const GeTensorPtr& tensor_ptr);
   static OpDescPtr CreateConstOp(const GeTensorPtr& tensor_ptr, const bool copy);
   static OpDescPtr CreateConstOpZeroCopy(const GeTensorPtr& tensor_ptr);
 
@@ -100,8 +100,8 @@ class OpDescUtils {
   static graphStatus GetIrInputInstanceDescRange(const OpDescPtr &op,
                                                  std::map<size_t, std::pair<size_t, size_t>> &ir_input_2_range);
 
-  static graphStatus GetIrInputRawDescRange(const OpDescPtr &op,
-                                            std::map<size_t, std::pair<size_t, size_t>> &ir_input_2_range);
+  __attribute__((weak)) static graphStatus GetIrInputRawDescRange(const OpDescPtr &op,
+      std::map<size_t, std::pair<size_t, size_t>> &ir_input_2_range);
 
   static graphStatus GetIrOutputDescRange(const OpDescPtr &op,
                                           std::map<size_t, std::pair<size_t, size_t>> &ir_output_2_range);

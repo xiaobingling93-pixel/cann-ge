@@ -1,4 +1,4 @@
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
+
 add_library(aihac_ir_register SHARED
         ascir_register.cc
         ascir_registry.cc
@@ -16,6 +16,8 @@ target_link_libraries(aihac_ir_register PRIVATE
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
         graph
+        graph_base
+        aihac_symbolizer
         PUBLIC
         aihac_ir
         ascend_protobuf_shared_headers
@@ -41,6 +43,8 @@ target_link_libraries(ascir_generate PRIVATE
         -Wl,--no-as-needed
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Android>>:-lrt>
         -ldl
+        graph_base
+        aihac_symbolizer
         aihac_ir_register
         aihac_ir
         ascend_protobuf_shared_headers

@@ -55,6 +55,7 @@ target_compile_options(ut_graph_construction PRIVATE)
 target_link_libraries(ut_graph_construction
         PRIVATE
         GTest::gtest GTest::gtest_main
+        unified_dlog
         es_ut_test
         graph_base
         graph
@@ -62,7 +63,7 @@ target_link_libraries(ut_graph_construction
         ascend_protobuf
         c_sec
         aihac_symbolizer
-        unified_dlog
+        ascendalog
         metadef
         )
 set_target_properties(ut_graph_construction PROPERTIES CXX_STANDARD 17)

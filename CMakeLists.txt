@@ -125,8 +125,6 @@ else()
 endif()
 
 if (ENABLE_ACL_UT)
-    set(METADEF_DIR ${CMAKE_CURRENT_LIST_DIR}/base/metadef)
-
     include(cmake/intf_pub_linux.cmake)
     find_package(GTest CONFIG REQUIRED)
     find_package(securec MODULE REQUIRED)
@@ -180,6 +178,7 @@ set(INSTALL_INCLUDE_DIR include)
 set(INSTALL_CONFIG_DIR cmake)
 
 include(CMakePackageConfigHelpers)
+include(cmake/intf_pub_linux.cmake)
 include(cmake/build_type.cmake)
 
 if (ENABLE_DFLOW_UT OR ENABLE_DFLOW_ST)
@@ -230,25 +229,18 @@ if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
     endif()
     set(TARGET_SYSTEM_NAME "Linux")
     set(OP_PROTO_DIR ${AIR_CODE_DIR}/tests/depends/op_stub/op_proto/inc)
-    set(METADEF_DIR ${AIR_CODE_DIR}/base/metadef)
-    set(GE_METADEF_DIR ${AIR_CODE_DIR}/graph_metadef)
-    set(GE_METADEF_INC_DIR ${AIR_CODE_DIR}/inc/graph_metadef)
-
-    set(PARSER_DIR ${AIR_CODE_DIR}/parser)
-    set(ASCGEN_DIR ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse)
-
-    include(cmake/intf_pub_linux.cmake)
     include(cmake/test_utils.cmake)
 else ()
-    set(PARSER_DIR ${TOP_DIR}/parser)
     set(METADEF_DIR ${TOP_DIR}/metadef)
     set(OP_PROTO_DIR ${TOP_DIR}/asl/ops/cann/ops/built-in/op_proto/inc)
-    set(ASCGEN_DIR ${TOP_DIR}/air/compiler/graph/optimize/autofuse)
-    set(GE_METADEF_DIR ${AIR_CODE_DIR}/graph_metadef)
-    set(GE_METADEF_INC_DIR ${AIR_CODE_DIR}/inc/graph_metadef)
 endif ()
+
 include(cmake/python_depends.cmake)
 
+set(PARSER_DIR ${AIR_CODE_DIR}/parser)
+set(ASCGEN_DIR ${AIR_CODE_DIR}/compiler/graph/optimize/autofuse)
+set(GE_METADEF_DIR ${AIR_CODE_DIR}/graph_metadef)
+set(GE_METADEF_INC_DIR ${AIR_CODE_DIR}/inc/graph_metadef)
 set(METADEF_PROTO_DIR ${GE_METADEF_DIR}/proto)
 
 message("metadef proto dir is ${METADEF_PROTO_DIR}")
@@ -262,7 +254,7 @@ if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
     add_subdirectory(${AIR_CODE_DIR}/inc/graph_metadef)
 endif()
 
-if ((BUILD_METADEF) AND (NOT ${METADEF_DIR} STREQUAL ${GE_METADEF_DIR}))
+if (BUILD_METADEF)
     add_subdirectory(${GE_METADEF_DIR})
 endif()
 

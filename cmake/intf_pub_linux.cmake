@@ -8,19 +8,20 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include_guard(GLOBAL)
-if (TARGET intf_pub)
-    return()
-endif()
-
-########## intf_pub_base ##########
-add_library(intf_pub_base INTERFACE)
-
-if (ENABLE_GCOV MATCHES true)
+if (CMAKE_BUILD_TYPE MATCHES GCOV)
     set(OPTIMIZE_OPTION "-O0")
 else ()
     set(OPTIMIZE_OPTION "-O2")
 endif ()
+
+include_guard(GLOBAL)
+if (TARGET intf_pub)
+    message(STATUS "found intf_pub")
+    return()
+endif ()
+
+########## intf_pub_base ##########
+add_library(intf_pub_base INTERFACE)
 
 target_compile_options(intf_pub_base INTERFACE
     ${OPTIMIZE_OPTION}
@@ -70,11 +71,7 @@ target_link_libraries(intf_pub_base INTERFACE
 add_library(intf_pub INTERFACE)
 
 target_compile_options(intf_pub INTERFACE
-    $<$<CONFIG:Debug>:-g>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
-    $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
-        -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
-    $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
 )
 
 target_link_libraries(intf_pub INTERFACE
@@ -86,9 +83,6 @@ add_library(intf_pub_cxx11 INTERFACE)
 
 target_compile_options(intf_pub_cxx11 INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
-    $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
-        -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
-    $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
 )
 
 target_link_libraries(intf_pub_cxx11 INTERFACE
@@ -99,11 +93,7 @@ target_link_libraries(intf_pub_cxx11 INTERFACE
 add_library(intf_pub_cxx14 INTERFACE)
 
 target_compile_options(intf_pub_cxx14 INTERFACE
-    $<$<CONFIG:Debug>:-g>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
-    $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
-        -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
-    $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
 )
 
 target_link_libraries(intf_pub_cxx14 INTERFACE
@@ -114,11 +104,7 @@ target_link_libraries(intf_pub_cxx14 INTERFACE
 add_library(intf_pub_cxx17 INTERFACE)
 
 target_compile_options(intf_pub_cxx17 INTERFACE
-    $<$<CONFIG:Debug>:-g>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
-    $<$<BOOL:${ENABLE_ASAN}>:-Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak
-        -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
-    $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
 )
 
 target_link_libraries(intf_pub_cxx17 INTERFACE

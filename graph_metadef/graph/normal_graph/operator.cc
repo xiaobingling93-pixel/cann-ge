@@ -15,7 +15,6 @@
 #include <mutex>
 #include <queue>
 #include <set>
-#include "graph/operator_factory.h"
 #include "framework/common/debug/ge_log.h"
 #include "debug/ge_op_types.h"
 #include "graph_metadef/graph/debug/ge_util.h"
@@ -2768,46 +2767,46 @@ Graph Operator::GetSubgraphImpl(const char_t *name) const {
   if (name == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "param name is nullptr, check invalid");
     GELOGE(GRAPH_FAILED, "[Check][Param] Operator name is nullptr.");
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   if (operator_impl_ == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "operator_impl_ is nullptr, check invalid.");
     GE_LOGE("[Check][Param] Failed to get subgraph %s, the operator impl is null", name);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const auto op_desc = OpDescUtils::GetOpDescFromOperator(*this);
   if (op_desc == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "Failed to get subgraph %s, because the op_desc is nullptr.", name);
     GE_LOGE("[Get][OpDesc] Failed to get subgraph %s, the op_desc is null", name);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const auto &subgraph_names_to_index = op_desc->GetSubgraphNameIndexes();
   const auto iter = subgraph_names_to_index.find(name);
   if (iter == subgraph_names_to_index.end()) {
     REPORT_INNER_ERR_MSG("E18888", "Failed to get subgraph %s, the name may be invalid", name);
     GE_LOGE("[Check][Param] Failed to get subgraph %s, the name may be invalid", name);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const auto subgraph_instance_name = op_desc->GetSubgraphInstanceName(iter->second);
   if (subgraph_instance_name.empty()) {
     REPORT_INNER_ERR_MSG("E18888", "Failed to get subgraph %s index %u, the subgraph may not be added", name,
                          iter->second);
     GE_LOGE("[Get][Subgraph] %s index %u failed, because the subgraph may not be added", name, iter->second);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
 
   const auto node = operator_impl_->GetNode();
   if (node == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "Failed to get subgraph %s, because the node is null", name);
     GE_LOGE("[Get][Node] Failed to get subgraph %s, because the node is null", name);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const auto root_graph = GraphUtils::FindRootGraph(node->GetOwnerComputeGraph());
   if (root_graph == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "Failed to get subgraph %s, because can not find the root graph,node:%s", name,
                          node->GetName().c_str());
     GE_LOGE("[Get][Subgraph] subgraph %s failed, because can not find the root graph", name);
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const auto subgraph = root_graph->GetSubgraph(subgraph_instance_name);
   if (subgraph == nullptr) {
@@ -2817,7 +2816,7 @@ Graph Operator::GetSubgraphImpl(const char_t *name) const {
                          name, iter->second, subgraph_instance_name.c_str());
     GE_LOGE("[Get][Subgraph] %s index %u failed, because can not find the instance %s from the root graph", name,
             iter->second, subgraph_instance_name.c_str());
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   return GraphUtilsEx::CreateGraphFromComputeGraph(subgraph);
 }
@@ -2830,7 +2829,7 @@ Graph Operator::GetSubgraph(const char_t *name) const {
   if (name == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "param name is nullptr, check invalid.");
     GELOGE(GRAPH_FAILED, "[Check][Param] Get subgraph failed, name is nullptr.");
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   return GetSubgraphImpl(name);
 }
@@ -2843,7 +2842,7 @@ Graph Operator::GetDynamicSubgraph(const char_t *name, uint32_t index) const {
   if (name == nullptr) {
     REPORT_INNER_ERR_MSG("E18888", "param name is nullptr, check invalid.");
     GELOGE(GRAPH_FAILED, "[Check][Param] Operator name is nullptr.");
-    return Graph("");
+    return GraphUtilsEx::CreateGraph();
   }
   const std::string op_name = name + std::to_string(index);
   return GetSubgraph(op_name.c_str());
@@ -2899,7 +2898,7 @@ public:
                        return nullptr, "[Check][Param] Operator impl's opdesc is null.");
 
       const std::string type = src_op_impl->op_desc_->GetType();
-      const auto node_op = ge::OperatorFactory::CreateOperator("node_op", type.c_str());
+      const auto node_op = ge::GraphUtilsEx::CreateOperator("node_op", type.c_str());
       const auto tensor_desc = ge::OpDescUtils::GetOpDescFromOperator(node_op);
       node_op.BreakConnect();
 

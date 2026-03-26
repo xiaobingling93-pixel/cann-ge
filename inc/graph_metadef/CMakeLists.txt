@@ -62,7 +62,7 @@ target_include_directories(metadef_headers INTERFACE
     # ---------------------end-----------------------
 )
 
-message(STATUS "inc gaph_metadef")
+message(STATUS "inc graph_metadef")
 set(SRC_GRAPH_DIR ${ASCEND_INSTALL_PATH}/include/graph)
 
 if (EXISTS "${ASCEND_INSTALL_PATH}/include/graph")

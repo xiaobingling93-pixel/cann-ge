@@ -26,8 +26,8 @@ else ()
         endif ()
 
     else ()
-        set(AIR_COMMON_COMPILE_OPTION -fvisibility=hidden -O2 -Werror -fno-common -Wextra -Wfloat-equal)
-        set(AIR_COMMON_DYNAMIC_COMPILE_OPTION -fvisibility=default -O2 -Werror -fno-common -Wextra -Wfloat-equal)
+        set(AIR_COMMON_COMPILE_OPTION ${OPTIMIZE_OPTION} -fvisibility=hidden)
+        set(AIR_COMMON_DYNAMIC_COMPILE_OPTION ${OPTIMIZE_OPTION} -fvisibility=default)
     endif ()
 
 endif (CMAKE_BUILD_TYPE MATCHES GCOV)

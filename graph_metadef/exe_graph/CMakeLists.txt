@@ -8,8 +8,6 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
-
 set(LOWERING_SRCS
     lowering/data_dependent_interpreter.cc
     lowering/device_tiling_context_builder.cc
@@ -62,7 +60,7 @@ target_compile_definitions(lowering PRIVATE
 )
 
 target_compile_options(lowering PRIVATE
-    $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:-O2 -fPIC -Wextra -Wfloat-equal -fno-common>
+    $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:${OPTIMIZE_OPTION} -fPIC>
     $<$<AND:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,$<STREQUAL:${CMAKE_CONFIGURATION_TYPES},Debug>>:/MTd>
     $<$<AND:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,$<STREQUAL:${CMAKE_CONFIGURATION_TYPES},Release>>:/MT>
 )
@@ -81,7 +79,7 @@ if (NOT ENABLE_OPEN_SRC)
         graph_static
         register_static
     )
-    target_compile_options(lowering_static PRIVATE $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:-O2 -fPIC -Wextra -Wfloat-equal>)
+    target_compile_options(lowering_static PRIVATE $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:${OPTIMIZE_OPTION} -fPIC>)
     set_target_properties(lowering_static PROPERTIES OUTPUT_NAME lowering)
 
     ############ install ############
