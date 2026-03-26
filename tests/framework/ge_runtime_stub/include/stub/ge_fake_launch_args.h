@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include "runtime_stub.h"
+#include "acl/acl_rt.h"
 #include <memory>
 
 namespace ge {
@@ -36,6 +37,12 @@ struct GeFakeLaunchArgs {
   GeFakeLaunchArgs(const rtFuncHandle funcHandle, const uint32_t blockDim, rtStream_t stm,
                    const rtKernelLaunchCfg_t *cfg, const void *devArgs, uint32_t argsSize,
                    void *reserve, std::unique_ptr<std::string> tag);
+  GeFakeLaunchArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+      aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum, std::unique_ptr<std::string> tag);
+  GeFakeLaunchArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg,
+      aclrtStream stream, std::unique_ptr<std::string> tag);
   uint64_t GetDevFun() const {
     return devFunc_;
   }

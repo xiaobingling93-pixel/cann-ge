@@ -268,6 +268,45 @@ aclError AclRuntimeStub::aclrtLaunchKernel(aclrtFuncHandle funcHandle,
   return ACL_SUCCESS;
 }
 
+aclError AclRuntimeStub::aclrtBinaryUnLoad(aclrtBinHandle binHandle) {
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtBinaryLoadFromFile(const char* binPath, aclrtBinaryLoadOptions *options,
+    aclrtBinHandle *binHandle) {
+  *binHandle = (void*)0x12345678;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtBinaryLoadFromData(const void *data, size_t length,
+    const aclrtBinaryLoadOptions *options, aclrtBinHandle *binHandle) {
+  *binHandle = (void*)0x12345678;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtLaunchKernelV2(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg, aclrtStream stream) {
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtRegisterCpuFunc(const aclrtBinHandle handle, const char *funcName,
+    const char *kernelName, aclrtFuncHandle *funcHandle) {
+  *funcHandle = (void*)0x1234567;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName,
+    aclrtFuncHandle *funcHandle) {
+  *funcHandle = (void*)0x1234567;
+  return ACL_SUCCESS;
+}
+
+aclError AclRuntimeStub::aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+    aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum) {
+  return ACL_SUCCESS;
+}
+
 aclError AclRuntimeStub::aclrtStreamGetId(aclrtStream stream, int32_t *streamId) {
   if (std::string(__FUNCTION__) == g_acl_stub_mock) {
     return -1;
@@ -1289,6 +1328,43 @@ aclError aclrtBinaryGetFunctionByEntry(aclrtBinHandle binHandle, uint64_t funcEn
 aclError aclrtLaunchKernel(aclrtFuncHandle funcHandle, uint32_t blockDim, const void *argsData, size_t argsSize,
   aclrtStream stream) {
   return ge::AclRuntimeStub::GetInstance()->aclrtLaunchKernel(funcHandle, blockDim, argsData, argsSize, stream);
+}
+
+aclError aclrtBinaryUnLoad(aclrtBinHandle binHandle) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtBinaryUnLoad(binHandle);
+}
+
+aclError aclrtBinaryLoadFromFile(const char* binPath, aclrtBinaryLoadOptions *options,
+    aclrtBinHandle *binHandle) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtBinaryLoadFromFile(binPath, options, binHandle);
+}
+
+aclError aclrtBinaryLoadFromData(const void *data, size_t length,
+    const aclrtBinaryLoadOptions *options, aclrtBinHandle *binHandle) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtBinaryLoadFromData(data, length, options, binHandle);
+}
+
+aclError aclrtLaunchKernelV2(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg, aclrtStream stream) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtLaunchKernelV2(funcHandle,
+      numBlocks, argsData, argsSize, cfg, stream);
+}
+
+aclError aclrtRegisterCpuFunc(const aclrtBinHandle handle, const char *funcName,
+    const char *kernelName, aclrtFuncHandle *funcHandle) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtRegisterCpuFunc(handle, funcName, kernelName, funcHandle);
+}
+
+aclError aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName,
+    aclrtFuncHandle *funcHandle) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtBinaryGetFunction(binHandle, kernelName, funcHandle);
+}
+
+aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+    aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum) {
+  return ge::AclRuntimeStub::GetInstance()->aclrtLaunchKernelWithHostArgs(funcHandle, numBlocks, stream,
+      cfg, hostArgs, argsSize, placeHolderArray, placeHolderNum);
 }
 
 aclError aclrtStreamGetId(aclrtStream stream, int32_t *streamId) {

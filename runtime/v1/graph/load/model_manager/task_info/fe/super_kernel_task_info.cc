@@ -134,7 +134,7 @@ Status SuperKernelV2TaskInfo::ParseTaskRunParam(const domi::TaskDef &task_def, D
   return SUCCESS;
 }
 
-rtFuncHandle SuperKernelV2TaskInfo::GetFuncHandle() {
+aclrtFuncHandle SuperKernelV2TaskInfo::GetFuncHandle() {
   auto kernel_handles_manager = davinci_model_->GetKernelHandlesManager(KernelHandleType::kAicore);
   GE_ASSERT_NOTNULL(kernel_handles_manager);
   KernelRegisterInfo register_info;
@@ -186,22 +186,16 @@ Status SuperKernelV2TaskInfo::Distribute() {
 
   // call rtKernelLaunch for current task
   const string op_name = op_desc_->GetName();
-  GELOGI("Start to launch super kernel of %s, dump flag %d", op_name.c_str(), dump_flag_);
+  GELOGI("Start to launch super kernel of %s", op_name.c_str());
   SetTaskTag(op_name.c_str());
-  args_ex_.args = args_;
-  args_ex_.argsSize = args_size_;
-  args_ex_.isNoNeedH2DCopy = 1U;
-  cfg_.dumpflag = dump_flag_;
-  cfg_.localMemorySize = local_memory_size_;
-
   LaunchKernelParam launch_kernel_param;
   launch_kernel_param.args = args_;
   launch_kernel_param.args_size = args_size_;
   launch_kernel_param.block_dim = block_dim_;
   launch_kernel_param.stream = stream_;
-  launch_kernel_param.launch_config.schedule_mode = cfg_.schemMode;
+  launch_kernel_param.launch_config.schedule_mode = schedule_mode_;
   launch_kernel_param.launch_config.local_memory_size = local_memory_size_;
-  launch_kernel_param.launch_config.block_dim_offset = cfg_.blockDimOffset;
+  launch_kernel_param.launch_config.block_dim_offset = block_dim_offset_;
   launch_kernel_param.launch_config.is_block_task_prefetch = is_block_task_prefetch_;
   launch_kernel_param.launch_config.is_data_dump = is_data_dump_;
   GE_ASSERT_SUCCESS(KernelHandleUtils::LaunchKernel(func_handle_, launch_kernel_param));
@@ -209,12 +203,10 @@ Status SuperKernelV2TaskInfo::Distribute() {
 
   // set for task_id_
   UpdateTaskId();
-  GELOGI(
-      "SuperKernelV2TaskInfo Distribute Success, node: %s, task_type: %u, args: %p, argsize: %u, "
-      "is no need h2d copy : %u, block dim: %u, stream_id: %u, stream: %p, task_id: %u, local memory size: %u, "
-      "stubfunc: %p.",
-      op_desc_->GetName().c_str(), static_cast<uint32_t>(task_type_), args_ex_.args, args_ex_.argsSize,
-      args_ex_.isNoNeedH2DCopy, block_dim_, stream_id_, stream_, task_id_, local_memory_size_, stub_func_);
+  GELOGI("SuperKernelV2TaskInfo Distribute Success, node: %s, task_type: %u, args: %p, argsize: %u, "
+      "block dim: %u, stream_id: %u, stream: %p, task_id: %u, local memory size: %u, ",
+      op_desc_->GetName().c_str(), static_cast<uint32_t>(task_type_), args_, args_size_,
+      block_dim_, stream_id_, stream_, task_id_, local_memory_size_);
 
   if (!domi::GetContext().is_online_model) {
     op_desc_.reset(); // Release OpDesc after Distribute.
@@ -947,9 +939,9 @@ Status SuperKernelV2TaskInfo::InitTask(const domi::KernelDef &kernel_def) {
   GELOGD("Do InitTask of %s.", op_desc_->GetName().c_str());
   GE_CHK_STATUS_RET_NOLOG(InitContext(kernel_def.context()));
 
-  cfg_.schemMode = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
+  schedule_mode_ = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
   GELOGD("OpName: %s set schedule mode from kernel def: %u",
-      op_desc_->GetName().c_str(), static_cast<uint32_t>(cfg_.schemMode));
+      op_desc_->GetName().c_str(), static_cast<uint32_t>(schedule_mode_));
 
   // load with queue 零拷贝场景未作适配
   return SUCCESS;
@@ -972,7 +964,7 @@ Status SuperKernelV2TaskInfo::InitKernel(const domi::TaskDef &task_def, const Pi
 
   // Old model will not take this value, its default value is 0,need to convert to the real default value 1.
   block_dim_ = (kernel_def.block_dim() == 0U) ? 1U : kernel_def.block_dim();
-  cfg_.blockDimOffset = kernel_def.block_dim_offset();
+  block_dim_offset_ = kernel_def.block_dim_offset();
   operator_ = davinci_model_->GetOperatorByIndex(context.op_index());
   GE_CHECK_NOTNULL(operator_);
 
@@ -988,7 +980,6 @@ Status SuperKernelV2TaskInfo::InitKernel(const domi::TaskDef &task_def, const Pi
   if ((davinci_model_->OpNeedDump(op_desc_) || davinci_model_->OpNeedPrint(op_desc_))) {
     GELOGI("Op %s need dump or print in task info", op_desc_->GetName().c_str());
     dump_args_ = PtrAdd(PtrToPtr<void, uint8_t>(args_), static_cast<size_t>(args_size_), io_addr_offset_);
-    dump_flag_ = RT_KERNEL_DUMPFLAG;
     is_data_dump_ = true;
   }
   return ret;
@@ -1005,7 +996,6 @@ void SuperKernelV2TaskInfo::UpdateTaskId() {
 void SuperKernelV2TaskInfo::PostProcess(const domi::TaskDef &task_def) {
   const auto &context_def = task_def.kernel().context();
   davinci_model_->SaveDfxInfo(context_def.op_index(), task_def, *this);
-  ResetArgsEx();
 }
 
 REGISTER_TASK_INFO(MODEL_TASK_SUPER_KERNEL, SuperKernelV2TaskInfo);

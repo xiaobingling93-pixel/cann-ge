@@ -20,7 +20,7 @@ class CustAicpuKernelHandlesManager : public KernelHandlesManager {
   ~CustAicpuKernelHandlesManager() override = default;
   std::string GenerateKey(const KernelRegisterInfo &register_info) override;
  protected:
-  rtBinHandle RegisterKernel(const KernelRegisterInfo &register_info,
+  aclrtBinHandle RegisterKernel(const KernelRegisterInfo &register_info,
       const std::string &bin_name) override;
 };
 } // namespace ge

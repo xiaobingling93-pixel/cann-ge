@@ -15,7 +15,7 @@
 namespace ge {
 std::unordered_map<std::string, KernelBinInfo> KernelHandlesManager::global_bin_store_;
 std::recursive_mutex KernelHandlesManager::mtx_;
-rtBinHandle KernelHandlesManager::FindKernel(const std::string &bin_name) {
+aclrtBinHandle KernelHandlesManager::FindKernel(const std::string &bin_name) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto iter = global_bin_store_.find(bin_name);
   if (iter != global_bin_store_.end()) {
@@ -42,7 +42,7 @@ graphStatus KernelHandlesManager::ClearKernel() {
         bin_iter->second.refer_cnt, local_refer_iter.second);
     bin_iter->second.refer_cnt -= local_refer_iter.second;
     if (bin_iter->second.refer_cnt == 0) {
-      GE_ASSERT_RT_OK(rtsBinaryUnload(bin_iter->second.bin_handle));
+      GE_ASSERT_RT_OK(aclrtBinaryUnLoad(bin_iter->second.bin_handle));
       (void)global_bin_store_.erase(bin_iter);
     }
   }
@@ -50,7 +50,7 @@ graphStatus KernelHandlesManager::ClearKernel() {
   return SUCCESS;
 }
 
-rtBinHandle KernelHandlesManager::GetOrRegisterKernel(const KernelRegisterInfo &register_info,
+aclrtBinHandle KernelHandlesManager::GetOrRegisterKernel(const KernelRegisterInfo &register_info,
     const std::string &bin_name) {
   std::lock_guard<std::recursive_mutex> lock(mtx_);
   auto bin_handle = FindKernel(bin_name);
@@ -60,7 +60,7 @@ rtBinHandle KernelHandlesManager::GetOrRegisterKernel(const KernelRegisterInfo &
   return RegisterKernel(register_info, bin_name);
 }
 
-void KernelHandlesManager::StoredKernelHandle(const rtBinHandle bin_handle, const std::string &bin_name) {
+void KernelHandlesManager::StoredKernelHandle(const aclrtBinHandle bin_handle, const std::string &bin_name) {
   KernelBinInfo kernel_bin_handle;
   kernel_bin_handle.bin_handle = bin_handle;
   kernel_bin_handle.refer_cnt = 1;

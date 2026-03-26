@@ -303,6 +303,7 @@ target_link_libraries(ge_common_base
         static_mmpa
         -Wl,--no-as-needed
         runtime
+        acl_rt
         graph_base
         ascend_protobuf
         c_sec
@@ -501,6 +502,7 @@ target_link_libraries(ge_common_base
         ascend_protobuf_static
         -Wl,--no-as-needed
         runtime
+        acl_rt
         graph_base
         c_sec
         error_manager

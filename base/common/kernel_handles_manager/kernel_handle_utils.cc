@@ -28,61 +28,61 @@ void LogLaunchKernelParam(const LaunchKernelParam &launch_param) {
       launch_param.launch_config.time_out);
 }
 }
-rtFuncHandle KernelHandleUtils::GetFuncHandle(const rtBinHandle &bin_handle, const std::string &kernel_name) {
+aclrtFuncHandle KernelHandleUtils::GetFuncHandle(const aclrtBinHandle &bin_handle, const std::string &kernel_name) {
   GE_ASSERT_NOTNULL(bin_handle);
-  rtFuncHandle func_handle;
-  GE_ASSERT_RT_OK(rtsFuncGetByName(bin_handle, kernel_name.c_str(), &func_handle),
+  aclrtFuncHandle func_handle;
+  GE_ASSERT_RT_OK(aclrtBinaryGetFunction(bin_handle, kernel_name.c_str(), &func_handle),
       "Get func handle of node: %s failed.", kernel_name.c_str());
   GELOGI("Get func from bin handle by kernel name: %s.", kernel_name.c_str());
   return func_handle;
 }
-rtFuncHandle KernelHandleUtils::GetFuncHandle(const rtBinHandle &bin_handle, const uint64_t &tiling_key) {
+aclrtFuncHandle KernelHandleUtils::GetFuncHandle(const aclrtBinHandle &bin_handle, const uint64_t &tiling_key) {
   GE_ASSERT_NOTNULL(bin_handle);
-  rtFuncHandle func_handle;
-  GE_ASSERT_RT_OK(rtsFuncGetByEntry(bin_handle, tiling_key, &func_handle),
+  aclrtFuncHandle func_handle;
+  GE_ASSERT_RT_OK(aclrtBinaryGetFunctionByEntry(bin_handle, tiling_key, &func_handle),
       "Get func handle by entry: %lu failed.", tiling_key);
   GELOGI("Get func from bin handle by entry: %llu.", tiling_key);
   return func_handle;
 }
 
-rtFuncHandle KernelHandleUtils::GetCustAicpuFuncHandle(const rtBinHandle &bin_handle,
+aclrtFuncHandle KernelHandleUtils::GetCustAicpuFuncHandle(const aclrtBinHandle &bin_handle,
     const std::string &op_type, const std::string &func_name) {
   GE_ASSERT_NOTNULL(bin_handle);
-  rtFuncHandle func_handle;
-  GE_ASSERT_RT_OK(rtsRegisterCpuFunc(bin_handle, func_name.c_str(),
+  aclrtFuncHandle func_handle;
+  GE_ASSERT_RT_OK(aclrtRegisterCpuFunc(bin_handle, func_name.c_str(),
       op_type.c_str(), &func_handle), "Get func handle by kernel name:%s and func name: %s failed",
       op_type.c_str(), func_name.c_str());
   GELOGI("Get func from bin handle by op type: %s, func name: %s.", op_type.c_str(), func_name.c_str());
   return func_handle;
 }
 
-graphStatus KernelHandleUtils::LaunchKernel(const rtFuncHandle func_handle, const LaunchKernelParam &launch_param) {
+graphStatus KernelHandleUtils::LaunchKernel(const aclrtFuncHandle func_handle, const LaunchKernelParam &launch_param) {
   LogLaunchKernelParam(launch_param);
-  rtKernelLaunchCfg_t rt_launch_config;
+  aclrtLaunchKernelCfg rt_launch_config;
   constexpr const size_t max_launch_cfg_num = 8UL;
-  rtLaunchKernelAttr_t attrs[max_launch_cfg_num];
+  aclrtLaunchKernelAttr attrs[max_launch_cfg_num];
   size_t actual_cfg_num = 0UL;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_SCHEM_MODE;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_SCHEM_MODE;
   attrs[actual_cfg_num].value.schemMode = launch_param.launch_config.schedule_mode;
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE;
   attrs[actual_cfg_num].value.engineType = launch_param.launch_config.engine_type;
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_BLOCKDIM_OFFSET;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_BLOCKDIM_OFFSET;
   attrs[actual_cfg_num].value.blockDimOffset = launch_param.launch_config.block_dim_offset;
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_BLOCK_TASK_PREFETCH;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_BLOCK_TASK_PREFETCH;
   attrs[actual_cfg_num].value.isBlockTaskPrefetch =
       static_cast<uint8_t>(launch_param.launch_config.is_block_task_prefetch);
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_DATA_DUMP;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_DATA_DUMP;
   attrs[actual_cfg_num].value.isDataDump = static_cast<uint8_t>(launch_param.launch_config.is_data_dump);
   actual_cfg_num++;
-  attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE;
+  attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE;
   attrs[actual_cfg_num].value.dynUBufSize = launch_param.launch_config.local_memory_size;
   actual_cfg_num++;
   if (launch_param.launch_config.time_out >= 0) {
-    attrs[actual_cfg_num].id = RT_LAUNCH_KERNEL_ATTR_TIMEOUT;
+    attrs[actual_cfg_num].id = ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT;
     attrs[actual_cfg_num].value.timeout = static_cast<uint16_t>(launch_param.launch_config.time_out);
     actual_cfg_num++;
   }
@@ -90,13 +90,13 @@ graphStatus KernelHandleUtils::LaunchKernel(const rtFuncHandle func_handle, cons
   rt_launch_config.numAttrs = actual_cfg_num;
   GE_ASSERT_NOTNULL(func_handle);
   if (launch_param.is_host_args) {
-    GE_ASSERT_RT_OK(rtsLaunchKernelWithHostArgs(func_handle, launch_param.block_dim, launch_param.stream,
+    GE_ASSERT_RT_OK(aclrtLaunchKernelWithHostArgs(func_handle, launch_param.block_dim, launch_param.stream,
         &rt_launch_config, launch_param.args, launch_param.args_size,
         const_cast<RefreshAddrInfo *>(launch_param.refresh_add_infos.data()),
         launch_param.refresh_add_infos.size()));
   } else {
-    GE_ASSERT_RT_OK(rtsLaunchKernelWithDevArgs(func_handle, launch_param.block_dim, launch_param.stream,
-        &rt_launch_config, launch_param.args, launch_param.args_size, nullptr));
+    GE_ASSERT_RT_OK(aclrtLaunchKernelV2(func_handle, launch_param.block_dim, launch_param.args,
+        launch_param.args_size, &rt_launch_config, launch_param.stream));
   }
   return SUCCESS;
 }

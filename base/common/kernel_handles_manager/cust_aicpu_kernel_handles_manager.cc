@@ -15,7 +15,7 @@
 #include "kernel_handle_utils.h"
 
 namespace ge {
-rtBinHandle CustAicpuKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
+aclrtBinHandle CustAicpuKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
     const std::string &bin_name) {
   GE_ASSERT_TRUE(!bin_name.empty(), "Bin handle name is empty.");
   auto *cust_aicpu_register_info = std::get_if<CustAicpuRegisterInfo>(&register_info);
@@ -23,15 +23,15 @@ rtBinHandle CustAicpuKernelHandlesManager::RegisterKernel(const KernelRegisterIn
   const auto cust_aicpu_kernel_bin = cust_aicpu_register_info->cust_aicpu_kernel_bin;
   GE_ASSERT_NOTNULL(cust_aicpu_kernel_bin, "Cust aicpu kernel bin is nullptr.");
 
-  rtLoadBinaryConfig_t load_options;
-  rtLoadBinaryOption_t option;
+  aclrtBinaryLoadOptions load_options;
+  aclrtBinaryLoadOption option;
   load_options.numOpt = 1;
   load_options.options = &option;
-  option.optionId = RT_LOAD_BINARY_OPT_CPU_KERNEL_MODE;
+  option.type = ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE;
   constexpr const int32_t cust_cpu_kernel_mode = 2;
   option.value.cpuKernelMode = cust_cpu_kernel_mode;
-  rtBinHandle bin_handle;
-  GE_ASSERT_RT_OK(rtsBinaryLoadFromData(static_cast<const void *>(cust_aicpu_kernel_bin->GetBinData()),
+  aclrtBinHandle bin_handle;
+  GE_ASSERT_RT_OK(aclrtBinaryLoadFromData(static_cast<const void *>(cust_aicpu_kernel_bin->GetBinData()),
       cust_aicpu_kernel_bin->GetBinDataSize(), &load_options, &bin_handle));
 
   StoredKernelHandle(bin_handle, bin_name);

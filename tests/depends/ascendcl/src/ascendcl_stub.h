@@ -56,6 +56,20 @@ public:
                                      const void *argsData,
                                      size_t argsSize,
                                      aclrtStream stream);
+  virtual aclError aclrtBinaryUnLoad(aclrtBinHandle binHandle);
+  virtual aclError aclrtBinaryLoadFromFile(const char* binPath, aclrtBinaryLoadOptions *options,
+      aclrtBinHandle *binHandle);
+  virtual aclError aclrtBinaryLoadFromData(const void *data, size_t length,
+      const aclrtBinaryLoadOptions *options, aclrtBinHandle *binHandle);
+  virtual aclError aclrtLaunchKernelV2(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg, aclrtStream stream);
+  virtual aclError aclrtRegisterCpuFunc(const aclrtBinHandle handle, const char *funcName,
+      const char *kernelName, aclrtFuncHandle *funcHandle);
+  virtual aclError aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName,
+      aclrtFuncHandle *funcHandle);
+  virtual aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+      aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum);
   virtual aclError aclrtStreamGetId(aclrtStream stream, int32_t *streamId);
   virtual aclError aclrtWaitAndResetNotify(aclrtNotify notify, aclrtStream stream, uint32_t timeout);
   virtual aclError aclrtSetDevice(int32_t deviceId);

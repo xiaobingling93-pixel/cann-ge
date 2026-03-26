@@ -9055,9 +9055,9 @@ Status DavinciModel::LaunchFromPlatformSo(const std::string &platform_so_path) {
 
 Status DavinciModel::LaunchFromOpMasterSo() {
   GELOGI("Launch cust platform infos from op master so.");
-  rtBinHandle platform_bin_handle = ModelManager::GetInstance().GetPlatformBinHandle();
+  aclrtBinHandle platform_bin_handle = ModelManager::GetInstance().GetPlatformBinHandle();
   GE_ASSERT_NOTNULL(platform_bin_handle, "Failed to get platform infos bin handle");
-  rtFuncHandle platform_func_handle = KernelHandleUtils::GetCustAicpuFuncHandle(platform_bin_handle,
+  aclrtFuncHandle platform_func_handle = KernelHandleUtils::GetCustAicpuFuncHandle(platform_bin_handle,
       "CustPlatformInfo", kAicpuCustLoadPlatformInfo);
   GE_ASSERT_NOTNULL(platform_func_handle);
   for (const auto &it : cust_platform_infos_addr_to_launch_) {

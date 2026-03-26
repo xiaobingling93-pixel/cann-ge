@@ -398,6 +398,17 @@ void BuildSampleGraph(ComputeGraphPtr &graph, uint32_t &mem_offset) {
     const auto &nf = graph->FindNode("Less/StreamSwitch_f");
     EXPECT_TRUE(AttrUtils::SetListInt(nf->GetOpDesc(), ATTR_NAME_INPUT_MEM_TYPE_LIST, { RT_MEMORY_TS, RT_MEMORY_HBM }));
   }
+
+  {
+    // cust aicpu kernel
+    const auto &mul = graph->FindNode("mul");
+    auto op_desc = mul->GetOpDesc();
+    const char kernel_bin[] = "test";
+    vector<char> buffer(kernel_bin, kernel_bin + strlen(kernel_bin));
+    ge::OpKernelBinPtr kernel_bin_ptr = std::make_shared<ge::OpKernelBin>(op_desc->GetName(), std::move(buffer));
+    op_desc->SetExtAttr(OP_EXTATTR_CUSTAICPU_KERNEL, kernel_bin_ptr);
+    AttrUtils::SetStr(op_desc, "kernelSo", "libtest_cust.so");
+  }
 }
 Status CreateFileConstantBin(const std::string &file_path, size_t weight_data_length) {
   vector<int32_t> data(weight_data_length);

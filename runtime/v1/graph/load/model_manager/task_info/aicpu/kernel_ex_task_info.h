@@ -16,6 +16,7 @@
 #include "graph/def_types.h"
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "hybrid/node_executor/aicpu/aicpu_ext_info_handler.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class KernelExTaskInfo : public TaskInfo {
@@ -81,10 +82,9 @@ class KernelExTaskInfo : public TaskInfo {
   Status AssembleKernelBuffer(const STR_FWK_OP_KERNEL * const fwk_op_kernel) const;
   Status InitInputOutputAddr(const PisToArgs &args, const IowAddrs &iow_addrs);
   Status AssembleInputOutputAddr();
-  rtFuncHandle GetFuncHandle();
+  aclrtFuncHandle GetFuncHandle();
   uint32_t task_id_{0U};
   uint32_t stream_id_{0U};
-  uint32_t dump_flag_{RT_KERNEL_DEFAULT};
   uint32_t kernel_buf_size_{0U};
   DavinciModel *davinci_model_{nullptr};
   OpDescPtr op_desc_;
@@ -95,7 +95,6 @@ class KernelExTaskInfo : public TaskInfo {
   std::vector<void *> io_addrs_;
   std::vector<uint64_t> io_addr_mem_types_;
   int32_t deploy_type_flag_{0};
-  uint32_t qos_level_flag_{0U};
   tagRtMemcpyKind memcpy_kind_{RT_MEMCPY_HOST_TO_DEVICE};
   rtMemType_t mem_type_{RT_MEMORY_HBM};
   bool is_blocking_aicpu_op_{false};
@@ -109,7 +108,7 @@ class KernelExTaskInfo : public TaskInfo {
   std::vector<void *> workspace_data_addrs_;
   ArgsIoAddrsUpdater args_io_addrs_updater_;
   ArgsPlacement pls_{ArgsPlacement::kArgsPlacementHbm};
-  rtFuncHandle func_handle_{nullptr};
+  aclrtFuncHandle func_handle_{nullptr};
   bool is_data_dump_{false};
 };
 }  // namespace ge

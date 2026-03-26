@@ -45,7 +45,6 @@ Status KernelExTaskInfo::InitTaskExtInfo(const std::string &ext_info, const OpDe
   GE_CHK_STATUS_RET(ext_handle.UpdateExecuteMode(!need_update), "[Update][ExecuteMode] failed.");
   GELOGD("Update aicpu_task ext_info bit_map execute mode to %d.", static_cast<int32_t>(!need_update));
   deploy_type_flag_ = ext_handle.GetDeployTypeFlag();
-  qos_level_flag_ = ext_handle.GeQosLevelFlag();
   mem_type_ = ext_handle.GetMemType();
   memcpy_kind_ = ext_handle.GetMemcpyKind();
   bool all_shape = false;
@@ -167,7 +166,7 @@ Status KernelExTaskInfo::AssembleInputOutputAddr() {
   return SUCCESS;
 }
 
-rtFuncHandle KernelExTaskInfo::GetFuncHandle() {
+aclrtFuncHandle KernelExTaskInfo::GetFuncHandle() {
   auto kernel_handles_manager = davinci_model_->GetKernelHandlesManager(KernelHandleType::kAicpu);
   GE_ASSERT_NOTNULL(kernel_handles_manager);
   GE_ASSERT_NOTNULL(op_desc_);
@@ -278,7 +277,6 @@ void KernelExTaskInfo::InitDumpFlag(const OpDescPtr &op_desc) {
   if (davinci_model_->OpNeedDump(op_desc) || davinci_model_->OpNeedPrint(op_desc)
     || davinci_model_->OpNeedSetDumpFlagOnWatcherModel(op_desc->GetName())) {
     GELOGD("Op %s need init dump flag in kernel ex task info", op_desc->GetName().c_str());
-    dump_flag_ = RT_KERNEL_DUMPFLAG;
     is_data_dump_ = true;
   }
 }
