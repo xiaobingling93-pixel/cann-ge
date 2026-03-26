@@ -12,6 +12,7 @@
 #include <securec.h>
 #include <functional>
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include "graph/tensor.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/tensor_utils.h"
@@ -665,58 +666,16 @@ HcclResult HcomOpsKernelInfoStore::CleanIntervalMemory(const char *tag, std::vec
                                                        std::vector<std::int64_t> &crackSize, rtStream_t stream) {
   std::string strTag = (tag == nullptr) ? "" : tag;
   HCCL_DEBUG("[CleanIntervalMemory] tag[%s]", strTag.c_str());
-  u64 crackMemSize = CRACK_MEMORY_SIZE;
   DevType devType = HcomGetDeviceType();
   HCCL_DEBUG("[CleanIntervalMemory][HcomGetDeviceType]devType is %d", devType);
 
-  if (!initCrackMem_) {
-    // 申请32B内存做清零操作
-    char crackMemTemp[crackMemSize] = {0};
-    void *crackMem = nullptr;
-    HcclResult ret = hrtMalloc(&crackMem, crackMemSize);
-    CHK_PRT_RET(ret != HCCL_SUCCESS || crackMem == nullptr,
-                HCCL_ERROR("[Malloc][Device]rt malloc device fail. return[%d]", ret), HCCL_E_INTERNAL);
-    crackMemPtr_.reset(crackMem);
-    CHK_RET(hrtMemSyncCopy(crackMemPtr_.get(), crackMemSize, crackMemTemp, crackMemSize,
-                           HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_HOST_TO_DEVICE));
-    initCrackMem_ = true;
-  }
 #ifndef OPEN_BUILD_PROJECT
-  // A5适配
-  CHK_RET(CleanInterMemory(devType, crackSize, crackAddr, stream));
+  if (devType == DevType::DEV_TYPE_950) {
+    // A5适配
+    return CleanInterMemoryV2(crackSize, crackAddr, stream);
+  }
 #endif
-  // 如果当前tensorlist只有一个tensor，TBE无法准确清理crackSize大小内存，用D2D的memcpy做清零
-  // 待TBE处理完上述情况，此处删除
-  if (crackSize.size() == 1) {
-    if (crackSize[0] != 0) {
-      CHK_RET(hrtMemAsyncCopy(reinterpret_cast<void *>(crackAddr[0]), crackSize[0], crackMemPtr_.get(), crackSize[0],
-                              HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
-    }
-    crackAddr.clear();
-    crackSize.clear();
-  }
-
-  // 非32B对齐的缝隙用D2D的memcpy做清零，并且从vector中剔除
-  for (int i = 0; i < (int)crackSize.size(); i++) {
-    if (crackSize[i] >= 0 && crackSize[i] % CRACK_MEMORY_SIZE != 0) {
-      // 缝隙大小不为0时，D2Dmemcopy做清零
-      if (crackSize[i] != 0) {
-        CHK_RET(hrtMemAsyncCopy(reinterpret_cast<void *>(crackAddr[i]), crackSize[i], crackMemPtr_.get(), crackSize[i],
-                                HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
-      }
-      crackAddr.erase(crackAddr.begin() + i);
-      crackSize.erase(crackSize.begin() + i);
-      // 由于容器size-1，还按原来的i的话相当于自动右移一位而漏掉一个元素
-      i--;
-    }
-  }
-  // 当前的crackAddr和crackSize为缝隙size大于32B
-  // 下发TBE清零算法
-  if (crackAddr.size() != 0 && crackSize.size() != 0) {
-    CHK_RET(TbeCleanIntervalMemory(crackAddr, crackSize, stream));
-  }
-
-  return HCCL_SUCCESS;
+  return CleanInterMemory(crackAddr, crackSize, stream);
 }
 
 HcclResult HcomOpsKernelInfoStore::TbeCleanIntervalMemory(std::vector<std::int64_t> &crackAddr,
@@ -2986,6 +2945,7 @@ ge::Status HcomOpsKernelInfoStore::Finalize() {
     workSpaceMemInfo_.erase(iter++);
   }
   crackMemPtr_.reset();
+  crackMemPtrV2_.reset();
   indirectInCCLbufferPtr_.reset();
   indirectOutCCLbufferPtr_.reset();
   return HCCL_SUCCESS;
@@ -3117,38 +3077,90 @@ HcclResult HcomOpsKernelInfoStore::SetAivCoreLimit(const ge::GETaskInfo &task) {
   return HCCL_SUCCESS;
 }
 
-#ifndef OPEN_BUILD_PROJECT
-HcclResult HcomOpsKernelInfoStore::CleanInterMemory(DevType devType, std::vector<std::int64_t> &crackSize,
-                                                    std::vector<std::int64_t> &crackAddr, rtStream_t stream) {
-#ifdef MACRO_DEV_TYPE_NEW
-  if (devType == DevType::DEV_TYPE_950) {
-#else
-  if (devType == DevType::DEV_TYPE_910_95) {
-#endif
-    // 遍历内存块列表
-    for (size_t i = 0; i < crackSize.size();) {
-      int64_t currentSize = crackSize[i];
-      int64_t currentAddr = crackAddr[i];
-      if (currentSize > 0) {
-        int64_t offset = 0;
-        // 分段处理内存块
-        while (offset < currentSize) {
-          // 计算每次拷贝的大小，不能超过CRACK_MEMORY_SIZE
-          int64_t copySize = std::min(static_cast<int64_t>(CRACK_MEMORY_SIZE), currentSize - offset);
-          void *srcPtr = reinterpret_cast<void *>(currentAddr + offset);
-          void *dstPtr = crackMemPtr_.get();
+HcclResult HcomOpsKernelInfoStore::CleanInterMemory(std::vector<std::int64_t> &crackAddr,
+                                                    std::vector<std::int64_t> &crackSize, rtStream_t stream) {
+  u64 crackMemSize = CRACK_MEMORY_SIZE;
+  if (!initCrackMem_) {
+    // 申请32B内存做清零操作
+    char crackMemTemp[crackMemSize] = {0};
+    void *crackMem = nullptr;
+    HcclResult ret = hrtMalloc(&crackMem, crackMemSize);
+    CHK_PRT_RET(ret != HCCL_SUCCESS || crackMem == nullptr,
+                HCCL_ERROR("[Malloc][Device]rt malloc device fail. return[%d]", ret), HCCL_E_INTERNAL);
+    crackMemPtr_.reset(crackMem);
+    CHK_RET(hrtMemSyncCopy(crackMemPtr_.get(), crackMemSize, crackMemTemp, crackMemSize,
+                           HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_HOST_TO_DEVICE));
+    initCrackMem_ = true;
+  }
+  // 如果当前tensorlist只有一个tensor，TBE无法准确清理crackSize大小内存，用D2D的memcpy做清零
+  // 待TBE处理完上述情况，此处删除
+  if (crackSize.size() == 1) {
+    if (crackSize[0] != 0) {
+      CHK_RET(hrtMemAsyncCopy(reinterpret_cast<void *>(crackAddr[0]), crackSize[0], crackMemPtr_.get(), crackSize[0],
+                              HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
+    }
+    crackAddr.clear();
+    crackSize.clear();
+  }
 
-          // 执行异步内存拷贝
-          CHK_RET(hrtMemAsyncCopy(srcPtr, copySize, dstPtr, copySize,
-                                  HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
-          offset += copySize;
-        }
-        // 移除已处理的内存块
-        crackSize.erase(crackSize.begin() + i);
-        crackAddr.erase(crackAddr.begin() + i);
-      } else {
-        i++;
+  // 非32B对齐的缝隙用D2D的memcpy做清零，并且从vector中剔除
+  for (int i = 0; i < (int)crackSize.size(); i++) {
+    if (crackSize[i] >= 0 && crackSize[i] % CRACK_MEMORY_SIZE != 0) {
+      // 缝隙大小不为0时，D2Dmemcopy做清零
+      if (crackSize[i] != 0) {
+        CHK_RET(hrtMemAsyncCopy(reinterpret_cast<void *>(crackAddr[i]), crackSize[i], crackMemPtr_.get(), crackSize[i],
+                                HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
       }
+      crackAddr.erase(crackAddr.begin() + i);
+      crackSize.erase(crackSize.begin() + i);
+      // 由于容器size-1，还按原来的i的话相当于自动右移一位而漏掉一个元素
+      i--;
+    }
+  }
+  // 当前的crackAddr和crackSize为缝隙size大于32B
+  // 下发TBE清零算法
+  if (crackAddr.size() != 0 && crackSize.size() != 0) {
+    CHK_RET(TbeCleanIntervalMemory(crackAddr, crackSize, stream));
+  }
+
+  return HCCL_SUCCESS;
+}
+
+#ifndef OPEN_BUILD_PROJECT
+HcclResult HcomOpsKernelInfoStore::CleanInterMemoryV2(std::vector<std::int64_t> &crackSize,
+                                                      std::vector<std::int64_t> &crackAddr, rtStream_t stream) {
+  // 申请内存做清零操作
+  auto maxIt = std::max_element(crackSize.begin(), crackSize.end());
+  u64 maxSize = static_cast<u64>(*maxIt);
+  if (maxCrackMemSizeV2_ < maxSize) {
+    HCCL_INFO("[HcomOpsKernelInfoStore][%s] alloc mem with size[%llu]", __func__, maxSize);
+    maxCrackMemSizeV2_ = maxSize;
+    char crackMemTemp[maxCrackMemSizeV2_] = {0};
+    void *crackMem = nullptr;
+    HcclResult ret = hrtMalloc(&crackMem, maxCrackMemSizeV2_);
+    CHK_PRT_RET(ret != HCCL_SUCCESS || crackMem == nullptr,
+                HCCL_ERROR("[Malloc][Device]rt malloc device fail. return[%d]", ret), HCCL_E_INTERNAL);
+    crackMemPtrV2_.reset(crackMem);
+    CHK_RET(hrtMemSyncCopy(crackMemPtrV2_.get(), maxCrackMemSizeV2_, crackMemTemp, maxCrackMemSizeV2_,
+                          HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_HOST_TO_DEVICE));
+  }
+  // 遍历内存块列表
+  for (size_t i = 0; i < crackSize.size();) {
+    int64_t currentSize = crackSize[i];
+    int64_t currentAddr = crackAddr[i];
+    if (currentSize > 0) {
+      HCCL_INFO("[HcomOpsKernelInfoStore][%s] D2D memcpy async with size[%lld]", __func__, currentSize);
+      void *dstPtr = reinterpret_cast<void *>(currentAddr);
+      void *srcPtr = crackMemPtrV2_.get();
+
+      // 执行整块异步内存拷贝
+      CHK_RET(hrtMemAsyncCopy(dstPtr, currentSize, srcPtr, currentSize,
+                              HcclRtMemcpyKind::HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, stream));
+      // 移除已处理的内存块
+      crackSize.erase(crackSize.begin() + i);
+      crackAddr.erase(crackAddr.begin() + i);
+    } else {
+      i++;
     }
   }
   return HCCL_SUCCESS;

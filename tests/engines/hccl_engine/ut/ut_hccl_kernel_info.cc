@@ -2637,6 +2637,12 @@ TEST_F(HcomKernelInfoTest, ut_CleanIntervalMemory_0)
     .with(mockcpp::any())
     .will(returnValue(HCCL_SUCCESS));
 
+    DevType deviceType = DevType::DEV_TYPE_310P3;
+    MOCKER(HcomGetDeviceType)
+    .stubs()
+    .with(outBound(deviceType))
+    .will(returnValue(HCCL_SUCCESS));
+
     s32 ret = hcomKernelInfo.CleanIntervalMemory("tag", crackAddr, crackSize, stream);
     EXPECT_EQ(ret, HCCL_SUCCESS);
     GlobalMockObject::verify();
@@ -3082,19 +3088,8 @@ TEST_F(HcomKernelInfoTest, ut_LoadTaskSetAivCoreLimit)
     GlobalMockObject::verify();
 }
 
-TEST_F(HcomKernelInfoTest, ut_CleanIntervalMemory_When_Normal_Expect_ReturnlsHCCL_SUCCESS)
+void SetupCleanInterMemoryVMocks()
 {
-    HcomOpsKernelInfoStore hcomKernelInfo;
-    rtStream_t stream = NULL;
-
-    std::vector<std::int64_t> crackAddr = {16};
-    std::vector<std::int64_t> crackSize = {16};
-#ifdef MACRO_DEV_TYPE_NEW
-    DevType devType = DevType::DEV_TYPE_950;
-#else
-    DevType devType = DevType::DEV_TYPE_910_95;
-#endif
-
     MOCKER(hrtMemAsyncCopy)
     .stubs()
     .with(mockcpp::any())
@@ -3109,9 +3104,120 @@ TEST_F(HcomKernelInfoTest, ut_CleanIntervalMemory_When_Normal_Expect_ReturnlsHCC
     .stubs()
     .with(mockcpp::any())
     .will(returnValue(HCCL_SUCCESS));
+}
 
-    s32 ret = hcomKernelInfo.CleanInterMemory(devType, crackAddr, crackSize, stream);
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_Normal_Expect_ReturnlsHCCL_SUCCESS)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16};
+    std::vector<std::int64_t> crackSize = {16};
+
+    SetupCleanInterMemoryVMocks();
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
     EXPECT_EQ(ret, HCCL_SUCCESS);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_SizeZero_Expect_ReturnlsHCCL_SUCCESS)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16, 32, 48};
+    std::vector<std::int64_t> crackSize = {16, 0, 32};
+
+    SetupCleanInterMemoryVMocks();
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_MultipleBlocks_Expect_ReturnlsHCCL_SUCCESS)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16, 32, 48};
+    std::vector<std::int64_t> crackSize = {16, 16, 16};
+
+    SetupCleanInterMemoryVMocks();
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(crackSize.size(), 0);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_MallocFail_Expect_ReturnHCCL_E_INTERNAL)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16};
+    std::vector<std::int64_t> crackSize = {16};
+
+    MOCKER(hrtMalloc)
+    .stubs()
+    .with(mockcpp::any(), mockcpp::any(), mockcpp::any())
+    .will(returnValue(HCCL_E_INTERNAL));
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
+    EXPECT_EQ(ret, HCCL_E_INTERNAL);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_MemSyncCopyFail_Expect_ReturnHCCL_E_INTERNAL)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16};
+    std::vector<std::int64_t> crackSize = {16};
+
+    MOCKER(hrtMalloc)
+    .stubs()
+    .with(mockcpp::any(), mockcpp::any(), mockcpp::any())
+    .will(returnValue(HCCL_SUCCESS));
+
+    MOCKER(hrtMemSyncCopy)
+    .stubs()
+    .with(mockcpp::any())
+    .will(returnValue(HCCL_E_INTERNAL));
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
+    EXPECT_EQ(ret, HCCL_E_INTERNAL);
+    GlobalMockObject::verify();
+}
+
+TEST_F(HcomKernelInfoTest, ut_CleanInterMemoryV2_When_MemAsyncCopyFail_Expect_ReturnHCCL_E_INTERNAL)
+{
+    HcomOpsKernelInfoStore hcomKernelInfo;
+    rtStream_t stream = NULL;
+
+    std::vector<std::int64_t> crackAddr = {16};
+    std::vector<std::int64_t> crackSize = {16};
+
+    MOCKER(hrtMalloc)
+    .stubs()
+    .with(mockcpp::any(), mockcpp::any(), mockcpp::any())
+    .will(returnValue(HCCL_SUCCESS));
+
+    MOCKER(hrtMemSyncCopy)
+    .stubs()
+    .with(mockcpp::any())
+    .will(returnValue(HCCL_SUCCESS));
+
+    MOCKER(hrtMemAsyncCopy)
+    .stubs()
+    .with(mockcpp::any())
+    .will(returnValue(HCCL_E_INTERNAL));
+
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
+    EXPECT_EQ(ret, HCCL_E_INTERNAL);
     GlobalMockObject::verify();
 }
 

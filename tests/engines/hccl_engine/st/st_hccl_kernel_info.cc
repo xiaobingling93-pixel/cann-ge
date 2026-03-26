@@ -2636,6 +2636,12 @@ TEST_F(HcomKernelInfoTest, st_CleanIntervalMemory_0)
     .with(mockcpp::any())
     .will(returnValue(HCCL_SUCCESS));
 
+    DevType deviceType = DevType::DEV_TYPE_310P3;
+    MOCKER(HcomGetDeviceType)
+    .stubs()
+    .with(outBound(deviceType))
+    .will(returnValue(HCCL_SUCCESS));
+
     s32 ret = hcomKernelInfo.CleanIntervalMemory("tag", crackAddr, crackSize, stream);
     EXPECT_EQ(ret, HCCL_SUCCESS);
     GlobalMockObject::verify();
@@ -3081,18 +3087,13 @@ TEST_F(HcomKernelInfoTest, st_LoadTaskSetAivCoreLimit)
     GlobalMockObject::verify();
 }
 
-TEST_F(HcomKernelInfoTest, st_CleanIntervalMemory_When_Normal_Expect_ReturnlsHCCL_SUCCESS)
+TEST_F(HcomKernelInfoTest, st_CleanInterMemoryV2_When_Normal_Expect_ReturnlsHCCL_SUCCESS)
 {
     HcomOpsKernelInfoStore hcomKernelInfo;
     rtStream_t stream = NULL;
 
     std::vector<std::int64_t> crackAddr = {16};
     std::vector<std::int64_t> crackSize = {16};
-#ifdef MACRO_DEV_TYPE_NEW
-    DevType devType = DevType::DEV_TYPE_950;
-#else
-    DevType devType = DevType::DEV_TYPE_910_95;
-#endif
 
     MOCKER(hrtMemAsyncCopy)
     .stubs()
@@ -3109,7 +3110,7 @@ TEST_F(HcomKernelInfoTest, st_CleanIntervalMemory_When_Normal_Expect_ReturnlsHCC
     .with(mockcpp::any())
     .will(returnValue(HCCL_SUCCESS));
 
-    s32 ret = hcomKernelInfo.CleanInterMemory(devType, crackAddr, crackSize, stream);
+    s32 ret = hcomKernelInfo.CleanInterMemoryV2(crackAddr, crackSize, stream);
     EXPECT_EQ(ret, HCCL_SUCCESS);
     GlobalMockObject::verify();
 }
