@@ -2,6 +2,7 @@ set(ascendc_api_extend_src
     utils.h
     reduce.h
     reduce_prod.h
+    reduce_any.h
     duplicate.h
     broadcast.h
     compare.h

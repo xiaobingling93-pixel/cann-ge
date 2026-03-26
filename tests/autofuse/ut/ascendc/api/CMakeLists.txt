@@ -20,6 +20,7 @@ add_library(test_ascendc OBJECT
     ./test_sign.cpp
     ./test_reduce.cpp
     ./test_reduce_init.cpp
+    ./test_reduce_any.cpp
     ./test_reciprocal.cpp
     ./test_sigmoid.cpp
     ./test_bitwiseand.cpp
