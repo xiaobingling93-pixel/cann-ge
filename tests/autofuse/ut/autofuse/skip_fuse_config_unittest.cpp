@@ -16,7 +16,7 @@
 namespace ge {
 namespace autofuse {
 
-class AutoFuseConfigTest : public testing::Test {
+class SkipFuseConfigTest : public testing::Test {
  protected:
   void SetUp() override {
     test_config_file_ = "./test_skip_config.ini";
@@ -59,37 +59,37 @@ class AutoFuseConfigTest : public testing::Test {
   std::string test_config_file_;
 };
 
-TEST_F(AutoFuseConfigTest, TrimFunction_RemoveLeadingTrailingSpaces) {
+TEST_F(SkipFuseConfigTest, TrimFunction_RemoveLeadingTrailingSpaces) {
   std::string test_str = "  hello world  ";
   Trim(test_str);
   EXPECT_EQ(test_str, "hello world");
 }
 
-TEST_F(AutoFuseConfigTest, TrimFunction_RemoveTabs) {
+TEST_F(SkipFuseConfigTest, TrimFunction_RemoveTabs) {
   std::string test_str = "\thello\tworld\t";
   Trim(test_str);
   EXPECT_EQ(test_str, "hello\tworld");
 }
 
-TEST_F(AutoFuseConfigTest, TrimFunction_RemoveNewlines) {
+TEST_F(SkipFuseConfigTest, TrimFunction_RemoveNewlines) {
   std::string test_str = "\nhello\nworld\n";
   Trim(test_str);
   EXPECT_EQ(test_str, "hello\nworld");
 }
 
-TEST_F(AutoFuseConfigTest, TrimFunction_EmptyString) {
+TEST_F(SkipFuseConfigTest, TrimFunction_EmptyString) {
   std::string test_str = "";
   Trim(test_str);
   EXPECT_EQ(test_str, "");
 }
 
-TEST_F(AutoFuseConfigTest, TrimFunction_OnlySpaces) {
+TEST_F(SkipFuseConfigTest, TrimFunction_OnlySpaces) {
   std::string test_str = "     ";
   Trim(test_str);
   EXPECT_EQ(test_str, "");
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_BothSections) {
+TEST_F(SkipFuseConfigTest, ParseConfig_BothSections) {
   std::string config_content = 
     "# Test configuration file\n"
     "[ByNodeType]\n"
@@ -107,7 +107,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_BothSections) {
                      {"emb_gather1", "flash_concat2", "special_layer_1"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_OnlyByNodeType) {
+TEST_F(SkipFuseConfigTest, ParseConfig_OnlyByNodeType) {
   std::string config_content = 
     "# Only node types\n"
     "[ByNodeType]\n"
@@ -120,7 +120,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_OnlyByNodeType) {
                      {"Concat", "ReduceSum", "Add", "Mul"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_OnlyByNodeName) {
+TEST_F(SkipFuseConfigTest, ParseConfig_OnlyByNodeName) {
   std::string config_content = 
     "# Only node names\n"
     "[ByNodeName]\n"
@@ -133,7 +133,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_OnlyByNodeName) {
                      {"emb_gather1", "flash_concat2", "special_layer_1", "test_node_42"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_WithComments) {
+TEST_F(SkipFuseConfigTest, ParseConfig_WithComments) {
   std::string config_content = 
     "# This is a comment\n"
     "[ByNodeType]\n"
@@ -145,7 +145,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_WithComments) {
   ParseAndVerifyConfig(config_content, 2U, 0U, {"Concat", "ReduceSum"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_WithEmptyLines) {
+TEST_F(SkipFuseConfigTest, ParseConfig_WithEmptyLines) {
   std::string config_content = 
     "[ByNodeType]\n"
     "\n"
@@ -161,12 +161,12 @@ TEST_F(AutoFuseConfigTest, ParseConfig_WithEmptyLines) {
   ParseAndVerifyConfig(config_content, 2U, 1U, {"Concat", "ReduceSum"}, {"test_node"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_EmptyFile) {
+TEST_F(SkipFuseConfigTest, ParseConfig_EmptyFile) {
   std::string config_content = "";
   ParseAndVerifyConfig(config_content, 0U, 0U);
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_NonexistentFile) {
+TEST_F(SkipFuseConfigTest, ParseConfig_NonexistentFile) {
   std::string nonexistent_file = "./nonexistent_config_file.ini";
   
   std::unordered_set<std::string> skip_types;
@@ -178,7 +178,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_NonexistentFile) {
   EXPECT_EQ(skip_names.size(), 0U);
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_DuplicateEntries) {
+TEST_F(SkipFuseConfigTest, ParseConfig_DuplicateEntries) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -193,7 +193,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_DuplicateEntries) {
   ParseAndVerifyConfig(config_content, 2U, 1U, {"Concat", "Add"}, {"test_node"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_WithSpacesInNames) {
+TEST_F(SkipFuseConfigTest, ParseConfig_WithSpacesInNames) {
   std::string config_content = 
     "[ByNodeType]\n"
     "  Concat  \n"
@@ -206,7 +206,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_WithSpacesInNames) {
   ParseAndVerifyConfig(config_content, 2U, 2U, {"Concat", "ReduceSum"}, {"test_node_1", "test_node_2"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_InvalidSection) {
+TEST_F(SkipFuseConfigTest, ParseConfig_InvalidSection) {
   std::string config_content = 
     "[InvalidSection]\n"
     "SomeNode\n"
@@ -219,7 +219,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_InvalidSection) {
   ParseAndVerifyConfig(config_content, 1U, 1U, {"Concat"}, {"test_node"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_MixedCaseSection) {
+TEST_F(SkipFuseConfigTest, ParseConfig_MixedCaseSection) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -233,7 +233,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_MixedCaseSection) {
   ParseAndVerifyConfig(config_content, 1U, 1U, {"Concat"}, {"test_node"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_LongNodeNames) {
+TEST_F(SkipFuseConfigTest, ParseConfig_LongNodeNames) {
   std::string config_content = 
     "[ByNodeName]\n"
     "very_long_node_name_with_many_characters_that_should_still_work_correctly\n"
@@ -244,7 +244,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_LongNodeNames) {
                       "another_extremely_long_node_name_for_testing_purposes_123456789"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_SpecialCharacters) {
+TEST_F(SkipFuseConfigTest, ParseConfig_SpecialCharacters) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -255,7 +255,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_SpecialCharacters) {
   ParseAndVerifyConfig(config_content, 4U, 0U, {"Concat", "Add_v2", "Reduce-Sum", "Test.Node"});
 }
 
-TEST_F(AutoFuseConfigTest, ParseConfig_MultipleSections) {
+TEST_F(SkipFuseConfigTest, ParseConfig_MultipleSections) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -285,7 +285,7 @@ TEST_F(AutoFuseConfigTest, ParseConfig_MultipleSections) {
   EXPECT_TRUE(skip_names.count("another_node"));
 }
 
-TEST_F(AutoFuseConfigTest, AutoFuseConfig_SkipNodeTypes) {
+TEST_F(SkipFuseConfigTest, AutoFuseConfig_SkipNodeTypes) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -314,7 +314,7 @@ TEST_F(AutoFuseConfigTest, AutoFuseConfig_SkipNodeTypes) {
   EXPECT_EQ(lowering_config.skip_node_names.size(), 0U);
 }
 
-TEST_F(AutoFuseConfigTest, AutoFuseConfig_SkipNodeNames) {
+TEST_F(SkipFuseConfigTest, AutoFuseConfig_SkipNodeNames) {
   std::string config_content = 
     "[ByNodeName]\n"
     "emb_gather1\n"
@@ -343,7 +343,7 @@ TEST_F(AutoFuseConfigTest, AutoFuseConfig_SkipNodeNames) {
   EXPECT_TRUE(lowering_config.skip_node_names.count("special_layer_1"));
 }
 
-TEST_F(AutoFuseConfigTest, AutoFuseConfig_MixedSkipConfig) {
+TEST_F(SkipFuseConfigTest, AutoFuseConfig_MixedSkipConfig) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
@@ -376,7 +376,7 @@ TEST_F(AutoFuseConfigTest, AutoFuseConfig_MixedSkipConfig) {
   EXPECT_TRUE(lowering_config.skip_node_names.count("test_node_2"));
 }
 
-TEST_F(AutoFuseConfigTest, AutoFuseConfig_ClearSkipConfig) {
+TEST_F(SkipFuseConfigTest, AutoFuseConfig_ClearSkipConfig) {
   std::string config_content = 
     "[ByNodeType]\n"
     "Concat\n"
