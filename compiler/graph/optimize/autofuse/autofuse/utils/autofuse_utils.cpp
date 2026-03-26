@@ -273,7 +273,7 @@ std::string ProcessFusedFormat(const std::vector<std::string> &parts) {
     // 判断是否以Concat开头（忽略大小写）
     std::string lower_type = type;
     std::transform(lower_type.begin(), lower_type.end(), lower_type.begin(), ::tolower);
-    if (lower_type.substr(0, 6) == "concat") {
+    if ((lower_type.substr(0, 6) == "concat") || (lower_type.substr(0, 6) == "pack")) {
       concat_idx = static_cast<int32_t>(i);
       break;
     }
@@ -293,7 +293,7 @@ std::string ProcessFusedFormat(const std::vector<std::string> &parts) {
     if (!before_concat.empty()) {
       result += "_" + CountToStr(before_concat);
     }
-    result += "_" + std::to_string(concat_count) + concat_type;
+    result += "_" + concat_type;
     if (!after_concat.empty()) {
       result += "_" + CountToStr(after_concat);
     }

@@ -24,14 +24,16 @@ constexpr const char *kData = "Data";
 constexpr const char *kOutput = "Output";
 constexpr const char *kWorkspace = "Workspace";
 constexpr const char *kScalar = "Scalar";
+constexpr const char *kStore = "Store";
 } // namespace NodeType
 
 // 魔法数字常量
 constexpr int64_t kInvalidLoopAxis = -1;
 constexpr int64_t kInvalidAxisId = -1;
-constexpr size_t kIndentSpaces = 2; // 循环缩进空格数
-constexpr size_t kPropertyIndent = 8; // 属性缩进空格数 (VIEW 2)
-constexpr size_t kNodeIndent = 4; // 节点缩进空格数
+constexpr size_t kIndentSpaces = 2UL; // 循环缩进空格数
+constexpr size_t kPropertyIndent = 8UL; // 属性缩进空格数 (VIEW 2)
+constexpr size_t kTensorPropertyIndent = 12UL; // tensor 属性缩进空格数 (VIEW 2)
+constexpr size_t kNodeIndent = 4UL; // 节点缩进空格数
 
 /**
  * @brief Dtype 信息结构体
@@ -193,17 +195,19 @@ struct AxisTreeNode {
  * @brief Queue 节点信息
  */
 struct QueueNodeInfo {
-  size_t topo_id;
+  size_t topo_id = 0;
   std::string node_name;
-  int32_t reuse_id;
+  int32_t reuse_id = -1;
+  std::string size_str;  // tensor 的 vector<> 格式大小
 };
 
 /**
  * @brief Queue 信息
  */
 struct QueueInfo {
-  int32_t que_id;
-  int32_t depth;
+  int32_t que_id = 0;
+  int32_t depth = 0;
+  int32_t buf_num = 0;   // queue 的 buf_num
   std::string position;
   std::vector<QueueNodeInfo> nodes;
 };
@@ -212,15 +216,18 @@ struct QueueInfo {
  * @brief Buffer 节点信息
  */
 struct BufferNodeInfo {
-  size_t topo_id;
+  size_t topo_id = 0;
   std::string node_name;
+  std::string size_str;  // tensor 的 vector<> 格式大小
+  bool is_tmpbuf = false;  // 是否为节点的 tmpbuf
+  int32_t tmpbuf_idx = 0;  // tmpbuf 的索引（仅当 is_tmpbuf=true 时有效）
 };
 
 /**
  * @brief Buffer 信息
  */
 struct BufferInfo {
-  int32_t buf_id;
+  int32_t buf_id = 0;
   std::vector<BufferNodeInfo> nodes;
 };
 
@@ -245,11 +252,10 @@ std::string DumpGraphStructureView(const ascir::Graph &graph, const DumpContext 
 /**
  * @brief 生成 VIEW 3: Memory Layout 的文本
  * @param graph 图对象
- * @param ctx Dump 上下文（缓存重复计算的数据）
  * @param verbose 是否显示详细信息
  * @return VIEW 3 的文本内容
  */
-std::string DumpMemoryLayoutView(const ascir::Graph &graph, const DumpContext &ctx, bool verbose);
+std::string DumpMemoryLayoutView(const ascir::Graph &graph, bool verbose);
 
 /**
  * @brief 生成完整的图转储文本（包含三个 VIEW）

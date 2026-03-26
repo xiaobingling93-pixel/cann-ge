@@ -281,6 +281,20 @@ bool IsNodeShouldLowering(const NodePtr &node) {
     return false;
   }
 
+  const auto &skip_node_types = AutoFuseConfig::LoweringConfig().skip_node_types;
+  const auto &skip_node_names = AutoFuseConfig::LoweringConfig().skip_node_names;
+  
+  if (!skip_node_types.empty() && skip_node_types.find(node->GetType()) != skip_node_types.end()) {
+    GELOGI("Skip lowering node %s, because node type %s is in skip list", 
+             node->GetName().c_str(), node->GetType().c_str());
+    return false;
+  }
+  
+  if (!skip_node_names.empty() && skip_node_names.find(node->GetName()) != skip_node_names.end()) {
+    GELOGI("Skip lowering node %s, because node name is in skip list", node->GetName().c_str());
+    return false;
+  }
+
   auto in_anchors = node->GetAllInDataAnchors();
   auto out_anchors = node->GetAllOutDataAnchors();
   bool is_indata_empty = std::any_of(in_anchors.begin(), in_anchors.end(), [](const InDataAnchorPtr& in_anchor) -> bool {

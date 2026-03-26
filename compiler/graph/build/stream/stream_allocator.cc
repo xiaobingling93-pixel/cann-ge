@@ -678,6 +678,16 @@ Status StreamAllocator::InsertSyncNodesByLogicStream(int64_t &stream_num, int64_
 Status StreamAllocator::SplitStreamAndRefreshTaskDef(
     std::unordered_map<int64_t, std::vector<domi::TaskDef>> &node_id_2_node_tasks, int64_t &stream_num,
     int64_t &event_num, int64_t &notify_num) {
+  int64_t value = 0;
+  rtError_t rt_ret = rtGetRtCapability(FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH, 0U, &value);
+  GE_CHK_BOOL_RET_STATUS(rt_ret == RT_ERROR_NONE, RT_FAILED, "Call rtGetRtCapability failed, ret = 0x%x",
+                         static_cast<uint32_t>(rt_ret));
+  if (value == RT_CAPABILITY_SUPPORT) {
+    GELOGI("Move split stream from ge to rts");
+    GE_ASSERT_SUCCESS(PostProcessOfSplitStreams());
+    return SUCCESS;
+  }
+
   GE_ASSERT_SUCCESS(AssignSingleStream(node_id_2_node_tasks), "[Assign][SingleStream] failed! graph:%s",
                     whole_graph_->GetName().c_str());
 

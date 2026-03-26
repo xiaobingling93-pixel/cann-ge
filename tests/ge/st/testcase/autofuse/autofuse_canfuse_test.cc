@@ -758,7 +758,7 @@ TEST_F(TestCanfusePass, test_canfuse_ele_and_ele_vertical_fusion) {
       .Install(FakeOp(EXP).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
 
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2;
   const auto compute_graph = gert::ShareGraph::BuildStaticAbsReluAbsExpNodeGraph();
   ASSERT_NE(compute_graph, nullptr);
@@ -817,7 +817,7 @@ TEST_F(TestCanfusePass, test_canfuse_ele_and_bro_vertical_fusion) {
       .Install(FakeOp(ADD).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
 
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2;
   const auto compute_graph = gert::ShareGraph::BuildStaticAbsReluAddNodeGraph();
   ASSERT_NE(compute_graph, nullptr);
@@ -881,7 +881,7 @@ TEST_F(TestCanfusePass, test_canfuse_ele_and_red_vertical_fusion) {
       .Install(FakeOp(REDUCESUM).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
 
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2U;
   const auto compute_graph = gert::ShareGraph::BuildStaticAbsReluReduceSumNodeGraph();
   ASSERT_NE(compute_graph, nullptr);
@@ -942,7 +942,7 @@ TEST_F(TestCanfusePass, test_canfuse_bro_and_ele_vertical_fusion) {
       .Install(FakeOp("Relu").InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(ADD).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2U;
   const auto compute_graph = gert::ShareGraph::BuildStaticReluAddAbsReluNodeGraph();
   ASSERT_NE(compute_graph, nullptr);
@@ -1006,7 +1006,7 @@ TEST_F(TestCanfusePass, test_canfuse_bro_and_red_vertical_fusion) {
       .Install(FakeOp(ADD).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
 
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2U;
   const auto compute_graph = gert::ShareGraph::BuildStaticReluAddReduceSumNodeGraph();
   ASSERT_NE(compute_graph, nullptr);
@@ -1069,7 +1069,7 @@ TEST_F(TestCanfusePass, test_canfuse_bro_and_bro_vertical_fusion) {
       .Install(FakeOp("Relu").InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(ADD).InfoStoreAndBuilder("AIcoreEngine"))
       .Install(FakeOp(NETOUTPUT).InfoStoreAndBuilder("AIcoreEngine"));
-  int64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
+  uint64_t max_fused_nodes_num_ = AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops;
 
   AutoFuseConfig::MutableLoweringConfig().max_fused_loop_ops = 2U;
   const auto compute_graph = gert::ShareGraph::BuildStaticReluAddAddNodeGraph();

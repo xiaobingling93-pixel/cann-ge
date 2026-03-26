@@ -21,7 +21,7 @@
 
 namespace ge {
 struct LoweringConfig {
-  size_t max_loop_ops = 64U;
+  uint64_t max_loop_ops = 64U;
   size_t max_loop_loads = 4U;
   size_t max_buffer_readers = 4U;
 };

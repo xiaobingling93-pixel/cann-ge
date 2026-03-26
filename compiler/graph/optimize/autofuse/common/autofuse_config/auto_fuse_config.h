@@ -102,7 +102,7 @@ class LoweringStrategyConfig : AutoFuseConfigBase {
  public:
   LoweringStrategyConfig() = default;
   ~LoweringStrategyConfig() override = default;
-  int64_t max_fused_loop_ops{64};       // loop融合循环节点的最大loop ops数
+  uint64_t max_fused_loop_ops{64};       // loop融合循环节点的最大loop ops数
   int64_t max_fused_loop_loads{4};      // loop融合循环节点的最大load数
   int64_t max_k_for_vectorize_mm{256};  // 在n=1时，k小于等于该值，则触发将mm转换为mul+reduce的vector计算
 };

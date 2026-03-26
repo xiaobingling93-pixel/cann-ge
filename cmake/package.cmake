@@ -287,6 +287,7 @@ elseif("${BUILD_COMPONENT}" STREQUAL "ge-executor")
     else()
        # MDC 运行态编译
         install(TARGETS ge_common ge_common_base davinci_executor hybrid_executor gert register graph graph_base acl_cblas
+                        acl_mdl acl_mdl_impl acl_op_executor acl_op_executor_impl om2_executor ge_executor_shared lowering
                 LIBRARY DESTINATION ${BUILD_COMPONENT}/lib64
                 ARCHIVE DESTINATION ${BUILD_COMPONENT}/lib64
         )
