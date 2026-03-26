@@ -2,7 +2,7 @@
 
 ## 1. 环境准备
 
-本项目支持源码编译，在源码编译前，需要确保已经安装CANN软件（Ascend-cann-toolkit和Ascend-cann-ops（可选））。
+本项目支持源码编译，在源码编译前，需要确保已经安装CANN软件（Ascend-cann-toolkit和Ascend-cann-ops（可选）），若运行样例，还需要安装NPU驱动和固件。
 
 软件安装方式请根据如下描述进行选择：
 
@@ -19,42 +19,51 @@
 
    <img src="./figures/cloudIDE.png" alt="云平台"  width="750px" height="90px">
 
-2. 根据页面提示创建并启动云开发环境，单击“`连接 > WebIDE `”进入算子一站式开发平台，开源项目的资源默认在`/mnt/workspace`目录下。
+2. 根据页面提示创建并启动云开发环境，单击“`连接 > WebIDE`”进入算子一站式开发平台，开源项目的资源默认在`/mnt/workspace`目录下。
 
    <img src="./figures/webIDE.png" alt="云平台"  width="1000px" height="150px">
 
+
 ### 方式二：手动安装软件包
 
-**场景1：已发布版本**
+1. **安装驱动与固件（可选，仅运行[样例](../examples/README.md)依赖）**
 
-如果您想体验**官网正式发布的CANN包**能力，请访问[CANN官网下载中心](https://www.hiascend.com/cann/download)，选择对应版本CANN软件包（仅支持CANN 8.5.0及后续版本）进行安装。
+    驱动与固件的下载和安装操作请参考《[CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)》中“准备软件包”和“安装NPU驱动和固件”章节。驱动与固件是运行样例依赖，若仅编译环境，可以不安装。
 
-**场景2：master版本**
+2. **安装CANN包**    
 
-如果您想体验**master分支最新能力**，单击[下载链接](https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/master)获取获取软件包，按照如下步骤进行安装。更多安装指导请参考[CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)。
+   **场景1：体验master版本能力或基于master版本进行开发**
 
-1. 安装社区版CANN toolkit包。
+     请单击[下载链接](https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/master)获取最新时间版本，并根据产品型号和环境架构下载对应包。安装命令如下，更多指导请参考[CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)。
 
-    ```bash
-    # 确保安装包具有可执行权限
-    chmod +x Ascend-cann-toolkit_${cann_version}_linux-${arch}.run
-    # 安装命令
-    ./Ascend-cann-toolkit_${cann_version}_linux-${arch}.run --install --install-path=${install_path}
-    ```
+     1. 安装CANN Toolkit开发套件包。
 
-    - `${cann_version}`：表示CANN包版本号。
-    - `${arch}`：表示CPU架构，如`aarch64`、`x86_64`。
-    - `${install_path}`：表示指定安装路径，需要与toolkit包安装在相同路径，root用户默认安装在`/usr/local/Ascend`目录。
+        ```bash
+        # 确保安装包具有可执行权限
+        chmod +x Ascend-cann-toolkit_${cann_version}_linux-${arch}.run
+        # 安装命令
+        /Ascend-cann-toolkit_${cann_version}_linux-${arch}.run --install    --install-path=${install_path}
+        ```
+
+        - `${cann_version}`：表示CANN包版本号。
+        - `${arch}`：表示CPU架构，如`aarch64`、`x86_64`。
+        - `${install_path}`：表示指定安装路径，需要与Toolkit包安装在相同路径，root用户默认安装在`/usr/local/Ascend`目录。
     
-2. 安装社区版CANN ops包（可选，仅运行[样例](../examples/README.md)依赖）。
+     2. 安装CANN ops算子包（可选，仅运行[样例](../examples/README.md)依赖）。
 
-    ```bash
-    # 确保安装包具有可执行权限
-    chmod +x Ascend-cann-${soc_name}-ops_${cann_version}_linux-${arch}.run
-    # 安装命令
-    ./Ascend-cann-${soc_name}-ops_${cann_version}_linux-${arch}.run --install --install-path=${install_path}
-    ```
-    其中`${soc_name}`表示NPU型号名称。
+        ```bash
+        # 确保安装包具有可执行权限
+        chmod +x Ascend-cann-${soc_name}-ops_${cann_version}_linux-${arch}.run
+        # 安装命令
+        ./Ascend-cann-${soc_name}-ops_${cann_version}_linux-${arch}.run     --install --install-path=${install_path}
+        ```
+
+        其中`${soc_name}`表示NPU型号名称。
+
+   **场景2：体验已发布版本能力或基于已发布版本进行开发**
+
+    如果您想体验**官网正式发布的CANN包**能力，请访问[CANN官网下载中心](https://www.hiascend.com/cann/download)，选择对应版本CANN软件包（仅支持CANN 8.5.0及后续版本）进行安装。   
+
 
 ## 2. 环境验证
 
@@ -66,7 +75,6 @@ cat /usr/local/Ascend/cann/<arch>-linux/ascend_toolkit_install.info
 # 查看CANN ops的version字段提供的版本信息（默认路径安装），<opsname>表示待查询的ops子包的名称，请用户根据实际安装路径替换。WebIDE场景下，请将/usr/local替换为/home/developer。
 cat /usr/local/Ascend/cann/<arch>-linux/ascend_ops_install.info
 ```
-
 
 ## 3. 环境变量配置
 
@@ -147,7 +155,6 @@ bash scripts/check_env.sh
 > [!NOTE] 注意
 > 环境检查脚本中所有的检查项和版本约束严格来源于 docs/build.md 和 requirements.txt，如文档和依赖更新，请同步修改[脚本](../scripts/check_env.sh)。
 
-
 ### 4.3 编译
 
 > [!NOTE] 注意
@@ -160,7 +167,7 @@ bash scripts/check_env.sh
   bash build.sh --<pkg_type>
   ```
 
---<pkg_type>（可选）：表示子包类型，取值包括`ge_compiler`、`ge_executor`与`dflow`，不同编译参数编译不同子包，不设置则同时编译三种子包。
+--\<pkg_type>（可选）：表示子包类型，取值包括`ge_compiler`、`ge_executor`与`dflow`，不同编译参数编译不同子包，不设置则同时编译三种子包。
 
 更多编译参数可以通过`bash build.sh -h`查看；编译成功后，会在`build_out`目录下生成`cann-<component>_<version>_<arch>.run`软件包。
 
@@ -171,7 +178,7 @@ bash scripts/check_env.sh
 ### 4.4 本地验证（UT/ST）
 
 > [!NOTE] 注意
-> 若您的编译环境无法访问网络，请确保已经完成了[4. 编译](#4-编译)章节中的[离线编译指导](offline_compile.md)。
+> 若您的编译环境无法访问网络，请确保已经完成了[4.3 编译](#4.3-编译)章节中的[离线编译指导](offline_compile.md)。
 
 编译完成后，用户可以进行开发者测试。 
 
@@ -183,6 +190,7 @@ bash scripts/check_env.sh
   #编译执行特定的UT测试用例（推荐）
   bash tests/run_test.sh --ut=${TARGET}
   ```
+
   --ut（必选）：可以指定`${TARGET}`编译特定对象的ut测试用例，取值可通过`bash tests/run_test.sh -h`查看。
 
 - 编译执行`ST`测试用例：
@@ -193,8 +201,8 @@ bash scripts/check_env.sh
   #编译执行特定的ST测试用例（推荐）
   bash tests/run_test.sh --st=${TARGET}
   ```
-  --st（必选）：可以指定`${TARGET}`编译特定对象的st测试用例，取值可通过`bash tests/run_test.sh -h`查看。
 
+  --st（必选）：可以指定`${TARGET}`编译特定对象的st测试用例，取值可通过`bash tests/run_test.sh -h`查看。
 
 - 统计代码覆盖率:
 
@@ -205,12 +213,12 @@ bash scripts/check_env.sh
   - 编译运行环境上的 `gcc` 和 `gcov` 必须是配套版本
 
   **使用方法**：
+
   ```bash
   bash tests/run_test.sh -c [其他参数]
   ```
 
   **输出位置**：生成的覆盖率文件位于代码根目录下的 `cov/` 目录中。
-
 
 - 清理产物：
 
@@ -222,7 +230,6 @@ bash scripts/check_env.sh
 
 > [!NOTE]说明
 > `tests/run_test.sh`脚本支持的详细命令参数可通过`bash tests/run_test.sh -h`查看。
-
 
 ### 4.5 安装与卸载
 
