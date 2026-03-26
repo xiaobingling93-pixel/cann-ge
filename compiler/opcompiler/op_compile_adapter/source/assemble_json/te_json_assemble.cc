@@ -1707,6 +1707,10 @@ void TeJsonAssemble::GenerateSocInfoJson(const std::vector<ConstTbeOpInfoPtr> &t
     socInfoJson["op_debug_level"] = TeConfigInfo::Instance().GetOpDebugLevelStr();
     socInfoJson["deterministic"] = TeContextUtils::GetDeterministic();
     socInfoJson["vector_fp_ceiling"] = TeConfigInfo::Instance().GetFpCeilingMode();
+    if (TeContextUtils::GetDeterministicLevel() != "0") {
+        TE_DBGLOG("Soc_info set deterministic_level [%s].", TeContextUtils::GetDeterministicLevel().c_str());
+        socInfoJson["deterministic_level"] = TeContextUtils::GetDeterministicLevel();
+    }
     socInfoJson[kEnableVectorCore] = enableVectorCore;
     if (!opDebugConfig.empty()) {
         socInfoJson["op_debug_config"] = opDebugConfig;
