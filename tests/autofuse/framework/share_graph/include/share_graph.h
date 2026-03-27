@@ -42,6 +42,7 @@ struct ShareGraph {
   static ge::ComputeGraphPtr ScalarBrcFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr LoadBrcFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr CastCastFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype);
+  static ge::ComputeGraphPtr ScalarCastAddFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype);  
   static ge::ComputeGraphPtr CastCastNanFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype);
   static ge::ComputeGraphPtr CastCastIsFiniteFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype);
   static ge::ComputeGraphPtr CastCastReciprocalFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype);

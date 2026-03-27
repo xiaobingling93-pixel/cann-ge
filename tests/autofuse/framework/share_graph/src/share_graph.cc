@@ -2241,6 +2241,52 @@ static void CreateCastAbsAscGraph(ge::AscGraph &graph, size_t dims_size, ge::Dat
 }
 
 /**
+ *      output
+ *         |
+ *       store
+ *         |
+ *        add
+ *       /   \
+ *   load0    cast
+ *     |       |
+ *   data0   Scalar
+ */
+static void CreateScalarCastAddAscGraph(ge::AscGraph &graph, size_t dims_size, ge::DataType in_dtype,
+                                  ge::DataType out_dtype) {
+  ge::ascir_op::Data data("data0", graph);
+  data.ir_attr.SetIndex(0);
+  data.y.dtype = out_dtype;
+
+  ge::ascir_op::Load load("load");
+  load.x = data.y;
+  load.y.dtype = out_dtype;
+
+  ge::ascir_op::Scalar scalar("scalar", graph);
+  scalar.ir_attr.SetValue("1.0");
+  scalar.y.dtype = in_dtype;
+
+  ge::ascir_op::Cast cast("cast");
+  cast.x = scalar.y;
+  cast.y.dtype = out_dtype;
+
+  ge::ascir_op::Add add("add");
+  add.x1 = load.y;
+  add.x2 = cast.y;
+  add.y.dtype = out_dtype;
+
+  ge::ascir_op::Store store("store");
+  store.x = add.y;
+  store.y.dtype = out_dtype;
+
+  ge::ascir_op::Output output("output");
+  output.x = store.y;
+  output.ir_attr.SetIndex(0);
+  output.y.dtype = out_dtype;
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+/**
  *       data0
  *         |
  *       AscBc
@@ -2264,6 +2310,37 @@ ge::ComputeGraphPtr ShareGraph::CastCastFusedGraph(size_t dims_size, ge::DataTyp
   auto ascbc_node = compute_graph->FindNode("ascbc");
   ge::AscGraph sub_graph("cast_abs");
   CreateCastAbsAscGraph(sub_graph, dims_size, in_dtype, out_dtype);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+/**
+ *       data0
+ *         |
+ *       AscBc
+ *        |
+ *     NetOutput
+ */
+ge::ComputeGraphPtr ShareGraph::ScalarCastAddFusedGraph(size_t dims_size, ge::DataType in_dtype, ge::DataType out_dtype) {
+  auto builder = GraphBuilder("scalar_cast_add_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("scalar_cast_add");
+  CreateScalarCastAddAscGraph(sub_graph, dims_size, in_dtype, out_dtype);
 
   std::string sub_graph_str;
   ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);

@@ -579,6 +579,7 @@ codegen_e2e_st() {
                     compare_x2_tensor_int64_eq_test_e2e \
                     compare_x2_tensor_int64_gt_test_e2e \
                     load_to_store_and_abs_test_e2e \
+                    scalar_cast_add_test_e2e  \
                     concat_all_aligned_test_e2e \
                     concat_to_stores_test_e2e \
                     load_unalign_pad_test_e2e \
@@ -678,6 +679,7 @@ codegen_e2e_st() {
                       asinh_bf16_test_e2e_v2 \
                       atan_bf16_test_e2e_v2 \
                       atanh_bf16_test_e2e_v2 \
+                      scalar_cast_add_test_e2e_v2 \
                       cosh_bf16_test_e2e_v2 \
                       digamma_bf16_test_e2e_v2 \
                       erfc_bf16_test_e2e_v2 \

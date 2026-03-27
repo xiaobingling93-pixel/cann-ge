@@ -232,7 +232,7 @@ bool IsEmptyTensorSence(const ascir::FusedScheduledResult& fused_schedule_result
 
 bool IsSupportBlkTensorInput(const ge::AscNodePtr &next_node) {
   static const std::set<std::string> supported_ops = {
-    "Where", "Select", "Eq", "Ne", "Gt", "Lt", "Ge", "Le"
+    "Where", "Select", "Eq", "Ne", "Gt", "Lt", "Ge", "Le", "Cast"
   };
   return (supported_ops.count(next_node->GetType()) > 0U);
 }
