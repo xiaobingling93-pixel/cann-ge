@@ -299,23 +299,6 @@ bool IsMulInputsCanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePt
   return true;
 }
 
-bool IsB8WithoutCast(NodePtr &next_node) {
-  GeTensorDescPtr output_tensor_desc;
-  GE_ASSERT_SUCCESS(asc_adapt::GetOutputTensorDesc(next_node, output_tensor_desc));
-  DataType dtype = output_tensor_desc->GetDataType();
-  if (dtype != DT_UINT8 && dtype != DT_INT8) {
-    return false;
-  }
-  // 判断紧邻的下一个节点是不是cast
-  NodePtr peek_node;
-  if (GetSingleNextNode(next_node, peek_node) != SUCCESS || peek_node->GetType() != kCastType) {
-    GELOGI("Node %s(%s) output dtype is B8 and next node is not Cast, stop backward.", next_node->GetName().c_str(),
-           next_node->GetType().c_str());
-    return true;
-  }
-  return false;
-}
-
 bool CanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePtr> &bro_nodes, AscGraph &graph,
                  std::set<NodePtr> &mul_input_nodes) {
   if (next_node->GetType() == kStoreType) {
@@ -336,11 +319,6 @@ bool CanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePtr> &bro_nod
     // Broadcast不支持的dtype不进行后移
     GELOGI("Node %s(%s) can not backward with dtype(%s)", next_node->GetName().c_str(), next_node->GetType().c_str(),
            TypeUtils::DataTypeToSerialString(output_dtype).c_str());
-    return false;
-  }
-
-  if (IsB8WithoutCast(next_node)) {
-    // 节点输出为B8时，需要下一个节点为Cast才允许后移
     return false;
   }
 
@@ -772,7 +750,7 @@ Status ExtractBroadcastChainFromNode(const NodePtr &node, std::vector<NodePtr> &
 Status TraceBranchToMergeNode(const NodePtr &start_node, NodePtr &merge_node, std::vector<NodePtr> &branch_nodes) {
   NodePtr cur_node = start_node;
   std::unordered_set<NodePtr> visited_nodes; // 记录已经访问过的节点，避免循环依赖
-  
+
   // 循环追踪分支，直到找到回归节点或确定无法找到
   while (cur_node != nullptr) {
     // 检查是否存在循环依赖
@@ -781,7 +759,7 @@ Status TraceBranchToMergeNode(const NodePtr &start_node, NodePtr &merge_node, st
       return FAILED;
     }
     visited_nodes.insert(cur_node);
-    
+
     // 检查是否是多输入节点
     if (!asc_adapt::IsSingleInNode(cur_node)) {
       merge_node = cur_node;
@@ -809,7 +787,7 @@ Status TraceBranchToMergeNode(const NodePtr &start_node, NodePtr &merge_node, st
 
     cur_node = next_node;
   }
-  
+
   // 无法找到回归节点
   GELOGE(FAILED, "Failed to find merge node in TraceBranchToMergeNode");
   return FAILED;
