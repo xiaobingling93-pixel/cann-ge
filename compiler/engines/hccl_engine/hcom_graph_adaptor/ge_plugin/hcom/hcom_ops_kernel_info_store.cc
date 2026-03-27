@@ -339,11 +339,9 @@ HcclResult HcomOpsKernelInfoStore::CheckCommunicatorValidity(const char *group, 
   HcclComm commHandle;
   if (!isCommunicatorValid && (HcomGetCommHandleByGroup(group, &commHandle) != HCCL_SUCCESS)) {
     REPORT_PREDEFINED_ERR_MSG(
-        "EI0004", std::vector<const char *>({"error_reason", "ranktable_path"}),
-        std::vector<const char *>({"No valid RankTable found, Please Check RankTable Path or Master Info ENV"
-                                   " config or hccl initialization has been called before call this function",
-                                   "The ranktable path "
-                                   "configured in the training can be found in the plogs."}));
+        "EI0004", std::vector<const char *>({"ranktable_path", "error_reason"}),
+        std::vector<const char *>({ "The ranktable path configured in the training can be found in the plogs.",
+        "The rankTable file path does not exist, the permission is insufficient, or the JSON format is incorrect."}));
     HCCL_ERROR(
         "[%s][%s]No valid communicator found, please check the RankTable Path or Master Info config or hccl "
         "initialization has been called before call this function",

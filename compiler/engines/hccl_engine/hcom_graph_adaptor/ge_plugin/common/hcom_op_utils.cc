@@ -532,10 +532,9 @@ HcclResult HcomOpUtils::CheckAlltoAllvcRank(const ge::Node &node, const int64_t 
       HCCL_E_PARA);
 
   if (rankId != alltoallvcRank) {
-    REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "parameter", "value", "tips"}),
-                              std::vector<const char *>({"CheckAlltoAllvcRank", "rankId",
-                                                         std::to_string(rankId).c_str(), "please check rankId"}));
-    ;
+    REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "value", "parameter", "expect"}),
+                              std::vector<const char *>({"CheckAlltoAllvcRank", std::to_string(alltoallvcRank).c_str(), "rankId",
+                                                         std::to_string(rankId).c_str()}));
   }
   CHK_PRT_RET(rankId != alltoallvcRank,
               HCCL_ERROR("[%s][%s]errNo[0x%016llx] AlltoAllvc rank is invalid. "
