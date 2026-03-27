@@ -28,6 +28,8 @@ add_library(test_ascir_ut OBJECT
     reg_func/test_reg_func_gather.cpp
     reg_func/test_reg_func_erf.cpp
     reg_func/test_reg_func_axpy.cpp
+    reg_func/test_reg_func_welford.cpp
+    reg_func/test_reg_func_abs.cpp
     code_dumper_unittest.cc
     ascir_utils_unittest.cc
 )

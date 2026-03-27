@@ -28,7 +28,8 @@ add_library(test_ascendc OBJECT
     ./test_gather.cpp
     ./test_subs.cpp
     ./test_floor_div.cpp
-    ./test_brc_inline_api.cpp)
+    ./test_brc_inline_api.cpp
+    ./test_abs_extend.cpp)
 target_link_libraries(test_ascendc
     ascendc_api_extend
     tikicpulib_ascend910B1

@@ -37,6 +37,7 @@ set(ascendc_api_extend_src
     scalar_mul.h
     scalar_maximum.h
     scalar_minimum.h
+    abs.h
     )
 
 set(generated_files)
