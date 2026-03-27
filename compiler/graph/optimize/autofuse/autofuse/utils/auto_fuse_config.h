@@ -218,6 +218,7 @@ class AutoFuseConfig {
     bool experimental_disable_lifting{false};
     std::unordered_set<std::string> skip_node_types;     // 需要跳过lowering的节点类型
     std::unordered_set<std::string> skip_node_names;     // 需要跳过lowering的节点名称
+    bool enable_subgraph_recover{false};  // 是否使能融合子图还原落盘（--subgraph_recover=true）
   };
 
  public:
@@ -386,6 +387,10 @@ class AutoFuseConfig {
     bool disable_lifting =
         all_flags.find("--disable_lifting") != all_flags.end() && all_flags["--disable_lifting"] == "true";
     this->lowering_strategy_config_.experimental_disable_lifting = disable_lifting;
+
+    bool enable_subgraph_recover =
+        all_flags.find("--subgraph_recover") != all_flags.end() && all_flags["--subgraph_recover"] == "true";
+    this->lowering_strategy_config_.enable_subgraph_recover = enable_subgraph_recover;
     
     auto skip_node_names_cfg = all_flags.find("--skip_node_names_cfg");
     if (skip_node_names_cfg != all_flags.end()) {

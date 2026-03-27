@@ -24,6 +24,9 @@
 #include "op_helper/lower_concat_helper.h"
 #include "op_helper/lower_split_helper.h"
 #include "common/scope_tracing_recorder.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils_ex.h"
+#include "graph/utils/file_utils.h"
 
 namespace ge {
 using namespace autofuse;
@@ -114,6 +117,45 @@ graphStatus ClearControlEdgeRelation(std::map<std::string, std::vector<NodePtr>>
   }
   return GRAPH_SUCCESS;
 }
+
+graphStatus DumpSubgraphFromOriginNodes(const AutoFuseAttrs &fuse_attrs,
+                                        const NodePtr &asc_node,
+                                        const ComputeGraphPtr &pre_lowering_graph) {
+  GE_ASSERT_NOTNULL(asc_node);
+  GE_ASSERT_NOTNULL(pre_lowering_graph);
+
+  const auto &origin_nodes = fuse_attrs.GetOriginNodes();
+  GE_ASSERT(!origin_nodes.empty(), "No origin nodes to dump for node %s", asc_node->GetName().c_str());
+
+  std::set<NodePtr> node_set;
+  for (const ge::Node *raw_node : origin_nodes) {
+    GE_ASSERT_NOTNULL(raw_node);
+    const NodePtr node_ptr = pre_lowering_graph->FindNode(raw_node->GetName());
+    GE_ASSERT(node_ptr != nullptr, "Node %s not found in pre-lowering graph when dumping subgraph for %s",
+              raw_node->GetName().c_str(), asc_node->GetName().c_str());
+    node_set.insert(node_ptr);
+  }
+
+  const std::string subgraph_name = asc_node->GetName() + "_origin_subgraph";
+  const ComputeGraphPtr sub_compute_graph = GraphUtils::BuildSubgraphWithNodes(pre_lowering_graph, node_set, subgraph_name);
+  GE_ASSERT_NOTNULL(sub_compute_graph);
+
+  AutofuseUtils::DumpGEGraph(sub_compute_graph, kLoweringDir, subgraph_name);
+  AutofuseUtils::DumpGraphToOnnx(*sub_compute_graph, kLoweringDir, subgraph_name);
+
+  const std::string kSubgraphRecoverDir = "./subgraph_recover";
+  if (mmAccess2(kSubgraphRecoverDir.c_str(), M_F_OK) != EN_OK) {
+    GE_ASSERT(CreateDir(kSubgraphRecoverDir) == 0,
+              "Failed to create subgraph_recover directory: %s", kSubgraphRecoverDir.c_str());
+  }
+
+  ge::Graph ge_graph = GraphUtilsEx::CreateGraphFromComputeGraph(sub_compute_graph);
+  const std::string file_name = kSubgraphRecoverDir + "/" + subgraph_name + ".om";
+  const graphStatus ret = ge_graph.SaveToFile(file_name.c_str());
+  GE_ASSERT(ret == GRAPH_SUCCESS, "SaveToFile failed for subgraph %s, ret=%d", file_name.c_str(), ret);
+  GELOGI("Saved origin subgraph to file: %s", file_name.c_str());
+  return GRAPH_SUCCESS;
+}
 }  // namespace
 
 graphStatus AscIrLowerer::Lowering(const ComputeGraphPtr &graph) {
@@ -125,6 +167,12 @@ graphStatus AscIrLowerer::Lowering(const ComputeGraphPtr &graph) {
     GELOGI("Skip lowering for graph %s as it has been lowered", graph->GetName().c_str());
     do_lowered_ = false;
     return GRAPH_SUCCESS;
+  }
+  // 若使能子图落盘，提前深拷贝原始图
+  if (ge::AutoFuseConfig::LoweringConfig().enable_subgraph_recover) {
+    pre_lowering_graph_ = ComGraphMakeShared<ComputeGraph>(graph->GetName() + "_pre_lowering");
+    GE_ASSERT_NOTNULL(pre_lowering_graph_);
+    GE_ASSERT_GRAPH_SUCCESS(GraphUtils::CopyComputeGraph(graph, pre_lowering_graph_));
   }
   GE_ASSERT_GRAPH_SUCCESS(ProcessControlEdge(graph));
   const auto backend_spec = optimize::BackendSpec::GetInstance();
@@ -270,6 +318,10 @@ graphStatus AscIrLowerer::DfxForAscBackendOp(const ComputeGraphPtr &graph) const
     }
     // reconstruct the original computer graph for each ascbackend node
     GE_ASSERT_GRAPH_SUCCESS(LoweringManager::GetFusedOriginComputeGraph(*fuse_attrs, node));
+    // dump origin subgraph to file (controlled by --subgraph_recover=true in AUTOFUSE_DFX_FLAGS)
+    if (ge::AutoFuseConfig::LoweringConfig().enable_subgraph_recover) {
+      GE_ASSERT_GRAPH_SUCCESS(DumpSubgraphFromOriginNodes(*fuse_attrs, node, pre_lowering_graph_));
+    }
     // set data dump attr for ascbackend node
     GE_ASSERT_SUCCESS(SetDataDumpAttrForAscBackend(node));
 
