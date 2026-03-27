@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -1118,11 +1118,69 @@ Status GraphManager::PreRunOptimizeOriginalGraph(const GraphNodePtr &graph_node,
   return SUCCESS;
 }
 
+Status GraphManager::ProcessNullableOutput(ComputeGraphPtr &compute_graph) const {
+  for (const auto &node : compute_graph->GetAllNodes()) {
+    if (node == nullptr || node->GetOpDesc() == nullptr) {
+      continue;
+    }
+
+    auto op_desc = node->GetOpDesc();
+    const auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry(
+      static_cast<gert::OppImplVersionTag>(op_desc->GetOppImplVersion()));
+    if (space_registry == nullptr) {
+      continue;
+    }
+    const auto op_impl = space_registry->GetOpImpl(op_desc->GetType().c_str());
+    if (op_impl == nullptr) {
+      continue;
+    }
+
+    size_t out_data_anchors_size = node->GetAllOutDataAnchors().size();
+    for (size_t i = 0; i < out_data_anchors_size; i++) {
+      auto out_anchor = node->GetOutDataAnchor(i);
+      GE_ASSERT_NOTNULL(out_anchor);
+      if (out_anchor->GetPeerInDataNodesSize() != 0) {
+        continue;
+      }
+
+      size_t ir_index;
+      GE_ASSERT_GRAPH_SUCCESS(ge::OpDescUtils::GetOutputIrIndexByInstanceIndex(op_desc, i, ir_index));
+      if (ir_index == std::numeric_limits<size_t>::max()) {
+        continue;
+      }
+
+      if (!op_impl->IsNullableOutput(ir_index)) {
+        continue;
+      }
+
+      // 不支持dynamic output
+      const auto &ir_outputs = op_desc->GetIrOutputs();
+      const auto ir_type = ir_outputs[ir_index].second;
+      const auto ir_name = ir_outputs[ir_index].first;
+      if (ir_type == kIrOutputDynamic) {
+        GELOGW("Node [%s]'s [%zu]th output is dynamic output, no support nullable output, ir index[%zu], ir name[%s].",
+          op_desc->GetName().c_str(), i, ir_index, ir_name.c_str());
+        continue;
+      }
+
+      auto output_desc = node->GetOpDesc()->MutableOutputDesc(i);
+      if (output_desc == nullptr) {
+        continue;
+      }
+
+      GELOGI("Node [%s]'s [%zu]th output is null, ir index[%zu].", op_desc->GetName().c_str(), i, ir_index);
+      (void)ge::AttrUtils::SetBool(output_desc, ge::ATTR_NAME_IS_NULL_OUTPUT, true);
+    }
+  }
+  return SUCCESS;
+}
+
 Status GraphManager::PreRunOptimizeSubGraph(const GraphNodePtr &graph_node,
                                             ge::ComputeGraphPtr &compute_graph,
                                             uint64_t session_id) {
   GE_CHECK_NOTNULL(graph_node);
   GE_CHECK_NOTNULL(compute_graph);
+  GM_RUN_AND_DUMP_PERF("ProcessNullableOutput", ProcessNullableOutput, compute_graph);
   GM_RUN_AND_DUMP_PERF("OptimizeSubgraph", OptimizeSubgraph, graph_node, compute_graph, session_id);
 
   // Dump graph to tuning path
@@ -1793,7 +1851,7 @@ Status GraphManager::ExecuteGraphWithStreamAsync(const GraphId &graph_id, const 
       GELOGI("Execute graph with stream async, initialize sub graph has no inputs.");
     }
   }
-  
+
   // find graph
   GraphNodePtr graph_node = nullptr;
   Status ret = GetGraphNode(graph_id, graph_node);
@@ -1875,7 +1933,7 @@ Status GraphManager::RunGraphWithStreamAsync(const GraphId &graph_id, const rtSt
     if (logLevel_ <= DLOG_DEBUG) {
       GELOGD("RunGraphWithStreamAsync with external allocator = %p", external_allocator.get());
     }
-    
+
     CompiledGraphSummaryPtr summary = graph_node->GetCompiledGraphSummary();
     if (summary == nullptr) {
       GE_ASSERT_SUCCESS(CompileGraph(graph_id, session_id, {}));
@@ -5033,7 +5091,7 @@ Status GraphManager::GetCompiledGraphSummary(uint32_t graph_id, CompiledGraphSum
   GE_ASSERT(!ge_root_model->GetSubgraphInstanceNameToModel().empty());
   const auto &ge_model = ge_root_model->GetSubgraphInstanceNameToModel().begin()->second;
   GE_ASSERT_NOTNULL(ge_model);
-  
+
   summary = CompiledGraphSummary::Builder::Build(ge_model, ge_root_model);
   GE_ASSERT_NOTNULL(summary, "Get compiled graph summary failed, graph_id:%u.", graph_id);
   graph_node->SaveCompiledGraphSummary(summary);

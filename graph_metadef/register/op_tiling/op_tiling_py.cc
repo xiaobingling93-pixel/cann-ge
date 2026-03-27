@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -117,6 +117,7 @@ const std::string kMaxTilingSize = "op_para_size";
 constexpr size_t kMaxTilingDataSize = 16UL * 1024UL;
 constexpr size_t kWorkspaceHolerSize = 8UL;
 const std::string kAttrGroup = "group";
+const std::string kIsNullOutput = "_is_null_output";
 
 struct ContextComponent {
   std::vector<gert::StorageShape> storage_shapes;
@@ -508,6 +509,38 @@ ge::graphStatus ParseInputs(const char* inputs, ContextComponent& context_com) {
   return ge::GRAPH_SUCCESS;
 }
 
+ge::graphStatus ProcNullOutput(const size_t ir_index, const ge::IrOutputType output_type,
+                                uint32_t &index, ContextComponent &context_com) {
+  const gert::OpImplKernelRegistry::OpImplFunctionsV2 *funcs;
+  if (FindImplFuncs(context_com.op_desc->GetType().c_str(), funcs) && funcs->IsNullableOutput(ir_index)) {
+    ge::GeTensorDesc tensor_desc;
+    gert::StorageShape storage_shape;
+    context_com.storage_shapes.emplace_back(storage_shape);
+    (void)ge::AttrUtils::SetBool(tensor_desc, kIsNullOutput, true);
+    if (output_type == ge::kIrOutputRequired) {
+      context_com.op_desc->AppendIrOutput(std::to_string(index), ge::kIrOutputRequired);
+      (void) context_com.op_desc->AddOutputDesc(std::to_string(index), tensor_desc);
+    } else {
+      GELOGE(ge::GRAPH_FAILED, "Unsupported ir type.");
+      return ge::GRAPH_FAILED;
+    }
+
+    GELOGI("Set null output");
+    index++;
+  } else {
+    GELOGW("Empty output, cur index %u, ir index %zu", index, ir_index);
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
+void ParseIsNullableOutputExist(const nlohmann::json &json, ge::GeTensorDesc &tensor_desc) {
+  if (json.contains("is_null_output")) {
+    bool is_null_output = json["is_null_output"].get<bool>();
+    (void)ge::AttrUtils::SetBool(tensor_desc, kIsNullOutput, is_null_output);
+    GELOGI("Set null output");
+  }
+}
+
 ge::graphStatus ParseOutput(const nlohmann::json &output, ge::IrOutputType output_type, const uint32_t index,
                             ContextComponent &context_com) {
   ge::GeTensorDesc tensor_desc;
@@ -515,6 +548,7 @@ ge::graphStatus ParseOutput(const nlohmann::json &output, ge::IrOutputType outpu
   ParseDtype(output, tensor_desc);
   ParseStorageShape(output, storage_shape, context_com.storage_shapes);
   ParseStorageFormat(output, tensor_desc);
+  ParseIsNullableOutputExist(output, tensor_desc);
 
   if (output_type == ge::kIrOutputRequired) {
     (void) context_com.op_desc->AddOutputDesc(std::to_string(index), tensor_desc);
@@ -625,7 +659,8 @@ ge::graphStatus ParseOutputs(const char *outputs, ContextComponent &context_com)
     return ge::GRAPH_FAILED;
   }
   uint32_t index = 0;
-  for (const auto &desc : desc_list) {
+  for (size_t ir_index = 0U; ir_index < desc_list.size(); ir_index++) {
+    const auto &desc = desc_list[ir_index];
     if (desc.is_array()) {
       const size_t output_num = desc.size();
       //  可能传过来的输入没有指定名字,所有用"dynamic_"+"index"+"_"+"num"拼一个统一的假名字,输出也是相同的处理
@@ -643,7 +678,7 @@ ge::graphStatus ParseOutputs(const char *outputs, ContextComponent &context_com)
       }
     } else {
       if (desc.is_null()) {
-        GELOGW("Empty output, cur index %u", index);
+        GE_ASSERT_GRAPH_SUCCESS(ProcNullOutput(ir_index, ge::kIrOutputRequired, index, context_com));
         continue;
       }
       context_com.op_desc->AppendIrOutput(std::to_string(index), ge::kIrOutputRequired);

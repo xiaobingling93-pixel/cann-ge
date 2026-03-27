@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -18,7 +18,10 @@
 #include "graph/tensor.h"
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/type_utils.h"
+#include "graph/utils/attr_utils.h"
 #include "graph/normal_graph/ge_tensor_impl.h"
+#include "graph/debug/ge_attr_define.h"
+#include "common/types.h"
 
 using namespace std;
 using namespace ge;
@@ -498,4 +501,18 @@ TEST_F(UtestGeTensor, test_is_shape_equal_unknown_shape) {
   GeShape unkown_dst_shape1({1, 2, 1024});
   EXPECT_EQ(TensorUtils::IsShapeEqual(src_shape, unknown_dst_shape), true);
   EXPECT_EQ(TensorUtils::IsShapeEqual(src_shape, unkown_dst_shape1), true);
+}
+
+TEST_F(UtestGeTensor, test_is_memory_size_calc_type_always_empty) {
+  GeTensorDesc a;
+  (void)ge::AttrUtils::SetInt(a, ge::ATTR_NAME_MEMORY_SIZE_CALC_TYPE,
+    static_cast<int64_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY));
+  EXPECT_EQ(TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(a), true);
+
+  GeTensorDesc b;
+  (void)ge::AttrUtils::SetBool(b, ge::ATTR_NAME_IS_NULL_OUTPUT, true);
+  EXPECT_EQ(TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(b), true);
+
+  GeTensorDesc c;
+  EXPECT_EQ(TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(c), false);
 }

@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -1415,6 +1415,118 @@ TEST_F(GraphCompilerTest, test_build_no_tiling) {
           AttrUtils::GetBool(node->GetOpDesc(), ATTR_NAME_OP_NO_TILING, is_no_tiling),
           true);
         // need expect true, but this case can not construct unknown shape of add_1 and add_2
+      }
+    }
+  };
+}
+
+/**
+ *      data  data     data    data
+ *        \   /          /      /
+ *         customop1    /      /
+ *             |       /     /
+ *            customop2    /
+ *             |         /
+ *             |       /
+ *             add
+ */
+TEST_F(GraphCompilerTest, test_build_with_null_output) {
+  gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2(true);
+  auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry();
+  ASSERT_NE(space_registry, nullptr);
+  auto op_impl_func = space_registry->CreateOrGetOpImpl("customop");
+  op_impl_func->NullableOutput(1);
+  op_impl_func->NullableOutput(0);
+
+  vector<std::string> engine_list = {"AIcoreEngine"};
+  std::vector<int64_t> shape{1, 2, 3, 4};
+  auto customop1 = OP_CFG("customop").TensorDesc(FORMAT_NCHW, DT_BOOL, {1, 2, 3, 4})
+                         .Attr(ATTR_NAME_OP_TILING_INLINE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_EXPORT_SHAPE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_MAX_SHAPE, "1, 10, 224, 224")
+                         .InCnt(2).OutCnt(2).InNames({"x", "y"})
+                         .OutNames({"u", "v"});
+  auto customop2 = OP_CFG("customop").TensorDesc(FORMAT_NCHW, DT_BOOL, {1, 2, 3, 4})
+                         .Attr(ATTR_NAME_OP_TILING_INLINE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_EXPORT_SHAPE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_MAX_SHAPE, "20, 10, 224, 224")
+                         .InCnt(2).OutCnt(2).InNames({"x", "y"})
+                         .OutNames({"u", "v"});
+
+  auto add3 = OP_CFG(ADD).TensorDesc(FORMAT_NCHW, DT_FLOAT, {1, 2, 3, 4})
+                         .Attr(ATTR_NAME_OP_TILING_INLINE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_EXPORT_SHAPE_ENGINE, engine_list)
+                         .Attr(ATTR_NAME_OP_MAX_SHAPE, "20, 10, 224, 224");
+
+  auto data1 = OP_CFG(DATA);
+  auto data2 = OP_CFG(DATA);
+  auto data3 = OP_CFG(DATA);
+  auto data4 = OP_CFG(DATA);
+  auto print = OP_CFG("Print");
+  DEF_GRAPH(g1) {
+    CHAIN(NODE("data_1", data1)->EDGE(0, 0)->NODE("c_1", customop1));
+    CHAIN(NODE("data_2", data2)->EDGE(0, 1)->NODE("c_1", customop1));
+    CHAIN(NODE("c_1", customop1)->EDGE(0, 0)->NODE("c_2", customop2));
+    CHAIN(NODE("data_3", data3)->EDGE(0, 1)->NODE("c_2", customop2));
+    CHAIN(NODE("c_2", customop2)->EDGE(1, 0)->NODE("add_3", add3));
+    CHAIN(NODE("data_4", data4)->EDGE(0, 1)->NODE("add_3", add3));
+    CHAIN(NODE("add_3", add3)->EDGE(0, 0)->NODE("Print", print));
+  };
+  auto graph = ToGeGraph(g1);
+
+  auto root_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
+  auto c_1_node = root_graph->FindNode("c_1");
+  c_1_node->GetOpDesc()->SetOpKernelLibName(ge::kEngineNameAiCore.c_str());
+  c_1_node->GetOpDesc()->SetOpEngineName("AIcoreEngine");
+  c_1_node->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  c_1_node->GetOpDesc()->AppendIrInput("y", IrInputType::kIrInputRequired);
+  c_1_node->GetOpDesc()->AppendIrOutput("u", IrOutputType::kIrOutputRequired);
+  c_1_node->GetOpDesc()->AppendIrOutput("v", IrOutputType::kIrOutputRequired);
+  c_1_node->GetOpDesc()->MutableAllInputName() = {{"x", 0}, {"y", 1}};
+  c_1_node->GetOpDesc()->MutableAllOutputName() = {{"u", 0}, {"v", 1}};
+
+  auto c_2_node = root_graph->FindNode("c_2");
+  c_2_node->GetOpDesc()->SetOpKernelLibName(ge::kEngineNameAiCore.c_str());
+  c_2_node->GetOpDesc()->SetOpEngineName("AIcoreEngine");
+  c_2_node->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  c_2_node->GetOpDesc()->AppendIrInput("y", IrInputType::kIrInputRequired);
+  c_2_node->GetOpDesc()->AppendIrOutput("u", IrOutputType::kIrOutputRequired);
+  c_2_node->GetOpDesc()->AppendIrOutput("v", IrOutputType::kIrOutputRequired);
+  c_2_node->GetOpDesc()->MutableAllInputName() = {{"x", 0}, {"y", 1}};
+  c_2_node->GetOpDesc()->MutableAllOutputName() = {{"u", 0}, {"v", 1}};
+
+  map<AscendString, AscendString> options;
+  Session session(options);
+  session.AddGraph(1, graph, options);
+
+  std::vector<InputTensorInfo> inputs;
+  auto ret = session.BuildGraph(1, inputs);
+
+  EXPECT_EQ(ret, SUCCESS);
+  CHECK_GRAPH(PreRunAfterBuild) {
+    EXPECT_EQ(graph->GetAllNodesSize(), 8);
+    EXPECT_EQ(graph->GetDirectNodesSize(), 8);
+    for (auto node : graph->GetAllNodes()) {
+      bool is_null_output = true;
+      if (node->GetName() == "c_1") {
+        bool is_null_output = false;
+        auto output_tensor_desc_0 = node->GetOpDesc()->GetOutputDesc(0);
+        EXPECT_EQ(
+          ge::AttrUtils::GetBool(output_tensor_desc_0, ATTR_NAME_IS_NULL_OUTPUT, is_null_output), false);
+        auto output_tensor_desc_1 = node->GetOpDesc()->GetOutputDesc(1);
+        EXPECT_EQ(
+          ge::AttrUtils::GetBool(output_tensor_desc_1, ATTR_NAME_IS_NULL_OUTPUT, is_null_output), true);
+        EXPECT_EQ(is_null_output, true);
+      }
+      if (node->GetName() == "c_2") {
+        bool is_null_output = false;
+        auto output_tensor_desc_0= node->GetOpDesc()->GetOutputDesc(0);
+        EXPECT_EQ(
+          ge::AttrUtils::GetBool(output_tensor_desc_0, ATTR_NAME_IS_NULL_OUTPUT, is_null_output), true);
+        EXPECT_EQ(is_null_output, true);
+        auto output_tensor_desc_1 = node->GetOpDesc()->GetOutputDesc(1);
+        EXPECT_EQ(
+          ge::AttrUtils::GetBool(output_tensor_desc_1, ATTR_NAME_IS_NULL_OUTPUT, is_null_output), false);
       }
     }
   };
@@ -2899,13 +3011,13 @@ TEST_F(GraphCompilerTest, test_origin_hccl_order) {
 
 /**
 * 用例描述：验证变量初始化功能是否正常，当变量具有合法的初始值（init_value）时，是否能正确地将初始值拷贝到设备内存中，并且拷贝后的值与原始值一致。
-* 
+*
 * test_var_match
 * \
 * 变量初始化（具有 init_value 属性）
 * \
 * 变量内存分配与初始化
-* 
+*
 * 测试步骤：
 * 1. 初始化内存管理器和 VarManager
 * 2. 创建变量描述（shape、data_type、format）
@@ -2914,7 +3026,7 @@ TEST_F(GraphCompilerTest, test_origin_hccl_order) {
 * 5. 创建 OpDesc 并分配变量内存
 * 6. 获取变量的逻辑地址和设备地址
 * 7. 触发 InitVarIfHasInitValue，将 init_value 拷贝到设备内存
-* 
+*
 * 预期结果：
 * 1. 变量内存分配成功
 * 2. GetVarMemoryAddr 返回有效的设备地址
@@ -2930,15 +3042,15 @@ TEST_F(GraphCompilerTest, test_var_init_with_init_value) {
     EXPECT_EQ(VarManager::Instance(0)->Init(0, 0, 0, 0), SUCCESS);
 
     // Create variable tensor with placement device
-    std::vector<int64_t> var_shape{1, 1, 1, 1, 10}; 
+    std::vector<int64_t> var_shape{1, 1, 1, 1, 10};
     GeShape shape(var_shape);
     GeTensorDesc tensor_desc(shape);
     tensor_desc.SetDataType(DT_FLOAT);
     tensor_desc.SetFormat(FORMAT_NCHW);
-    TensorUtils::SetSize(tensor_desc, 10 * sizeof(float)); 
+    TensorUtils::SetSize(tensor_desc, 10 * sizeof(float));
 
     // Create init_value tensor with matching format and type
-    std::vector<float> init_data(10, 1.0f); 
+    std::vector<float> init_data(10, 1.0f);
     auto init_tensor = std::make_shared<GeTensor>();
     GeTensorDesc init_desc(GeShape(var_shape), FORMAT_NCHW, DT_FLOAT);
     init_tensor->SetData(reinterpret_cast<uint8_t*>(init_data.data()), init_data.size() * sizeof(float));
@@ -4008,7 +4120,7 @@ TEST_F(GraphCompilerTest, test_build_memory_atomic_transdata) {
   auto op_desc = trans2->GetOpDesc();
   (void)ge::AttrUtils::SetListInt(op_desc, ATOMIC_ATTR_OUTPUT_INDEX, atomic_output_index);
   ge::AttrUtils::SetStr(trans2->GetOpDesc()->MutableOutputDesc(0), REF_VAR_SRC_VAR_NAME, "variable");
-  
+
   map<std::string, std::string> options{{ge::ATOMIC_CLEAN_POLICY, "0"}};
   Session session(options);
   session.AddGraph(1, graph, options);
@@ -5182,7 +5294,7 @@ TEST_F(GraphCompilerTest, test_build_memory_continuous_nopading_cascade) {
  *      data  data
  *        \   /
  *      NETOUTPUT
- * 
+ *
  */
 TEST_F(GraphCompilerTest, test_build_memory_ddr) {
   putenv("OP_NO_REUSE_MEM=data_1,data_2");

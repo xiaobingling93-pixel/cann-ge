@@ -3925,9 +3925,7 @@ Status BlockMemAssigner::AssignOutputMemoryWithReuse(const NodePtr &node, std::v
       size = 0;  // no need assgin block memory
     }
 
-    int32_t calc_type = 0;
-    bool ret = ge::AttrUtils::GetInt(output_tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    GE_IF_BOOL_EXEC((ret && (calc_type == static_cast<int32_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY))), size = 0;);
+    GE_IF_BOOL_EXEC((TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(*output_tensor_desc)), size = 0;);
 
     InDataAnchor *continuous_in_anchor = nullptr;
     bool out_node_set_continuous_input = false;

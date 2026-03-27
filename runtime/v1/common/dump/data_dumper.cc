@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -438,7 +438,6 @@ Status DataDumper::DumpOutputWithTask(const InnerDumpInfo &inner_dump_info, tool
   for (size_t i = 0U; i < output_descs.size(); ++i) {
     toolkit::aicpu::dump::Output output;
     const auto &output_desc = *output_descs.at(i);
-    int32_t calc_type = 0;
     GELOGI("[Dumper] Model name %s, Node name %s, Node type %s, output index %zu.", model_name.c_str(), inner_dump_info.op->GetName().c_str(), inner_dump_info.op->GetType().c_str(), i);
     if (dump_properties_.IsOutputInOpNameBlacklist(model_name, inner_dump_info.op->GetName().c_str(), i) ||
       dump_properties_.IsOutputInOpNameBlacklist(om_name, inner_dump_info.op->GetName().c_str(), i) ||
@@ -454,8 +453,7 @@ Status DataDumper::DumpOutputWithTask(const InnerDumpInfo &inner_dump_info, tool
          inner_dump_info.op->GetName().c_str(), inner_dump_info.op->GetType().c_str(), i);
       continue;
     }
-    const bool has_calc_type = ge::AttrUtils::GetInt(output_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    if (has_calc_type && (calc_type == static_cast<int32_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY))) {
+    if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(output_desc)) {
       GELOGD("Node[%s] output[index:%zu] [name:%s] is an optional output, don't need to dump this output.",
              inner_dump_info.op->GetName().c_str(), i, output_desc.GetName().c_str());
       ++no_need_dump_output_num;

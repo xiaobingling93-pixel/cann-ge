@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -278,9 +278,7 @@ Status NanoDbgData::AddDbgOutput(const OpDescPtr &op_desc, NanoDbgOpDesc &dbg_op
       continue;
     }
     const auto &output_tensor = *output_descs.at(i);
-    int32_t calc_type = 0;
-    const bool has_calc_type = ge::AttrUtils::GetInt(output_tensor, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    if (has_calc_type && (calc_type == static_cast<int32_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY))) {
+    if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(output_tensor)) {
       GELOGD("Node[%s], output[index:%zu] [name:%s] is an optional output, don't need to dump this output.",
              op_desc->GetName().c_str(), i, output_tensor.GetName().c_str());
       continue;

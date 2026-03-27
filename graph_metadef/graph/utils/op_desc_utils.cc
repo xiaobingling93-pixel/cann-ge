@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -1084,6 +1084,33 @@ ge::graphStatus OpDescUtils::GetInputIrIndexByInstanceIndex(const OpDescPtr &op_
     }
   }
   ir_index = std::numeric_limits<size_t>::max();
+  GELOGW("node [%s(%s)] failed to get ir index by instance index[%zu], set ir_index to %zu", op_desc->GetName().c_str(),
+         op_desc->GetType().c_str(), instance_index, ir_index);
+  return GRAPH_SUCCESS;
+}
+
+ge::graphStatus OpDescUtils::GetOutputIrIndexByInstanceIndex(const OpDescPtr &op_desc,
+                                                             size_t instance_index, size_t &ir_index) {
+  GE_CHECK_NOTNULL(op_desc);
+  ir_index = std::numeric_limits<size_t>::max();
+
+  auto ir_index_to_instance_index_pair_map = GetOutputIrIndexes2InstanceIndexesPairMap(op_desc);
+  if (ir_index_to_instance_index_pair_map.empty()) {
+    return ge::GRAPH_SUCCESS;
+  }
+
+  for (size_t i = 0U; i < op_desc->GetIrOutputs().size(); ++i) {
+    const auto &index_pair = ir_index_to_instance_index_pair_map[i];
+    size_t ir_index_end = 0U;
+    GE_ASSERT_TRUE(!ge::AddOverflow(index_pair.first, index_pair.second, ir_index_end));
+    if ((instance_index >= index_pair.first) && (instance_index < ir_index_end)) {
+      ir_index = i;
+      GELOGD("node [%s(%s)] get ir index [%zu] successfully!", op_desc->GetName().c_str(), op_desc->GetType().c_str(),
+             ir_index);
+      return ge::GRAPH_SUCCESS;
+    }
+  }
+
   GELOGW("node [%s(%s)] failed to get ir index by instance index[%zu], set ir_index to %zu", op_desc->GetName().c_str(),
          op_desc->GetType().c_str(), instance_index, ir_index);
   return GRAPH_SUCCESS;

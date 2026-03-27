@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -125,6 +125,61 @@ UINT32 OpTilingStubNew(gert::TilingContext *kernel_context) {
   EXPECT_TRUE(*shape == gert::StorageShape({5, 5, 5, 5}, {5, 5, 5, 5}));
   auto ci = kernel_context->GetCompileInfo();
   EXPECT_EQ(reinterpret_cast<const StubCompileInfo *>(ci)->stub_, 1);
+
+  EXPECT_EQ(kernel_context->GetAttrs()->GetAttrNum(), 5);
+  std::vector<int64_t> expect_attr = {1, 2, 3, 4};
+  for (size_t i = 0UL; i < 4UL; ++i) {
+    EXPECT_EQ(reinterpret_cast<const int64_t *>(
+                  kernel_context->GetAttrs()->GetAttrPointer<gert::ContinuousVector>(0)->GetData())[i],
+              expect_attr[i]);
+  }
+  EXPECT_EQ(*kernel_context->GetAttrs()->GetAttrPointer<int8_t>(1), 99);
+
+  std::vector<int64_t> expect_attr3 = {2147483647, 2147483648, 9223372036854775807};
+  for (size_t i = 0UL; i < 2UL; ++i) {
+    EXPECT_EQ(reinterpret_cast<const int64_t *>(
+                  kernel_context->GetAttrs()->GetAttrPointer<gert::ContinuousVector>(3)->GetData())[i],
+              expect_attr3[i]);
+  }
+  kernel_context->SetBlockDim(2);
+  kernel_context->SetAicpuBlockDim(4);
+  kernel_context->SetNeedAtomic(true);
+  kernel_context->SetTilingKey(78);
+  *kernel_context->GetWorkspaceSizes(1) = 12;
+  kernel_context->GetRawTilingData()->Append<uint8_t>(6);
+  kernel_context->GetRawTilingData()->Append<uint8_t>(7);
+  kernel_context->GetRawTilingData()->Append<uint8_t>(8);
+  kernel_context->GetRawTilingData()->Append<uint8_t>(9);
+  kernel_context->GetRawTilingData()->Append<uint8_t>(10);
+  return ge::GRAPH_SUCCESS;
+}
+
+UINT32 OpTilingStubNewWithNullOutput(gert::TilingContext *kernel_context) {
+  auto tensor_without_data = kernel_context->GetInputTensor(1);
+  EXPECT_EQ(tensor_without_data->GetAddr(), nullptr);
+  EXPECT_EQ(tensor_without_data->GetStorageShape(), gert::Shape({5, 5, 5, 5}));
+  EXPECT_EQ(tensor_without_data->GetOriginShape(), gert::Shape({5, 5, 5, 5}));
+  auto tensor = kernel_context->GetInputTensor(0);
+  EXPECT_EQ(tensor->GetShape().GetStorageShape().GetDimNum(), 4);
+  gert::Shape expect_shape({4, 4, 4, 4});
+  EXPECT_EQ(tensor->GetShape().GetStorageShape(), expect_shape);
+  EXPECT_EQ(tensor->GetDataType(), DT_INT8);
+  EXPECT_EQ((tensor->GetData<int8_t>())[3], 4);
+  EXPECT_EQ((tensor->GetData<int8_t>())[2], 3);
+  EXPECT_EQ((tensor->GetData<int8_t>())[1], 2);
+  EXPECT_EQ((tensor->GetData<int8_t>())[0], 1);
+  EXPECT_EQ(tensor->GetFormat().GetStorageFormat(), FORMAT_ND);
+  gert::Shape expect_shape2({9, 9, 9, 9});
+  EXPECT_TRUE(kernel_context->GetOutputShape(0)->GetStorageShape() == expect_shape2);
+  auto shape = kernel_context->GetInputShape(1);
+  EXPECT_TRUE(*shape == gert::StorageShape({5, 5, 5, 5}, {5, 5, 5, 5}));
+  auto ci = kernel_context->GetCompileInfo();
+  EXPECT_EQ(reinterpret_cast<const StubCompileInfo *>(ci)->stub_, 1);
+
+  bool output_0_exist = kernel_context->GetComputeNodeInfo()->GetOutputTdInfo(0)->IsExist() ? 1 : 0;
+  bool output_1_exist = kernel_context->GetComputeNodeInfo()->GetOutputTdInfo(1)->IsExist() ? 1 : 0;
+  EXPECT_EQ(output_0_exist, 0);
+  EXPECT_EQ(output_1_exist, 0);
 
   EXPECT_EQ(kernel_context->GetAttrs()->GetAttrNum(), 5);
   std::vector<int64_t> expect_attr = {1, 2, 3, 4};
@@ -1130,6 +1185,49 @@ TEST_F(UtestRegister, new_optiling_py_interface_ok) {
   op_impl_func->compile_info_creator = CreateCompileInfo;
   op_impl_func->compile_info_deleter = DeleteCompileInfo;
   op_impl_func->max_tiling_data_size = 50;
+
+  EXPECT_EQ(TbeOpTilingPyInterface(op_type, cmp_info, cmp_info_hash, input_str.c_str(), output_str.c_str(),
+                                   attrs_str.c_str(), const_cast<char *>(runinfo.c_str()), size + 1U, elapse),
+            1);
+  EXPECT_EQ(result, runinfo);
+  gert::DefaultOpImplSpaceRegistryV2::GetInstance().SetSpaceRegistry(nullptr);
+}
+
+TEST_F(UtestRegister, new_optiling_py_interface_with_null_output_ok) {
+  const nlohmann::json input = R"([
+{"name": "test_0","dtype": "int8", "const_value": [1,2,3,4],"shape": [4,4,4,4],"format": "ND"},
+{"name": "test_1","dtype": "int32","shape": [5,5,5,5],"ori_shape": [5,5,5,5],"format": "ND","ori_format": "ND"},
+{"name": "test_2","dtype": "int32","shape": [6,6,6,6],"ori_shape": [6,6,6,6],"format": "ND","ori_format": "ND"}])"_json;
+  std::string input_str = input.dump();
+  const nlohmann::json output = R"([
+{"name": "y_0","dtype": "int8","shape": [9,9,9,9],"ori_shape" :[9,9,9,9],"format": "ND","ori_format":"ND", "is_null_output": true}, null])"_json;
+
+  std::string output_str = output.dump();
+  const nlohmann::json attrs = R"([
+{ "name": "attr_0","dtype": "list_int64","value": [1,2, 3, 4]},
+{ "name": "attr_1","dtype": "int","value": 99},
+{ "name": "attr_2","dtype": "list_int32","value": [1, 2, 3, 4]},
+{ "name": "attr_3","dtype": "list_int","value": [2147483647, 2147483648, 9223372036854775807]},
+{ "name": "op_para_size", "dtype": "int", "value": 50}])"_json;
+  std::string attrs_str = attrs.dump();
+  const char *op_type = "TestReluV2";
+  const char *cmp_info = "";
+  std::string result =
+      R"({"aicpu_block_dim":4,"block_dim":2,"clear_atomic":true,"local_memory_size":0,"schedule_mode":0,"tiling_cond":0,"tiling_data":"060708090A","tiling_key":78,"workspaces":[12]})";
+  size_t size = result.length();
+  std::string runinfo(size, 'a');
+  const char *cmp_info_hash = "";
+  uint64_t *elapse = nullptr;
+  gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2();
+  auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry();
+  ASSERT_NE(space_registry, nullptr);
+  auto op_impl_func = space_registry->CreateOrGetOpImpl(op_type);
+  op_impl_func->tiling = OpTilingStubNewWithNullOutput;
+  op_impl_func->tiling_parse = OpTilingParseStubNew;
+  op_impl_func->compile_info_creator = CreateCompileInfo;
+  op_impl_func->compile_info_deleter = DeleteCompileInfo;
+  op_impl_func->max_tiling_data_size = 50;
+  op_impl_func->NullableOutput(1);
 
   EXPECT_EQ(TbeOpTilingPyInterface(op_type, cmp_info, cmp_info_hash, input_str.c_str(), output_str.c_str(),
                                    attrs_str.c_str(), const_cast<char *>(runinfo.c_str()), size + 1U, elapse),
