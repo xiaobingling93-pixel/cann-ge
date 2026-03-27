@@ -762,17 +762,29 @@ size_t TilingCodeGenImpl::CollectInputVarsSize() const {
 }
 
 ge::Status TilingCodeGenImpl::GenCacheHashMapDef() {
+  // HashMap模板和常量可能在Operator缓存或Group缓存中使用
+  // Operator缓存：由cache_enabled_at_compile_time控制
+  // Group缓存：由with_reuse_info_控制
+  GELOGI("Gen cache config=[cache_enabled_at_compile_time=%d, with_reuse_info=%d]",
+         config_.cache_enabled_at_compile_time, with_reuse_info_);
+  if (!config_.cache_enabled_at_compile_time && !with_reuse_info_) {
+    return ge::SUCCESS;
+  }
+
   size_t input_vars_size = CollectInputVarsSize();
 
+  // 生成常量定义（Operator和Group缓存共享）
   cache::OperatorLevelCacheGen::GenConstantDefs(tiling_head_, input_vars_size);
 
+  // 生成FixedSizeHashMap模板定义（Operator和Group缓存共享）
   GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenFixedSizeHashMapDef(tiling_head_),
                     "Generate FixedSizeHashMap definition failed.");
 
-  GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenOperatorCacheTypes(tiling_head_, config_.tiling_data_type_name),
-                    "Generate Operator cache types failed.");
-
+  // 只在Operator缓存开启时生成OperatorCache相关类型和类
   if (config_.cache_enabled_at_compile_time) {
+    GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenOperatorCacheTypes(tiling_head_, config_.tiling_data_type_name),
+                      "Generate Operator cache types failed.");
+
     GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenTilingCacheContext(tiling_head_, config_.tiling_data_type_name),
                       "Generate TilingCacheContext failed.");
   }
@@ -1886,9 +1898,14 @@ enum class PipeType : uint8_t {
 }
 
 ge::Status TilingCodeGenImpl::GenFindCacheAndSaveCache() {
-  size_t input_vars_size = CollectInputVarsSize();
+  // 当OperatorCache关闭但GroupCache开启时，需要在这里补齐GroupCache依赖的共享定义
+  if (!config_.cache_enabled_at_compile_time) {
+    cache::OperatorLevelCacheGen::GenConstantDefs(tiling_head_, CollectInputVarsSize());
+    GE_ASSERT_SUCCESS(operator_level_cache_gen_->GenFixedSizeHashMapDef(tiling_head_),
+                      "Generate FixedSizeHashMap definition for Group cache failed.");
+  }
 
-  GE_ASSERT_SUCCESS(group_level_cache_gen_->GenGroupCacheTypes(tiling_head_, input_vars_size, cache_capacity_),
+  GE_ASSERT_SUCCESS(group_level_cache_gen_->GenGroupCacheTypes(tiling_head_, cache_capacity_),
                     "Generate Group cache types failed.");
 
   GE_ASSERT_SUCCESS(group_level_cache_gen_->GenGroupCacheFunctions(tiling_func_, config_.tiling_data_type_name),

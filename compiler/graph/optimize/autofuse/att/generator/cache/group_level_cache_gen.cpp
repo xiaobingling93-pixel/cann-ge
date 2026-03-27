@@ -21,10 +21,9 @@ ge::Status GroupLevelCacheGen::GenFixedSizeHashMapDef(ge::CodePrinter &code_prin
 }
 
 ge::Status GroupLevelCacheGen::GenGroupCacheTypes(ge::CodePrinter &code_printer,
-                                                  size_t input_vars_size,
                                                   size_t cache_capacity) {
-  // 生成常量定义
-  GenConstantDefs(code_printer, input_vars_size);
+  // 注意：常量定义(kInputShapeSize等)已在GenCacheHashMapDef中统一生成
+  // 这里只生成GroupLevelCache类型定义
 
   // 第二级：Group间缓存（使用TilingDataCopy）
   code_printer.AddLine("using GroupLevelCache = FixedSizeHashMap<kInputShapeSize, " +

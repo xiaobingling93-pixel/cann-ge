@@ -41,7 +41,6 @@ public:
    * @return ge::Status
    */
   ge::Status GenGroupCacheTypes(ge::CodePrinter &code_printer,
-                                size_t input_vars_size,
                                 size_t cache_capacity);
 
   /**

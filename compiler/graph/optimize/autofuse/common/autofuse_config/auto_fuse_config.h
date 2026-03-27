@@ -125,7 +125,7 @@ class AttStrategyConfig : AutoFuseConfigBase {
   int64_t corenum_threshold{40};  // 核数利用率阈值，百分比，范围0-100，如果超过少于阈值，ub停止增加，平衡多核占用
   std::string enable_multicore_ub_tradeoff{"false"}; // 是否开启多核ub权衡(false:不开启，true:开启)
   std::string att_profiling{"false"}; // 是否开启att profiling(false:不开启，true:开启)
-  std::string enable_tiling_cache{"true"}; // 是否开启tiling缓存(false:不开启，true:开启)
+  std::string enable_tiling_cache{"false"}; // 是否开启tiling缓存(false:不开启，true:开启)
   // 环境变量是否设置，设置了为true，否则为false
   bool set_env_tiling_algorithm{false};
   bool set_env_solution_accuracy_level{false};
