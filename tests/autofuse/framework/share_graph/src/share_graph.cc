@@ -3186,6 +3186,172 @@ ge::ComputeGraphPtr ShareGraph::SubTransposeAbsFusedGraph(size_t dims_size, vect
   return compute_graph;
 }
 
+static void CreateFmaInt8AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x1("data0", graph);
+  x1.ir_attr.SetIndex(0);
+  x1.y.dtype = ge::DT_INT8;
+  ge::ascir_op::Data x2("data1", graph);
+  x2.ir_attr.SetIndex(1);
+  x2.y.dtype = ge::DT_INT8;
+  ge::ascir_op::Data x3("data2", graph);
+  x3.ir_attr.SetIndex(2);
+  x3.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.x = x1.y;
+  x1Local.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load x2Local("load1");
+  x2Local.x = x2.y;
+  x2Local.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Load x3Local("load2");
+  x3Local.x = x3.y;
+  x3Local.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Fma fma("fma");
+  fma.x1 = x1Local.y;
+  fma.x2 = x2Local.y;
+  fma.x3 = x3Local.y;
+  fma.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = fma.y;
+  x_out.y.dtype = ge::DT_INT8;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::FmaInt8FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("fma_int8_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+  auto data1 = builder.AddNode("data1", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data1->GetOpDescBarePtr(), "_parent_node_index", 1);
+  auto data2 = builder.AddNode("data2", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data2->GetOpDescBarePtr(), "_parent_node_index", 2);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 3, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(data1, 0, ascbc, 1);
+  builder.AddDataEdge(data2, 0, ascbc, 2);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("fma_int8");
+  CreateFmaInt8AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateIsfiniteBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data", graph);
+  x.y.dtype = ge::DataType::DT_BF16;
+  x.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load xLocal("load");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::IsFinite isfinite("isfinite");
+  isfinite.x = xLocal.y;
+  isfinite.y.dtype = ge::DataType::DT_UINT8;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = isfinite.y;
+  x_out.y.dtype = ge::DataType::DT_UINT8;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::IsfiniteBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("isfinite_bf16_test");
+  auto data = builder.AddNode("data", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("isfinite_bf16_test");
+  CreateIsfiniteBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateIsnanBf16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data", graph);
+  x.y.dtype = ge::DataType::DT_BF16;
+  x.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load xLocal("load");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::Isnan isnan("isnan");
+  isnan.x = xLocal.y;
+  isnan.y.dtype = ge::DataType::DT_UINT8;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = isnan.y;
+  x_out.y.dtype = ge::DataType::DT_UINT8;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::IsnanBf16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("isnan_bf16_test");
+  auto data = builder.AddNode("data", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("isnan_bf16_test");
+  CreateIsnanBf16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
 /**
  *     NetOutput
  *         |

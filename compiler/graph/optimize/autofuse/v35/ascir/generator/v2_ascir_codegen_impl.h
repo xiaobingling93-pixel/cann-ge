@@ -459,7 +459,10 @@ class FmaAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
     std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
-      {DT_BF16, DT_FLOAT}
+      {DT_BF16, DT_FLOAT},
+      {DT_INT8, DT_FLOAT16},
+      {DT_INT16, DT_FLOAT},
+      {DT_UINT8, DT_FLOAT16}
     };
     return GetConversionFromDtypeMap(node, dtype_conversion_map);
   }
@@ -993,6 +996,12 @@ class IsnanAscIrCodegenImplV2 : public AscIrCodegenV2 {
   [[nodiscard]] std::string GetApiName() const override {
     return "IsNan";
   }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
       "adv_api/math/is_nan.h",
@@ -1014,6 +1023,12 @@ class IsFiniteAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
   [[nodiscard]] std::string GetApiName() const override {
     return "IsFinite";
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {

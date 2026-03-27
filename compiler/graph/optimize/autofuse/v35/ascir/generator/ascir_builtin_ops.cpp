@@ -182,7 +182,7 @@ REG_ASC_IR(Fma)
     .ComputeType(ge::ComputeType::kComputeElewise)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::FmaAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::FmaAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_UINT8}}}});
 
 REG_ASC_IR(Ln)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LnAscIrAttImplV2>(),
@@ -258,12 +258,12 @@ REG_ASC_IR(Tanh)
 REG_ASC_IR(Isnan)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::IsnanAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::IsnanAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}, {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(IsFinite)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::IsFiniteAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::IsFiniteAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}, {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Relu)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ReluAscIrAttImplV2>(),

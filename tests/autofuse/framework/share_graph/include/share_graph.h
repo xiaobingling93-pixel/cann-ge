@@ -62,6 +62,9 @@ struct ShareGraph {
   static ge::ComputeGraphPtr UbScalarBrcAbsAddFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr BrcReduceFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr FloorDivMulLessEqualSelectFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr IsfiniteBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr IsnanBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr FmaInt8FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AxpyAbsFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AxpyAbsHalfFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AxpyAddFusedGraph(size_t dims_size);
