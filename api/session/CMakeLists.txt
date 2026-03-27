@@ -66,6 +66,7 @@ target_link_libraries(ge_runner_v2
         ge_executor_shared
         davinci_executor
         hybrid_executor
+        -Wl,--no-as-needed
         gert
         -Wl,--as-needed
         graph
