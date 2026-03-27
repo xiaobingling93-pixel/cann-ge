@@ -81,7 +81,7 @@ class FlowModelBuilder {
 
   Status BuildDataFlowGraph(const ComputeGraphPtr &root_graph, const std::map<std::string, std::string> &options,
                             const FlowModelPtr &flow_model, const CacheParam &cache_param,
-                            const DataFlowGraphParam &scope_to_deploy) const;
+                            const DataFlowGraphParam &df_param) const;
   static Status RemoveDataFlowSubgraphs(const FlowModelPtr &flow_model, const CacheParam &cache_param);
   Status BuildFlowSubgraph(ComputeGraphPtr &graph, const std::vector<GeTensor> &input_tensors,
                            const std::map<std::string, std::string> &options, const FlowModelPtr &flow_model) const;
