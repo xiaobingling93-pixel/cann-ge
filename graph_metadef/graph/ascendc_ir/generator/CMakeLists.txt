@@ -18,6 +18,7 @@ target_link_libraries(aihac_ir_register PRIVATE
         graph
         graph_base
         aihac_symbolizer
+        ascend_protobuf
         PUBLIC
         aihac_ir
         ascend_protobuf_shared_headers
@@ -47,7 +48,7 @@ target_link_libraries(ascir_generate PRIVATE
         aihac_symbolizer
         aihac_ir_register
         aihac_ir
-        ascend_protobuf_shared_headers
+        ascend_protobuf
         PUBLIC
         metadef_headers)
 

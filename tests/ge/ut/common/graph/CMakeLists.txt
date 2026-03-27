@@ -54,6 +54,7 @@ target_link_libraries(ut_libgraph
     -Wl,-z,muldefs
     intf_llt_pub
     metadef_headers
+    mmpa_stub
     GTest::gtest
     GTest::gtest_main
     ge_graph_dsl
