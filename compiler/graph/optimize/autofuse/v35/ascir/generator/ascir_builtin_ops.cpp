@@ -99,7 +99,8 @@ REG_ASC_IR(Broadcast)
 REG_ASC_IR(RemovePad)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT}}}});
+                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT,
+                                              DT_BF16}}}});
 
 REG_ASC_IR(Pad)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::PadAscIrAttImplV2>(),

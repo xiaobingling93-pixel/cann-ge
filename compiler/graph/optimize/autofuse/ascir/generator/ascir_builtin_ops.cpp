@@ -133,7 +133,8 @@ REG_ASC_IR(RemovePad)
     .ComputeType(ge::ComputeType::kComputeElewise)
     .Impl(v1_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrAttImpl>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrCodegenImpl>(),
-                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT}}}});
+                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT,
+                                              DT_BF16}}}});
 
 REG_ASC_IR(Pad)
     .Input("x", "T")
