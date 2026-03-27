@@ -352,7 +352,12 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       ASAN_OPTIONS=detect_container_overflow=0 \
       ctest --verbose -j ${THREAD_NUM} -L ut -L ge_common --test-dir ${BUILD_PATH} --no-tests=error \
-            2>&1 | tee ${BUILD_PATH}/ctest_ut_ge_common.log
+            --output-log ${BUILD_PATH}/ctest_ut_ge_common.log
+      if [[ "$?" -ne 0 ]]; then
+          echo "!!! ST FAILED, PLEASE CHECK YOUR CHANGES !!!"
+          echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
+          exit 1;
+      fi
       unset LD_PRELOAD
       unset ASAN_OPTIONS
       COV_DIRS+=("${BUILD_PATH}/graph_metadef")
@@ -363,7 +368,12 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       export ASAN_OPTIONS=detect_container_overflow=0
       ctest --verbose -j ${THREAD_NUM} -L ut -L ge_rt --test-dir ${BUILD_PATH} --no-tests=error \
-            2>&1 | tee ${BUILD_PATH}/ctest_ut_rt.log
+            --output-log ${BUILD_PATH}/ctest_ut_rt.log
+      if [[ "$?" -ne 0 ]]; then
+          echo "!!! ST FAILED, PLEASE CHECK YOUR CHANGES !!!"
+          echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
+          exit 1;
+      fi
       unset ASAN_OPTIONS
       unset LD_PRELOAD
       COV_DIRS+=("${BUILD_PATH}/runtime/v1")
@@ -422,7 +432,7 @@ if [[ "X$ENABLE_GE_UT" = "Xon" ]] || [[ "X$ENABLE_RT2_UT" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       export ASAN_OPTIONS=detect_container_overflow=0:detect_odr_violation=0
       ctest --verbose -j ${THREAD_NUM} -L ut -L ut_dflow --test-dir ${BUILD_PATH} --no-tests=error \
-            2>&1 | tee ${BUILD_PATH}/ctest_ut_dflow.log
+            --output-log ${BUILD_PATH}/ctest_ut_dflow.log
       if [[ "$?" -ne 0 ]]; then
         echo "!!! UT FAILED, PLEASE CHECK YOUR CHANGES !!!"
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
@@ -541,7 +551,12 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       export ASAN_OPTIONS=detect_container_overflow=0
       ctest --verbose -j ${THREAD_NUM} -L st -L st_hetero --test-dir ${BUILD_PATH} --no-tests=error \
-            2>&1 | tee ${BUILD_PATH}/ctest_st_hetero.log
+            --output-log ${BUILD_PATH}/ctest_st_hetero.log
+      if [[ "$?" -ne 0 ]]; then
+          echo "!!! ST FAILED, PLEASE CHECK YOUR CHANGES !!!"
+          echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
+          exit 1;
+      fi
       unset LD_PRELOAD
       unset ASAN_OPTIONS
       COV_DIRS+=("${BUILD_PATH}/runtime/v1")
@@ -616,7 +631,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       export LD_PRELOAD=${USE_ASAN}
       export ASAN_OPTIONS=detect_container_overflow=0
       ctest --verbose -j ${THREAD_NUM} -L st -L st_dflow --test-dir ${BUILD_PATH} --no-tests=error \
-            2>&1 | tee ${BUILD_PATH}/ctest_st_dflow.log
+            --output-log ${BUILD_PATH}/ctest_st_dflow.log
       if [[ "$?" -ne 0 ]]; then
         echo "!!! ST FAILED, PLEASE CHECK YOUR CHANGES !!!"
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
