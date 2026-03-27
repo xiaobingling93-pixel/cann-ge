@@ -27,7 +27,7 @@ target_compile_options(intf_pub_base INTERFACE
     ${OPTIMIZE_OPTION}
     -Werror -fno-common -Wextra -Wfloat-equal -Wall -fPIC
     -fstack-protector-strong
-    -D_FORTIFY_SOURCE=2
+    $<$<NOT:$<STREQUAL:${CMAKE_BUILD_TYPE},GCOV>>:-D_FORTIFY_SOURCE=2>
     $<$<CONFIG:Debug>:-g>
     $<$<BOOL:${ENABLE_ASAN}>:
         -Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak -fsanitize-recover=address,all

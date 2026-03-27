@@ -87,7 +87,7 @@ target_link_libraries(helper_runtime_test
     ge_executor
     hybrid_executor
     davinci_executor
-    mmpa
+    mmpa_stub
     -Wl,--whole-archive
     df_memset_stubs
     -Wl,--no-whole-archive

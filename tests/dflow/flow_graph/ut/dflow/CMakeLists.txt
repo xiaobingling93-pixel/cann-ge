@@ -58,7 +58,7 @@ target_link_libraries(ut_flow_graph PRIVATE
         json
         graph
         graph_base
-        metadef
+        mmpa_stub
         error_manager
         flow_graph
         metadef
