@@ -32,6 +32,10 @@ TEST_F(itfhandler_unittest, initialize_and_finalize) {
   map<string, string> options;
   ret = Initialize(options);
   EXPECT_NE(ret, fe::SUCCESS);
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   options.emplace("ge.socVersion", "Ascend910B1");
   EXPECT_EQ(fe::InitPlatformInfo("Ascend910B1", true), 0);
   options["ge.bufferOptimize"] = "lx_optimize";
@@ -40,6 +44,8 @@ TEST_F(itfhandler_unittest, initialize_and_finalize) {
   options["ge.bufferOptimize"] = "l2_optimize";
   ret = Initialize(options);
   EXPECT_EQ(ret, fe::SUCCESS);
+  cann_guard.Restore();
+  opp_guard.Restore();
 }
 
 TEST_F(itfhandler_unittest, GetOpsKernelInfoStores_suc) {

@@ -36,6 +36,10 @@ protected:
 
 TEST_F(itfhandler_st, initialize_success)
 {
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   std:: map<string, string> options;
   options.emplace("ge.socVersion", "Ascend910B1");
   Status ret = Initialize(options);
@@ -56,5 +60,7 @@ TEST_F(itfhandler_st, initialize_success)
   GetGraphOptimizerObjs(graph_optimizers);
   EXPECT_EQ(graph_optimizers.size(), 2);
   EXPECT_EQ(ret, SUCCESS);
+  cann_guard.Restore();
+  opp_guard.Restore();
 }
 

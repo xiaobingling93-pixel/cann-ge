@@ -30,10 +30,16 @@ class OptimizeOriginalGraphProcess310BTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
     cout << "OptimizeOriginalGraphProcess310BTest TearDown" << endl;
+    string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+    fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+    string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+    fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
     InitWithSocVersion("Ascend910B1", "must_keep_origin_dtype");
     FEGraphOptimizerPtr graph_optimizer_ptr = FusionManager::Instance(AI_CORE_NAME).graph_opt_;
     map<string, string> options;
     EXPECT_EQ(graph_optimizer_ptr->Initialize(options, nullptr), SUCCESS);
+    cann_guard.Restore();
+    opp_guard.Restore();
   }
 
   static void TearDownTestCase() {

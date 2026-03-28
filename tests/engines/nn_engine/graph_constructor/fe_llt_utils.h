@@ -15,8 +15,42 @@
 #include <nlohmann/json.hpp>
 #include "graph/compute_graph.h"
 #include "common/aicore_util_types.h"
+#include "mmpa/mmpa_api.h"
 
 namespace fe {
+class EnvVarGuard {
+public:
+    EnvVarGuard(const mmEnvId var_name, const char* new_value) 
+        : var_name_(var_name), saved_value_(nullptr) {
+        MM_SYS_GET_ENV(var_name_, saved_value_);
+        int32_t err = 0;
+        MM_SYS_SET_ENV(var_name_, new_value, 1, err);
+    }
+    
+    void Restore() {
+        if (!restored_) {
+            int32_t err = 0;
+            if (saved_value_ != nullptr) {
+                MM_SYS_SET_ENV(var_name_, saved_value_, 1, err);
+            } else {
+                MM_SYS_SET_ENV(var_name_, "", 1, err);
+            }
+            restored_ = true;
+        }
+    }
+    
+    ~EnvVarGuard() {
+        Restore();
+    }
+    
+    EnvVarGuard(const EnvVarGuard&) = delete;
+    EnvVarGuard& operator=(const EnvVarGuard&) = delete;
+    
+private:
+    mmEnvId var_name_;
+    const char_t* saved_value_;
+    bool restored_ = false;
+};
 std::string GetCodeDir();
 std::string GetGraphPath(const std::string &graph_name);
 uint32_t InitPlatformInfo(const std::string &soc_version, const bool is_force = false);

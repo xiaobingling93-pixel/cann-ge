@@ -25,6 +25,7 @@
 
 using namespace std;
 namespace fe {
+
 std::string GetCodeDir() {
   static std::string gCachedCodeDir;
   if (gCachedCodeDir.empty()) {
