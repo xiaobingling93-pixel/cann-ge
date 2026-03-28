@@ -34,7 +34,7 @@ using std::vector;
 
 constexpr uint64_t RT_MEMCPYASYNC_SPLIT_SIZE = 67108864UL;  // 64*1024*1024
 constexpr uint32_t RT_GENERAL_SQE_NUM = 3U;
-constexpr uint8_t MEM_WAIT_SQE_NUM = 3U;
+constexpr uint8_t MEM_WAIT_SQE_NUM = 4U;
 
 #ifdef WIN32
 #define __THREAD_LOCAL__ __declspec(thread)

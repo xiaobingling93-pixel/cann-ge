@@ -16,7 +16,7 @@
 #include "common/util/log.h"
 #include "../../../inc/framework/common/runtime_model_ge.h"
 
-constexpr uint8_t MEM_WAIT_SQE_NUM = 3U;
+constexpr uint8_t MEM_WAIT_SQE_NUM = 4U;
 
 using namespace ge;
 namespace cce {
