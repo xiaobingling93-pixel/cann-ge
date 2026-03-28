@@ -315,6 +315,14 @@ inline const std::string kConcat = "Concat";
 inline const std::string kNop = "Nop";
 inline const std::string kTranspose = "Transpose";
 inline const std::string kSplit = "Split";
+inline const std::string kTan = "Tan";
+inline const std::string kSinh = "Sinh";
+inline const std::string kSquare = "Square";
+inline const std::string kTruncDiv = "TruncDiv";
+inline const std::string kRoundToInt = "RoundToInt";
+inline const std::string kTruncToInt = "TruncToInt";
+inline const std::string kTrunc = "Trunc";
+inline const std::string kRemainder = "Remainder";
 #define JOIN(a, b) a##b
 #define JOIN_A_B_C(a, b, c) a##b##c
 }  // namespace att

@@ -54,6 +54,10 @@ target_sources(test_ascir_ut PRIVATE
         ${ASCIR_UTEST_FILES}
 )
 
+target_include_directories(test_ascir_ut PRIVATE
+        ${CODE_ROOT_DIR}/v35/ascir/reg_func
+)
+
 target_sources(test_ascir_st PRIVATE
         ${ASCIR_STEST_FILES}
 )

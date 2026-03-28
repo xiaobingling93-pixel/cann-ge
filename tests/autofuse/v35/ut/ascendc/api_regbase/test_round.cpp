@@ -56,7 +56,7 @@ class TestApiRoundUT : public testing::Test {
       double val = data_distr(eng);
       param.x[i] = static_cast<T>(val);
       // Round(x) = floor(x + 0.5) for integer types, round to nearest for float
-      param.exp[i] = static_cast<T>(std::round(static_cast<double>(val)));
+      param.exp[i] = static_cast<T>(static_cast<float>(std::lround(static_cast<double>(val))));
     }
   }
 

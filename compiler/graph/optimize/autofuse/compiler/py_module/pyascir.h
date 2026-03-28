@@ -121,5 +121,14 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Split)            \
   OP(Axpy)             \
   OP(CopySign)         \
-  OP(Ceil2Int)
+  OP(Ceil2Int)         \
+  OP(RoundToInt)       \
+  OP(Square)           \
+  OP(Sinh)             \
+  OP(Tan)              \
+  OP(Trunc)            \
+  OP(TruncToInt)       \
+  OP(TruncDiv)         \
+  OP(Xor)              \
+  OP(Remainder)
 #endif

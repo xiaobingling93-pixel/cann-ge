@@ -133,6 +133,15 @@ struct ShareGraph {
   static ge::ComputeGraphPtr CopysignBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr Ceil2intBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr ErfcxTestFusedGraph(size_t dims_size, ge::DataType dtype);
+  static ge::ComputeGraphPtr SinhBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr TanBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr SquareUint8FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr XorUint8FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr TruncBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr TruncDivBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr RoundToIntFloatToInt32FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr TruncToIntBf16ToInt32FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr RemainderBf16FusedGraph(size_t dims_size);
 };
 }  // namespace ascir
 #endif

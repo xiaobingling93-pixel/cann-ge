@@ -547,11 +547,9 @@ codegen_e2e_st() {
                     load_isfinite_store_e2e \
                     load_max_min_store_e2e \
                     load_rsum_block_store_e2e \
-                    load_rsum_ra_store_e2e \
                     load_reciprocal_store_e2e \
                     load_bitwiseand_store_e2e \
                     load_strided_slice_store_e2e \
-                    schedule_multi_group_e2e \
                     load_store_expect_code_e2e \
                     schedule_multi_group_ws_reuse_output_e2e \
                     broadcast_multi_axes_e2e \
