@@ -1,8 +1,10 @@
 set(ascendc_api_extend_src
     utils.h
+    argmax.h
     reduce.h
     reduce_prod.h
     reduce_any.h
+    reduce_max.h
     duplicate.h
     broadcast.h
     compare.h
@@ -23,6 +25,7 @@ set(ascendc_api_extend_src
     datacopy.h
     isfinite.h
     reduce_init.h
+    remainder.h
     cast.h
     reciprocal.h
     transpose_base_type.h
@@ -31,6 +34,7 @@ set(ascendc_api_extend_src
     gather.h
     scalar_sub.h
     floor_div.h
+    true_div.h
     brc_inline_api.h
     axpy.h
     scalar_add.h

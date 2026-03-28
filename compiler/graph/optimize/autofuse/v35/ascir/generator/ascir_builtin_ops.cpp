@@ -443,7 +443,8 @@ REG_ASC_IR(Maximum)
 REG_ASC_IR(TrueDiv)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::TrueDivAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::TrueDivAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+                            {{"T1", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_BF16}},
+                             {"T2", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
 
 // todo:LogicalOr DT_INT64 后面根据需要放开
 REG_ASC_IR(LogicalOr)

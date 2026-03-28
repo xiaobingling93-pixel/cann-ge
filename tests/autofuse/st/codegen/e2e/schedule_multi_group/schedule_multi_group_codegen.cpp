@@ -268,6 +268,7 @@ void ConstructMultiGroupGraph(ge::AscGraph& graph, ascir::FusedScheduledResult &
   *abs.y.axis = {z0.id, z1.id};
   *abs.y.repeats = {s0, s1};
   *abs.y.strides = {s1, One};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, ge::MemAttr(), 0}};
   abs.y.dtype = ge::DT_FLOAT16;
 
   Store store0("store0");

@@ -151,6 +151,15 @@ Register::Register() {
   const std::string kAscendcScalarMinimumStr = {
 #include "scalar_minimum_str.h"
   };
+  const std::string kAscendcAbsStr = {
+#include "abs_str.h"
+  };
+  const std::string kAscendcTrueDivStr = {
+#include "true_div_str.h"
+  };
+  const std::string kAscendcRemainderStr = {
+#include "remainder_str.h"
+  };
   std::unordered_map<std::string, std::string> api_to_file{
       {"bitwise_and.h", kAscendcBitwise_andStr},
       {"duplicate.h", kAscendcDuplicateStr},
@@ -185,7 +194,10 @@ Register::Register() {
       {"scalar_maximum.h", kAscendcScalarMaximumStr},
       {"scalar_minimum.h", kAscendcScalarMinimumStr},
       {"transpose_base_type.h", kAscendcTranposeBaseTypeStr},
-      {"transpose.h", kAscendcTranposeStr}};
+      {"transpose.h", kAscendcTranposeStr},
+      {"abs.h", kAscendcAbsStr},
+      {"true_div.h", kAscendcTrueDivStr},
+      {"remainder.h", kAscendcRemainderStr}};
 
   AscendCApiRegistry::GetInstance().RegisterApi(api_to_file);
 }

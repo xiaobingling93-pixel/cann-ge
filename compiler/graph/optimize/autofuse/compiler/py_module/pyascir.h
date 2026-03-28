@@ -90,6 +90,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Div)              \
   OP(Mul)              \
   OP(TrueDiv)          \
+  OP(Remainder)        \
   OP(Minimum)          \
   OP(Maximum)          \
   OP(LogicalOr)        \

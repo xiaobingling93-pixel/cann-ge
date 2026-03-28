@@ -176,7 +176,7 @@ TEST_F(BufQueAllocatorUT, test_reuse_id_no_reuse_input) {
   EXPECT_EQ(load_result->outputs[0].attr.que.id, 0);
   EXPECT_EQ(load_result->outputs[0].attr.mem.reuse_id, 0);
   auto abs0_result = graph.FindNode(abs0.GetName().c_str());
-  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 0);
+  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 1);
   EXPECT_EQ(abs0_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs1_result = graph.FindNode(abs1.GetName().c_str());
   EXPECT_EQ(abs1_result->outputs[0].attr.que.id, 1);
@@ -279,7 +279,7 @@ TEST_F(BufQueAllocatorUT, test_reuse_id_no_reduce_to_broadcast) {
   EXPECT_EQ(load_result->outputs[0].attr.que.id, 0);
   EXPECT_EQ(load_result->outputs[0].attr.mem.reuse_id, 0);
   auto abs0_result = graph.FindNode(abs0.GetName().c_str());
-  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 0);
+  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 1);
   EXPECT_EQ(abs0_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs1_result = graph.FindNode(abs1.GetName().c_str());
   auto abs3_result = graph.FindNode(abs3.GetName().c_str());
@@ -1688,36 +1688,36 @@ TEST_F(BufQueAllocatorUT, test_inplace_resue_multi_input_output) {
   EXPECT_EQ(load2_result->outputs[0].attr.mem.reuse_id, 11);
 
   auto abs0_result = graph.FindNode("abs0");  // vec calc
-  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 0);
+  EXPECT_EQ(abs0_result->outputs[0].attr.buf.id, 1);
   EXPECT_EQ(abs0_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs1_result = graph.FindNode("abs1");  // vec calc
-  EXPECT_EQ(abs1_result->outputs[0].attr.buf.id, 1);
+  EXPECT_EQ(abs1_result->outputs[0].attr.buf.id, 2);
   EXPECT_EQ(abs1_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs2_result = graph.FindNode("abs2");  // vec calc
-  EXPECT_EQ(abs2_result->outputs[0].attr.buf.id, 2);
+  EXPECT_EQ(abs2_result->outputs[0].attr.buf.id, 3);
   EXPECT_EQ(abs2_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
 
   auto abs4_result = graph.FindNode("abs4");  // vec calc
-  EXPECT_EQ(abs4_result->outputs[0].attr.buf.id, 3);
+  EXPECT_EQ(abs4_result->outputs[0].attr.buf.id, 4);
   EXPECT_EQ(abs4_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs5_result = graph.FindNode("abs5");  // vec calc reuse que
   EXPECT_EQ(abs5_result->outputs[0].attr.que.id, 1);
   EXPECT_EQ(abs5_result->outputs[0].attr.mem.reuse_id, 6);
 
   auto add0_result = graph.FindNode("add0");  // vec calc
-  EXPECT_EQ(add0_result->outputs[0].attr.buf.id, 4);
+  EXPECT_EQ(add0_result->outputs[0].attr.buf.id, 5);
   EXPECT_EQ(add0_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto add1_result = graph.FindNode("add1");  // vec calc
-  EXPECT_EQ(add1_result->outputs[0].attr.buf.id, 5);
+  EXPECT_EQ(add1_result->outputs[0].attr.buf.id, 6);
   EXPECT_EQ(add1_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs3_result = graph.FindNode("abs3");  // vec calc
-  EXPECT_EQ(abs3_result->outputs[0].attr.buf.id, 6);
+  EXPECT_EQ(abs3_result->outputs[0].attr.buf.id, 7);
   EXPECT_EQ(abs3_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto abs7_result = graph.FindNode("abs7");  // vec calc
-  EXPECT_EQ(abs7_result->outputs[0].attr.buf.id, 7);
+  EXPECT_EQ(abs7_result->outputs[0].attr.buf.id, 8);
   EXPECT_EQ(abs7_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
   auto add2_result = graph.FindNode("add2");  // vec calc
-  EXPECT_EQ(add2_result->outputs[0].attr.buf.id, 8);
+  EXPECT_EQ(add2_result->outputs[0].attr.buf.id, 9);
   EXPECT_EQ(add2_result->outputs[0].attr.mem.reuse_id, ge::kIdNone);
 
   auto abs9_result = graph.FindNode("abs9");  // vecout
@@ -1864,9 +1864,9 @@ TEST_F(BufQueAllocatorUT, test_tmp_buff_reuse) {
   EXPECT_EQ(pow0_result->outputs[0].attr.buf.id, 1);
   EXPECT_EQ(pow0_result->outputs[0].attr.mem.reuse_id, -1);
   auto abs_result = graph.FindNode(abs.GetName().c_str());
-  EXPECT_EQ(abs_result->outputs[0].attr.que.id, -1);
-  EXPECT_EQ(abs_result->outputs[0].attr.buf.id, 0);
-  EXPECT_EQ(abs_result->outputs[0].attr.mem.reuse_id, -1);
+  EXPECT_EQ(abs_result->outputs[0].attr.que.id, 0);
+  EXPECT_EQ(abs_result->outputs[0].attr.buf.id, -1);
+  EXPECT_EQ(abs_result->outputs[0].attr.mem.reuse_id, 3);
   auto add0_result = graph.FindNode(add0.GetName().c_str());
   EXPECT_EQ(add0_result->outputs[0].attr.que.id, -1);
   EXPECT_EQ(add0_result->outputs[0].attr.buf.id, 1);

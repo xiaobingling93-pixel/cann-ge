@@ -3470,7 +3470,7 @@ TEST(CodegenKernel, UnaryApiTmpCall) {
   call.Generate(tpipe, current_axis, result);
   std::cout << result << std::endl;
   EXPECT_EQ(result, std::string{
-    "SignExtend(local_3[0], local_0[0], local_0_actual_size,tmp_buf_0);\n"
+    "SignExtend(local_3[0], local_0[0], local_0_actual_size, tmp_buf_0);\n"
   });
 }
 

@@ -155,15 +155,15 @@ TEST(CodegenKernel, Kernel_DataTypeRepeatsNodeUnsupportCheck) {
   graph.AddNode(store_op);
   graph.AddNode(y_op);
 
-  scalar.y.dtype = ge::DT_INT32;
+  scalar.y.dtype = ge::DT_INT16;
   abs_op.x = scalar.y;
-  abs_op.y.dtype = ge::DT_INT32;
+  abs_op.y.dtype = ge::DT_INT16;
 
   store_op.x = abs_op.y;
-  store_op.y.dtype = ge::DT_INT32;
+  store_op.y.dtype = ge::DT_INT16;
 
   y_op.x = store_op.y;
-  y_op.y.dtype = ge::DT_INT32;
+  y_op.y.dtype = ge::DT_INT16;
 
   auto abs = graph.FindNode("abs");
   auto store = graph.FindNode("store");

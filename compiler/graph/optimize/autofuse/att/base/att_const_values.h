@@ -313,6 +313,7 @@ inline const std::string kAtanh = "Atanh";
 inline const std::string kRShift = "RShift";
 inline const std::string kIsFinite = "IsFinite";
 inline const std::string kTrueDiv = "TrueDiv";
+inline const std::string kRemainder = "Remainder";
 inline const std::string kClipByValue = "ClipByValue";
 inline const std::string kLeakyRelu = "LeakyRelu";
 inline const std::string kBitwiseAnd = "BitwiseAnd";

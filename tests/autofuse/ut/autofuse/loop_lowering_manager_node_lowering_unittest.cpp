@@ -3126,8 +3126,8 @@ TEST_F(LoopNodeLoweringUT, LoweringLoadSupportAbsUnsupported) {
   auto data0 = cg->FindNode("data0");
   ASSERT_NE(data0, nullptr);
   auto input0_desc = data0->GetOpDesc()->MutableOutputDesc(0);
-  input0_desc->SetDataType(DT_INT32);
-  input0_desc->SetOriginDataType(DT_INT32);
+  input0_desc->SetDataType(DT_INT16);
+  input0_desc->SetOriginDataType(DT_INT16);
 
   ASSERT_EQ(LoweringManager::LoweringGraph(cg), GRAPH_SUCCESS);
 

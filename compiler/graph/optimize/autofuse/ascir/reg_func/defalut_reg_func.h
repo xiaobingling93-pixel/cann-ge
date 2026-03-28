@@ -24,6 +24,7 @@ uint32_t GetNonScalarAxisId(ge::AscNodeInputs &node_inputs);
 bool IsAllScalarOrUbScalar(ge::AscNodeInputs &node_inputs);
 
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcBroadCastTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcArgMaxTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcConcatTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcConcatTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcPadTmpSize(const ge::AscNode &node);
@@ -40,7 +41,9 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcLtTmpSize(const ge::AscNode &no
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcNeTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcPowTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcReduceTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcReduceMaxTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcRsqrtTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcRemainderTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSelectTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSigmoidTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSubTmpSize(const ge::AscNode &node);

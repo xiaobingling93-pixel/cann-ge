@@ -66,6 +66,7 @@ void LoadGatherAbsStore_BeforeAutofuse(ge::AscGraph &graph, int64_t gather_axis,
   *abs.y.axis = {z0.id, z1.id, z5.id, z6.id, z3.id, z4.id};
   *abs.y.repeats = {s0, s1, s5, s6, s3, s4};
   *abs.y.strides = {s1 * s5 * s6 * s3 * s4, s5 * s6 * s3 * s4, s6 * s3 * s4, s3 * s4, s4, One};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};  
 
   Store store("store");
   graph.AddNode(store);
@@ -671,6 +672,7 @@ void LoadGather_FirstAxis_B_T_AbsStore_BeforeAutofuse(ge::AscGraph &graph, int64
   *abs.y.axis = {z2.id, z3.id, z1.id};
   *abs.y.repeats = {s2, s3, s1};
   *abs.y.strides = {s3 * s1, s1, One};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
 
   Store store("store");
   graph.AddNode(store);

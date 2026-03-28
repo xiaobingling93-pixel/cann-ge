@@ -894,6 +894,15 @@ def TrueDiv(owner_graph: ascir.HintGraph,
             ) -> ascir.OpsOperatorOutput:
     return _common_in_2_out_1_normal_op("TrueDiv", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
 
+def Remainder(owner_graph: ascir.HintGraph,
+            x1: ascir.OpsOperatorOutput,
+            x2: ascir.OpsOperatorOutput,
+            *,
+            axis: List[ascir.Axis],
+            size: Optional[List[ascir.SizeExpr]] = None,
+            stride: Optional[List[ascir.SizeExpr]] = None
+            ) -> ascir.OpsOperatorOutput:
+    return _common_in_2_out_1_normal_op("Remainder", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
 
 def Minimum(owner_graph: ascir.HintGraph,
             x1: ascir.OpsOperatorOutput,

@@ -926,7 +926,7 @@ TEST_F(BufQueReuseSt, TestTmpBuffReuse) {
   ASSERT_NE(sig_node, nullptr);
 
   EXPECT_EQ(pow0_node->attr.tmp_buffers[0].id, 0);
-  EXPECT_EQ(pow0_node->attr.tmp_buffers[0].id, abs0_node->outputs[0].attr.buf.id);
+  EXPECT_EQ(abs0_node->outputs[0].attr.buf.id, -1);
   EXPECT_EQ(pow0_node->attr.tmp_buffers[0].id, sig_node->attr.tmp_buffers[0].id);
 }
 }  // namespace optimize
