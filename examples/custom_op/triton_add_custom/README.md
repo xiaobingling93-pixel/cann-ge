@@ -87,5 +87,21 @@ custom_op/
       custom_op.parameter_map["profiling_mode"].b = True
       custom_op.parameter_map["profiling_options"].s = tf.compat.as_bytes('{"output":".","training_trace":"on","task_trace":"on","hccl":"on","aicpu":"on","aic_metrics":"PipeUtilization","msproftx":"off"}')
       ```
+   2、sample在动态和静态shape配置下的 profiling 结果观测
+    sample
+   ```bash
+      msprof --export=on --output=${profiling_path}
+      cd ${profiling_path}/mindstudio_profiler_output
+   ```
+-   `${profiling_path}`：表示生成 profiling 数据路径，请自行指定
+
+找到该路径下 msprof_XXX.json 文件并使用profiling查看工具例如（chrome://tracing/） 加载该json文件
+
+1）静态shape下sample运行profiling结果如图所示：![static_shape.png](./static_shape.png) 
+静态shape在profiling中可观测到MODEL_EXECUTE、EVENT_WAIT等流同步和MEMCPY_ASYNC等数据传输过程
+
+2）动态shape下sample运行profiling结果如图所示：![dynamic_shape.png](./dynamic_shape.png)
+动态shape在profiling中无EVENT_WAIT等流同步和MEMCPY_ASYNC过程
+
 # 2. 特性约束
 该特性依赖triton-ascend对应的支持范围，您可查看此[链接](https://gitcode.com/Ascend/triton-ascend#%E7%A1%AC%E4%BB%B6%E6%94%AF%E6%8C%81)来获取您当前产品的支持情况
