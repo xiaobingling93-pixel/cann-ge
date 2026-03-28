@@ -39,7 +39,7 @@
 #include "util/mem_utils.h"
 #include "platform/platform_factory.h"
 #include "runtime_stub.h"
-#include "easy_graph/easy_asc_graph.h"
+
 #include "codegen.h"
 #include "optimize/graph_pass/pass_utils.h"
 

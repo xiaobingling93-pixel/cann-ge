@@ -14,13 +14,15 @@
 #include "ascir_utils.h"
 #include "asc_graph_utils.h"
 #include "task_generator/recompute_case_generator.h"
-#include "tests/autofuse/ut/optimize/easy_graph/easy_asc_graph.h"
+#include "asc_graph_builder.h"
+#include "ascgraph_info_complete.h"
 
 namespace schedule {
 using namespace optimize;
 using namespace ge;
 using namespace ge::ops;
-using namespace ge::ascir_op;
+using ge::testing::AscGraphBuilder;
+using ge::testing::Sym;
 
 class RecomputeCaseGeneratorTest : public ::testing::Test {
  protected:
@@ -33,46 +35,20 @@ class RecomputeCaseGeneratorTest : public ::testing::Test {
 };
 
 TEST_F(RecomputeCaseGeneratorTest, TestDynamicGraphSplit) {
-  ge::AscGraph graph("brc_abs");
-  Data data0("RE_data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load("RE_load0");
-  load.x = data0.y;
-  load.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs("RE_abs");
-  abs.x = load.y;
-  abs.y.dtype = ge::DT_FLOAT16;
-
-  Broadcast brc1("brc1");
-  brc1.x = abs.y;
-  brc1.y.dtype = ge::DT_FLOAT16;
-
-  Store store("store");
-  store.x = brc1.y;
-  store.y.dtype = ge::DT_UINT64;
-
-  Output out("out");
-  out.x = store.y;
-  out.ir_attr.SetIndex(0);
-
-  Abs abs2("ST_abs2");
-  abs2.x = abs.y;
-  abs2.y.dtype = ge::DT_FLOAT16;
-
-  Store store1("ST_store1");
-  store1.x = abs2.y;
-  store1.y.dtype = ge::DT_UINT64;
-
-  Output out1("ST_out1");
-  out1.x = store1.y;
-  out1.ir_attr.SetIndex(1);
-
-  auto eg = ge::EaseAscGraph(graph)
-                .Loops({ge::Symbol("s0"), ge::Symbol("s1"), Symbol("s2"), ge::Symbol("s3"), Symbol("s4")})
-                .Broadcast("brc1", {0, 1, 2});
-  eg.Build();
+  auto s0 = Sym("s0"), s1 = Sym("s1"), s2 = Sym("s2"), s3 = Sym("s3"), s4 = Sym("s4");
+  auto graph = AscGraphBuilder("brc_abs")
+    .Loops({s0, s1, s2, s3, s4})
+    .Data("RE_data0", 0, ge::DT_FLOAT16)
+    .Load("RE_load0", "RE_data0", {One, One, One, s3, s4})
+    .Abs("RE_abs", "RE_load0")
+    .Broadcast("brc1", "RE_abs", {s0, s1, s2, s3, s4})
+    .Store("store", "brc1")
+    .Output("out", "store", 0)
+    .Abs("ST_abs2", "RE_abs")
+    .Store("ST_store1", "ST_abs2")
+    .Output("ST_out1", "ST_store1", 1)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   optimize::RecomputeCaseGenerator generator;
   std::vector<ScheduleTask> tasks;
@@ -84,70 +60,26 @@ TEST_F(RecomputeCaseGeneratorTest, TestDynamicGraphSplit) {
 }
 
 TEST_F(RecomputeCaseGeneratorTest, TestDynamicGraphSplitTwoLine) {
-  ge::AscGraph graph("brc_abs");
-  Data data0("RE_data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load("RE_load0");
-  load.x = data0.y;
-  load.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs("RE_abs");
-  abs.x = load.y;
-  abs.y.dtype = ge::DT_FLOAT16;
-
-  Broadcast brc1("brc1");
-  brc1.x = abs.y;
-  brc1.y.dtype = ge::DT_FLOAT16;
-
-  Store store("store");
-  store.x = brc1.y;
-  store.y.dtype = ge::DT_UINT64;
-
-  Output out("out");
-  out.x = store.y;
-  out.ir_attr.SetIndex(0);
-
-  Abs abs2("ST_abs2");
-  abs2.x = abs.y;
-  abs2.y.dtype = ge::DT_FLOAT16;
-
-  Store store1("ST_store1");
-  store1.x = abs2.y;
-  store1.y.dtype = ge::DT_UINT64;
-
-  Output out1("ST_out1");
-  out1.x = store1.y;
-  out1.ir_attr.SetIndex(1);
-
-  Abs abs3("ST_abs3");
-  abs3.x = abs2.y;
-  abs3.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs4("ST_abs4");
-  abs4.x = abs3.y;
-  abs4.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs5("ST_abs5");
-  abs5.x = abs4.y;
-  abs5.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs6("ST_abs6");
-  abs6.x = abs5.y;
-  abs6.y.dtype = ge::DT_FLOAT16;
-
-  Store store2("ST_store2");
-  store2.x = abs6.y;
-  store2.y.dtype = ge::DT_UINT64;
-
-  Output out2("ST_out2");
-  out2.x = store2.y;
-  out2.ir_attr.SetIndex(2);
-
-  auto eg = ge::EaseAscGraph(graph)
-                .Loops({ge::Symbol("s0"), ge::Symbol("s1"), Symbol("s2"), ge::Symbol("s3"), Symbol("s4")})
-                .Broadcast("brc1", {0, 1, 2});
-  eg.Build();
+  auto s0 = Sym("s0"), s1 = Sym("s1"), s2 = Sym("s2"), s3 = Sym("s3"), s4 = Sym("s4");
+  auto graph = AscGraphBuilder("brc_abs")
+    .Loops({s0, s1, s2, s3, s4})
+    .Data("RE_data0", 0, ge::DT_FLOAT16)
+    .Load("RE_load0", "RE_data0", {One, One, One, s3, s4})
+    .Abs("RE_abs", "RE_load0")
+    .Broadcast("brc1", "RE_abs", {s0, s1, s2, s3, s4})
+    .Store("store", "brc1")
+    .Output("out", "store", 0)
+    .Abs("ST_abs2", "RE_abs")
+    .Store("ST_store1", "ST_abs2")
+    .Output("ST_out1", "ST_store1", 1)
+    .Abs("ST_abs3", "ST_abs2")
+    .Abs("ST_abs4", "ST_abs3")
+    .Abs("ST_abs5", "ST_abs4")
+    .Abs("ST_abs6", "ST_abs5")
+    .Store("ST_store2", "ST_abs6")
+    .Output("ST_out2", "ST_store2", 2)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   optimize::RecomputeCaseGenerator generator;
   std::vector<ScheduleTask> tasks;
@@ -159,68 +91,26 @@ TEST_F(RecomputeCaseGeneratorTest, TestDynamicGraphSplitTwoLine) {
 }
 
 TEST_F(RecomputeCaseGeneratorTest, TestStaticGraphSplitTwoLine) {
-  ge::AscGraph graph("brc_abs");
-  Data data0("RE_data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load("RE_load0");
-  load.x = data0.y;
-  load.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs("RE_abs");
-  abs.x = load.y;
-  abs.y.dtype = ge::DT_FLOAT16;
-
-  Broadcast brc1("brc1");
-  brc1.x = abs.y;
-  brc1.y.dtype = ge::DT_FLOAT16;
-
-  Store store("store");
-  store.x = brc1.y;
-  store.y.dtype = ge::DT_UINT64;
-
-  Output out("out");
-  out.x = store.y;
-  out.ir_attr.SetIndex(0);
-
-  Abs abs2("ST_abs2");
-  abs2.x = abs.y;
-  abs2.y.dtype = ge::DT_FLOAT16;
-
-  Store store1("ST_store1");
-  store1.x = abs2.y;
-  store1.y.dtype = ge::DT_UINT64;
-
-  Output out1("ST_out1");
-  out1.x = store1.y;
-  out1.ir_attr.SetIndex(1);
-
-  Abs abs3("ST_abs3");
-  abs3.x = abs2.y;
-  abs3.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs4("ST_abs4");
-  abs4.x = abs3.y;
-  abs4.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs5("ST_abs5");
-  abs5.x = abs4.y;
-  abs5.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs6("ST_abs6");
-  abs6.x = abs5.y;
-  abs6.y.dtype = ge::DT_FLOAT16;
-
-  Store store2("ST_store2");
-  store2.x = abs6.y;
-  store2.y.dtype = ge::DT_UINT64;
-
-  Output out2("ST_out2");
-  out2.x = store2.y;
-  out2.ir_attr.SetIndex(2);
-
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1024), Symbol(256)}).Broadcast("brc1", {0});
-  eg.Build();
+  auto s0 = Sym(1024), s1 = Sym(256);
+  auto graph = AscGraphBuilder("brc_abs")
+    .Loops({s0, s1})
+    .Data("RE_data0", 0, ge::DT_FLOAT16)
+    .Load("RE_load0", "RE_data0", {One, s1})
+    .Abs("RE_abs", "RE_load0")
+    .Broadcast("brc1", "RE_abs", {s0, s1})
+    .Store("store", "brc1")
+    .Output("out", "store", 0)
+    .Abs("ST_abs2", "RE_abs")
+    .Store("ST_store1", "ST_abs2")
+    .Output("ST_out1", "ST_store1", 1)
+    .Abs("ST_abs3", "ST_abs2")
+    .Abs("ST_abs4", "ST_abs3")
+    .Abs("ST_abs5", "ST_abs4")
+    .Abs("ST_abs6", "ST_abs5")
+    .Store("ST_store2", "ST_abs6")
+    .Output("ST_out2", "ST_store2", 2)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   optimize::RecomputeCaseGenerator generator;
   std::vector<ScheduleTask> tasks;
@@ -232,96 +122,32 @@ TEST_F(RecomputeCaseGeneratorTest, TestStaticGraphSplitTwoLine) {
 }
 
 TEST_F(RecomputeCaseGeneratorTest, TestStaticGraphSplitWithBrc) {
-  ge::AscGraph graph("brc_abs");
-  Data data0("RE_data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load("RE_load0");
-  load.x = data0.y;
-  load.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs("RE_abs");
-  abs.x = load.y;
-  abs.y.dtype = ge::DT_FLOAT16;
-
-  Broadcast brc1("brc1");
-  brc1.x = abs.y;
-  brc1.y.dtype = ge::DT_FLOAT16;
-
-  Broadcast brc2("brc2");
-  brc2.x = brc1.y;
-  brc2.y.dtype = ge::DT_FLOAT16;
-
-  Relu relu0("relu0");
-  relu0.x = brc2.y;
-  relu0.y.dtype = ge::DT_FLOAT16;
-
-  Relu relu1("relu1");
-  relu1.x = relu0.y;
-  relu1.y.dtype = ge::DT_FLOAT16;
-
-  Relu relu2("relu2");
-  relu2.x = relu1.y;
-  relu2.y.dtype = ge::DT_FLOAT16;
-
-  Store store("store");
-  store.x = relu2.y;
-  store.y.dtype = ge::DT_UINT64;
-
-  Output out("out");
-  out.x = store.y;
-  out.ir_attr.SetIndex(0);
-
-  Abs abs2("ST_abs2");
-  abs2.x = brc1.y;
-  abs2.y.dtype = ge::DT_FLOAT16;
-
-  Exp exp("ST_exp");
-  exp.x = brc1.y;
-  exp.y.dtype = ge::DT_FLOAT16;
-
-  Add add("ST_add");
-  add.x1 = abs2.y;
-  add.x2 = exp.y;
-  add.y.dtype = ge::DT_FLOAT16;
-
-  Store store1("ST_store1");
-  store1.x = add.y;
-  store1.y.dtype = ge::DT_UINT64;
-
-  Output out1("ST_out1");
-  out1.x = store1.y;
-  out1.ir_attr.SetIndex(1);
-
-  Abs abs3("ST_abs3");
-  abs3.x = abs2.y;
-  abs3.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs4("ST_abs4");
-  abs4.x = abs3.y;
-  abs4.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs5("ST_abs5");
-  abs5.x = abs4.y;
-  abs5.y.dtype = ge::DT_FLOAT16;
-
-  Abs abs6("ST_abs6");
-  abs6.x = abs5.y;
-  abs6.y.dtype = ge::DT_FLOAT16;
-
-  Store store2("ST_store2");
-  store2.x = abs6.y;
-  store2.y.dtype = ge::DT_UINT64;
-
-  Output out2("ST_out2");
-  out2.x = store2.y;
-  out2.ir_attr.SetIndex(2);
-
-  auto eg = ge::EaseAscGraph(graph)
-                .Loops({ge::Symbol(1024), Symbol(32), Symbol(32)})
-                .Broadcast("brc1", {1})
-                .Broadcast("brc2", {0});
-  eg.Build();
+  auto s0 = Sym(1024), s1 = Sym(32), s2 = Sym(32);
+  auto graph = AscGraphBuilder("brc_abs")
+    .Loops({s0, s1, s2})
+    .Data("RE_data0", 0, ge::DT_FLOAT16)
+    .Load("RE_load0", "RE_data0", {One, One, s2})
+    .Abs("RE_abs", "RE_load0")
+    .Broadcast("brc1", "RE_abs", {One, s1, s2})
+    .Broadcast("brc2", "brc1", {s0, s1, s2})
+    .Relu("relu0", "brc2")
+    .Relu("relu1", "relu0")
+    .Relu("relu2", "relu1")
+    .Store("store", "relu2")
+    .Output("out", "store", 0)
+    .Abs("ST_abs2", "brc1")
+    .Exp("ST_exp", "brc1")
+    .Add("ST_add", "ST_abs2", "ST_exp")
+    .Store("ST_store1", "ST_add")
+    .Output("ST_out1", "ST_store1", 1)
+    .Abs("ST_abs3", "ST_abs2")
+    .Abs("ST_abs4", "ST_abs3")
+    .Abs("ST_abs5", "ST_abs4")
+    .Abs("ST_abs6", "ST_abs5")
+    .Store("ST_store2", "ST_abs6")
+    .Output("ST_out2", "ST_store2", 2)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   optimize::RecomputeCaseGenerator generator;
   std::vector<ScheduleTask> tasks;

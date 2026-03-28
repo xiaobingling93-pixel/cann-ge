@@ -39,7 +39,7 @@
 #include "util/mem_utils.h"
 #include "platform/platform_factory.h"
 #include "runtime_stub.h"
-#include "easy_graph/easy_asc_graph.h"
+#include "asc_graph_builder.h"
 #include "codegen.h"
 #include "optimize/graph_pass/pass_utils.h"
 
@@ -5539,75 +5539,31 @@ TEST_F(TestOptimizer, TransposeLongTailWithoutUB) {
 }
 
 TEST_F(TestOptimizer, PowEqiv) {
-  ge::AscGraph graph("PowBrc");
-  auto s0 = graph.CreateSizeVar("s0");
-  auto z0 = graph.CreateAxis("z0", s0);
-
-  ge::ascir_op::Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  ge::ascir_op::Scalar scalar0("scalar0", graph);
-  scalar0.ir_attr.SetValue("-1");
-  ge::ascir_op::Pow pow0("pow0");
-  pow0.x1 = load0.y;
-  pow0.x2 = scalar0.y;
-
-  Load load1("load1");
-  load1.x = data0.y;
-  ge::ascir_op::Scalar scalar1("scalar1", graph);
-  scalar1.ir_attr.SetValue("-2");
-  ge::ascir_op::Pow pow1("pow1");
-  pow1.x1 = load1.y;
-  pow1.x2 = scalar1.y;
-
-  Load load2("load2");
-  load2.x = data0.y;
-  ge::ascir_op::Scalar scalar2("scalar2", graph);
-  scalar2.ir_attr.SetValue("-0.5");
-  ge::ascir_op::Pow pow2("pow2");
-  pow2.x1 = load2.y;
-  pow2.x2 = scalar2.y;
-
-  ge::ascir_op::Scalar scalar3("scalar3", graph);
-  scalar3.ir_attr.SetValue("3");
-  ge::ascir_op::Pow pow3("pow3");
-  pow3.x1 = scalar3.y;
-  pow3.x2 = scalar3.y;
-
-  Load load4("load4");
-  load4.x = data0.y;
-  ge::ascir_op::Scalar scalar4("scalar4", graph);
-  scalar4.ir_attr.SetValue("4");
-  ge::ascir_op::Pow pow4("pow4");
-  pow4.x1 = load4.y;
-  pow4.x2 = scalar4.y;
-
-  ge::ascir_op::Add add0("add0");
-  add0.x1 = pow0.y;
-  add0.x2 = pow1.y;
-
-  ge::ascir_op::Add add1("add1");
-  add1.x1 = pow2.y;
-  add1.x2 = pow3.y;
-
-  ge::ascir_op::Add add2("add2");
-  add2.x1 = add0.y;
-  add2.x2 = add1.y;
-
-  ge::ascir_op::Add add3("add3");
-  add3.x1 = add2.y;
-  add3.x2 = pow4.y;
-
-  ge::ascir_op::Store store("store");
-  store.x = add3.y;
-  ge::ascir_op::Output y("y");
-  y.ir_attr.SetIndex(0);
-  y.x = store.y;
-
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32)});
-  eg.Build();
+  auto graph = ge::testing::AscGraphBuilder("PowBrc")
+    .Loops({ge::testing::Sym(32)})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .Scalar("scalar0", "-1")
+    .template Op<ge::ascir_op::Pow>("pow0", {"load0", "scalar0"})
+    .Load("load1", "data0")
+    .Scalar("scalar1", "-2")
+    .template Op<ge::ascir_op::Pow>("pow1", {"load1", "scalar1"})
+    .Load("load2", "data0")
+    .Scalar("scalar2", "-0.5")
+    .template Op<ge::ascir_op::Pow>("pow2", {"load2", "scalar2"})
+    .Scalar("scalar3", "3")
+    .template Op<ge::ascir_op::Pow>("pow3", {"scalar3", "scalar3"})
+    .Load("load4", "data0")
+    .Scalar("scalar4", "4")
+    .template Op<ge::ascir_op::Pow>("pow4", {"load4", "scalar4"})
+    .Add("add0", "pow0", "pow1")
+    .Add("add1", "pow2", "pow3")
+    .Add("add2", "add0", "add1")
+    .Add("add3", "add2", "pow4")
+    .Store("store", "add3")
+    .Output("y", "store", 0)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   ::ascir::utils::DumpGraph(graph, "BEFORE");
   Status res = optimize::autoschedule::PassRunnerHandler().RunPasses(graph);
@@ -5628,41 +5584,20 @@ TEST_F(TestOptimizer, PowEqiv) {
 }
 
 TEST_F(TestOptimizer, PowEqivCase2) {
-  ge::AscGraph graph("PowBrc");
-  auto s0 = graph.CreateSizeVar("s0");
-  auto z0 = graph.CreateAxis("z0", s0);
-
-  ge::ascir_op::Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  ge::ascir_op::Pow pow0("pow0");
-  pow0.x1 = load0.y;
-  pow0.x2 = load0.y;
-
-  ge::ascir_op::Data data1("data1", graph);
-  data1.ir_attr.SetIndex(1);
-  Load load1("load1");
-  load1.x = data1.y;
-  ge::ascir_op::Scalar scalar1("scalar1", graph);
-  scalar1.ir_attr.SetValue("0");
-  ge::ascir_op::Pow pow1("pow1");
-  pow1.x1 = load1.y;
-  pow1.x2 = scalar1.y;
-
-  ge::ascir_op::Add add0("add0");
-  add0.x1 = pow0.y;
-  add0.x2 = pow1.y;
-
-  ge::ascir_op::Store store("store");
-  store.x = add0.y;
-  ge::ascir_op::Output y("y");
-  y.ir_attr.SetIndex(0);
-  y.x = store.y;
-
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32)});
-  eg.Build();
+  auto graph = ge::testing::AscGraphBuilder("PowBrc")
+    .Loops({ge::testing::Sym(32)})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .template Op<ge::ascir_op::Pow>("pow0", {"load0", "load0"})
+    .Data("data1", 1)
+    .Load("load1", "data1")
+    .Scalar("scalar1", "0")
+    .template Op<ge::ascir_op::Pow>("pow1", {"load1", "scalar1"})
+    .Add("add0", "pow0", "pow1")
+    .Store("store", "add0")
+    .Output("y", "store", 0)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   ::ascir::utils::DumpGraph(graph, "BEFORE");
   Status res = optimize::autoschedule::PassRunnerHandler().RunPasses(graph);
@@ -5679,20 +5614,13 @@ TEST_F(TestOptimizer, PowEqivCase2) {
 }
 
 TEST_F(TestOptimizer, SkipPruneGraph) {
-  ge::AscGraph graph("PowBrc");
-  auto s0 = graph.CreateSizeVar("s0");
-  auto z0 = graph.CreateAxis("z0", s0);
-
-  ge::ascir_op::Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-  Load load0("load0");
-  load0.x = data0.y;
-  ge::ascir_op::Pow pow0("pow0");
-  pow0.x1 = load0.y;
-  pow0.x2 = load0.y;
-
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32)});
-  eg.Build();
+  auto graph = ge::testing::AscGraphBuilder("PowBrc")
+    .Loops({ge::testing::Sym(32)})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .template Op<ge::ascir_op::Pow>("pow0", {"load0", "load0"})
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
   ::ascir::utils::DumpGraph(graph, "BEFORE");
   Status res = optimize::PassUtils::PruneGraph(graph);
   EXPECT_EQ(res, ge::SUCCESS);

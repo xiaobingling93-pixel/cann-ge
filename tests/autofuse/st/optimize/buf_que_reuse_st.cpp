@@ -24,538 +24,120 @@
 #include "platform/v1/platformv1.h"
 #include "codegen.h"
 
+#include "tests/autofuse/framework/easy_asc_graph/asc_graph_builder.h"
+
 using namespace std;
 using namespace ge;
 using namespace ge::ops;
 using namespace ge::ascir_op;
+using ge::testing::Sym;
+using ge::testing::AscGraphBuilder;
 
 namespace optimize {
-void CreatSomeInputFusedConcatGraph(ge::AscGraph &graph) {
-  auto ONE = Symbol(1);
-  const Expression s0 = graph.CreateSizeVar("s0");
-  const Expression s1 = graph.CreateSizeVar("s1");
-  auto z0 = graph.CreateAxis("z0", s0);
-  auto z1 = graph.CreateAxis("z1", s1 + s1 + s1 + s1);
 
-  Data data0("data0", graph);
-  data0.attr.sched.axis = {z0.id, z1.id};
-  *data0.y.axis = {z0.id, z1.id};
-  *data0.y.repeats = {s0, s1};
-  *data0.y.strides = {s1, ONE};
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id, z1.id};
-  *load0.y.axis = {z0.id, z1.id};
-  *load0.y.repeats = {s0, s1};
-  *load0.y.strides = {s1, ONE};
-
-  Abs abs0("abs0");
-  abs0.x = load0.y;
-  abs0.attr.sched.axis = {z0.id, z1.id};
-  *abs0.y.axis = {z0.id, z1.id};
-  *abs0.y.repeats = {s0, s1};
-  *abs0.y.strides = {s1, ONE};
-
-  Exp exp0("exp0");
-  exp0.x = abs0.y;
-  exp0.attr.sched.axis = {z0.id, z1.id};
-  *exp0.y.axis = {z0.id, z1.id};
-  *exp0.y.repeats = {s0, s1};
-  *exp0.y.strides = {s1, ONE};
-
-  Data data1("data1", graph);
-  data1.attr.sched.axis = {z0.id, z1.id};
-  *data1.y.axis = {z0.id, z1.id};
-  *data1.y.repeats = {s0, s1};
-  *data1.y.strides = {s1, ONE};
-  data1.ir_attr.SetIndex(1);
-
-  Load load1("load1");
-  load1.x = data1.y;
-  load1.attr.sched.axis = {z0.id, z1.id};
-  *load1.y.axis = {z0.id, z1.id};
-  *load1.y.repeats = {s0, s1};
-  *load1.y.strides = {s1, ONE};
-
-  Data data2("data2", graph);
-  data2.attr.sched.axis = {z0.id, z1.id};
-  *data2.y.axis = {z0.id, z1.id};
-  *data2.y.repeats = {s0, s1};
-  *data2.y.strides = {s1, ONE};
-  data2.ir_attr.SetIndex(2);
-
-  Load load2("load2");
-  load2.x = data2.y;
-  load2.attr.sched.axis = {z0.id, z1.id};
-  *load2.y.axis = {z0.id, z1.id};
-  *load2.y.repeats = {s0, s1};
-  *load2.y.strides = {s1, ONE};
-
-  Abs abs2("abs2");
-  abs2.x = load2.y;
-  abs2.attr.sched.axis = {z0.id, z1.id};
-  *abs2.y.axis = {z0.id, z1.id};
-  *abs2.y.repeats = {s0, s1};
-  *abs2.y.strides = {s1, ONE};
-
-  Exp exp2("exp2");
-  exp2.x = abs2.y;
-  exp2.attr.sched.axis = {z0.id, z1.id};
-  *exp2.y.axis = {z0.id, z1.id};
-  *exp2.y.repeats = {s0, s1};
-  *exp2.y.strides = {s1, ONE};
-
-  Data data3("data3", graph);
-  data3.attr.sched.axis = {z0.id, z1.id};
-  *data3.y.axis = {z0.id, z1.id};
-  *data3.y.repeats = {s0, s1};
-  *data3.y.strides = {s1, ONE};
-  data3.ir_attr.SetIndex(3);
-
-  Load load3("load3");
-  load3.x = data3.y;
-  load3.attr.sched.axis = {z0.id, z1.id};
-  *load3.y.axis = {z0.id, z1.id};
-  *load3.y.repeats = {s0, s1};
-  *load3.y.strides = {s1, ONE};
-
-  Concat concat("concat");
-  concat.x = {exp0.y, load1.y, exp2.y, load3.y};
-  concat.attr.sched.axis = {z0.id, z1.id};
-  *concat.y.axis = {z0.id, z1.id};
-  *concat.y.repeats = {s0, s1 + s1 + s1 + s1};
-  *concat.y.strides = {s1 + s1 + s1 + s1, ONE};
-
-  Store store("store");
-  store.x = concat.y;
-  store.attr.sched.axis = {z0.id, z1.id};
-  *store.y.axis = {z0.id, z1.id};
-  *store.y.repeats = {s0, s1 + s1 + s1 + s1};
-  *store.y.strides = {s1 + s1 + s1 + s1, ONE};
-
-  Output y("output");
-  y.x = store.y;
-  y.y.dtype = ge::DT_FLOAT16;
-  y.ir_attr.SetIndex(0);
+ge::AscGraph CreatSomeInputFusedConcatGraph(const std::string &name) {
+  auto s0 = Sym("s0");
+  auto s1 = Sym("s1");
+  return AscGraphBuilder(name)
+    .Loops({s0, s1 + s1 + s1 + s1})
+    .Data("data0", 0, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load0", "data0", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Abs("abs0", "load0")
+    .Exp("exp0", "abs0")
+    .Data("data1", 1, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load1", "data1", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Data("data2", 2, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load2", "data2", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Abs("abs2", "load2")
+    .Exp("exp2", "abs2")
+    .Data("data3", 3, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load3", "data3", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Concat("concat", {"exp0", "load1", "exp2", "load3"})
+    .Store("store", "concat")
+    .Output("output", "store", 0, ge::DT_FLOAT16)
+    .Build();
 }
 
-void CreatBrcCascadeGraph(ge::AscGraph &graph) {
+ge::AscGraph CreatBrcCascadeGraph(const std::string &name) {
   auto s0 = Symbol(128);
   auto s1 = Symbol(10);
-
-  auto z0 = graph.CreateAxis("z0", s0);
-  auto z1 = graph.CreateAxis("z1", s1);
-
-  Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id, z1.id};
-  *load0.y.axis = {z0.id, z1.id};
-  *load0.y.repeats = {s0, s1};
-  *load0.y.strides = {s1, One};
-
-  Data data1("data1", graph);
-  data1.ir_attr.SetIndex(1);
-
-  Load load1("load1");
-  load1.x = data1.y;
-  load1.attr.sched.axis = {z0.id, z1.id};
-  *load1.y.axis = {z0.id, z1.id};
-  *load1.y.repeats = {s0, One};
-  *load1.y.strides = {One, Zero};
-
-  Broadcast brc3("brc3");
-  brc3.x = load1.y;
-  brc3.attr.sched.axis = {z0.id, z1.id};
-  *brc3.y.axis = {z0.id, z1.id};
-  *brc3.y.repeats = {s0, s1};
-  *brc3.y.strides = {s1, One};
-
-  Gt gt("gt");
-  gt.x1 = load0.y;
-  gt.x2 = brc3.y;
-  gt.attr.sched.axis = {z0.id, z1.id};
-  *gt.y.axis = {z0.id, z1.id};
-  *gt.y.repeats = {s0, s1};
-  *gt.y.strides = {s1, One};
-
-  Sigmoid sigmoid0("sigmoid0");
-  sigmoid0.x = gt.y;
-  sigmoid0.attr.sched.axis = {z0.id, z1.id};
-  *sigmoid0.y.axis = {z0.id, z1.id};
-  *sigmoid0.y.repeats = {s0, s1};
-  *sigmoid0.y.strides = {s1, One};
-
-  Abs abs0("abs0");
-  abs0.x = gt.y;
-  abs0.attr.sched.axis = {z0.id, z1.id};
-  *abs0.y.axis = {z0.id, z1.id};
-  *abs0.y.repeats = {s0, s1};
-  *abs0.y.strides = {s1, One};
-
-  Scalar scalar1("scalar1", graph);
-
-  Broadcast brc4("brc4");
-  brc4.x = scalar1.y;
-  brc4.attr.sched.axis = {z0.id, z1.id};
-  *brc4.y.axis = {z0.id, z1.id};
-  *brc4.y.repeats = {One, s1};
-  *brc4.y.strides = {Zero, One};
-
-  Broadcast brc5("brc5");
-  brc5.x = brc4.y;
-  brc5.attr.sched.axis = {z0.id, z1.id};
-  *brc5.y.axis = {z0.id, z1.id};
-  *brc5.y.repeats = {s0, s1};
-  *brc5.y.strides = {s1, One};
-
-  Add add("add");
-  add.x1 = abs0.y;
-  add.x2 = sigmoid0.y;
-  add.attr.sched.axis = {z0.id, z1.id};
-  *add.y.axis = {z0.id, z1.id};
-  *add.y.repeats = {s0, s1};
-  *add.y.strides = {s1, One};
-
-  Mul mul("mul");
-  mul.x1 = add.y;
-  mul.x2 = brc5.y;
-  mul.attr.sched.axis = {z0.id, z1.id};
-  *mul.y.axis = {z0.id, z1.id};
-  *mul.y.repeats = {s0, s1};
-  *mul.y.strides = {s1, One};
-
-  Abs abs1("abs1");
-  abs1.x = mul.y;
-  abs1.attr.sched.axis = {z0.id, z1.id};
-  *abs1.y.axis = {z0.id, z1.id};
-  *abs1.y.repeats = {s0, s1};
-  *abs1.y.strides = {s1, One};
-
-  Abs abs2("abs2");
-  abs2.x = abs1.y;
-  abs2.attr.sched.axis = {z0.id, z1.id};
-  *abs2.y.axis = {z0.id, z1.id};
-  *abs2.y.repeats = {s0, s1};
-  *abs2.y.strides = {s1, One};
-
-  Store store("store");
-  store.x = abs2.y;
-  store.attr.sched.axis = {z0.id, z1.id};
-  *store.y.axis = {z0.id, z1.id};
-  *store.y.repeats = {s0, s1};
-  *store.y.strides = {s1, One};
-
-  Output y("output");
-  y.x = store.y;
-  y.ir_attr.SetIndex(0);
+  return AscGraphBuilder(name)
+    .Loops({s0, s1})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .Data("data1", 1)
+    .Load("load1", "data1", {s0, ge::sym::kSymbolOne}, {ge::sym::kSymbolOne, ge::sym::kSymbolZero})
+    .Broadcast("brc3", "load1", {s0, s1})
+    .Op<ascir_op::Gt>("gt", {"load0", "brc3"})
+    .template Op<ascir_op::Sigmoid>("sigmoid0", {"gt"})
+    .Abs("abs0", "gt")
+    .Scalar("scalar1", "")
+    .Broadcast("brc4", "scalar1", {ge::sym::kSymbolOne, s1})
+    .Broadcast("brc5", "brc4", {s0, s1})
+    .Add("add", "abs0", "sigmoid0")
+    .Mul("mul", "add", "brc5")
+    .Abs("abs1", "mul")
+    .Abs("abs2", "abs1")
+    .Store("store", "abs2")
+    .Output("output", "store", 0)
+    .Build();
 }
 
-void CreatBrcReduceGraph(ge::AscGraph &graph) {
+ge::AscGraph CreatBrcReduceGraph(const std::string &name) {
   auto s0 = Symbol(12);
   auto s1 = Symbol(16);
-
-  auto z0 = graph.CreateAxis("z0", s0);
-  auto z1 = graph.CreateAxis("z1", s1);
-
-  Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id, z1.id};
-  *load0.y.axis = {z0.id, z1.id};
-  *load0.y.repeats = {s0, One};
-  *load0.y.strides = {One, Zero};
-
-  Exp exp0("exp0");
-  exp0.x = load0.y;
-  exp0.attr.sched.axis = {z0.id, z1.id};
-  *exp0.y.axis = {z0.id, z1.id};
-  *exp0.y.repeats = {s0, One};
-  *exp0.y.strides = {One, Zero};
-
-  Broadcast brc0("brc0");
-  brc0.x = exp0.y;
-  brc0.attr.sched.axis = {z0.id, z1.id};
-  *brc0.y.axis = {z0.id, z1.id};
-  *brc0.y.repeats = {s0, s1};
-  *brc0.y.strides = {s1, One};
-
-  Data data1("data1", graph);
-  data1.ir_attr.SetIndex(1);
-
-  Load load1("load1");
-  load1.x = data1.y;
-  load1.attr.sched.axis = {z0.id, z1.id};
-  *load1.y.axis = {z0.id, z1.id};
-  *load1.y.repeats = {s0, s1};
-  *load1.y.strides = {s1, One};
-
-  Relu relu0("relu0");
-  relu0.x = load1.y;
-  relu0.attr.sched.axis = {z0.id, z1.id};
-  *relu0.y.axis = {z0.id, z1.id};
-  *relu0.y.repeats = {s0, s1};
-  *relu0.y.strides = {s1, One};
-
-  Add add0("add0");
-  add0.x1 = brc0.y;
-  add0.x2 = relu0.y;
-  add0.attr.sched.axis = {z0.id, z1.id};
-  *add0.y.axis = {z0.id, z1.id};
-  *add0.y.repeats = {s0, s1};
-  *add0.y.strides = {s1, One};
-
-  Sigmoid sigmoid("sigmoid");
-  sigmoid.x = add0.y;
-  sigmoid.attr.sched.axis = {z0.id, z1.id};
-  *sigmoid.y.axis = {z0.id, z1.id};
-  *sigmoid.y.repeats = {s0, s1};
-  *sigmoid.y.strides = {s1, One};
-
-  Max max0("max0");
-  max0.x = sigmoid.y;
-  max0.attr.sched.axis = {z0.id, z1.id};
-  *max0.y.axis = {z0.id, z1.id};
-  *max0.y.repeats = {s0, One};
-  *max0.y.strides = {One, Zero};
-
-  Sigmoid Sigmoid1("Sigmoid1");
-  Sigmoid1.x = max0.y;
-  Sigmoid1.attr.sched.axis = {z0.id, z1.id};
-  *Sigmoid1.y.axis = {z0.id, z1.id};
-  *Sigmoid1.y.repeats = {s0, One};
-  *Sigmoid1.y.strides = {One, Zero};
-
-  Store store("store");
-  store.x = Sigmoid1.y;
-  store.attr.sched.axis = {z0.id, z1.id};
-  *store.y.axis = {z0.id, z1.id};
-  *store.y.repeats = {s0, One};
-  *store.y.strides = {One, Zero};
-
-  Output y("output");
-  y.x = store.y;
-  y.ir_attr.SetIndex(0);
+  return AscGraphBuilder(name)
+    .Loops({s0, s1})
+    .Data("data0", 0)
+    .Load("load0", "data0", {s0, ge::sym::kSymbolOne}, {ge::sym::kSymbolOne, ge::sym::kSymbolZero})
+    .Exp("exp0", "load0")
+    .Broadcast("brc0", "exp0", {s0, s1})
+    .Data("data1", 1)
+    .Load("load1", "data1")
+    .Relu("relu0", "load1")
+    .Add("add0", "brc0", "relu0")
+    .template Op<ascir_op::Sigmoid>("sigmoid", {"add0"})
+    .Max("max0", "sigmoid", {1})
+    .template Op<ascir_op::Sigmoid>("Sigmoid1", {"max0"})
+    .Store("store", "Sigmoid1")
+    .Output("output", "store", 0)
+    .Build();
 }
 
-void CreatNestingLoadGraph(ge::AscGraph &graph) {
-  auto ONE = Symbol(1);
-  const Expression s0 = graph.CreateSizeVar("s0");
-  const Expression s1 = graph.CreateSizeVar("s1");
-  auto z0 = graph.CreateAxis("z0", s0);
-  auto z1 = graph.CreateAxis("z1", s1 + s1 + s1 + s1);
-
-  Data data0("data0", graph);
-  data0.attr.sched.axis = {z0.id, z1.id};
-  *data0.y.axis = {z0.id, z1.id};
-  *data0.y.repeats = {s0, s1};
-  *data0.y.strides = {s1, ONE};
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id, z1.id};
-  *load0.y.axis = {z0.id, z1.id};
-  *load0.y.repeats = {s0, s1};
-  *load0.y.strides = {s1, ONE};
-
-  Data data1("data1", graph);
-  data1.attr.sched.axis = {z0.id, z1.id};
-  *data1.y.axis = {z0.id, z1.id};
-  *data1.y.repeats = {s0, s1};
-  *data1.y.strides = {s1, ONE};
-  data1.ir_attr.SetIndex(1);
-
-  Load load1("load1");
-  load1.x = data1.y;
-  load1.attr.sched.axis = {z0.id, z1.id};
-  *load1.y.axis = {z0.id, z1.id};
-  *load1.y.repeats = {s0, s1};
-  *load1.y.strides = {s1, ONE};
-
-  Add add0("add0");
-  add0.x1 = load0.y;
-  add0.x2 = load1.y;
-  add0.attr.sched.axis = {z0.id, z1.id};
-  *add0.y.axis = {z0.id, z1.id};
-  *add0.y.repeats = {s0, s1};
-  *add0.y.strides = {s1, ONE};
-
-  Data data2("data2", graph);
-  data2.attr.sched.axis = {z0.id, z1.id};
-  *data2.y.axis = {z0.id, z1.id};
-  *data2.y.repeats = {s0, s1};
-  *data2.y.strides = {s1, ONE};
-  data2.ir_attr.SetIndex(2);
-
-  Load load2("load2");
-  load2.x = data2.y;
-  load2.attr.sched.axis = {z0.id, z1.id};
-  *load2.y.axis = {z0.id, z1.id};
-  *load2.y.repeats = {s0, s1};
-  *load2.y.strides = {s1, ONE};
-
-  Add add1("add1");
-  add1.x1 = add0.y;
-  add1.x2 = load2.y;
-  add1.attr.sched.axis = {z0.id, z1.id};
-  *add1.y.axis = {z0.id, z1.id};
-  *add1.y.repeats = {s0, s1};
-  *add1.y.strides = {s1, ONE};
-
-  Data data3("data3", graph);
-  data3.attr.sched.axis = {z0.id, z1.id};
-  *data3.y.axis = {z0.id, z1.id};
-  *data3.y.repeats = {s0, s1};
-  *data3.y.strides = {s1, ONE};
-  data3.ir_attr.SetIndex(3);
-
-  Load load3("load3");
-  load3.x = data3.y;
-  load3.attr.sched.axis = {z0.id, z1.id};
-  *load3.y.axis = {z0.id, z1.id};
-  *load3.y.repeats = {s0, s1};
-  *load3.y.strides = {s1, ONE};
-
-  Add add2("add2");
-  add2.x1 = add1.y;
-  add2.x2 = load3.y;
-  add2.attr.sched.axis = {z0.id, z1.id};
-  *add2.y.axis = {z0.id, z1.id};
-  *add2.y.repeats = {s0, s1};
-  *add2.y.strides = {s1, ONE};
-
-  Data data4("data4", graph);
-  data4.attr.sched.axis = {z0.id, z1.id};
-  *data4.y.axis = {z0.id, z1.id};
-  *data4.y.repeats = {s0, s1};
-  *data4.y.strides = {s1, ONE};
-  data4.ir_attr.SetIndex(4);
-
-  Load load4("load4");
-  load4.x = data4.y;
-  load4.attr.sched.axis = {z0.id, z1.id};
-  *load4.y.axis = {z0.id, z1.id};
-  *load4.y.repeats = {s0, s1};
-  *load4.y.strides = {s1, ONE};
-
-  Add add3("add3");
-  add3.x1 = add2.y;
-  add3.x2 = load4.y;
-  add3.attr.sched.axis = {z0.id, z1.id};
-  *add3.y.axis = {z0.id, z1.id};
-  *add3.y.repeats = {s0, s1};
-  *add3.y.strides = {s1, ONE};
-
-  Data data5("data5", graph);
-  data5.attr.sched.axis = {z0.id, z1.id};
-  *data5.y.axis = {z0.id, z1.id};
-  *data5.y.repeats = {s0, s1};
-  *data5.y.strides = {s1, ONE};
-  data5.ir_attr.SetIndex(5);
-
-  Load load5("load5");
-  load5.x = data5.y;
-  load5.attr.sched.axis = {z0.id, z1.id};
-  *load5.y.axis = {z0.id, z1.id};
-  *load5.y.repeats = {s0, s1};
-  *load5.y.strides = {s1, ONE};
-
-  Add add4("add4");
-  add4.x1 = add3.y;
-  add4.x2 = load5.y;
-  add4.attr.sched.axis = {z0.id, z1.id};
-  *add4.y.axis = {z0.id, z1.id};
-  *add4.y.repeats = {s0, s1};
-  *add4.y.strides = {s1, ONE};
-
-  Data data6("data6", graph);
-  data6.attr.sched.axis = {z0.id, z1.id};
-  *data6.y.axis = {z0.id, z1.id};
-  *data6.y.repeats = {s0, s1};
-  *data6.y.strides = {s1, ONE};
-  data6.ir_attr.SetIndex(6);
-
-  Load load6("load6");
-  load6.x = data6.y;
-  load6.attr.sched.axis = {z0.id, z1.id};
-  *load6.y.axis = {z0.id, z1.id};
-  *load6.y.repeats = {s0, s1};
-  *load6.y.strides = {s1, ONE};
-
-  Add add5("add5");
-  add5.x1 = add4.y;
-  add5.x2 = load6.y;
-  add5.attr.sched.axis = {z0.id, z1.id};
-  *add5.y.axis = {z0.id, z1.id};
-  *add5.y.repeats = {s0, s1};
-  *add5.y.strides = {s1, ONE};
-
-  Add add6("add6");
-  add6.x1 = add5.y;
-  add6.x2 = load5.y;
-  add6.attr.sched.axis = {z0.id, z1.id};
-  *add6.y.axis = {z0.id, z1.id};
-  *add6.y.repeats = {s0, s1};
-  *add6.y.strides = {s1, ONE};
-
-  Add add7("add7");
-  add7.x1 = add6.y;
-  add7.x2 = load4.y;
-  add7.attr.sched.axis = {z0.id, z1.id};
-  *add7.y.axis = {z0.id, z1.id};
-  *add7.y.repeats = {s0, s1};
-  *add7.y.strides = {s1, ONE};
-
-  Add add8("add8");
-  add8.x1 = add7.y;
-  add8.x2 = load3.y;
-  add8.attr.sched.axis = {z0.id, z1.id};
-  *add8.y.axis = {z0.id, z1.id};
-  *add8.y.repeats = {s0, s1};
-  *add8.y.strides = {s1, ONE};
-
-  Add add9("add9");
-  add9.x1 = add8.y;
-  add9.x2 = load2.y;
-  add9.attr.sched.axis = {z0.id, z1.id};
-  *add9.y.axis = {z0.id, z1.id};
-  *add9.y.repeats = {s0, s1};
-  *add9.y.strides = {s1, ONE};
-
-  Add add10("add10");
-  add10.x1 = add9.y;
-  add10.x2 = load1.y;
-  add10.attr.sched.axis = {z0.id, z1.id};
-  *add10.y.axis = {z0.id, z1.id};
-  *add10.y.repeats = {s0, s1};
-  *add10.y.strides = {s1, ONE};
-
-  Add add11("add11");
-  add11.x1 = add10.y;
-  add11.x2 = load0.y;
-  add11.attr.sched.axis = {z0.id, z1.id};
-  *add11.y.axis = {z0.id, z1.id};
-  *add11.y.repeats = {s0, s1};
-  *add11.y.strides = {s1, ONE};
-
-  Store store("store");
-  store.x = add11.y;
-  store.attr.sched.axis = {z0.id, z1.id};
-  *store.y.axis = {z0.id, z1.id};
-  *store.y.repeats = {s0, s1};
-  *store.y.strides = {s1, ONE};
-
-  Output y("output");
-  y.x = store.y;
-  y.y.dtype = ge::DT_FLOAT16;
-  y.ir_attr.SetIndex(0);
+ge::AscGraph CreatNestingLoadGraph(const std::string &name) {
+  auto s0 = Sym("s0");
+  auto s1 = Sym("s1");
+  return AscGraphBuilder(name)
+    .Loops({s0, s1 + s1 + s1 + s1})
+    .Data("data0", 0, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load0", "data0", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Data("data1", 1, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load1", "data1", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add0", "load0", "load1")
+    .Data("data2", 2, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load2", "data2", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add1", "add0", "load2")
+    .Data("data3", 3, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load3", "data3", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add2", "add1", "load3")
+    .Data("data4", 4, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load4", "data4", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add3", "add2", "load4")
+    .Data("data5", 5, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load5", "data5", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add4", "add3", "load5")
+    .Data("data6", 6, {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Load("load6", "data6", {s0, s1}, {s1, ge::sym::kSymbolOne})
+    .Add("add5", "add4", "load6")
+    .Add("add6", "add5", "load5")
+    .Add("add7", "add6", "load4")
+    .Add("add8", "add7", "load3")
+    .Add("add9", "add8", "load2")
+    .Add("add10", "add9", "load1")
+    .Add("add11", "add10", "load0")
+    .Store("store", "add11")
+    .Output("output", "store", 0, ge::DT_FLOAT16)
+    .Build();
 }
 
 class BufQueReuseSt : public ::testing::Test {
@@ -609,8 +191,7 @@ class BufQueReuseSt : public ::testing::Test {
 };
 
 TEST_F(BufQueReuseSt, TestTQueShareInConcatMultiInputsScene) {
-  ge::AscGraph graph("Concat4InputsGraph");
-  CreatSomeInputFusedConcatGraph(graph);
+  auto graph = CreatSomeInputFusedConcatGraph("Concat4InputsGraph");
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});
   optimizer.Optimize(graph, fused_scheduled_result);
@@ -642,8 +223,7 @@ TEST_F(BufQueReuseSt, TestTQueShareInConcatMultiInputsScene) {
 }
 
 TEST_F(BufQueReuseSt, TestShortenLoadLifeTime) {
-  ge::AscGraph graph("NestingLoadGraph");
-  CreatNestingLoadGraph(graph);
+  auto graph = CreatNestingLoadGraph("NestingLoadGraph");
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});
   optimizer.Optimize(graph, fused_scheduled_result);
@@ -686,8 +266,7 @@ TEST_F(BufQueReuseSt, TestShortenLoadLifeTime) {
 }
 
 TEST_F(BufQueReuseSt, TestVecCanReuseTque) {
-  ge::AscGraph graph("MultiBrcGraph");
-  CreatBrcReduceGraph(graph);
+  auto graph = CreatBrcReduceGraph("MultiBrcGraph");
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});
   ASSERT_EQ(optimizer.Optimize(graph, fused_scheduled_result), ge::SUCCESS);
@@ -709,8 +288,7 @@ TEST_F(BufQueReuseSt, TestVecCanReuseTque) {
 }
 
 TEST_F(BufQueReuseSt, TestInplaceChainVecCanReuseTque) {
-  ge::AscGraph graph("MultiBrcGraph");
-  CreatBrcCascadeGraph(graph);
+  auto graph = CreatBrcCascadeGraph("MultiBrcGraph");
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});
   ASSERT_EQ(optimizer.Optimize(graph, fused_scheduled_result), ge::SUCCESS);
@@ -751,61 +329,17 @@ TEST_F(BufQueReuseSt, TestInplaceChainVecCanReuseTque) {
 }
 
 TEST_F(BufQueReuseSt, TestVecoutCanInplaceReuseCalc) {
-  ge::AscGraph graph("InplaceGraph");
-
-  auto s0 = Symbol(128);
-  auto z0 = graph.CreateAxis("z0", s0);
-
-  Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id};
-  *load0.y.axis = {z0.id};
-  *load0.y.repeats = {s0};
-  *load0.y.strides = {One};
-
-  Load load1("load1");
-  load1.x = data0.y;
-  load1.attr.sched.axis = {z0.id};
-  *load1.y.axis = {z0.id};
-  *load1.y.repeats = {s0};
-  *load1.y.strides = {One};
-
-  Pow pow0("pow0");
-  pow0.x1 = load0.y;
-  pow0.x2 = load1.y;
-  pow0.attr.sched.axis = {z0.id};
-  *pow0.y.axis = {z0.id};
-  *pow0.y.repeats = {s0};
-  *pow0.y.strides = {One};
-
-  Load load2("load2");
-  load2.x = data0.y;
-  load2.attr.sched.axis = {z0.id};
-  *load2.y.axis = {z0.id};
-  *load2.y.repeats = {s0};
-  *load2.y.strides = {One};
-
-  Add add("add0");
-  add.x1 = pow0.y;
-  add.x2 = load2.y;
-  add.attr.sched.axis = {z0.id};
-  *add.y.axis = {z0.id};
-  *add.y.repeats = {s0};
-  *add.y.strides = {One};
-
-  Store store("store");
-  store.x = add.y;
-  store.attr.sched.axis = {z0.id};
-  *store.y.axis = {z0.id};
-  *store.y.repeats = {s0};
-  *store.y.strides = {One};
-
-  Output y("output");
-  y.x = store.y;
-  y.ir_attr.SetIndex(0);
+  auto graph = AscGraphBuilder("InplaceGraph")
+    .Loops({Symbol(128)})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .Load("load1", "data0")
+    .Op<ascir_op::Pow>("pow0", {"load0", "load1"})
+    .Load("load2", "data0")
+    .Add("add0", "pow0", "load2")
+    .Store("store", "add0")
+    .Output("output", "store", 0)
+    .Build();
 
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});
@@ -846,68 +380,18 @@ TEST_F(BufQueReuseSt, TestVecoutCanInplaceReuseCalc) {
 }
 
 TEST_F(BufQueReuseSt, TestTmpBuffReuse) {
-  ge::AscGraph graph("tmp_buf_reuse_graph");
-
-  auto s0 = Symbol(128);
-  auto z0 = graph.CreateAxis("z0", s0);
-
-  Data data0("data0", graph);
-  data0.ir_attr.SetIndex(0);
-
-  Load load0("load0");
-  load0.x = data0.y;
-  load0.attr.sched.axis = {z0.id};
-  *load0.y.axis = {z0.id};
-  *load0.y.repeats = {s0};
-  *load0.y.strides = {One};
-
-  Load load1("load1");
-  load1.x = data0.y;
-  load1.attr.sched.axis = {z0.id};
-  *load1.y.axis = {z0.id};
-  *load1.y.repeats = {s0};
-  *load1.y.strides = {One};
-
-  Pow pow0("pow0");
-  pow0.x1 = load0.y;
-  pow0.x2 = load1.y;
-  pow0.attr.sched.axis = {z0.id};
-  *pow0.y.axis = {z0.id};
-  *pow0.y.repeats = {s0};
-  *pow0.y.strides = {One};
-
-  Abs abs0("abs0");
-  abs0.x = pow0.y;
-  abs0.attr.sched.axis = {z0.id};
-  *abs0.y.axis = {z0.id};
-  *abs0.y.repeats = {s0};
-  *abs0.y.strides = {One};
-
-  Add add("add0");
-  add.x1 = pow0.y;
-  add.x2 = abs0.y;
-  add.attr.sched.axis = {z0.id};
-  *add.y.axis = {z0.id};
-  *add.y.repeats = {s0};
-  *add.y.strides = {One};
-
-  Sigmoid sig("sigmoid");
-  sig.x = add.y;
-  sig.attr.sched.axis = {z0.id};
-  *sig.y.axis = {z0.id};
-  *sig.y.repeats = {s0};
-  *sig.y.strides = {One};
-
-  Store store("store");
-  store.x = sig.y;
-  store.attr.sched.axis = {z0.id};
-  *store.y.axis = {z0.id};
-  *store.y.repeats = {s0};
-  *store.y.strides = {One};
-
-  Output y("output");
-  y.x = store.y;
-  y.ir_attr.SetIndex(0);
+  auto graph = AscGraphBuilder("tmp_buf_reuse_graph")
+    .Loops({Symbol(128)})
+    .Data("data0", 0)
+    .Load("load0", "data0")
+    .Load("load1", "data0")
+    .Op<ascir_op::Pow>("pow0", {"load0", "load1"})
+    .Abs("abs0", "pow0")
+    .Add("add0", "pow0", "abs0")
+    .template Op<ascir_op::Sigmoid>("sigmoid", {"add0"})
+    .Store("store", "sigmoid")
+    .Output("output", "store", 0)
+    .Build();
 
   ::ascir::FusedScheduledResult fused_scheduled_result;
   optimize::Optimizer optimizer(optimize::OptimizerOptions{});

@@ -23,7 +23,8 @@
 
 #define private public
 #include "buffer_allocate/buf_que_allocator.h"
-#include "easy_graph/easy_asc_graph.h"
+#include "asc_graph_builder.h"
+#include "ascgraph_info_complete.h"
 #undef private
 #include "ascir_ops_utils.h"
 #include "autoschedule/tiling_group.h"
@@ -689,136 +690,63 @@ TEST_F(BufQueAllocatorUT, test_shorten_load_lifetime) {
 }
 
 TEST_F(BufQueAllocatorUT, test_shorten_vecin_lifecycle_with_sorting) {
-  ge::AscGraph graph("shorten_load");
-
-  ge::ascir_op::Data data0("data0", graph);
-  ge::ascir_op::Load load00("load00");
-  load00.x = data0.y;
-  ge::ascir_op::Load load01("load01");
-  load01.x = data0.y;
-
-  ge::ascir_op::Data data1("data1", graph);
-  ge::ascir_op::Load load10("load10");
-  load10.x = data1.y;
-  ge::ascir_op::Load load11("load11");
-  load11.x = data1.y;
-
-  ge::ascir_op::Data data2("data2", graph);
-  ge::ascir_op::Load load20("load20");
-  load20.x = data2.y;
-  ge::ascir_op::Load load21("load21");
-  load21.x = data2.y;
-
-  ge::ascir_op::Data data3("data3", graph);
-  ge::ascir_op::Load load30("load30");
-  load30.x = data3.y;
-  ge::ascir_op::Load load31("load31");
-  load31.x = data3.y;
-
-  ge::ascir_op::Data data4("data4", graph);
-  ge::ascir_op::Load load40("load40");
-  load40.x = data4.y;
-  ge::ascir_op::Load load41("load41");
-  load41.x = data4.y;
-
-  ge::ascir_op::Data data5("data5", graph);
-  ge::ascir_op::Load load50("load50");
-  load50.x = data5.y;
-  ge::ascir_op::Load load51("load51");
-  load51.x = data5.y;
-
-  ge::ascir_op::Data data6("data6", graph);
-  ge::ascir_op::Load load60("load60");
-  load60.x = data6.y;
-  ge::ascir_op::Load load61("load61");
-  load61.x = data6.y;
-
-  ge::ascir_op::Data data7("data7", graph);
-  ge::ascir_op::Load load70("load70");
-  load70.x = data7.y;
-  ge::ascir_op::Load load71("load71");
-  load71.x = data7.y;
-
-  ge::ascir_op::Data data8("data8", graph);
-  ge::ascir_op::Load load80("load80");
-  load80.x = data8.y;
-  ge::ascir_op::Load load81("load81");
-  load81.x = data8.y;
-
-  ge::ascir_op::Data data9("data9", graph);
-  ge::ascir_op::Load load90("load90");
-  load90.x = data9.y;
-  ge::ascir_op::Load load91("load91");
-  load91.x = data9.y;
-
-  Mul mul0("mul0");
-  mul0.x1 = load00.y;
-  mul0.x2 = load01.y;
-  Mul mul1("mul1");
-  mul1.x1 = load01.y;
-  mul1.x2 = load10.y;
-  Mul mul2("mul2");
-  mul2.x1 = load10.y;
-  mul2.x2 = load11.y;
-  Mul mul3("mul3");
-  mul3.x1 = load11.y;
-  mul3.x2 = load20.y;
-  Mul mul4("mul4");
-  mul4.x1 = load20.y;
-  mul4.x2 = load21.y;
-  Mul mul5("mul5");
-  mul5.x1 = load21.y;
-  mul5.x2 = load30.y;
-  Mul mul6("mul6");
-  mul6.x1 = load30.y;
-  mul6.x2 = load31.y;
-  Mul mul7("mul7");
-  mul7.x1 = load31.y;
-  mul7.x2 = load40.y;
-  Mul mul8("mul8");
-  mul8.x1 = load40.y;
-  mul8.x2 = load41.y;
-  Mul mul9("mul9");
-  mul9.x1 = load41.y;
-  mul9.x2 = load50.y;
-  Mul mul10("mul10");
-  mul10.x1 = load50.y;
-  mul10.x2 = load51.y;
-  Mul mul11("mul11");
-  mul11.x1 = load51.y;
-  mul11.x2 = load60.y;
-  Mul mul12("mul12");
-  mul12.x1 = load60.y;
-  mul12.x2 = load61.y;
-  Mul mul13("mul13");
-  mul13.x1 = load61.y;
-  mul13.x2 = load70.y;
-  Mul mul14("mul14");
-  mul14.x1 = load70.y;
-  mul14.x2 = load71.y;
-  Mul mul15("mul15");
-  mul15.x1 = load71.y;
-  mul15.x2 = load80.y;
-  Mul mul16("mul16");
-  mul16.x1 = load80.y;
-  mul16.x2 = load81.y;
-  Mul mul17("mul17");
-  mul17.x1 = load81.y;
-  mul17.x2 = load90.y;
-  Mul mul18("mul18");
-  mul18.x1 = load90.y;
-  mul18.x2 = load91.y;
-
-  Concat cat("cat");
-  cat.x = {mul1.y,  mul2.y,  mul3.y,  mul4.y,  mul5.y,  mul6.y,  mul7.y,  mul8.y,  mul9.y,
-           mul10.y, mul11.y, mul12.y, mul13.y, mul14.y, mul15.y, mul16.y, mul17.y, mul18.y};
-  Store store("store");
-  store.x = cat.y;
-  Output out("out");
-  out.x = store.y;
-
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32), ge::Symbol(16)});
-  eg.Build();
+  auto graph = ge::testing::AscGraphBuilder("shorten_load")
+    .Loops({ge::testing::Sym(32), ge::testing::Sym(16)})
+    .Data("data0", 0)
+    .Load("load00", "data0")
+    .Load("load01", "data0")
+    .Data("data1", 1)
+    .Load("load10", "data1")
+    .Load("load11", "data1")
+    .Data("data2", 2)
+    .Load("load20", "data2")
+    .Load("load21", "data2")
+    .Data("data3", 3)
+    .Load("load30", "data3")
+    .Load("load31", "data3")
+    .Data("data4", 4)
+    .Load("load40", "data4")
+    .Load("load41", "data4")
+    .Data("data5", 5)
+    .Load("load50", "data5")
+    .Load("load51", "data5")
+    .Data("data6", 6)
+    .Load("load60", "data6")
+    .Load("load61", "data6")
+    .Data("data7", 7)
+    .Load("load70", "data7")
+    .Load("load71", "data7")
+    .Data("data8", 8)
+    .Load("load80", "data8")
+    .Load("load81", "data8")
+    .Data("data9", 9)
+    .Load("load90", "data9")
+    .Load("load91", "data9")
+    .Mul("mul0", "load00", "load01")
+    .Mul("mul1", "load01", "load10")
+    .Mul("mul2", "load10", "load11")
+    .Mul("mul3", "load11", "load20")
+    .Mul("mul4", "load20", "load21")
+    .Mul("mul5", "load21", "load30")
+    .Mul("mul6", "load30", "load31")
+    .Mul("mul7", "load31", "load40")
+    .Mul("mul8", "load40", "load41")
+    .Mul("mul9", "load41", "load50")
+    .Mul("mul10", "load50", "load51")
+    .Mul("mul11", "load51", "load60")
+    .Mul("mul12", "load60", "load61")
+    .Mul("mul13", "load61", "load70")
+    .Mul("mul14", "load70", "load71")
+    .Mul("mul15", "load71", "load80")
+    .Mul("mul16", "load80", "load81")
+    .Mul("mul17", "load81", "load90")
+    .Mul("mul18", "load90", "load91")
+    .Concat("cat", {"mul1", "mul2", "mul3", "mul4", "mul5", "mul6", "mul7", "mul8", "mul9",
+                    "mul10", "mul11", "mul12", "mul13", "mul14", "mul15", "mul16", "mul17", "mul18"})
+    .Store("store", "cat")
+    .Output("out", "store", 0)
+    .Build();
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
 
   ScheduleUtils::TopologicalSorting(graph);
   EXPECT_EQ(BufQueAllocator().AllocBufQueForSingleImplGraph(graph, 4), ge::SUCCESS);
