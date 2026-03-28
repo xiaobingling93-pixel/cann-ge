@@ -4,4 +4,4 @@ jinja2
 setuptools>=59.0.1
 wheel>=0.37.1
 coverage
-cloudpickle
+cloudpickle 

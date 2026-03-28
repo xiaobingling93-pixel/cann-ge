@@ -18,7 +18,7 @@
 #include "flow_graph/data_flow.h"
 #include "node_builder.h"
 
-using namespace ge;
+using namespace ge; 
 using namespace dflow;
 
 namespace {
