@@ -266,8 +266,8 @@ Status HcclTaskInfo::CreateStream(const int64_t stream_num, const int64_t main_s
     davinci_model_->PushHcclStream(stream);
 
     // Create slave stream, inactive by default, activated by hccl
-    GE_CHK_RT_RET(aclmdlRIBindStream(davinci_model_->GetRtModelHandle(), stream,
-                                     static_cast<uint32_t>(ACL_MODEL_STREAM_FLAG_DEFAULT)));
+    GE_CHK_RT_RET(rtModelBindStream(davinci_model_->GetRtModelHandle(), stream,
+                                     static_cast<uint32_t>(RT_MODEL_WAIT_ACTIVE_STREAM)));
     GELOGD("hccl_stream addr is=%p", stream);
     davinci_model_->SaveHcclFollowStream(main_stream_id, stream);
   }
