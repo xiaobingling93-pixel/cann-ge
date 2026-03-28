@@ -1831,6 +1831,399 @@ ge::ComputeGraphPtr ShareGraph::ErfBf16FusedGraph(size_t dims_size) {
   return compute_graph;
 }
 
+static void CreateLog1pBfloat16AscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data0", graph);
+  x.y.dtype = ge::DataType::DT_BF16;
+  x.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.y.dtype = ge::DataType::DT_BF16;
+  x1Local.x = x.y;
+
+  ge::ascir_op::Log1p log1p("log1p");
+  log1p.x = x1Local.y;
+  log1p.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::Store log1p_store("store");
+  log1p_store.x = log1p.y;
+  log1p_store.y.dtype = ge::DataType::DT_BF16;
+
+  ge::ascir_op::Output y("output");
+  y.x = log1p_store.y;
+
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::Log1pBfloat16FusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("log1p_bfloat16_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("log1p_bfloat16_test");
+  CreateLog1pBfloat16AscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateFloorToIntFloatAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load xLocal("load");
+  xLocal.x = x.y;
+
+  ge::ascir_op::FloorToInt floortoint("floortoint");
+  floortoint.x = xLocal.y;
+  floortoint.y.dtype = ge::DT_INT32;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = floortoint.y;
+  x_out.y.dtype = ge::DT_INT32;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.y.dtype = ge::DT_INT32;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::FloorToIntFloatFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("floortoint_float_test");
+  auto data = builder.AddNode("data", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("floortoint_float");
+  CreateFloorToIntFloatAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateFmodFloatAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x1("data0", graph);
+  x1.ir_attr.SetIndex(0);
+  x1.y.dtype = ge::DT_FLOAT;
+  ge::ascir_op::Data x2("data1", graph);
+  x2.ir_attr.SetIndex(1);
+  x2.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.x = x1.y;
+  x1Local.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Load x2Local("load1");
+  x2Local.x = x2.y;
+  x2Local.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Fmod fmod("fmod");
+  fmod.x1 = x1Local.y;
+  fmod.x2 = x2Local.y;
+  fmod.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = fmod.y;
+  x_out.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::FmodFloatFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("fmod_float_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+  auto data1 = builder.AddNode("data1", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data1->GetOpDescBarePtr(), "_parent_node_index", 1);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 2, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(data1, 0, ascbc, 1);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("fmod_float");
+  CreateFmodFloatAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+/**
+ *      output
+ *         |
+ *       store
+ *         |
+ *     logicalxor
+ *       /   \
+ *   load0   load1
+ *     |       |
+ *   data0   data1
+ */
+static void CreateLogicalXorFloatAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x1("data0", graph);
+  x1.ir_attr.SetIndex(0);
+  ge::ascir_op::Data x2("data1", graph);
+  x2.ir_attr.SetIndex(1);
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.x = x1.y;
+  x1Local.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Load x2Local("load1");
+  x2Local.x = x2.y;
+  x2Local.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::LogicalXor logicalxor("logicalxor");
+  logicalxor.x1 = x1Local.y;
+  logicalxor.x2 = x2Local.y;
+  logicalxor.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = logicalxor.y;
+  x_out.y.dtype = ge::DT_UINT8;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.y.dtype = ge::DT_UINT8;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::LogicalXorFloatFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("logicalxor_float_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+  auto data1 = builder.AddNode("data1", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data1->GetOpDescBarePtr(), "_parent_node_index", 1);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 2, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(data1, 0, ascbc, 1);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("logicalxor_float");
+  CreateLogicalXorFloatAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+/**
+ *      output
+ *         |
+ *       store
+ *         |
+ *       hypot
+ *       /   \
+ *   load0   load1
+ *     |       |
+ *   data0   data1
+ */
+static void CreateHypotFloatAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x1("data0", graph);
+  x1.ir_attr.SetIndex(0);
+  ge::ascir_op::Data x2("data1", graph);
+  x2.ir_attr.SetIndex(1);
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.x = x1.y;
+
+  ge::ascir_op::Load x2Local("load1");
+  x2Local.x = x2.y;
+
+  ge::ascir_op::Hypot hypot("hypot");
+  hypot.x1 = x1Local.y;
+  hypot.x2 = x2Local.y;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = hypot.y;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::HypotFloatFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("hypot_float_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+  auto data1 = builder.AddNode("data1", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data1->GetOpDescBarePtr(), "_parent_node_index", 1);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 2, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(data1, 0, ascbc, 1);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("hypot_float");
+  CreateHypotFloatAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+/**
+ *      output
+ *         |
+ *       store
+ *         |
+ *       lgamma
+ *         |
+ *       load0
+ *         |
+ *       data0
+ */
+static void CreateLgammaFloatAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Load xLocal("load0");
+  xLocal.x = x.y;
+  xLocal.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Lgamma lgamma("lgamma");
+  lgamma.x = xLocal.y;
+  lgamma.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Store x_out("store");
+  x_out.x = lgamma.y;
+  x_out.y.dtype = ge::DT_FLOAT;
+
+  ge::ascir_op::Output y("output");
+  y.x = x_out.y;
+  y.ir_attr.SetIndex(0);
+  y.y.dtype = ge::DT_FLOAT;
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::LgammaFloatFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("lgamma_float_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("lgamma_float");
+  CreateLgammaFloatAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
+static void CreateLoadLog10StoreAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  ge::ascir_op::Data x1("data0", graph);
+  x1.ir_attr.SetIndex(0);
+
+  ge::ascir_op::Load x1Local("load0");
+  x1Local.x = x1.y;
+
+  ge::ascir_op::Log10 log10("log10");
+  log10.x = x1Local.y;
+
+  ge::ascir_op::Store log10_store("store");
+  log10_store.x = log10.y;
+
+  ge::ascir_op::Output y("output");
+  y.x = log10_store.y;
+
+  y.ir_attr.SetIndex(0);
+
+  ConstructVVAscGraphAxisInfo(graph, dims_size);
+}
+
+ge::ComputeGraphPtr ShareGraph::LoadLog10StoreFusedGraph(size_t dims_size) {
+    auto builder = GraphBuilder("log10_float_test");
+    auto data0 = builder.AddNode("data0", "Data", 0, 1);
+    ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+    auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+    auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+    builder.AddDataEdge(data0, 0, ascbc, 0);
+    builder.AddDataEdge(ascbc, 0, netoutput, 0);
+    ComputeGraphPtr compute_graph = builder.GetGraph();
+    if (compute_graph == nullptr) {
+      return nullptr;
+    }
+    auto ascbc_node = compute_graph->FindNode("ascbc");
+    ge::AscGraph sub_graph("log10_float_test");
+    CreateLoadLog10StoreAscGraph(sub_graph, dims_size);
+
+    std::string sub_graph_str;
+    ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+    ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+    return compute_graph;
+}
+
 static void CreateAbsClipAscGraph(ge::AscGraph &graph, size_t dims_size) {
   ge::ascir_op::Data x1("data0", graph);
   x1.ir_attr.SetIndex(0);

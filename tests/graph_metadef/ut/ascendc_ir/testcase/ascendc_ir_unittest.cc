@@ -3715,6 +3715,9 @@ inline std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAscNodeTmpSize(const ge:
     {"FloorDiv", &GetInputDataSizeTmpBuffer},
     {"Gelu", &GetInputDataSizeTmpBuffer},
     {"Axpy", &CalcAxpyTmpSize},
+    {"Fmod", &CalcVoidTmpSizeV2},
+    {"Hypot", &CalcVoidTmpSizeV2},
+    {"Lgamma", &CalcLgammaTmpSizeV2},
     {"StubOp10", &SameTmpBufSizeWithFirstInput},
     {"StubOp11", &CalcTmpSizeForStubOp11},
   };

@@ -116,6 +116,14 @@ struct ShareGraph {
   static ge::ComputeGraphPtr LoadCompareScalarWhereFusedGraph();
   static ge::ComputeGraphPtr LoadCompareWhereFusedGraph();
   static ge::ComputeGraphPtr BinaryApiScalarFusedGraph();
+  static ge::ComputeGraphPtr FloorToIntFloatFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr FmodFloatFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr HypotFloatFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr LogicalXorFloatFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr LgammaFloatFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr LoadLog10StoreFusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr Log1pBfloat16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr FrexpFloatFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AcosFloatFusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AcosBf16FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr AcoshBf16FusedGraph(size_t dims_size);

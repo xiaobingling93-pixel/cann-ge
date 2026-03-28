@@ -612,6 +612,13 @@ codegen_e2e_st() {
                       continues_brc_test_e2e_v2 \
                       scalar_brc_test_e2e_v2 \
                       brc_reduce_test_e2e_v2 \
+                      log1p_bfloat16_test_e2e_v2 \
+                      floortoint_float_test_e2e_v2 \
+                      fmod_float_test_e2e_v2 \
+                      hypot_float_test_e2e_v2 \
+                      lgamma_float_test_e2e_v2 \
+                      logicalxor_float_test_e2e_v2 \
+                      log10_float_test_e2e_v2 \
                       load_brc_test_e2e_v2 \
                       cast_abs_test_e2e_v2 \
                       cast_nan_test_e2e_v2 \

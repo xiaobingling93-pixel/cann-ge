@@ -105,6 +105,13 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Transpose)        \
   OP(BitwiseAnd)       \
   OP(Ln)               \
+  OP(FloorToInt)       \
+  OP(Fmod)             \
+  OP(Hypot)            \
+  OP(Lgamma)           \
+  OP(Log10)            \
+  OP(LogicalXor)       \
+  OP(Log1p)            \
   OP(Expm)             \
   OP(Log2)             \
   OP(LShift)           \
