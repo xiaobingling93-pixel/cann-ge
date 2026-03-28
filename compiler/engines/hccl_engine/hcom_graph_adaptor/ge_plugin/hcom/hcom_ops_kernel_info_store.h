@@ -205,9 +205,11 @@ class HcomOpsKernelInfoStore : public HCCLOpsKernelInfoStore {
   HcclResult SetAivCoreLimit(const ge::GETaskInfo &task);
   HcclResult SetGlobalWorkSpace(const int64_t &hcomComm, const string &sGroup, std::vector<void *> globalWorkSpaceAddr);
 #ifndef OPEN_BUILD_PROJECT
-  HcclResult CleanInterMemory(DevType devType, std::vector<std::int64_t> &crackSize,
-                              std::vector<std::int64_t> &crackAddr, rtStream_t stream);
+  HcclResult CleanInterMemoryV2(std::vector<std::int64_t> &crackSize,
+                                std::vector<std::int64_t> &crackAddr, rtStream_t stream);
 #endif
+  HcclResult CleanInterMemory(std::vector<std::int64_t> &crackAddr,
+                              std::vector<std::int64_t> &crackSize, rtStream_t stream);
 
   std::mutex workSpaceMemMutex_;
   std::map<std::string, std::tuple<void *, u64>> workSpaceMemInfo_;  // key:group name,value:workSpace mem ptr and size
@@ -259,7 +261,9 @@ class HcomOpsKernelInfoStore : public HCCLOpsKernelInfoStore {
   using CrackMemPtr = std::unique_ptr<void, Deleter>;
 
   bool initCrackMem_;
-  CrackMemPtr crackMemPtr_;
+  CrackMemPtr crackMemPtr_{};
+  CrackMemPtr crackMemPtrV2_{};
+  u64 maxCrackMemSizeV2_ = 0;
   std::unordered_map<std::string, u32> graphIdByGroup_;
   std::unordered_map<s64, u32> graphIdByCommId_;
   std::unique_ptr<void, Deleter> indirectInCCLbufferPtr_;

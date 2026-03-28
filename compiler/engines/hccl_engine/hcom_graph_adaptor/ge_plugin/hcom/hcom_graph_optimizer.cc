@@ -39,74 +39,6 @@ HcomGraphOptimizer::HcomGraphOptimizer()
 
 HcomGraphOptimizer::~HcomGraphOptimizer() {}
 
-std::map<std::string, std::pair<std::string, std::string>> AivAlltoAllSuperKernelMap = {
-    {"AlltoAllMeshAivSmallCountExecutor", {"/hccl_a2a_superkernel", "sk_alltoall"}},
-    {"AlltoAllMeshAivExecutor", {"/hccl_a2a_superkernel", "sk_alltoall"}},
-    {"AlltoAllMeshAivFor91093Executor", {"/hccl_sk_a2a_crossnode", "sk_alltoall_crossnode"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAllGatherSuperKernelMap = {
-    {"AllGatherMeshAivSmallCountExecutor", {"/hccl_ag_superkernel", "sk_allgather"}},
-    {"AllGatherMeshAivExecutor", {"/hccl_ag_superkernel", "sk_allgather"}},
-    {"AllGatherMeshAivFor91093Executor", {"/hccl_sk_ag_crossnode", "sk_allgather_crossnode"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivReduceScatterSuperKernelMap = {
-    {"ReduceScatterMeshAivSmallCountExecutor", {"/hccl_rs_superkernel", "sk_reducescatter"}},
-    {"ReduceScatterMeshAivExecutor", {"/hccl_rs_superkernel", "sk_reducescatter"}},
-    {"ReduceScatterMeshAivFor91093Executor", {"/hccl_sk_rs_crossnode", "sk_reducescatter_crossnode"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivReduceScatterSuperKernelDeterMap = {
-    {"ReduceScatterMeshAivFor91093Executor", {"/hccl_sk_rs_deter", "sk_reducescatter_deter"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAllReduceSuperKernelMap = {
-    {"AllReduceMeshAivSmallCountExecutor", {"/hccl_ar_superkernel", "sk_allreduce"}},
-    {"AllReduceMeshAivExecutor", {"/hccl_ar_superkernel", "sk_allreduce"}},
-    {"AllReduceMeshAivFor91093Executor", {"/hccl_sk_ar_crossnode", "sk_all_reduce_crossnode"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAllReduceSuperKernelDeterMap = {
-    {"AllReduceMeshAivFor91093Executor", {"/hccl_sk_ar_deter", "sk_allreduce_deter"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAlltoAllSuperKernelMapV2 = {
-    {"AivAlltoAllMesh1D", {"/hccl_a2a_superkernel_mesh_1d", "sk_alltoall_mesh_1d"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAllGatherSuperKernelMapV2 = {
-    {"AivAllGatherMesh1D", {"/hccl_ag_superkernel_mesh_1d", "sk_allgather_mesh_1d"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivReduceScatterSuperKernelMapV2 = {
-    {"AivReduceScatterMesh1D", {"/hccl_rs_superkernel_mesh_1d", "sk_reducescatter_mesh_1d"}},
-};
-
-std::map<std::string, std::pair<std::string, std::string>> AivAllReduceSuperKernelMapV2 = {
-    {"AivAllReduceMesh1DOneShot", {"/hccl_ar_superkernel_mesh_1d_oneshot", "sk_allreduce_mesh_1d_oneshot"}},
-    {"AivAllReduceMesh1DTwoShot", {"/hccl_ar_superkernel_mesh_1d_twoshot", "sk_allreduce_mesh_1d_twoshot"}},
-};
-
-std::map<HcclCMDType, std::map<std::string, std::pair<std::string, std::string>>> AivSuperKernelMap = {
-    {HcclCMDType::HCCL_CMD_ALLTOALL, AivAlltoAllSuperKernelMap},
-    {HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSuperKernelMap},
-    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSuperKernelMap},
-    {HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSuperKernelMap},
-};
-
-std::map<HcclCMDType, std::map<std::string, std::pair<std::string, std::string>>> AivSuperKernelDeterMap = {
-    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSuperKernelDeterMap},
-    {HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSuperKernelDeterMap},
-};
-
-std::map<HcclCMDType, std::map<std::string, std::pair<std::string, std::string>>> AivSuperKernelMapV2 = {
-    {HcclCMDType::HCCL_CMD_ALLTOALL, AivAlltoAllSuperKernelMapV2},
-    {HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSuperKernelMapV2},
-    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSuperKernelMapV2},
-    {HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSuperKernelMapV2},
-};
-
 ge::Status HcomGraphOptimizer::Initialize(const std::map<std::string, std::string> &options,
                                           ge::OptimizeUtility *const optimizeUtility) {
   HCCL_INFO("init hccl graph optimizer.");
@@ -282,13 +214,6 @@ ge::Status HcomGraphOptimizer::OptimizeOriginalGraph(ge::ComputeGraph &graph) {
   ret = SetUnknownShapeAttr(graph, uknownShapeGraph);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Optimize][OriginalGraph]graph[%s]: SetUnknownShapeAttr failed. ret[%d]",
-                         graph.GetName().c_str(), ret),
-              ge::INTERNAL_ERROR);
-
-  // superkernel流程，只允许在静态图下进行
-  ret = SetSuperKernelScopeAttr(graph);
-  CHK_PRT_RET(ret != HCCL_SUCCESS,
-              HCCL_ERROR("[Optimize][OriginalGraph]graph[%s]: SetSuperKernelScopeAttr failed. ret[%d]",
                          graph.GetName().c_str(), ret),
               ge::INTERNAL_ERROR);
 
@@ -678,233 +603,6 @@ HcclResult HcomGraphOptimizer::SetUnknownShapeAttr(ge::ComputeGraph &graph, bool
   return HCCL_SUCCESS;
 }
 
-HcclResult SKGetAlgPath(HcclCMDType opType, std::string &binaryPath) {
-  HCCL_DEBUG("[AIV][SKGetAlgPath] opType[%d] binaryPath[%s]", opType, binaryPath.c_str());
-  // 获取二进制文件路径
-  std::string libPath;
-  char *getPath = nullptr;
-  MM_SYS_GET_ENV(MM_ENV_LD_LIBRARY_PATH, getPath);
-
-  if (getPath != nullptr) {
-    libPath = getPath;
-  } else {
-    HCCL_ERROR("[AIV][SKGetAlgPath]ENV:LD_LIBRARY_PATH is not set");
-    return HCCL_E_PARA;
-  }
-
-  size_t mid = libPath.find("fwkacllib/lib64");
-  if (mid == libPath.npos) {
-    HCCL_WARNING("[AIV][SKGetAlgPath]ENV:LD_LIBRARY_PATH lack fwkacllib/lib64");
-
-    mmDlInfo infos;
-    mmDladdr(reinterpret_cast<void *>(HcomGetRankSize), &infos);
-
-    CHK_PRT_RET(infos.dli_fname == nullptr, HCCL_ERROR("[AIV][SKGetAlgPath]get path of libhccl_plf.so failed"),
-                HCCL_E_UNAVAIL);
-
-    char resolvedPath[PATH_MAX];
-    if (realpath(infos.dli_fname, resolvedPath) == nullptr) {
-      HCCL_ERROR("[AIV][SKGetAlgPath]path %s is not a valid real path", infos.dli_fname);
-      return HCCL_E_INTERNAL;
-    }
-    std::string linkPath = resolvedPath;
-    uint32_t linkPathSize = linkPath.length();
-    uint32_t escapeLinkNum = 0;
-    std::string midLinkPath;
-    std::reverse(linkPath.begin(), linkPath.end());
-    for (uint32_t i = 0; i < linkPathSize; i++) {
-      if ('/' == linkPath[i]) {
-        midLinkPath = linkPath.substr(0, i + 1);
-        escapeLinkNum += 1;
-      }
-      if (escapeLinkNum == static_cast<uint32_t>(CreateDir::HCCL_DIR_NUM_ONE)) {
-        break;
-      }
-    }
-    std::reverse(linkPath.begin(), linkPath.end());
-    binaryPath = linkPath.substr(0, linkPath.size() - midLinkPath.size());
-    HCCL_DEBUG("[AIV][SKGetAlgPath]op binary file path[%s]", binaryPath.c_str());
-  } else {
-    u32 diff;
-    if (libPath.find(":", mid) == libPath.npos) {
-      diff = libPath.length() - libPath.rfind(":", mid);
-    } else {
-      diff = libPath.find(":", mid) - libPath.rfind(":", mid);
-    }
-    binaryPath = libPath.substr(libPath.rfind(":", mid) + 1, diff - 1);
-  }
-  return HCCL_SUCCESS;
-}
-
-HcclResult HcomGraphOptimizer::SetSuperKernelScopeAttr(ge::ComputeGraph &graph) {
-  HCCL_INFO("SPK, start set SuperKernelScopeAttr.");
-  std::string superKernelScope;
-  HcclResult ret;
-  /* 遍历原图所有算子，对符合Superkernel条件的算子，做适配动作 */
-  for (auto nodePtr : graph.GetAllNodes()) {
-    if (!nodePtr) {
-      HCCL_WARNING("null node exists.");
-      continue;
-    }
-    auto opDescPtr = nodePtr->GetOpDesc();
-    if (!opDescPtr) {
-      HCCL_WARNING("desc of node[%s] is null.", nodePtr->GetName().c_str());
-      continue;
-    }
-    std::string sCollectiveType = opDescPtr->GetType();
-    if (CheckSupportedOP(sCollectiveType) != HCCL_SUCCESS) {
-      continue;
-    }
-
-    /* 判断当前算子是否是superkernel属性，如果不是，则跳过 */
-    bool bRet = ge::AttrUtils::HasAttr(opDescPtr, "_super_kernel_scope");
-    if (!bRet) {
-      HCCL_INFO("SPK, [HcomGraphOptimizer][SetSuperKernelScopeAttr]node [%s] op type [%s] has no superKernelScope attr",
-                nodePtr->GetName().c_str(), sCollectiveType.c_str());
-      continue;
-    }
-
-    /* 获取当前算子的superKernelScope属性，向算子获取对应模式和资源 */
-    bRet = ge::AttrUtils::GetStr(opDescPtr, "_super_kernel_scope", superKernelScope);
-    HCCL_INFO("SPK, [HcomGraphOptimizer][SetSuperKernelScopeAttr]node [%s] op type [%s] has superKernelScope attr[%s]",
-              nodePtr->GetName().c_str(), sCollectiveType.c_str(), superKernelScope.c_str());
-    CHK_PRT_RET(
-        !bRet,
-        HCCL_ERROR("[HcomGraphOptimizer][SetSuperKernelScopeAttr]node [%s] GetStr superKernelScope failed, op type[%s]",
-                   nodePtr->GetName().c_str(), sCollectiveType.c_str()),
-        HCCL_E_PARA);
-
-    /* 获取当前算子对应的模式和资源 */
-    u64 count = 0;
-    HcclDataType dataType = HCCL_DATA_TYPE_RESERVED;
-    /* op 只有reduce算子会用  AIV怎么用 暂时没看到用途，穿刺版本保留，值填写为无效值，先打桩 */
-    auto iter = HCCL_OPTYPE_NAME_MAP.find(sCollectiveType);
-    HcclCMDType opType = (iter != HCCL_OPTYPE_NAME_MAP.end()) ? iter->second : HcclCMDType::HCCL_CMD_INVALID;
-
-    bool isSupportOP = AivSuperKernelMap.find(opType) != AivSuperKernelMap.end();
-    if (!isSupportOP || optionFeatureBaseRefreshable_ == 1) {
-      HCCL_WARNING("super kernel not support opType[%d] optionFeatureBaseRefreshable_[%d]", opType,
-                   optionFeatureBaseRefreshable_);
-      opDescPtr->DelAttr("_super_kernel_scope");
-      continue;
-    }
-
-    ret = HcomOpUtils::ConversionOpDataType(opDescPtr, sCollectiveType, dataType);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR("[Get][SetSuperKernelScopeAttr]op[%s]: get data type failed. ret[%d]", sCollectiveType.c_str(), ret),
-        ret);
-
-    std::string group;
-    int64_t comm = 0;
-    bool ifAiv = false;
-    char algName[ALG_NAME_MAX_LEN];
-    CHK_RET(GetCommFromOpDesc(opDescPtr, comm, group));
-
-    u32 rankSize = 0;
-    CHK_RET(HcomGetRankSize(group.c_str(), &rankSize));
-    // 通过opDesc 获取准确的count
-    ret = HcomOpUtils::GetCountFromOpDescSuperkernel(opDescPtr, sCollectiveType, dataType, count, rankSize);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR("[Get][SetSuperKernelScopeAttr]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),
-        ret);
-
-    HcclReduceOp reduction = HcclReduceOp::HCCL_REDUCE_SUM;
-    if (opType == HcclCMDType::HCCL_CMD_ALLREDUCE || opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER) {
-      CHK_RET(HcomOpUtils::GetReduction(opDescPtr, reduction));
-    }
-    u32 aivCoreLimit;
-    CHK_RET(HcomOpUtils::GetAivCoreLimit(opDescPtr, sCollectiveType, aivCoreLimit));
-    CHK_RET(
-        HcomSelectAlg(comm, group.c_str(), count, nullptr, dataType, reduction, opType, aivCoreLimit, ifAiv, algName));
-    /* 判断获取出来的算子模式是否是AIV，如果不是，则将此算子的superkernel属性置为空 */
-    if (!ifAiv) {
-      HCCL_INFO("no support aiv, del superKernelScope attr");
-      opDescPtr->DelAttr("_super_kernel_scope");
-      continue;
-    }
-
-    /* 将算子的superKernelScope属性设置为AIV */
-    ge::AttrUtils::SetBool(opDescPtr, "_hccl", true);
-    std::string binPath{};
-    std::string funcName{};
-    CHK_RET(SKGetAlgPath(opType, binPath));
-
-    std::string socVersion{};
-    if (ge::GetThreadLocalContext().GetOption(ge::SOC_VERSION, socVersion) != ge::GRAPH_SUCCESS) {
-      HCCL_ERROR("[HcomGraphOptimizer][SetSuperKernelScopeAttr] get soc version failed");
-      return HCCL_E_NOT_FOUND;
-    }
-
-    if (socVersion.find("Ascend950") != std::string::npos) {
-      auto itMap = AivSuperKernelMapV2.find(opType);
-      auto it = (itMap->second).find(algName);
-      if (it != (itMap->second).end()) {
-        std::string binFilePath = binPath + it->second.first + "_" + GetDataTypeEnumStr(dataType) + ".o";
-        ge::AttrUtils::SetStr(opDescPtr, "bin_file_path", binFilePath);
-        ge::AttrUtils::SetStr(opDescPtr, "hcom_bin_file_path", binFilePath);
-        funcName = it->second.second;
-        ge::AttrUtils::SetStr(opDescPtr, "hcom_func_name", funcName + "_" + GetDataTypeEnumStr(dataType));
-      } else {
-        HCCL_WARNING("no support alg, del superKernelScope attr");
-        opDescPtr->DelAttr("_super_kernel_scope");
-      }
-    } else {
-      bool isDeterOptype = (opType == HCCL_CMD_ALLREDUCE || opType == HCCL_CMD_REDUCE_SCATTER);
-      u8 deterministic = DETERMINISTIC_DISABLE;
-      CHK_RET(GetDeterministic(deterministic));
-      if (deterministic != DETERMINISTIC_DISABLE && isDeterOptype) {
-        auto itMap = AivSuperKernelDeterMap.find(opType);
-        auto it = (itMap->second).find(algName);
-        if (it != (itMap->second).end()) {
-          std::string binFilePath = binPath + it->second.first + ".o";
-          ge::AttrUtils::SetStr(opDescPtr, "bin_file_path", binFilePath);
-          ge::AttrUtils::SetStr(opDescPtr, "hcom_bin_file_path", binFilePath);
-          funcName = it->second.second;
-          ge::AttrUtils::SetStr(opDescPtr, "hcom_func_name", funcName);
-        } else {
-          HCCL_WARNING("no support aiv, del superKernelScope attr");
-          opDescPtr->DelAttr("_super_kernel_scope");
-        }
-      } else {
-        auto itMap = AivSuperKernelMap.find(opType);
-        auto it = (itMap->second).find(algName);
-        if (it != (itMap->second).end()) {
-          if (std::string(algName).find("91093") == std::string::npos) {
-            std::string binFilePath = binPath + it->second.first + "_" + GetDataTypeEnumStr(dataType) + ".o";
-            ge::AttrUtils::SetStr(opDescPtr, "bin_file_path", binFilePath);
-            ge::AttrUtils::SetStr(opDescPtr, "hcom_bin_file_path", binFilePath);
-            funcName = it->second.second;
-            ge::AttrUtils::SetStr(opDescPtr, "hcom_func_name", funcName + "_" + GetDataTypeEnumStr(dataType));
-          } else {
-            std::string binFilePath = binPath + it->second.first + ".o";
-            ge::AttrUtils::SetStr(opDescPtr, "bin_file_path", binFilePath);
-            ge::AttrUtils::SetStr(opDescPtr, "hcom_bin_file_path", binFilePath);
-            funcName = it->second.second;
-            ge::AttrUtils::SetStr(opDescPtr, "hcom_func_name", funcName);
-          }
-        } else {
-          HCCL_WARNING("no support aiv, del superKernelScope attr");
-          opDescPtr->DelAttr("_super_kernel_scope");
-        }
-      }
-    }
-    // 将NumBlocks包装成Hcom层接口，层层下发参数，到Hccl communictor里计算结果并返回到这一层。
-    u32 numBlocks{};
-    CHK_RET(HcomCalcAivCoreNum(group.c_str(), opType, count, 0, dataType, aivCoreLimit, algName, &numBlocks));
-    ge::AttrUtils::SetInt(opDescPtr, "hcom_block_dim", numBlocks);
-
-    HCCL_INFO("[HcomGraphOptimizer][SetSuperKernelScopeAttr] rankSize[%u] aivCoreLimit[%u] numBlocks[%u]", rankSize,
-              aivCoreLimit, numBlocks);
-
-    HCCL_INFO("[HcomGraphOptimizer][SetSuperKernelScopeAttr] Support SPK Optype[%s] funcName[%s]",
-              sCollectiveType.c_str(), funcName.c_str());
-  }
-
-  return HCCL_SUCCESS;
-}
-
 HcclResult HcomGraphOptimizer::SetHcomOpFormat(ge::OpDescPtr &opDescPtr) {
   CHK_SMART_PTR_NULL(opDescPtr);
   bool bRet = false;
@@ -957,6 +655,91 @@ HcclResult HcomGraphOptimizer::SetHcomOpParallelLabel(ge::Node &node, std::strin
                          HCCL_ERROR_CODE(HCCL_E_INTERNAL), opDesc->GetName().c_str(), opDesc->GetType().c_str(),
                          groupLabel.c_str()),
               HCCL_E_INTERNAL);
+  return HCCL_SUCCESS;
+}
+
+HcclResult HcomGraphOptimizer::HcomGetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                            HcclDataType dataType, u64 &count, u32 rankSize) {
+  u32 dataTypeSize = 0;
+  CHK_RET(SalGetDataTypeSize(dataType, dataTypeSize));
+  CHK_PRT_RET(dataTypeSize == 0,
+              HCCL_ERROR("[Get][CountFromOpDesc]dataType size is zero."),
+              HCCL_E_PARA);
+  
+  // Receive 算子不支持获取count
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_RECEIVE) {
+    HCCL_WARNING("[%s][Get][Count] op[%s] get count failed. receive op not support get count.",
+              __func__, sCollectiveType.c_str());
+    return HCCL_SUCCESS;
+  }
+
+  // broadcast等搬运算子在图优化阶段没有input，只有output，无法通过getsize方式获取到数据量，需要用memoutput的方式获取
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_ALLREDUCE || sCollectiveType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
+    CHK_RET(GetMemOutPutForCountCalc(op, sCollectiveType, dataTypeSize, count));
+  }
+  // 其他算子通用处理
+  CHK_RET(HcomOpUtils::CalcCommonCount(op, sCollectiveType, dataTypeSize, rankSize, count));
+  return HCCL_SUCCESS;
+}
+
+// broadcast等搬运算子在图优化阶段没有input，只有output，无法通过getsize方式获取到数据量，需要用memoutput的方式获取
+HcclResult HcomGraphOptimizer::MemOutputForOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                  u32 i, int64_t &memSize) {
+  ge::GeTensorDesc outputTensor = op->GetOutputDesc(i);
+  ge::GeShape outputShape = outputTensor.GetShape();
+  ge::Format format = outputTensor.GetFormat();
+  ge::DataType dataType = outputTensor.GetDataType();
+  // 获取内存大小
+  bool bErr = (ge::GRAPH_SUCCESS != ge::TensorUtils::CalcTensorMemSize(outputShape, format, dataType, memSize));
+  CHK_PRT_RET(bErr,
+              HCCL_ERROR("[Set][OpOutputMemSize]In get output mem size, error outputSize because no"
+                          "know shape, Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+                          format, dataType, memSize, i),
+              HCCL_E_PARA);
+
+  if (memSize == -1) {  // memsize 为-1 时，表示输入的shape不正确
+    HCCL_ERROR(
+        "[Set][OpOutputMemSize]In get output mem size, error outputSize because unknow shape,"
+        "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+        format, dataType, memSize, i);
+    return HCCL_E_PARA;
+  }
+
+  // 根据 规则重新计算内存大小
+  CHK_RET(CalcHCCLOutputMemSize(sCollectiveType, memSize));
+
+  // 将内存大小重新传给上层
+  ge::TensorUtils::SetSize(outputTensor, memSize);
+
+  // 更新output Tensor
+  if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
+    HCCL_ERROR(
+        "[Set][OpOutputMemSize]In get output mem size, update output desc error,"
+        "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+        format, dataType, memSize, i);
+    return HCCL_E_PARA;
+  }
+  
+  return HCCL_SUCCESS;
+}
+
+HcclResult HcomGraphOptimizer::GetMemOutPutForCountCalc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                        u32 dataTypeSize, u64& count) {
+  constexpr u32 alignSize = 512;  // 以512字节对齐
+  u64 totalSize = 0;
+  for (u32 i = 0; i < op->GetOutputsSize(); i++) {
+    int64_t memSize = 0;
+    CHK_RET(MemOutputForOpDesc(op, sCollectiveType, i, memSize));
+    // 对齐到512字节的倍数
+    CHK_PRT_RET((static_cast<u64>(memSize) > INVALID_U64 - alignSize),
+                HCCL_ERROR("[Set][OpOutputMemSize]op[%s] memSize[%lld] is overflow.",
+                          op->GetName().c_str(), memSize),
+                HCCL_E_PARA);
+    memSize = (static_cast<u64>(memSize) + alignSize - 1) / alignSize * alignSize;
+    totalSize += memSize;
+  }
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]In get output MemSize, sCollectiveType[%s], get count[%llu]", __func__, sCollectiveType.c_str(), count);
   return HCCL_SUCCESS;
 }
 
@@ -1066,40 +849,7 @@ HcclResult HcomGraphOptimizer::SetOpOutputMemSize(ge::Node &node, const std::str
   ge::OpDescPtr op = node.GetOpDesc();
   for (u32 i = 0; i < op->GetOutputsSize(); i++) {
     int64_t memSize = 0;
-    ge::GeTensorDesc outputTensor = op->GetOutputDesc(i);
-    ge::GeShape outputShape = outputTensor.GetShape();
-    ge::Format format = outputTensor.GetFormat();
-    ge::DataType dataType = outputTensor.GetDataType();
-    // 获取内存大小
-    bool bErr = (ge::GRAPH_SUCCESS != ge::TensorUtils::CalcTensorMemSize(outputShape, format, dataType, memSize));
-    CHK_PRT_RET(bErr,
-                HCCL_ERROR("[Set][OpOutputMemSize]In get output mem size, error outputSize because no"
-                           "know shape, Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-                           format, dataType, memSize, i),
-                HCCL_E_PARA);
-
-    if (memSize == -1) {  // memsize 为-1 时，表示输入的shape不正确
-      HCCL_ERROR(
-          "[Set][OpOutputMemSize]In get output mem size, error outputSize because unknow shape,"
-          "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-          format, dataType, memSize, i);
-      return HCCL_E_PARA;
-    }
-
-    // 根据 规则重新计算内存大小
-    CHK_RET(CalcHCCLOutputMemSize(sCollectiveType, memSize));
-
-    // 将内存大小重新传给上层
-    ge::TensorUtils::SetSize(outputTensor, memSize);
-
-    // 更新output Tensor
-    if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
-      HCCL_ERROR(
-          "[Set][OpOutputMemSize]In get output mem size, update output desc error,"
-          "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-          format, dataType, memSize, i);
-      return HCCL_E_PARA;
-    }
+    CHK_RET(MemOutputForOpDesc(op, sCollectiveType, i, memSize));
     HCCL_INFO("In set output MemSize, sCollectiveType[%s], opMemSize[%lld]", sCollectiveType.c_str(), memSize);
   }
   return HCCL_SUCCESS;
@@ -1485,7 +1235,7 @@ HcclResult HcomGraphOptimizer::SetHcomOpParam(const ge::Node &node, HcomOpParam 
 
   u64 count = 0;
   const u32 deviceEight = 8;
-  ret = GetCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count);
+  ret = HcomGetAccuracyCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count, rankSize);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][OpWorkspaceMemSize]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),
               ret);

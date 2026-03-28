@@ -32,20 +32,26 @@ TEST_F(itfhandler_unittest, initialize_and_finalize) {
   map<string, string> options;
   ret = Initialize(options);
   EXPECT_NE(ret, fe::SUCCESS);
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   options.emplace("ge.socVersion", "Ascend910B1");
   EXPECT_EQ(fe::InitPlatformInfo("Ascend910B1", true), 0);
   options["ge.bufferOptimize"] = "lx_optimize";
   ret = Initialize(options);
-  EXPECT_NE(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::SUCCESS);
   options["ge.bufferOptimize"] = "l2_optimize";
   ret = Initialize(options);
-  EXPECT_NE(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::SUCCESS);
+  cann_guard.Restore();
+  opp_guard.Restore();
 }
 
 TEST_F(itfhandler_unittest, GetOpsKernelInfoStores_suc) {
   map<string, string> options;
   Status ret = Initialize(options);
-  EXPECT_NE(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::SUCCESS);
   map<string, OpsKernelInfoStorePtr> op_kern_infos;
   GetOpsKernelInfoStores(op_kern_infos);
   EXPECT_EQ(op_kern_infos.size(), 2);
@@ -55,8 +61,8 @@ TEST_F(itfhandler_unittest, get_graph_optimizer_objs_success)
 {
   map<string, string> options;
   Status ret = Initialize(options);
-  EXPECT_NE(ret, fe::SUCCESS);
+  EXPECT_EQ(ret, fe::SUCCESS);
   map<string, GraphOptimizerPtr> graph_optimizers;
   GetGraphOptimizerObjs(graph_optimizers);
-  EXPECT_EQ(graph_optimizers.size(), 1);
+  EXPECT_EQ(graph_optimizers.size(), 2);
 }

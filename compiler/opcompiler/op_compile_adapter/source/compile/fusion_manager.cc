@@ -348,7 +348,7 @@ void TeFusionManager::ReportBuildErrMessage(const OpBuildTaskPtr &relBuildTaskPt
 
     std::string compileType = taskRes->type == 0 ? "Pre-compile" : "Compile";
 
-    std::string opPathInfo = compileType + " " + opModuleNames + " failed with errormsg/stack: " + errorMsg;
+    std::string opPathInfo = opModuleNames + " " + compileType + " failed with errormsg/stack: " + errorMsg;
     std::map<std::string, std::string> mapArgs = {{"op_name", opName},
             {"opp_path", opPathInfo}, {"op_type", opType}};
     // Failed to compile Op [%s]. (oppath: [%s], optype: [%s]).
@@ -959,7 +959,7 @@ bool TeFusionManager::DfsFindOuterInput(const ge::Node * curNode, size_t outputI
                        inputIdx, curNode->GetName().c_str());
             return false;
         }
-        TE_DBGLOG("This node: %s's relationMapPtr info：[%d-%d]", curNode->GetName().c_str(), outputIdx, inputIdx);
+        TE_DBGLOG("This node: %s's relationMapPtr info:[%d-%d]", curNode->GetName().c_str(), outputIdx, inputIdx);
         const auto &inAnchor = curNode->GetInDataAnchor(inputIdx);
         dfsRes = DfsFindOuterInputSingleAnchor(inAnchor, allNodes, curNode, outputIdx, dfsMaxCnt);
         if (dfsRes) {

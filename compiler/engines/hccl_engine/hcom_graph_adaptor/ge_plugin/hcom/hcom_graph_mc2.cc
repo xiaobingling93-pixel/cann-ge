@@ -71,7 +71,11 @@ rtStream_t HcomGetStreamByOpDesc(const ge::OpDescPtr &opdesc) {
 void *HcomGetContext(const rtStream_t stream, const void *tilingData, const char *groupName) {
 #ifndef OPEN_BUILD_PROJECT
   DevType devType = HcomGetDeviceType();
+#ifdef MACRO_DEV_TYPE_NEW
+  if (devType == DevType::DEV_TYPE_950) {
+#else
   if (devType == DevType::DEV_TYPE_910_95) {
+#endif
     return HcomGetContextV2(stream, tilingData, groupName);
   }
 #endif

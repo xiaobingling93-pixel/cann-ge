@@ -47,7 +47,7 @@ class HCCLOpsKernelBuilder : public ge::OpsKernelBuilder {
   virtual HcclResult SetOpAtomicInputIndex(ge::Node &node, const std::string &sCollectiveType) {
     return HCCL_SUCCESS;
   };
-  HcclResult CheckSupportedOP(const std::string &sCollectiveType) const;
+  virtual HcclResult CheckSupportedOP(const std::string &sCollectiveType) const;
   HcclResult SetOpOutputMemSize(ge::Node &node, const std::string &sCollectiveType);
   HcclResult CalcHCCLOutputMemSize(const std::string &sCollectiveType, int64_t &memSize);
 };

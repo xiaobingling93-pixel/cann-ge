@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <filesystem>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include "fcntl.h"
@@ -34,6 +35,7 @@ using namespace std;
 using namespace fe;
 using namespace ge;
 using namespace nlohmann;
+namespace fs = std::filesystem;
 
 
 static Status ParseParams(const google::protobuf::Message* op_src, ge::Operator& op_dest)
@@ -1281,21 +1283,14 @@ TEST_F(UTEST_FE_TBE_JSON_PARSER, test_tile_fwk_parse_fatbin_info_suc1) {
   TbeJsonFileParse json_file_parse(*node);
   string json_file_path =
       GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/fusion_engine/op_compiler/json/ast_op_add.json";
-  string bin_file_path;
+  ASSERT_TRUE(fs::exists(json_file_path)) << "JSON file not found: " << json_file_path;
   Status ret = json_file_parse.PackageTvmJsonInfo(json_file_path);
-  EXPECT_EQ(ret, fe::FAILED);
-  ret = json_file_parse.PackageTvmJsonInfo(json_file_path);
-  EXPECT_EQ(ret, fe::FAILED);
+  EXPECT_EQ(ret, fe::SUCCESS);
 
   RunInfoPtr run_info = nullptr;
   run_info = std::make_shared<optiling::utils::OpRunInfo>(0, false, 0);
   op_desc_ptr->SetExtAttr(ge::ATTR_NAME_OP_RUN_INFO, run_info);
   (void)ge::AttrUtils::SetInt(op_desc_ptr, ge::TVM_ATTR_NAME_BLOCKDIM, 24);
   ret = UpdateTileFwkKernelInfo(op_desc_ptr);
-  EXPECT_EQ(ret, fe::FAILED);
-  ret = UpdateTileFwkKernelInfo(op_desc_ptr);
-  EXPECT_EQ(ret, fe::FAILED);
-  std::string fatbin_path =
-      GetCodeDir() + "/tests/engines/nn_engine/ut/testcase/fusion_engine/op_compiler/json/ast_op_add.json";
-  system(("rm -rf " + fatbin_path).c_str());
+  EXPECT_EQ(ret, fe::SUCCESS);
 }

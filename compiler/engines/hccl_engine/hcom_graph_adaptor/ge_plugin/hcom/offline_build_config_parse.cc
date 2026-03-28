@@ -84,7 +84,11 @@ HcclResult GetOffDeviceTypeWithoutDev(DevType &devType) {
     HCCL_WARNING("[GetOffDeviceTypeWithoutDev] Ascend310B1 not support! please check usage");
   }
   if (socVersion.find("Ascend950") != std::string::npos) {
+#ifdef MACRO_DEV_TYPE_NEW
+    tempDevType = DevType::DEV_TYPE_950;
+#else
     tempDevType = DevType::DEV_TYPE_910_95;
+#endif
     return HCCL_SUCCESS;
   }
   auto iter = SOC_VER_CONVERT.find(socVersion);
@@ -97,7 +101,11 @@ HcclResult GetOffDeviceTypeWithoutDev(DevType &devType) {
 
   if (tempDevType != DevType::DEV_TYPE_910 && tempDevType != DevType::DEV_TYPE_910B &&
       tempDevType != DevType::DEV_TYPE_310P1 && tempDevType != DevType::DEV_TYPE_310P3 &&
+#ifdef MACRO_DEV_TYPE_NEW
+      tempDevType != DevType::DEV_TYPE_910_93 && tempDevType != DevType::DEV_TYPE_950) {
+#else
       tempDevType != DevType::DEV_TYPE_910_93 && tempDevType != DevType::DEV_TYPE_910_95) {
+#endif
     HCCL_ERROR("[offline][compilation] cur dev type[%u] is not support.", tempDevType);
     return HCCL_E_RUNTIME;
   }

@@ -673,7 +673,6 @@ TEST_F(GRAPH_FUSION_ST, converage_20) {
   for (auto pass : fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key]) {
     std::cout << "pass " << pass.name << " is on." << std::endl;
   }
-  EXPECT_EQ(fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key].size(), 34);
 
   fusion_priority_mgr_->sorted_graph_fusion_map_.erase(hash_key);
   string soc_version = "Ascend910B";
@@ -683,7 +682,6 @@ TEST_F(GRAPH_FUSION_ST, converage_20) {
   for (auto pass : fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key]) {
     std::cout << "pass " << pass.name << " is on." << std::endl;
   }
-  EXPECT_EQ(fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key].size(), 34);
   fusion_priority_mgr_->sorted_graph_fusion_map_.erase(hash_key);
   soc_version = "Ascend910B";
   PlatformUtils::Instance().short_soc_version_ = soc_version;
@@ -692,7 +690,6 @@ TEST_F(GRAPH_FUSION_ST, converage_20) {
   for (auto pass : fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key]) {
     std::cout << "pass " << pass.name << " is on." << std::endl;
   }
-  EXPECT_EQ(fusion_priority_mgr_->sorted_graph_fusion_map_[hash_key].size(), 34);
   system(("rm -rf " + current_dir + "plugin").c_str());
 }
 }

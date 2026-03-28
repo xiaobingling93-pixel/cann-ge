@@ -532,10 +532,9 @@ HcclResult HcomOpUtils::CheckAlltoAllvcRank(const ge::Node &node, const int64_t 
       HCCL_E_PARA);
 
   if (rankId != alltoallvcRank) {
-    REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "parameter", "value", "tips"}),
-                              std::vector<const char *>({"CheckAlltoAllvcRank", "rankId",
-                                                         std::to_string(rankId).c_str(), "please check rankId"}));
-    ;
+    REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "value", "parameter", "expect"}),
+                              std::vector<const char *>({"CheckAlltoAllvcRank", std::to_string(alltoallvcRank).c_str(), "rankId",
+                                                         std::to_string(rankId).c_str()}));
   }
   CHK_PRT_RET(rankId != alltoallvcRank,
               HCCL_ERROR("[%s][%s]errNo[0x%016llx] AlltoAllvc rank is invalid. "
@@ -643,6 +642,145 @@ HcclResult HcomOpUtils::GetAivCoreLimit(const ge::OpDescPtr &op, const std::stri
   }
   HCCL_INFO("[HcomOpUtils][GetAivCoreLimit] op[%s] get aivCoreLimit[%u] success.", sCollectiveType.c_str(),
             aivCoreLimit);
+  return HCCL_SUCCESS;
+}
+
+// 对比getcountfromopdesc接口，此接口更为完善，主要区分于allreduce算子的count计算方式
+HcclResult HcomOpUtils::GetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                      HcclDataType dataType, u64 &count, u32 rankSize) {
+  u32 dataTypeSize = 0;
+  CHK_RET(SalGetDataTypeSize(dataType, dataTypeSize));
+  CHK_PRT_RET(dataTypeSize == 0, 
+      HCCL_ERROR("[%s][Get][CountFromOpDesc]dataType size is zero.", __func__), HCCL_E_PARA);
+
+  // Receive 算子不支持获取count
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_RECEIVE) {
+    HCCL_RUN_WARNING("[%s][Get][Count] op[%s] get count failed. receive op not support get count.",
+              __func__, sCollectiveType.c_str());
+    return HCCL_SUCCESS;
+  }
+
+  // ALLREDUCE 特殊处理：使用 TensorUtils::GetSize 获取大小并立即返回
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_ALLREDUCE) {
+    CHK_RET(CalcAllReduceCount(op, sCollectiveType, dataTypeSize, count));
+    return HCCL_SUCCESS;  
+  }
+  // BROADCAST 特殊处理
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
+    CHK_RET(CalcBroadcastCount(op, dataTypeSize, count));
+    return HCCL_SUCCESS;  
+  }
+  // 其他算子通用处理
+  CHK_RET(CalcCommonCount(op, sCollectiveType, dataTypeSize, rankSize, count));
+  return HCCL_SUCCESS;
+}
+
+// ALLREDUCE 的count专用计算
+HcclResult HcomOpUtils::CalcAllReduceCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                          u32 dataTypeSize, u64 &count) {
+  constexpr u32 alignSize = 512; // 对齐大小为512字节的倍数
+  u64 totalSize = 0;
+
+  for (u64 i = 0; i < op->GetInputsSize(); i++) {
+    int64_t tensorSize = 0;
+    CHK_PRT_RET((ge::GRAPH_SUCCESS != ge::TensorUtils::GetSize(*op->GetInputDescPtr(i), tensorSize)),
+        HCCL_ERROR("[Get][Count]errNo[0x%016llx] get workspace bytes failed. get size from TensorDesc"
+                  "failed, op : %s, input index : %llu",
+                  HCOM_ERROR_CODE(HCCL_E_PARA), sCollectiveType.c_str(), i),
+        HCCL_E_PARA);
+    
+    CHK_PRT_RET((static_cast<u64>(tensorSize) > INVALID_U64 - alignSize),
+        HCCL_ERROR("op[%s] input size[%llu] is overflow.", sCollectiveType.c_str(), static_cast<u64>(tensorSize)),
+        HCCL_E_PARA);
+
+    totalSize += ((static_cast<u64>(tensorSize) + alignSize - 1) / alignSize * alignSize);
+  }
+
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]op[%s] get count[%llu] for allreduce success.", __func__, sCollectiveType.c_str(), count);
+  return HCCL_SUCCESS;
+}
+ 	 
+// 除了allreduce算子以外的通用算子count计算
+HcclResult HcomOpUtils::CalcCommonCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                        u32 dataTypeSize, u32 rankSize, u64 &count) {
+  u64 totalSize = 0;
+
+  for (u64 i = 0; i < op->GetInputsSize(); i++) {
+    u64 shapeSize = static_cast<u64>(op->GetInputDescPtr(i)->GetShape().GetShapeSize());
+    
+    // 溢出检查
+    CHK_PRT_RET(shapeSize > INVALID_U64 / dataTypeSize,
+        HCCL_ERROR("op[%s] input size[%llu] * dataTypeSize[%u] is overflow.",
+                  sCollectiveType.c_str(), shapeSize, dataTypeSize),
+        HCCL_E_PARA);
+
+    u64 inputSize = shapeSize * dataTypeSize;
+    HCCL_INFO("[%s]op[%s] get inputSize[%llu] with dataTypeSize[%u] for index[%llu] success.",
+              __func__, sCollectiveType.c_str(), inputSize, dataTypeSize, i);
+
+    // 根据算子类型计算 blockSize
+    u64 blockSize = 0;
+    if (sCollectiveType == HCCL_KERNEL_OP_TYPE_REDUCESCATTER) {
+      blockSize = inputSize / rankSize;
+    } else {
+      // ALLGATHER 和其他算子
+      blockSize = inputSize;
+    }
+    
+    // 溢出检查
+    CHK_PRT_RET(totalSize > INVALID_U64 - blockSize,
+        HCCL_ERROR("op[%s] totalSize[%llu] + blockSize[%llu] is overflow.",
+                  sCollectiveType.c_str(), totalSize, blockSize),
+        HCCL_E_PARA);
+
+    totalSize += blockSize;
+  }
+
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]op[%s] get count[%llu] success.", __func__, sCollectiveType.c_str(), count);
+  return HCCL_SUCCESS;
+}
+
+// broadcast等搬运算子在图编译阶段获取数据量需要做512对齐
+HcclResult HcomOpUtils::CalcBroadcastCount(const ge::OpDescPtr &op, u32 dataTypeSize, u64 &count) {
+  // 定义对齐大小为512字节的倍数
+  constexpr u32 alignSize = 512;
+  u64 totalSize = 0;
+
+  // 遍历所有输入tensor
+  for (u64 i = 0; i < op->GetInputsSize(); i++) {
+    // 获取输入tensor的实际大小
+    int64_t tensorSize = 0;
+    CHK_PRT_RET((ge::GRAPH_SUCCESS != ge::TensorUtils::GetSize(*op->GetInputDescPtr(i), tensorSize)),
+        HCCL_ERROR("[Calc][BroadcastCount]errNo[0x%016llx] get size from TensorDesc failed, "
+                  "op: %s, input index: %llu",
+                  HCOM_ERROR_CODE(HCCL_E_PARA), op->GetName().c_str(), i),
+        HCCL_E_PARA);
+    // 溢出检查：确保 tensorSize 不会超过 INVALID_U64 - alignSize
+    CHK_PRT_RET((static_cast<u64>(tensorSize) > INVALID_U64 - alignSize),
+        HCCL_ERROR("[Calc][BroadcastCount]op[%s] input size[%llu] is overflow.",
+                  op->GetName().c_str(), static_cast<u64>(tensorSize)),
+        HCCL_E_PARA);
+    // 对输入大小进行512字节对齐
+    u64 blockSize = (static_cast<u64>(tensorSize) + alignSize - 1) / alignSize * alignSize;
+    // 溢出检查：确保 totalSize + blockSize 不会溢出
+    CHK_PRT_RET(totalSize > INVALID_U64 - blockSize,
+        HCCL_ERROR("[Calc][BroadcastCount]op[%s] totalSize[%llu] + blockSize[%llu] is overflow.",
+                  op->GetName().c_str(), totalSize, blockSize),
+        HCCL_E_PARA);
+    
+    totalSize += blockSize;
+    
+    HCCL_INFO("[Calc][BroadcastCount]op[%s] input[%llu]: tensorSize[%lld], blockSize[%llu], totalSize[%llu]",
+              op->GetName().c_str(), i, tensorSize, blockSize, totalSize);
+  }
+  
+  // 计算最终count（总大小除以数据类型大小）
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[Calc][BroadcastCount]op[%s] get count[%llu] success, dataTypeSize[%u], totalSize[%llu]",
+            op->GetName().c_str(), count, dataTypeSize, totalSize);
+  
   return HCCL_SUCCESS;
 }
 

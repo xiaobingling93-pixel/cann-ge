@@ -30,10 +30,16 @@ class OptimizeOriginalGraphProcess310BTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
     cout << "OptimizeOriginalGraphProcess310BTest TearDown" << endl;
+    string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+    fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+    string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+    fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
     InitWithSocVersion("Ascend910B1", "must_keep_origin_dtype");
     FEGraphOptimizerPtr graph_optimizer_ptr = FusionManager::Instance(AI_CORE_NAME).graph_opt_;
     map<string, string> options;
     EXPECT_EQ(graph_optimizer_ptr->Initialize(options, nullptr), SUCCESS);
+    cann_guard.Restore();
+    opp_guard.Restore();
   }
 
   static void TearDownTestCase() {
@@ -330,7 +336,7 @@ TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_case1) 
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 12);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 20);
   size_t trans_count = 0;
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -343,13 +349,13 @@ TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_case1) 
       cast_count++;
     }
     if (op_desc->GetType() == "AvgPoolUpdate") {
-      EXPECT_EQ(op_desc->GetInputDescPtr(1)->GetDataType(), ge::DT_INT8);
+      EXPECT_EQ(op_desc->GetInputDescPtr(1)->GetDataType(), ge::DT_FLOAT);
       ge::NodePtr peer_node = node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
-      EXPECT_EQ(peer_node->GetType(), "AscendQuant");
+      EXPECT_EQ(peer_node->GetType(), "Cast");
     }
   }
-  EXPECT_EQ(trans_count, 0);
-  EXPECT_EQ(cast_count, 2);
+  EXPECT_EQ(trans_count, 5);
+  EXPECT_EQ(cast_count, 4);
 }
 TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_case2) {
   FEGraphOptimizerPtr graph_optimizer_ptr = FusionManager::Instance(AI_CORE_NAME).graph_opt_;
@@ -364,7 +370,7 @@ TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_case2) 
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 12);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 19);
   size_t trans_count = 0;
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -382,8 +388,8 @@ TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_case2) 
       EXPECT_EQ(peer_node->GetType(), "AscendQuant");
     }
   }
-  EXPECT_EQ(trans_count, 0);
-  EXPECT_EQ(cast_count, 2);
+  EXPECT_EQ(trans_count, 4);
+  EXPECT_EQ(cast_count, 4);
 }
 
 // TEST_F(OptimizeOriginalGraphProcess310BTest, optimize_origin_graph_quant_dump_able_case1) {

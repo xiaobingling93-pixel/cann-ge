@@ -8,6 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
+include(../cmake/intf_llt_pub.cmake)
 if (ENABLE_AICPU_LLT)
     add_subdirectory(cpueng)
 endif()

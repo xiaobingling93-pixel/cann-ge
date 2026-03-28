@@ -227,9 +227,9 @@ HcclResult HcomAllReduceFusion::GetFusionOption(const ge::NodePtr &nodePtr, Fusi
       break;
     default:
       string fusionValue = std::to_string(fusionOption.fusionAttr);
-      REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "parameter", "value", "tips"}),
-                                std::vector<const char *>({"HcomAllReduceFusion", "fusion", fusionValue.c_str(),
-                                                           "please check fusion setting"}));
+      REPORT_PREDEFINED_ERR_MSG("EI0003", std::vector<const char *>({"ccl_op", "value", "parameter", "expect"}),
+                                std::vector<const char *>({"HcomAllReduceFusion", fusionValue.c_str(), "fusion",
+                                                           "should be 0 ~ 2"}));
       HCCL_ERROR("[%s][%s]errNo[0x%016llx] node[%s] fusion[%lld] is incorrect, should be %lld ~ %lld",
                  LOG_KEYWORDS_TASK_EXEC.c_str(), LOG_KEYWORDS_INVALID_ARGUMENT.c_str(), HCOM_ERROR_CODE(HCCL_E_PARA),
                  nodeName.c_str(), fusionOption.fusionAttr, HCOM_ATTR_FUSION_MIN, HCOM_ATTR_FUSION_MAX);

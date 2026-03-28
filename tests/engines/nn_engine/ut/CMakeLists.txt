@@ -209,6 +209,7 @@ target_include_directories(fe_ut PRIVATE
         ${AIR_CODE_DIR}/base
         ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/framework
+        ${AIR_CODE_DIR}/inc/graph_metadef/exe_graph
         ${AIR_CODE_DIR}/compiler/graph/fusion/pass
         ${GTEST_INCLUDE}
         ${CMAKE_BINARY_DIR}/proto/fe_ut
@@ -233,6 +234,8 @@ target_link_directories(fe_ut PRIVATE
 
 target_link_libraries(fe_ut PRIVATE
         $<$<STREQUAL:${ENABLE_ASAN},true>:-fsanitize=address>
+        air_headers
+        metadef_headers
         slog_headers
         mmpa_headers
         cce_headers

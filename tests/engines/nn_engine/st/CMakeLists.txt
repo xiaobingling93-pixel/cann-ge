@@ -195,6 +195,7 @@ target_include_directories(fe_st PRIVATE
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/framework
+        ${AIR_CODE_DIR}/inc/graph_metadef/exe_graph
         ${AIR_CODE_DIR}/compiler
         ${AIR_CODE_DIR}/compiler/opcompiler/inc
         ${AIR_CODE_DIR}/base
@@ -236,6 +237,8 @@ target_link_libraries(fe_st PRIVATE
         exe_graph
         lowering
         graph
+        air_headers
+        metadef_headers
         metadef
 #        graph_base
         $<BUILD_INTERFACE:atrace_headers>

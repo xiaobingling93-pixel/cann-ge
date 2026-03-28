@@ -30,10 +30,16 @@ class OptimizeOriginalGraphProcess910BTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
     cout << "OptimizeOriginalGraphProcess910BTest TearDown" << endl;
+    string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+    fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+    string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+    fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
     InitWithSocVersion("Ascend910B1", "must_keep_origin_dtype");
     FEGraphOptimizerPtr graph_optimizer_ptr = FusionManager::Instance(AI_CORE_NAME).graph_opt_;
     map<string, string> options;
     EXPECT_EQ(graph_optimizer_ptr->Initialize(options, nullptr), SUCCESS);
+    cann_guard.Restore();
+    opp_guard.Restore();
   }
 
   static void TearDownTestCase() {
@@ -330,7 +336,7 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_complex_case2
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 7);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 11);
   size_t trans_count = 0;
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -344,7 +350,7 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_complex_case2
     }
   }
   EXPECT_EQ(trans_count, 0);
-  EXPECT_EQ(cast_count, 0);
+  EXPECT_EQ(cast_count, 4);
 }
 
 TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_complex_case3) {
@@ -390,24 +396,24 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_nll_loss_judg
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 5);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 9);
 
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "NLLLoss") {
-      EXPECT_EQ(op_desc->GetInputDescPtr(0)->GetDataType(), ge::DT_FLOAT16);
+      EXPECT_EQ(op_desc->GetInputDescPtr(0)->GetDataType(), ge::DT_FLOAT);
       EXPECT_EQ(op_desc->GetInputDescPtr(1)->GetDataType(), ge::DT_INT32);
-      EXPECT_EQ(op_desc->GetInputDescPtr(2)->GetDataType(), ge::DT_FLOAT16);
-      EXPECT_EQ(op_desc->GetOutputDescPtr(0)->GetDataType(), ge::DT_FLOAT16);
-      EXPECT_EQ(op_desc->GetOutputDescPtr(1)->GetDataType(), ge::DT_FLOAT16);
+      EXPECT_EQ(op_desc->GetInputDescPtr(2)->GetDataType(), ge::DT_FLOAT);
+      EXPECT_EQ(op_desc->GetOutputDescPtr(0)->GetDataType(), ge::DT_FLOAT);
+      EXPECT_EQ(op_desc->GetOutputDescPtr(1)->GetDataType(), ge::DT_FLOAT);
     }
     if (op_desc->GetType() == "Cast") {
       cast_count++;
     }
   }
-  EXPECT_EQ(cast_count, 0);
+  EXPECT_EQ(cast_count, 4);
 }
 
 TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_nll_loss_judge_bf16) {
@@ -489,7 +495,7 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_deformable_ro
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 5);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 8);
 
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -521,23 +527,23 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_deformable_ro
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 5);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 12);
 
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "DeformableRoiPool") {
-      EXPECT_EQ(op_desc->GetInputDescPtr(0)->GetDataType(), ge::DT_BF16);
-      EXPECT_EQ(op_desc->GetInputDescPtr(1)->GetDataType(), ge::DT_BF16);
-      EXPECT_EQ(op_desc->GetInputDescPtr(2)->GetDataType(), ge::DT_BF16);
-      EXPECT_EQ(op_desc->GetOutputDescPtr(0)->GetDataType(), ge::DT_BF16);
+      EXPECT_EQ(op_desc->GetInputDescPtr(0)->GetDataType(), ge::DT_FLOAT);
+      EXPECT_EQ(op_desc->GetInputDescPtr(1)->GetDataType(), ge::DT_FLOAT);
+      EXPECT_EQ(op_desc->GetInputDescPtr(2)->GetDataType(), ge::DT_FLOAT);
+      EXPECT_EQ(op_desc->GetOutputDescPtr(0)->GetDataType(), ge::DT_FLOAT);
     }
     if (op_desc->GetType() == "Cast") {
       cast_count++;
     }
   }
-  EXPECT_EQ(cast_count, 0);
+  EXPECT_EQ(cast_count, 4);
 }
 
 TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_deformable_roi_pool_judge_fp32) {
@@ -553,7 +559,7 @@ TEST_F(OptimizeOriginalGraphProcess910BTest, optimize_origin_graph_deformable_ro
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 5);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 8);
 
   size_t cast_count = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {

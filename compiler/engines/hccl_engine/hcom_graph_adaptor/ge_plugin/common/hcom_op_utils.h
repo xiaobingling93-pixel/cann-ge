@@ -118,6 +118,13 @@ class HcomOpUtils {
   static HcclResult GetTensorCleanTaskNum(const ge::Node &node, const std::string &sCollectiveType, u32 &taskNum);
   static HcclResult GetTensorNum(const ge::Node &node, const std::string &sCollectiveType, u32 &tensorNum);
   static HcclResult GetAivCoreLimit(const ge::OpDescPtr &op, const std::string &sCollectiveType, u32 &aivCoreLimit);
+  static HcclResult GetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                    HcclDataType dataType, u64 &count, u32 rankSize);
+  static HcclResult CalcAllReduceCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                          u32 dataTypeSize, u64 &count);
+  static HcclResult CalcCommonCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                        u32 dataTypeSize, u32 rankSize, u64 &count); 
+  static HcclResult CalcBroadcastCount(const ge::OpDescPtr &op, u32 dataTypeSize, u64 &count);                                         
   static HcclResult GetCountFromOpDescSuperkernel(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                                   HcclDataType dataType, u64 &count, u32 rankSize);
 #ifndef HCOM_EXECUTOR

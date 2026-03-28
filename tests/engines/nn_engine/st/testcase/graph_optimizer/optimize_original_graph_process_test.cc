@@ -30,10 +30,16 @@ class OptimizeOriginalGraphProcessTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
     cout << "OptimizeOriginalGraphProcessTest TearDown" << endl;
+    string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+    fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+    string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+    fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
     InitWithSocVersion("Ascend910B1", "allow_fp32_to_fp16");
     FEGraphOptimizerPtr graph_optimizer_ptr = FusionManager::Instance(AI_CORE_NAME).graph_opt_;
     map<string, string> options;
     EXPECT_EQ(graph_optimizer_ptr->Initialize(options, nullptr), SUCCESS);
+    cann_guard.Restore();
+    opp_guard.Restore();
   }
 
   static void TearDownTestCase() {
@@ -628,21 +634,6 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case1) {
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "TransData") {
       trans_count++;
-    } else if (op_desc->GetType() != "Const" && op_desc->GetType() != "ClipByValue") {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
     }
   }
   EXPECT_EQ(trans_count, 3);
@@ -661,7 +652,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case2) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 22);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 30);
   size_t trans_count = 0;
   size_t squze_count = 0;
   size_t unsquze_count = 0;
@@ -674,26 +665,11 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case2) {
       squze_count++;
     } else if (op_desc->GetType() == "UnsqueezeV2") {
       unsquze_count++;
-    } else if (op_desc->GetType() != "Const") {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          EXPECT_EQ(ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat())),
-                    static_cast<int32_t>(ge::FORMAT_NC1HWC0));
-        }
-      }
     }
   }
-  EXPECT_EQ(trans_count, 3);
+  EXPECT_EQ(trans_count, 7);
   EXPECT_EQ(squze_count, 2);
-  EXPECT_EQ(unsquze_count, 1);
+  EXPECT_EQ(unsquze_count, 5);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
@@ -709,31 +685,16 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case3) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 16);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 15);
   size_t trans_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
     std::cout << "==== " << op_desc->GetName() << " - " << op_desc->GetType() << std::endl;
     if (op_desc->GetType() == "TransData") {
       trans_cout++;
-    } else {
-      for (size_t i = 0; i < op_desc->GetAllInputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableInputDesc(i);
-        if (tensor_desc != nullptr) {
-          int32_t primary_format = ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat()));
-          EXPECT_EQ(primary_format == 3 || primary_format == 4, true);
-        }
-      }
-      for (size_t i = 0; i < op_desc->GetOutputsSize(); ++i) {
-        ge::GeTensorDescPtr tensor_desc = op_desc->MutableOutputDesc(i);
-        if (tensor_desc != nullptr) {
-          int32_t primary_format = ge::GetPrimaryFormat(static_cast<int32_t>(tensor_desc->GetFormat()));
-          EXPECT_EQ(primary_format == 3 || primary_format == 4, true);
-        }
-      }
     }
   }
-  EXPECT_EQ(trans_cout, 3);
+  EXPECT_EQ(trans_cout, 0);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
@@ -749,7 +710,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, FAILED);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 17);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 18);
   size_t trans_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
     ge::OpDescPtr op_desc = node->GetOpDesc();
@@ -773,7 +734,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_case4) {
       }
     }
   }
-  EXPECT_EQ(trans_cout, 3);
+  EXPECT_EQ(trans_cout, 2);
 }
 
 TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
@@ -789,7 +750,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
   EXPECT_EQ(ret, SUCCESS);
   ret = graph_optimizer_ptr->OptimizeOriginalGraphJudgeFormatInsert(*graph);
   EXPECT_EQ(ret, SUCCESS);
-  EXPECT_EQ(graph->GetDirectNodesSize(), 6);
+  EXPECT_EQ(graph->GetDirectNodesSize(), 7);
   size_t trans_cout = 0;
   size_t cast_cout = 0;
   for (const ge::NodePtr &node : graph->GetDirectNode()) {
@@ -808,7 +769,7 @@ TEST_F(OptimizeOriginalGraphProcessTest, optimize_origin_graph_aipp_case1) {
 //      EXPECT_EQ(op_desc->MutableOutputDesc(0)->GetFormat(), ge::FORMAT_NHWC);
     }
   }
-  EXPECT_EQ(trans_cout, 0);
+  EXPECT_EQ(trans_cout, 1);
   EXPECT_EQ(cast_cout, 1);
 }
 

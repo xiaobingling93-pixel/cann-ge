@@ -21,6 +21,7 @@
 #include "platform_info.h"
 #include "ge/ge_api_types.h"
 #include "te_llt_utils.h"
+#include "mmpa/mmpa_api.h"
 #undef private
 #undef protected
 
@@ -29,12 +30,17 @@ using namespace std;
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc,argv);
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   te::fusion::InitTbe();
   map<string, string> options;
   options.emplace(ge::SOC_VERSION, "Ascend910B1");
   EXPECT_EQ(fe::InitPlatformInfo("Ascend910B1"), 0);
   EXPECT_EQ(Initialize(options), fe::SUCCESS);
-
+  cann_guard.Restore();
+  opp_guard.Restore();
   int ret = RUN_ALL_TESTS();
   return ret;
 }

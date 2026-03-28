@@ -12,15 +12,22 @@
 #include <nlohmann/json.hpp>
 #include "fe_llt_utils.h"
 #include "te_llt_utils.h"
+#include "mmpa/mmpa_api.h"
 
 using namespace std;
 
 int main(int argc, char **argv)
 {
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   te::fusion::InitTbe();
   fe::InitPlatformInfo("Ascend910B1");
   testing::InitGoogleTest(&argc,argv);
   EXPECT_EQ(fe::InitPlatformInfo("Ascend910B1"), 0);
+  cann_guard.Restore();
+  opp_guard.Restore();
   int ret = RUN_ALL_TESTS();
   return ret;
 }

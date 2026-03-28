@@ -1185,7 +1185,11 @@ TEST_F(HcomLoweringTest, ut_HcomAllToAllGetOpAttr_test) {
 
 TEST_F(HcomLoweringTest, ut_hcomLaunchKernel_allGatherv2_When_Normal_Expect_ReturnlsHCCL_SUCCESS) {
   MOCKER(HcceAllGather).stubs().with(mockcpp::any()).will(returnValue(HCCL_SUCCESS));
+#ifdef MACRO_DEV_TYPE_NEW
+  MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_950));
+#else
   MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_910_95));
+#endif
   MOCKER(HcomAllGatherKernel).stubs().with(mockcpp::any()).will(returnValue(HCCL_SUCCESS));
 
   nlohmann::json rank_table = rank_table_910_1server_1rank;

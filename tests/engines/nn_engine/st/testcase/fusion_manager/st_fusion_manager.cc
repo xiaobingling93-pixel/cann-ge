@@ -19,6 +19,7 @@
 #undef private
 #undef protected
 #include "fusion_manager/fusion_manager.h"
+#include "fe_llt_utils.h"
 
 using namespace std;
 using namespace fe;
@@ -31,13 +32,19 @@ class fuison_manager_stest : public testing::Test
 
 TEST_F(fuison_manager_stest, dsa_instance)
 {
+  string stub_cann_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann";
+  fe::EnvVarGuard cann_guard(MM_ENV_ASCEND_HOME_PATH, stub_cann_path.c_str());
+  string stub_opp_path = fe::GetCodeDir() + "/tests/engines/nn_engine/depends/CANN_910b_stub/cann/opp";
+  fe::EnvVarGuard opp_guard(MM_ENV_ASCEND_OPP_PATH, stub_opp_path.c_str());
   map<string, string> options;
   options.emplace(ge::SOC_VERSION, "Ascend910B1");
   PlatformUtils::Instance().is_init_ = false;
   FusionManager &fm = FusionManager::Instance(kDsaCoreName);
-  EXPECT_NE(fm.Initialize(kDsaCoreName, options), SUCCESS);
+  EXPECT_EQ(fm.Initialize(kDsaCoreName, options), SUCCESS);
   map<string, GraphOptimizerPtr> graph_optimizers;
   fm.GetGraphOptimizerObjs(graph_optimizers, kDsaCoreName);
-  EXPECT_EQ(graph_optimizers.size(), 0);
+  EXPECT_EQ(graph_optimizers.size(), 1);
+  cann_guard.Restore();
+  opp_guard.Restore();
 }
 

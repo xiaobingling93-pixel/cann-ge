@@ -58,7 +58,6 @@ class HcomGraphOptimizer : public ge::GraphOptimizer {
   HcclResult HcomOptimizeOriginalGraph(ge::ComputeGraph &graph, bool &uknownShapeGraph);
   HcclResult OriginalGraphShapeTypeCfg(ge::ComputeGraph &graph, bool &uknownShapeGraph);
   HcclResult SetUnknownShapeAttr(ge::ComputeGraph &graph, bool uknownShapeGraph);
-  HcclResult SetSuperKernelScopeAttr(ge::ComputeGraph &graph);
   HcclResult UpdateFusionTensorSizeLimit(bool unknownShape, u64 &fusionTensorSize);
 
  private:
@@ -68,6 +67,12 @@ class HcomGraphOptimizer : public ge::GraphOptimizer {
   HcclResult SetHcomOpAttrs(ge::OpDescPtr &opDescPtr);
   HcclResult SetHcomOpFormat(ge::OpDescPtr &opDescPtr);
   HcclResult SetHcomOpParallelLabel(ge::Node &node, std::string groupLabel);
+  HcclResult MemOutputForOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                u32 i, int64_t &memSize);
+  HcclResult GetMemOutPutForCountCalc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                      u32 dataTypeSize, u64& count);
+  HcclResult HcomGetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                            HcclDataType dataType, u64 &count, u32 rankSize);                                      
   HcclResult GetCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType, HcclDataType dataType,
                                 u64 &count);
   HcclResult GetCommFromOpDesc(const ge::OpDescPtr &op, int64_t &hcomComm, std::string &sGroup);

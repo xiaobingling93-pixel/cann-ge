@@ -1719,7 +1719,11 @@ TEST_F(HcomKernelBuilderTest, st_offlinebuild_calcSubStreamNumv2_When_Normal_Exp
     .stubs()
     .will(returnValue(false));
 
+#ifdef MACRO_DEV_TYPE_NEW
+    MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_950));
+#else
     MOCKER(HcomGetDeviceType).stubs().with(mockcpp::any()).will(returnValue(DevType::DEV_TYPE_910_95));
+#endif
     ret = hcomOpsKernelInfoStore_.HcomCalcOpRunningParam(*nodeptr);
 
     type = HCCL_KERNEL_OP_TYPE_BROADCAST;
