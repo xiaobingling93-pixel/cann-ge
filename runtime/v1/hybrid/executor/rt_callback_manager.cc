@@ -56,7 +56,7 @@ Status RtCallbackManager::RegisterCallback(const rtStream_t stream,
 
 Status RtCallbackManager::Init() {
   aclrtContext ctx = nullptr;
-  GE_CHK_RT_RET(aclrtSetCurrentContext(&ctx));
+  GE_CHK_RT_RET(aclrtGetCurrentContext(&ctx));
   ret_future_ = std::async(std::launch::async, [this](const aclrtContext context,
       const struct error_message::ErrorManagerContext &error_context) ->Status {
     error_message::SetErrMgrContext(error_context);
