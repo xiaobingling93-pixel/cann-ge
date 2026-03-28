@@ -1656,7 +1656,7 @@ HcclResult HcomOpsKernelBuilder::SetHcomOpParam(const ge::Node &node, HcomOpPara
 
   u64 count = 0;
   const u32 deviceEight = 8;
-  ret = GetCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count);
+  ret = HcomOpUtils::GetAccuracyCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count, rankSize);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][OpWorkspaceMemSize]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),
               ret);

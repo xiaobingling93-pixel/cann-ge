@@ -658,6 +658,91 @@ HcclResult HcomGraphOptimizer::SetHcomOpParallelLabel(ge::Node &node, std::strin
   return HCCL_SUCCESS;
 }
 
+HcclResult HcomGraphOptimizer::HcomGetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                            HcclDataType dataType, u64 &count, u32 rankSize) {
+  u32 dataTypeSize = 0;
+  CHK_RET(SalGetDataTypeSize(dataType, dataTypeSize));
+  CHK_PRT_RET(dataTypeSize == 0,
+              HCCL_ERROR("[Get][CountFromOpDesc]dataType size is zero."),
+              HCCL_E_PARA);
+  
+  // Receive 算子不支持获取count
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_RECEIVE) {
+    HCCL_WARNING("[%s][Get][Count] op[%s] get count failed. receive op not support get count.",
+              __func__, sCollectiveType.c_str());
+    return HCCL_SUCCESS;
+  }
+
+  // broadcast等搬运算子在图优化阶段没有input，只有output，无法通过getsize方式获取到数据量，需要用memoutput的方式获取
+  if (sCollectiveType == HCCL_KERNEL_OP_TYPE_ALLREDUCE || sCollectiveType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
+    CHK_RET(GetMemOutPutForCountCalc(op, sCollectiveType, dataTypeSize, count));
+  }
+  // 其他算子通用处理
+  CHK_RET(HcomOpUtils::CalcCommonCount(op, sCollectiveType, dataTypeSize, rankSize, count));
+  return HCCL_SUCCESS;
+}
+
+// broadcast等搬运算子在图优化阶段没有input，只有output，无法通过getsize方式获取到数据量，需要用memoutput的方式获取
+HcclResult HcomGraphOptimizer::MemOutputForOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                  u32 i, int64_t &memSize) {
+  ge::GeTensorDesc outputTensor = op->GetOutputDesc(i);
+  ge::GeShape outputShape = outputTensor.GetShape();
+  ge::Format format = outputTensor.GetFormat();
+  ge::DataType dataType = outputTensor.GetDataType();
+  // 获取内存大小
+  bool bErr = (ge::GRAPH_SUCCESS != ge::TensorUtils::CalcTensorMemSize(outputShape, format, dataType, memSize));
+  CHK_PRT_RET(bErr,
+              HCCL_ERROR("[Set][OpOutputMemSize]In get output mem size, error outputSize because no"
+                          "know shape, Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+                          format, dataType, memSize, i),
+              HCCL_E_PARA);
+
+  if (memSize == -1) {  // memsize 为-1 时，表示输入的shape不正确
+    HCCL_ERROR(
+        "[Set][OpOutputMemSize]In get output mem size, error outputSize because unknow shape,"
+        "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+        format, dataType, memSize, i);
+    return HCCL_E_PARA;
+  }
+
+  // 根据 规则重新计算内存大小
+  CHK_RET(CalcHCCLOutputMemSize(sCollectiveType, memSize));
+
+  // 将内存大小重新传给上层
+  ge::TensorUtils::SetSize(outputTensor, memSize);
+
+  // 更新output Tensor
+  if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
+    HCCL_ERROR(
+        "[Set][OpOutputMemSize]In get output mem size, update output desc error,"
+        "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
+        format, dataType, memSize, i);
+    return HCCL_E_PARA;
+  }
+  
+  return HCCL_SUCCESS;
+}
+
+HcclResult HcomGraphOptimizer::GetMemOutPutForCountCalc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+                                                        u32 dataTypeSize, u64& count) {
+  constexpr u32 alignSize = 512;  // 以512字节对齐
+  u64 totalSize = 0;
+  for (u32 i = 0; i < op->GetOutputsSize(); i++) {
+    int64_t memSize = 0;
+    CHK_RET(MemOutputForOpDesc(op, sCollectiveType, i, memSize));
+    // 对齐到512字节的倍数
+    CHK_PRT_RET((static_cast<u64>(memSize) > INVALID_U64 - alignSize),
+                HCCL_ERROR("[Set][OpOutputMemSize]op[%s] memSize[%lld] is overflow.",
+                          op->GetName().c_str(), memSize),
+                HCCL_E_PARA);
+    memSize = (static_cast<u64>(memSize) + alignSize - 1) / alignSize * alignSize;
+    totalSize += memSize;
+  }
+  count = totalSize / dataTypeSize;
+  HCCL_INFO("[%s]In get output MemSize, sCollectiveType[%s], get count[%llu]", __func__, sCollectiveType.c_str(), count);
+  return HCCL_SUCCESS;
+}
+
 HcclResult HcomGraphOptimizer::GetCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                                   HcclDataType dataType, u64 &count) {
   HcclResult ret;
@@ -764,40 +849,7 @@ HcclResult HcomGraphOptimizer::SetOpOutputMemSize(ge::Node &node, const std::str
   ge::OpDescPtr op = node.GetOpDesc();
   for (u32 i = 0; i < op->GetOutputsSize(); i++) {
     int64_t memSize = 0;
-    ge::GeTensorDesc outputTensor = op->GetOutputDesc(i);
-    ge::GeShape outputShape = outputTensor.GetShape();
-    ge::Format format = outputTensor.GetFormat();
-    ge::DataType dataType = outputTensor.GetDataType();
-    // 获取内存大小
-    bool bErr = (ge::GRAPH_SUCCESS != ge::TensorUtils::CalcTensorMemSize(outputShape, format, dataType, memSize));
-    CHK_PRT_RET(bErr,
-                HCCL_ERROR("[Set][OpOutputMemSize]In get output mem size, error outputSize because no"
-                           "know shape, Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-                           format, dataType, memSize, i),
-                HCCL_E_PARA);
-
-    if (memSize == -1) {  // memsize 为-1 时，表示输入的shape不正确
-      HCCL_ERROR(
-          "[Set][OpOutputMemSize]In get output mem size, error outputSize because unknow shape,"
-          "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-          format, dataType, memSize, i);
-      return HCCL_E_PARA;
-    }
-
-    // 根据 规则重新计算内存大小
-    CHK_RET(CalcHCCLOutputMemSize(sCollectiveType, memSize));
-
-    // 将内存大小重新传给上层
-    ge::TensorUtils::SetSize(outputTensor, memSize);
-
-    // 更新output Tensor
-    if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
-      HCCL_ERROR(
-          "[Set][OpOutputMemSize]In get output mem size, update output desc error,"
-          "Format[%d], dataType[%d], outputSize[%lld], index[%u]",
-          format, dataType, memSize, i);
-      return HCCL_E_PARA;
-    }
+    CHK_RET(MemOutputForOpDesc(op, sCollectiveType, i, memSize));
     HCCL_INFO("In set output MemSize, sCollectiveType[%s], opMemSize[%lld]", sCollectiveType.c_str(), memSize);
   }
   return HCCL_SUCCESS;
@@ -1183,7 +1235,7 @@ HcclResult HcomGraphOptimizer::SetHcomOpParam(const ge::Node &node, HcomOpParam 
 
   u64 count = 0;
   const u32 deviceEight = 8;
-  ret = HcomOpUtils::GetAccuracyCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count, rankSize);
+  ret = HcomGetAccuracyCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count, rankSize);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][OpWorkspaceMemSize]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),
               ret);
