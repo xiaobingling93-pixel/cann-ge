@@ -205,6 +205,7 @@ target_include_directories(fe_ut PRIVATE
         ${AIR_CODE_DIR}/tests/engines/nn_engine/depends
         ${AIR_CODE_DIR}/tests/engines/nn_engine/depends/ops_stub
         ${AIR_CODE_DIR}/tests/engines/nn_engine/graph_constructor
+        ${AIR_CODE_DIR}/
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/base
         ${AIR_CODE_DIR}/inc/external
