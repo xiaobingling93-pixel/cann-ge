@@ -17,7 +17,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/attr_utils.h"
-#include "common/util/compress/compress.h"
+#include "compiler/graph/common/compress/inc/compress.h"
 #include "common/platform_utils.h"
 #include "common/configuration.h"
 #include "platform/platform_info.h"

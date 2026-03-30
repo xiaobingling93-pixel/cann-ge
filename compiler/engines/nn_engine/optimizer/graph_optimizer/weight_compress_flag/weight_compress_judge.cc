@@ -12,7 +12,7 @@
 #include "common/configuration.h"
 #include "common/util/op_info_util.h"
 #include "graph/utils/op_desc_utils.h"
-#include "common/util/compress/compress.h"
+#include "compiler/graph/common/compress/inc/compress.h"
 #include "common/fe_thread_pool.h"
 #include "common/math_util.h"
 #include "common/fe_inner_attr_define.h"
