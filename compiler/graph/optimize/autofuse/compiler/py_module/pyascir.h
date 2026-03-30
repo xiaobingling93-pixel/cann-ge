@@ -137,6 +137,5 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Trunc)            \
   OP(TruncToInt)       \
   OP(TruncDiv)         \
-  OP(Xor)              \
-  OP(Remainder)
+  OP(Xor)              
 #endif

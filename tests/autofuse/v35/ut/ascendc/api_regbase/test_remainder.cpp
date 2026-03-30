@@ -13,7 +13,7 @@
 #include "gtest/gtest.h"
 #include "tikicpulib.h"
 #include "test_api_utils.h"
-#include "remainder.h"
+#include "api_regbase/remainder.h"
 
 using namespace AscendC;
 
