@@ -47,15 +47,15 @@ HcclResult HcomExecEnqueueOperation(struct HcomOperation opInfo, std::function<v
   return hccl::HcomExecutor::GetInstance().HcomExecEnqueueOperation(opInfo, callback);
 }
 
-HcclResult HcomExecEnqueueRemoteOperation(struct HcomRemoteOperation opInfo,
-                                          std::function<void(HcclResult status)> callback) {
+HcclResult HcomExecEnqueueRemoteOperation([[maybe_unused]] struct HcomRemoteOperation opInfo,
+                                          [[maybe_unused]] std::function<void(HcclResult status)> callback) {
   HCCL_ERROR("[HcomExec][EnqueueRemoteOperation]HcomExecEnqueueRemoteOperation is not support.");
   return HCCL_E_NOT_SUPPORT;
 }
 
-HcclResult HcomExecEnqueueRemoteAccess(const std::string &remoteAccessType,
-                                       const std::vector<HcomRemoteAccessAddrInfo> &addrInfos,
-                                       std::function<void(HcclResult status)> callback) {
+HcclResult HcomExecEnqueueRemoteAccess([[maybe_unused]] const std::string &remoteAccessType,
+                                       [[maybe_unused]] const std::vector<HcomRemoteAccessAddrInfo> &addrInfos,
+                                       [[maybe_unused]] std::function<void(HcclResult status)> callback) {
   HCCL_ERROR("HcomExecEnqueueRemoteAccess is not support");
   return HCCL_E_NOT_SUPPORT;
 }
@@ -70,8 +70,8 @@ HcclResult HcomExecEnqueueAllToAllVC(HcomAllToAllVCParams params, std::function<
   return hccl::HcomExecutor::GetInstance().HcomExecEnqueueAllToAllVC(params, callback);
 }
 
-HcclResult HcomExecEnqueueGatherAllToAllV(HcomGatherAllToAllVParams params,
-                                          std::function<void(HcclResult status)> callback) {
+HcclResult HcomExecEnqueueGatherAllToAllV([[maybe_unused]] HcomGatherAllToAllVParams params,
+                                          [[maybe_unused]] std::function<void(HcclResult status)> callback) {
   HCCL_ERROR("HcomExecEnqueueGatherAllToAllV is not supported.");
   return HCCL_E_NOT_SUPPORT;
 }
@@ -878,7 +878,7 @@ void HcomExecutor::CleanQueueResources() {
   parralMap_.clear();
 }
 
-HcclResult HcomRegRemoteAccessMem(const MemRegisterAddr *addrList, u32 count) {
+HcclResult HcomRegRemoteAccessMem([[maybe_unused]] const MemRegisterAddr *addrList, [[maybe_unused]] u32 count) {
   HCCL_ERROR("[Reg][RemoteAccessMem] HcomRegRemoteAccessMem is not support.");
   return HCCL_E_NOT_SUPPORT;
 }

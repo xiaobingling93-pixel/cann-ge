@@ -45,7 +45,7 @@ AutoTuningPlugin &AutoTuningPlugin::Instance() {
   return plugin;
 }
 
-void AutoTuningPlugin::GetGraphOptimizerObjs(map<string, GraphOptimizerPtr> &graphOptimizers) {
+void AutoTuningPlugin::GetGraphOptimizerObjs([[maybe_unused]] map<string, GraphOptimizerPtr> &graphOptimizers) {
   HCCL_INFO("get hcom graph optimizer objs start.");
 #ifndef HCOM_EXECUTOR
   if (graphOptimizerPtr_ != nullptr) {
@@ -58,7 +58,7 @@ void AutoTuningPlugin::GetGraphOptimizerObjs(map<string, GraphOptimizerPtr> &gra
   return;
 }
 
-ge::Status AutoTuningPlugin::Initialize(const std::map<string, string> &options) {
+ge::Status AutoTuningPlugin::Initialize([[maybe_unused]] const std::map<string, string> &options) {
   EXECEPTION_CATCH((opsKernelInfoStorePtr_ = std::make_shared<hccl::AutoTuningHcomOpsKernelInfoStore>()),
                    return ge::INTERNAL_ERROR);
 #ifndef HCOM_EXECUTOR

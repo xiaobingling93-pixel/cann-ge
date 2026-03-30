@@ -159,7 +159,7 @@ void GetTopoInfoFromFile(vector<TopoInfo> &toposInfo) {
   return;
 }
 
-Cluster::Cluster(std::string workPath, int gpuNum, float fixedJetter) {
+Cluster::Cluster([[maybe_unused]] std::string workPath, int gpuNum, float fixedJetter) {
   vector<TopoInfo> topoInfo;
   Topology topo;
 

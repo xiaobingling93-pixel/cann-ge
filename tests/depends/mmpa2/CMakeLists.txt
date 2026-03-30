@@ -33,6 +33,7 @@ target_link_libraries(mmpa_stub2
         slog_stub
         c_sec
         -ldl
+        $<BUILD_INTERFACE:intf_llt_pub>
     PUBLIC
         mmpa_headers
 )

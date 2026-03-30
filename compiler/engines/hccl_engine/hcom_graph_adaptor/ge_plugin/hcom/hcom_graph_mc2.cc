@@ -24,7 +24,7 @@ static constexpr u32 NEW_TILING_VERSION = 2U;
 const uint32_t GROUP_NAME_OFFSET = 5;
 bool HcomGetGroupsByOpDesc(const ge::OpDescPtr &opdesc, std::vector<std::string> &groups) {
   std::string group;
-  for (const auto groupName : opdesc->GetAllAttrNames()) {
+  for (const auto& groupName : opdesc->GetAllAttrNames()) {
     HCCL_DEBUG("Get attr Name [%s]", groupName.c_str());
     if (groupName.substr(0, GROUP_NAME_OFFSET) == "group" && ge::AttrUtils::GetStr(opdesc, groupName, group)) {
       HCCL_INFO("Get group %s:%s of op %s.", groupName.c_str(), group.c_str(), opdesc->GetName().c_str());
@@ -198,7 +198,7 @@ ge::graphStatus HcomCreateComResourceMC2(const ge::OpDescPtr &opdesc, std::vecto
   const u32 version = HcomGetTilingVersionByOpDesc(opdesc, tilingData);
   HCCL_INFO("Tiling version of op %s is %u.", opdesc->GetName().c_str(), version);
 
-  for (const auto group : groups) {
+  for (const auto& group : groups) {
     HCCL_INFO("HcomCreateComResourceMC2 group is %s.", group.c_str());
     if (group.empty()) {
       HCCL_RUN_INFO("[HcomCreateComResourceMC2] group is empty, push nullptr to context.");

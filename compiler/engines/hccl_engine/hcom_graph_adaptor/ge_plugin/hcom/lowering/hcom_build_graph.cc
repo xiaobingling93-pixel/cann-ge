@@ -44,7 +44,7 @@ HcclResult HcomAllGatherGetOpAttr(const ge::NodePtr &node, struct HcomOpAttr &op
   return HcomOpUtils::GetRankSize(node->GetOpDesc(), opAttr.op.allgather.rankSize);
 }
 
-HcclResult HcomAllGatherVGetOpAttr(const ge::NodePtr &node, struct HcomOpAttr &opAttr) {
+HcclResult HcomAllGatherVGetOpAttr([[maybe_unused]] const ge::NodePtr &node, [[maybe_unused]] struct HcomOpAttr &opAttr) {
   return HCCL_SUCCESS;
 }
 
@@ -73,11 +73,12 @@ HcclResult HcomAllToAllVGetOpAttr(const ge::NodePtr &node, struct HcomOpAttr &op
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomAllToAllVCGetOpAttr(const ge::NodePtr &node, struct HcomOpAttr &opAttr) {
+HcclResult HcomAllToAllVCGetOpAttr([[maybe_unused]] const ge::NodePtr &node,
+                                   [[maybe_unused]] struct HcomOpAttr &opAttr) {
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomAllToAllGetOpAttr(const ge::NodePtr &node, struct HcomOpAttr &opAttr) {
+HcclResult HcomAllToAllGetOpAttr([[maybe_unused]] const ge::NodePtr &node, [[maybe_unused]] struct HcomOpAttr &opAttr) {
   // 暂时作为桩函数
   return HCCL_SUCCESS;
 }

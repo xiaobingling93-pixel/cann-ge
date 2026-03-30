@@ -38,13 +38,14 @@ class HCCLOpsKernelBuilder : public ge::OpsKernelBuilder {
                                   std::vector<domi::TaskDef> &taskDefList) = 0;
 
  protected:
-  virtual HcclResult GetSupportedOP(std::vector<std::string> &hcclSupportOp) const {
+  virtual HcclResult GetSupportedOP([[maybe_unused]] std::vector<std::string> &hcclSupportOp) const {
     return HCCL_SUCCESS;
   };
-  virtual HcclResult SetOpMemAttr(ge::Node &node, const std::string &sCollectiveType, const u64 &opMemSize) {
+  virtual HcclResult SetOpMemAttr([[maybe_unused]] ge::Node &node, [[maybe_unused]] const std::string &sCollectiveType,
+                                  [[maybe_unused]] const u64 &opMemSize) {
     return HCCL_SUCCESS;
   };
-  virtual HcclResult SetOpAtomicInputIndex(ge::Node &node, const std::string &sCollectiveType) {
+  virtual HcclResult SetOpAtomicInputIndex([[maybe_unused]] ge::Node &node, [[maybe_unused]] const std::string &sCollectiveType) {
     return HCCL_SUCCESS;
   };
   virtual HcclResult CheckSupportedOP(const std::string &sCollectiveType) const;

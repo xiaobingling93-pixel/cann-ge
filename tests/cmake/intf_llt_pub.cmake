@@ -28,7 +28,7 @@ target_compile_options(intf_llt_pub INTERFACE
         $<$<BOOL:${ENABLE_ASAN}>:
         -Wno-maybe-uninitialized -fsanitize=address -fsanitize=leak -fsanitize-recover=address,all
             -fno-stack-protector -fno-omit-frame-pointer -g>
-        -fPIC
+        -Werror -fno-common -Wextra -Wfloat-equal -Wall -fPIC
         -pipe
         -fno-access-control
         )

@@ -117,7 +117,7 @@ void HcomPlugin::GetOpsKernelInfoPtr(HcomOpsKernelInfoStorePtr &opsKernelInfoSto
   return;
 }
 
-void HcomPlugin::GetGraphOptimizerObjs(map<string, GraphOptimizerPtr> &graphOptimizers) {
+void HcomPlugin::GetGraphOptimizerObjs([[maybe_unused]] map<string, GraphOptimizerPtr> &graphOptimizers) {
   HCCL_INFO("get hccl graph optimizer objs start.");
 #ifndef HCOM_EXECUTOR
   if (hcomGraphOptimizerPtr_ != nullptr) {

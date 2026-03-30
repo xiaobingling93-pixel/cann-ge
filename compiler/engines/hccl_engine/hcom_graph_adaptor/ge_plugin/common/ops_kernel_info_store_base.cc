@@ -28,7 +28,7 @@ HCCLOpsKernelInfoStore::HCCLOpsKernelInfoStore() {}
 HCCLOpsKernelInfoStore::~HCCLOpsKernelInfoStore() {}
 
 // initialize opsKernelInfoStore
-ge::Status HCCLOpsKernelInfoStore::Initialize(const map<string, string> &options) {
+ge::Status HCCLOpsKernelInfoStore::Initialize([[maybe_unused]] const map<string, string> &options) {
   // 直接返回, 有单独的初始化接口
   return ge::SUCCESS;
 }

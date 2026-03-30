@@ -1114,7 +1114,7 @@ auto GetValidatedIrAttr(PyObject *self, const char *attr_type_name) -> AttrDefTy
   PyObject *OpsOperatorIrAttr<ge::ascir_op::OpType, AttrName>::_getter(PyObject *self, void *closure) {            \
     (void)closure;                                                                                                 \
     auto *attr = GetValidatedIrAttr<ge::ascir_op::OpType, ge::ascir_op::OpType::AttrType>(self, #AttrType);        \
-    ValueType v;                                                                                                   \
+    ValueType v{};                                                                                                   \
     return attr ? (attr->GetMethod(v), ConvFunc(v)) : nullptr;                                                     \
   }                                                                                                                \
   template <>                                                                                                      \
@@ -1136,8 +1136,6 @@ DEFINE_IR_ATTR_ACCESSORS(IndexExpr, AscIndexExprIrAttrDef, kExprAttr, int64_t, P
                          PyLong_AsLong, SetExpr, GetExpr)
 DEFINE_IR_ATTR_ACCESSORS(Gather, AscGatherIrAttrDef, kAxisAttr, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,
                          SetAxis, GetAxis)
-DEFINE_IR_ATTR_ACCESSORS(Gather, AscGatherIrAttrDef, kNegativeIndexSupportAttr, bool, PyBool_Check, PyBool_FromLong, PyObject_IsTrue,
-                         SetNegative_index_support, GetNegative_index_support)                  
 DEFINE_IR_ATTR_ACCESSORS(MatMul, AscMatMulIrAttrDef, kHasRelu, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,
                          SetHas_relu, GetHas_relu)
 DEFINE_IR_ATTR_ACCESSORS(MatMul, AscMatMulIrAttrDef, kTransposeX1, int64_t, PyLong_Check, PyLong_FromLong, PyLong_AsLong,

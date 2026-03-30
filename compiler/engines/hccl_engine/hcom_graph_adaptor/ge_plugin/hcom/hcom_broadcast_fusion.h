@@ -24,6 +24,7 @@ class HcomBroadcastFusion : public OpFusionBase {
  public:
   HcomBroadcastFusion();
   ~HcomBroadcastFusion() override;
+  using OpFusionBase::Run;
   HcclResult Run(ge::ComputeGraph &graph, uint64_t fusionTensorSizeLimit);
 
  private:

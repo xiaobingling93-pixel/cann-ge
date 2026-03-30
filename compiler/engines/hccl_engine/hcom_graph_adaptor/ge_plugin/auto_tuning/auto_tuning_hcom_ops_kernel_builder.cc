@@ -122,7 +122,7 @@ HcclResult AutoTuningHcomOpsKernelBuilder::GetRankSizeFromDesc(const ge::OpDescP
   return HCCL_SUCCESS;
 }
 
-ge::Status AutoTuningHcomOpsKernelBuilder::GenerateTask(const ge::Node &node, ge::RunContext &runContext,
+ge::Status AutoTuningHcomOpsKernelBuilder::GenerateTask(const ge::Node &node, [[maybe_unused]] ge::RunContext &runContext,
                                                         std::vector<domi::TaskDef> &taskDefList) {
   bool unknownShapeNode = false;
   CHK_PRT_RET((ge::NodeUtils::GetNodeUnknownShapeStatus(node, unknownShapeNode) != ge::GRAPH_SUCCESS),

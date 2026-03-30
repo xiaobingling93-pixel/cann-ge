@@ -62,7 +62,7 @@ uint32_t mmSetData(mmAtomicType *ptr, uint32_t value);
 uint64_t mmSetData64(mmAtomicType64 *ptr, uint64_t value);
 uint32_t mmValueInc(mmAtomicType *ptr, uint32_t value);
 bool mmCompareAndSwap(mmAtomicType *ptr, uint32_t oldval, uint32_t newval);
-bool mmCompareAndSwap64(mmAtomicType *ptr, uint32_t oldval, uint32_t newval);
+bool mmCompareAndSwap64(mmAtomicType64 *ptr, uint32_t oldval, uint32_t newval);
 void mmValueStore(mmAtomicType *ptr, uint32_t value);
 int32_t mmMutexInit(mmMutex_t *mutex);
 int32_t mmMutexLock(mmMutex_t *mutex);

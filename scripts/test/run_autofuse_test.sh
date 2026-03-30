@@ -21,6 +21,9 @@ PYTHON_MODULE_PATH=${BASEPATH}/compiler/graph/optimize/autofuse/compiler/python/
 TESTS_ST_PATH="${BASEPATH}/tests/autofuse/st/"
 RUN_V35_TESTS="off"
 
+# TODO(For autofuse): Remove 'export DISABLE_COMPILATION_WERROR=ON' and fix the related compilation errors.
+export DISABLE_COMPILATION_WERROR=ON
+
 # print usage message
 usage() {
   echo "Usage:"

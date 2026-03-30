@@ -154,6 +154,11 @@ cmake_print_variables(ENABLE_OPEN_SRC ENABLE_TEST ENABLE_GE_BENCHMARK ENABLE_GE_
 cmake_print_variables(BUILD_OPEN_PROJECT ENABLE_LLT_COV ENABLE_FE_LLT ENABLE_FFTS_LLT ENABLE_AICPU_LLT ENABLE_DVPP_LLT
         ENABLE_HCCE_LLT ENABLE_RTS_LLT ENABLE_UT ENABLE_ST, HI_PYTHON ENABLE_ASAN ENABLE_GCOV)
 
+# 针对 GCC/Clang 编译器, 开启编译告警转报错
+# TODO(For autofuse): Remove ' AND (NOT DEFINED ENV{DISABLE_COMPILATION_WERROR})' and fix the related compilation errors.
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND (NOT DEFINED ENV{DISABLE_COMPILATION_WERROR}))
+    add_compile_options(-Wall -Wextra -Werror -Wfloat-equal)
+endif()
 # 针对 Clang 编译器，关闭特定警告（避免 -Werror 触发编译错误）
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "Add compile option for Clang.")

@@ -34,6 +34,7 @@ target_compile_options(unified_dlog PRIVATE -g -O0)
 target_link_libraries(unified_dlog PRIVATE
         PUBLIC slog_headers
         slog_common
+        $<BUILD_INTERFACE:intf_llt_pub>
         )
 endif()
 

@@ -39,7 +39,7 @@ HcclResult HCCLOpsKernelBuilder::CheckSupportedOP(const std::string &sCollective
 }
 
 // initialize opsKernelInfoStore
-ge::Status HCCLOpsKernelBuilder::Initialize(const map<string, string> &options) {
+ge::Status HCCLOpsKernelBuilder::Initialize([[maybe_unused]] const map<string, string> &options) {
   // 直接返回, 有单独的初始化接口
   return ge::SUCCESS;
 }

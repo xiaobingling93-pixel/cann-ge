@@ -65,25 +65,34 @@ class HcomAllGatherFusion : public OpFusionBase {
   HcclResult FuseOps(ge::ComputeGraph &graph, FusionSection &fusionSection);
 
   HcclResult RunFusionOpsAllGather(ge::ComputeGraph &graph, std::vector<ge::NodePtr> &fusionOps);
+  using OpFusionBase::RemoveOpsEdges;
   // 记录每个allgather算子的输入数据边、输入控制边、输出数据边、输出控制边, 保存后删除原allgather节点
   HcclResult RemoveOpsEdges(ge::ComputeGraph &graph, std::vector<ge::NodePtr> &fusionOps,
                             std::vector<CommonNodeInfo> &nodeInfos, ge::OpDescPtr &fusedOp);
+  using OpFusionBase::GetPeerOutDataToInData;
   HcclResult GetPeerOutDataToInData(std::vector<ge::OutDataAnchorPtr> &peerOutDataAnchorVec, ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerOutDataToInControl;
   HcclResult GetPeerOutDataToInControl(vector<ge::OutDataAnchorPtr> &peerOutDataToInControlVec,
                                        ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerOutControlToInControl;
   HcclResult GetPeerOutControlToInControl(vector<ge::OutControlAnchorPtr> &peerOutControlToInControlVec,
                                           ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerAnchorFromOutData;
   HcclResult GetPeerAnchorFromOutData(std::vector<ge::InDataAnchorPtr> &peerInDataFromOutDataVec,
                                       std::vector<ge::InControlAnchorPtr> &peerInControlFromOutDataVec,
                                       ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerInDataAnchorFromOutData;
   HcclResult GetPeerInDataAnchorFromOutData(std::vector<ge::InDataAnchorPtr> &peerInDataFromOutDataVec,
                                             ge::OutDataAnchorPtr outDataAnchor, ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerInControlAnchorFromOutData;
   HcclResult GetPeerInControlAnchorFromOutData(std::vector<ge::InControlAnchorPtr> &peerInControlFromOutDataVec,
                                                ge::OutDataAnchorPtr outDataAnchor, ge::NodePtr &srcNodePtr);
+  using OpFusionBase::GetPeerInControlFromOutControl;
   HcclResult GetPeerInControlFromOutControl(vector<ge::InControlAnchorPtr> &peerInControlFromOutControlVec,
                                             ge::NodePtr &srcNodePtr);
   HcclResult GetAllGatherOpInfo(s32 &rankSize, string &group, std::string &nodeName, ge::NodePtr &srcNodePtr);
 
+  using OpFusionBase::AddFusionNode;
   // 创建节点, 将节点添加到graph中, 并添加数据边: peerOutDataAnchor, peerInDataAnchor
   HcclResult AddFusionNode(ge::ComputeGraph &graph, std::vector<CommonNodeInfo> &nodeInfos,
                            AllGatherFusionNodesInfo &fusionNodesInfo, ge::OpDescPtr &fusedOp);
@@ -92,6 +101,7 @@ class HcomAllGatherFusion : public OpFusionBase {
   HcclResult AddRecvDataConCat(ge::ComputeGraph &graph, std::vector<CommonNodeInfo> &nodeInfos,
                                AllGatherFusionNodesInfo &fusionNodesInfo);
 
+  using OpFusionBase::RestoreOpsEdges;
   // 恢复控制边: peerOutDataToInControl, peerOutControlAnchor, peerInControlFromOutData, peerInControlAnchor
   HcclResult RestoreOpsEdges(std::vector<CommonNodeInfo> &nodeInfos, AllGatherFusionNodesInfo &fusionNodesInfo);
   HcclResult AddOpsEdge(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst);
