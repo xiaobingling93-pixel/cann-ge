@@ -3037,6 +3037,7 @@ class LogicalOrAscIrCodegenImplV2 : public AscIrCodegenV2 {
       "adv_api/math/logical_ands.h",
       "adv_api/math/logical_or.h",
       "adv_api/math/logical_ors.h",
+      "adv_api/math/logical_xor.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
@@ -3075,6 +3076,7 @@ class LogicalAndAscIrCodegenImplV2 : public AscIrCodegenV2 {
       "adv_api/math/logical_ands.h",
       "adv_api/math/logical_or.h",
       "adv_api/math/logical_ors.h",
+      "adv_api/math/logical_xor.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
@@ -3367,6 +3369,10 @@ class LogicalXorAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
+      "adv_api/math/logical_and.h",
+      "adv_api/math/logical_ands.h",
+      "adv_api/math/logical_or.h",
+      "adv_api/math/logical_ors.h",
       "adv_api/math/logical_xor.h",
     };
   }

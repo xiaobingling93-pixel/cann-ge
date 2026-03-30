@@ -204,6 +204,8 @@ class AbsAscIrCodegenImpl : public AscIrCodegen {
   std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
       "basic_api/kernel_operator_vec_unary_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_binary_intf.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
