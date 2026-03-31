@@ -1645,7 +1645,7 @@ enum class PipeType : uint8_t {
          used_vars.insert(Str(var));
        }
      }
-     impl_code += "    tiling_data.set_block_dim(" + Str(expr) + ");";
+     impl_code += "    tiling_data.set_block_dim(Max(1, " + Str(expr) + "));";
      for (const auto &var : used_vars) {
        tiling_func_.AddLine("    double " + var + " = static_cast<double>(tiling_data.get_" + var + "());");
      }

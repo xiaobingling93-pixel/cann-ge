@@ -431,8 +431,9 @@ std::string AxesReorderSolverGen::GenGetTilingDataUbSizeStaticFunc() {
 
 std::string AxesReorderSolverGen::GenGetBlockDimStatic(Expr &corenum_cons) {
   std::string codes;
-  codes += "int AxesReorderSolver" + tiling_case_id_ + "::GetBlockDimStatic(" + GenGetStaticInputParam(HardwareDef::CORENUM) + ") {\n";
-  codes += "  return " + Str(corenum_cons) + ";\n";
+  codes += "int AxesReorderSolver" + tiling_case_id_ + "::GetBlockDimStatic(" +
+           GenGetStaticInputParam(HardwareDef::CORENUM) + ") {\n";
+  codes += "  return std::max(1, static_cast<int32_t>(" + Str(corenum_cons) + "));\n";
   codes += "}\n";
   codes += "\n";
   return codes;

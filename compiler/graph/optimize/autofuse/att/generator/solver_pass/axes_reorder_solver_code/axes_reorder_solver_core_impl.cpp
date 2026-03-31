@@ -193,20 +193,26 @@ std::string GenWorkLoadBalance() {
 std::string GenApplyPromptAlign() {
   std::string codes = R"(
   void AxesReorderSolver::ApplyPromptAlign(TilingVariable *var) {
-    auto aligned_val = var->value;
-    while ((aligned_val >= var->prompt_align) && ((aligned_val) % var->prompt_align != 0)) {
+    const auto original_val = var->value;
+    auto aligned_val = original_val;
+    bool found_prompt_aligned = false;
+    while (aligned_val > 0) {
+      if ((aligned_val % var->prompt_align == 0) && (aligned_val % var->align == 0)) {
+        found_prompt_aligned = true;
+        break;
+      }
       aligned_val -= var->align;
     }
-    bool is_applied = (aligned_val != var->value) && (aligned_val > 0);
+    bool is_applied = found_prompt_aligned && (aligned_val != original_val) && (aligned_val > 0);
     if (is_applied) {
       if (var->upper_bound == nullptr) {
         OP_LOGI(OP_NAME, "Var upper bound func is not set.");
         return;
       }
       const auto upper_bound_val = var->upper_bound(var->upper_bound_vars);
-      const auto loop_size = upper_bound_val / var->value;
-      const auto tail_size = upper_bound_val % var->value;
-      const auto tile_data_size = var->value * var->data_type_size;
+      const auto loop_size = upper_bound_val / original_val;
+      const auto tail_size = upper_bound_val % original_val;
+      const auto tile_data_size = original_val * var->data_type_size;
       // if tile data size is less than 512B, no need to update prompt align
       if ((loop_size == 1) && (tail_size == 0) && (tile_data_size <= 512)) {
         OP_LOGI(OP_NAME, "No need to update promt align, as loop size is 1 and tail size is 0, tile data size is %ld",
@@ -214,11 +220,11 @@ std::string GenApplyPromptAlign() {
         return;
       }
       // 当block_len > 64B 对性能影响较大
-      if ((var->value * var->data_type_size) <= 64) {
+      if ((original_val * var->data_type_size) <= 64) {
         OP_LOGI(OP_NAME, "No need to update promt align, as block len is less than 64B");
         return;
       }
-      OP_LOGI(OP_NAME, "Update prompt align from %ld to %ld", var->value, aligned_val);
+      OP_LOGI(OP_NAME, "Update prompt align from %ld to %ld", original_val, aligned_val);
       var->value = aligned_val;
     }
   }
