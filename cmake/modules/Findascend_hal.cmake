@@ -75,19 +75,34 @@ if(ascend_hal_FOUND)
     message(STATUS "Variables in ascend_hal module:")
     cmake_print_variables(ascend_hal_INCLUDE_DIR)
     cmake_print_variables(ascend_hal_stub_SHARED_LIBRARY)
+    # 创建 stub_lib 目录（仅包含需要的桩库）
+    set(ASCEND_HAL_STUB_LIB_DIR "${CMAKE_BINARY_DIR}/stub_lib")
+    file(MAKE_DIRECTORY "${ASCEND_HAL_STUB_LIB_DIR}")
 
+    # 创建 libascend_hal.so 的符号链接到 stub_lib 目录
+    get_filename_component(ASCEND_HAL_STUB_REALPATH "${ascend_hal_stub_SHARED_LIBRARY}" REALPATH)
+    set(ASCEND_HAL_STUB_LINK "${ASCEND_HAL_STUB_LIB_DIR}/libascend_hal.so")
+
+    # 如果链接已存在，先删除
+    if(EXISTS "${ASCEND_HAL_STUB_LINK}")
+        file(REMOVE "${ASCEND_HAL_STUB_LINK}")
+    endif()
+
+    # 创建符号链接（使用 COPY_ON_ERROR 作为后备）
+    file(CREATE_LINK "${ASCEND_HAL_STUB_REALPATH}" "${ASCEND_HAL_STUB_LINK}" COPY_ON_ERROR)
+
+    message(STATUS "Created stub library symlink: ${ASCEND_HAL_STUB_LINK} -> ${ASCEND_HAL_STUB_REALPATH}")
+    # 使用 SHARED IMPORTED 方式
     add_library(ascend_hal_stub SHARED IMPORTED)
     set_target_properties(ascend_hal_stub PROPERTIES
         INTERFACE_LINK_LIBRARIES "ascend_hal_headers"
-        IMPORTED_LOCATION "${ascend_hal_stub_SHARED_LIBRARY}"
+        IMPORTED_LOCATION "${ASCEND_HAL_STUB_LINK}"
     )
-
     add_library(ascend_hal_headers INTERFACE IMPORTED)
     set_target_properties(ascend_hal_headers PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${ascend_hal_INCLUDE_DIR};${ascend_hal_INCLUDE_DIR}/driver"
     )
 
-    include(CMakePrintHelpers)
     cmake_print_properties(TARGETS ascend_hal_stub
         PROPERTIES INTERFACE_LINK_LIBRARIES IMPORTED_LOCATION
     )
