@@ -555,7 +555,7 @@ bool FlowModelCache::CheckFileExist(const std::string &file_path) {
   return mmAccess(file_path.c_str()) == EN_OK;
 }
 
-Status FlowModelCache::GetRealFileName(std::string &file_name) const {
+Status FlowModelCache::GetRealFileName(std::string &file_name) {
   file_name = file_name.substr(file_name.rfind("/") + 1UL, file_name.length());
   GE_ASSERT_TRUE(!file_name.empty());
   GELOGD("Get real file name[%s].", file_name.c_str());
