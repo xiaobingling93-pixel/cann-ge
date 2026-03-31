@@ -21,8 +21,37 @@ from autofuse.ascendc_compile import str2bool
 import re
 
 def camel_to_snake(camel_str):
-    snake_str = re.sub(r'(?<!^)(?=[A-Z])', '_', camel_str).lower()
-    return snake_str
+    # 使用正则表达式匹配大写字母
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', camel_str)
+    # 使用正则表达式匹配小写字母后跟大写字母的情况
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def gen_valid_name(t_name):
+    result = []
+    last_was_underscore = False
+
+    for c in t_name:
+        if c.isalnum():
+            result.append(c)
+            last_was_underscore = False
+        else:
+            if not last_was_underscore:
+                result.append('_')
+                last_was_underscore = True
+
+    ret_name = ''.join(result)
+
+    # 删除开头的下划线
+    if ret_name and ret_name[0] == '_':
+        ret_name = ret_name[1:]
+
+    # 如果以数字开头，添加前缀
+    if ret_name and ret_name[0].isdigit():
+        ret_name = "t_" + ret_name
+
+    return ret_name
+
 
 def parse_compile_args(argv: List[str]):
     parser = argparse.ArgumentParser()
@@ -33,6 +62,7 @@ def parse_compile_args(argv: List[str]):
     parser.add_argument('--config_file', default='', type=str, help='PGO tiling config file after turning.')
     parser.add_argument('--soc_version', default='Ascend910B', type=str, help='chip soc version.')
     return parser.parse_args(argv)
+
 
 def generate_file(dst_dir, file_name, text):
     os.makedirs(dst_dir, exist_ok=True)
@@ -112,18 +142,15 @@ def compile_inner(tiling_def, host_tiling, op_kernel, temp_dir, argv: List[str])
     print("创建临时目录路径：", temp_dir)
     args = parse_compile_args(argv)
 
-    temp_build_dir = os.path.join(temp_dir, "build")
-    os.makedirs(temp_build_dir, exist_ok=True)
-    print('创建临时build目录路径:', temp_build_dir)
-    args.graph_name = camel_to_snake(args.graph_name)
+    args.graph_name = camel_to_snake(gen_valid_name(args.graph_name))
 
-    generate_file(os.path.join(temp_build_dir, "host"), "autofuse_tiling_data.h", tiling_def)
-    generate_file(os.path.join(temp_build_dir, "host"), args.graph_name + "_tiling_func.cpp", host_tiling)
-    generate_file(os.path.join(temp_build_dir, "device"), "autofuse_tiling_data.h", tiling_def)
-    generate_file(os.path.join(temp_build_dir, "device"), args.graph_name + "_op_kernel.cpp", op_kernel)
+    generate_file(os.path.join(temp_dir, "host"), "autofuse_tiling_data.h", tiling_def)
+    generate_file(os.path.join(temp_dir, "host"), args.graph_name + "_tiling_func.cpp", host_tiling)
+    generate_file(os.path.join(temp_dir, "device"), "autofuse_tiling_data.h", tiling_def)
+    generate_file(os.path.join(temp_dir, "device"), args.graph_name + "_op_kernel.cpp", op_kernel)
 
-    argv.extend(["--host_files", os.path.join(temp_build_dir, "host") + "/" + args.graph_name + "_tiling_func.cpp"])
-    argv.extend(["--device_files", os.path.join(temp_build_dir, "device") + "/" + args.graph_name + "_op_kernel.cpp"])
+    argv.extend(["--host_files", os.path.join(temp_dir, "host") + "/" + args.graph_name + "_tiling_func.cpp"])
+    argv.extend(["--device_files", os.path.join(temp_dir, "device") + "/" + args.graph_name + "_op_kernel.cpp"])
 
     ascendc_compile.main(argv, temp_dir)
 

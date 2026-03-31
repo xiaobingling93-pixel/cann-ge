@@ -44,112 +44,54 @@ def get_soc_type(args):
         raise ValueError(f"Unsupported soc_version: {args.soc_version}")
 
 
-def generate_cmake_base_config(args: argparse.Namespace) -> str:
-    """生成CMake的基础配置部分"""
-    # 包含SOC版本设置、路径配置等基础设置
-    source = "cmake_minimum_required(VERSION 3.16.0)\n"
-    source += f"find_package(ASC REQUIRED HINTS {ASCEND_PATH}/{machine}-linux/lib64/cmake)\n"
-    source += "project(Ascend_C LANGUAGES ASC CXX)\n"
-    source += "set(CMAKE_CXX_STANDARD 17)\n"
-    source += "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n"
-
-    # 获取特定环境变量的值
-    home_dir = os.environ.get('ASCEND_OPP_PATH')
-    home_dir = os.path.realpath(home_dir + "/..")
-    if not os.path.exists(home_dir):
-        print('Error: Please set environment variable ASCEND_HOME_PATH')
-        return ''
-
-    source += f"set(ASCEND_CANN_PACKAGE_PATH \"{home_dir}\" "
-    source += "CACHE PATH \"ASCEND CANN package installation directory\")\n"
-    source += "set(RUN_MODE \"npu\" CACHE STRING \"run mode: npu\")\n"
-
-    source += "set(CMAKE_BUILD_TYPE \"Release\" CACHE STRING \"Build type Release/Debug (default Debug)\" FORCE)\n"
-    source += "set(CMAKE_INSTALL_PREFIX \"${CMAKE_CURRENT_LIST_DIR}/out\" CACHE STRING \"path for install()\" FORCE"
-    source += ")\n\n"
-
-    source += "if(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/ascendc_kernel_cmake)\n"
-    source += "    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/ascendc_kernel_cmake)\n"
-    source += "elseif(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake)\n"
-    source += "    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake)\n"
-    source += "elseif(EXISTS ${ASCEND_CANN_PACKAGE_PATH}/ascendc_devkit/tikcpp/samples/cmake)\n"
-    source += "    set(ASCENDC_CMAKE_DIR ${ASCEND_CANN_PACKAGE_PATH}/ascendc_devkit/tikcpp/samples/cmake)\n"
-    source += "else()\n"
-    source += "    message(FATAL_ERROR \"ascendc_kernel_cmake does not exist, "
-    source += "please check whether the cann package is installed.\")\n"
-    source += "endif()\n\n"
-
-    return source
+def generate_host_compile_cmd(args: argparse.Namespace, temp_dir, base_host_file, soc_version):
+    compile_command = [
+        f"{ASCEND_PATH}/tools/bisheng_compiler/bin/bisheng",
+        "-D", "kernel_EXPORTS",
+        "-I", f"{temp_dir}/host",
+        "-I", f"{ASCEND_PATH}/include",
+        "-I", f"{ASCEND_PATH}/include/base",
+        "-I", f"{ASCEND_PATH}/include/experiment",
+        "-I", f"{ASCEND_PATH}/{machine}-linux/include",
+        "-I", f"{ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform",
+        "-fPIC", f"--npu-arch={soc_version}", "-O2", "-fno-common", "-Wextra", "-Wfloat-equal", "-fvisibility=default",
+        "-D", "LOG_CPP", "-o",
+        f"{temp_dir}/host/{base_host_file}.o", "-c", "-x", "asc",
+        f"{temp_dir}/host/{base_host_file}"]
+    return compile_command
 
 
-def generate_target_configurations(args: argparse.Namespace) -> str:
-    """生成CMake的目标配置部分(库和链接设置)"""
-    base_file = os.path.basename(args.output_file)
-    base_host_files = os.path.basename(args.host_files)
-    base_device_files = os.path.basename(args.device_files)
+def generate_device_compile_cmd(args: argparse.Namespace, temp_dir, base_kernel_file, soc_version):
+    compile_command = [
+        f"{ASCEND_PATH}/tools/bisheng_compiler/bin/bisheng",
+        "-I", f"{temp_dir}/device",
+        "-fPIC", "-D", "HAVE_TILING", "-D", "AUTO_FUSE_DEVICE=1", f"--npu-arch={soc_version}",
+        "-o", f"{temp_dir}/device/{base_kernel_file}.o",
+        "-c", "-x", "asc", f"{temp_dir}/device/{base_kernel_file}"]
+    return compile_command
+
+
+def generate_target_link_cmd(args: argparse.Namespace, temp_dir, base_kernel_file, base_host_file, target_file):
+    link_command = [
+        f"{ASCEND_PATH}/tools/bisheng_compiler/bin/bisheng",
+        f"{temp_dir}/host/{base_host_file}.o",
+        f"{temp_dir}/device/{base_kernel_file}.o",
+        "-fPIC", "--shared",
+        "-o", f"{target_file}"]
+    return link_command
+
+
+def compile_autofuse_target(args: argparse.Namespace, temp_dir):
+    target_file = os.path.basename(args.output_file)
+    base_host_file = os.path.basename(args.host_files)
+    base_device_file = os.path.basename(args.device_files)
     soc_version = get_soc_type(args)
-
-    print("base_file:", base_file)
-    if base_file.endswith('.so'):
-        base_file = base_file.rstrip('.so')
-        print("base_file:", base_file)
-    print("base_host_files:", base_host_files)
-    print("base_device_files:", base_device_files)
-
-    source = f"ascendc_library({base_file}_kernel STATIC\n"
-    source += f"    build/device/{base_device_files}\n"
-    source += ")\n\n"
-
-    source += f"ascendc_include_directories({base_file}_kernel PRIVATE\n"
-    source += "  ${CMAKE_CURRENT_SOURCE_DIR}/build/device\n"
-    source += ")\n\n"
-
-    source += "set_source_files_properties(\n"
-    source += f"    build/host/{base_host_files}\n"
-    source += "     PROPERTIES LANGUAGE ASC\n"
-    source += ")\n\n"
-
-    source += f"add_library({base_file} {args.lib_type}\n"
-    source += f"    build/host/{base_host_files}\n"
-    source += ")\n\n"
-
-    source += f"set_target_properties({base_file} PROPERTIES\n"
-    source += f"    OUTPUT_NAME {base_file}.so\n"
-    source += f"    PREFIX \"\"\n"
-    source += f"    SUFFIX \"\")\n\n"
-
-    source += f"target_link_libraries({base_file} PRIVATE -Wl,--whole-archive {base_file}_kernel"
-    source += f"    -Wl,--no-whole-archive c_sec ascendalog platform tiling_api)\n"
-    source += f"target_include_directories({base_file} PRIVATE\n"
-    source += "     ${CMAKE_CURRENT_SOURCE_DIR}/build/host\n"
-    source += f"    {ASCEND_PATH}/include\n"
-    source += f"    {ASCEND_PATH}/include/base\n"
-    source += f"    {ASCEND_PATH}/include/experiment\n"
-    source += f"    {ASCEND_PATH}/{machine}-linux/include\n"
-    source += f"    {ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform\n"
-    source += "    )\n\n"
-    source += f"target_compile_options({base_file} PRIVATE\n"
-    source += f"    $<$<COMPILE_LANGUAGE:ASC>:--npu-arch={soc_version}> -O2 -fno-common -Wextra -Wfloat-equal"
-    source += " -fvisibility=default -DLOG_CPP -ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/=\n"
-    source += ")\n\n"
-    source += f"target_compile_options({base_file}_kernel PRIVATE\n"
-    source += "    -DHAVE_TILING\n"
-    source += "    -DAUTO_FUSE_DEVICE=1\n"
-    source += f"    $<$<COMPILE_LANGUAGE:ASC>:--npu-arch={soc_version}>\n"
-
-    if args.compile_options is not None:
-        source += f"  {args.compile_options}\n"
-
-    source += ")\n\n"
-
-    return source
-
-
-def generate_cmake_lists(args: argparse.Namespace):
-    """生成完整的CMakeLists.txt内容"""
-    source = generate_cmake_base_config(args)
-    source += generate_target_configurations(args)
-    return source
+    host_compile_cmd = generate_host_compile_cmd(args, temp_dir, base_host_file, soc_version)
+    device_compile_cmd = generate_device_compile_cmd(args, temp_dir, base_device_file, soc_version)
+    link_cmd = generate_target_link_cmd(args, temp_dir, base_device_file, base_host_file, target_file)
+    subprocess.run(host_compile_cmd)
+    subprocess.run(device_compile_cmd)
+    subprocess.run(link_cmd)
 
 
 def str2bool(v):
@@ -181,12 +123,10 @@ def parse_compile_args(argv: List[str]):
 
 def ascendc_clean(temp_dir):
     src_directory = os.getcwd()
-    build_dir = os.path.join(temp_dir, 'build')
-    os.chdir(build_dir)
     keep_dirs = {'host', 'device'}
     # 遍历目录中的所有条目
-    for entry in os.listdir(build_dir):
-        entry_path = os.path.join(build_dir, entry)
+    for entry in os.listdir(temp_dir):
+        entry_path = os.path.join(temp_dir, entry)
         # 检查是否是文件或目录
         if os.path.isfile(entry_path):
             # 如果是文件，直接删除
@@ -203,7 +143,7 @@ def ascendc_clean(temp_dir):
 def static_shape_kernel_proc(args: argparse.Namespace, temp_dir):
     import re
     base_device_files = os.path.basename(args.device_files)
-    kernel_file = os.path.join(temp_dir, "build", "device", base_device_files)
+    kernel_file = os.path.join(temp_dir, "device", base_device_files)
     # 定义正则表达式模式
     pattern = re.compile(r'^extern\s+"C"\s+__global__\s+__aicore__\s+void\s+(\w+)\s*\(([^)]*)\)\s*{')
 
@@ -243,11 +183,6 @@ def static_shape_kernel_proc(args: argparse.Namespace, temp_dir):
 
 
 def static_shape_compile(args: argparse.Namespace, temp_dir, so_path):
-    cmake_command = ["cmake", "-S", ".", "-B", "./build", "-DCMAKE_C_COMPILER=gcc", "-DCMAKE_CXX_COMPILER=g++"]
-    make_command = ["make", "-C", "./build", '-j']
-    if args.job:
-        make_command += [str(args.job)]
-
     if not args.force_unknown:
         import ctypes
         lib = ctypes.CDLL(so_path)
@@ -264,15 +199,14 @@ def static_shape_compile(args: argparse.Namespace, temp_dir, so_path):
             config_file = ctypes.c_char_p(args.config_file.encode('utf-8'))
             result = lib.GenConstTilingData(config_file)
             const_tiling_data = result.decode('utf-8')
-            tiling_data = os.path.join(temp_dir, "build", "device", "autofuse_tiling_data.h")
-            tiling_data_bak = os.path.join(temp_dir, "build", "device", "autofuse_tiling_data_bak.h")
+            tiling_data = os.path.join(temp_dir, "device", "autofuse_tiling_data.h")
+            tiling_data_bak = os.path.join(temp_dir, "device", "autofuse_tiling_data_bak.h")
             # 备份原tilingdata文件
             shutil.copy(tiling_data, tiling_data_bak)
             with open(tiling_data, "w") as file:
                 file.write(const_tiling_data)
             # 重新编译生成so
-            subprocess.run(cmake_command)
-            subprocess.run(make_command)
+            compile_autofuse_target(args, temp_dir)
 
 
 def main(argv: List[str], temp_dir):
@@ -282,13 +216,6 @@ def main(argv: List[str], temp_dir):
     args = parse_compile_args(argv)
     args.lib_type = str.upper(args.lib_type)
 
-    # 生成CmakeList.txt
-    source = generate_cmake_lists(args)
-    if source == '' :
-        print("Generate CMakeLists.txt failed")
-        return False
-
-    dst_dir = os.path.realpath(args.output_file)
     src_directory = os.getcwd()
     print("current work dir: ", src_directory)
     print("temp dir: ", temp_dir)
@@ -298,24 +225,10 @@ def main(argv: List[str], temp_dir):
     current_directory = os.getcwd()
     print("change work dir:", current_directory)
 
-    with open(current_directory + "/CMakeLists.txt", "w") as cmake_file:
-        cmake_file.write(source)
+    compile_autofuse_target(args, temp_dir)
 
-    cmake_command = ["cmake", "-S", ".", "-B", "./build", "-DCMAKE_C_COMPILER=gcc", "-DCMAKE_CXX_COMPILER=g++"]
-
-    # 运行CMake
-    subprocess.run(cmake_command)
-
-    # 定义 CMake 编译命令
-    make_command = ["make", "-C", "./build", '-j']
-    if args.job:
-        make_command += [str(args.job)]
-    print(make_command)
-    # 编译生成so
-    subprocess.run(make_command)
-    source_dir = os.path.join(current_directory, 'build')
     so_file_name = os.path.basename(args.output_file)
-    src_file = os.path.join(source_dir, so_file_name)
+    src_file = os.path.join(current_directory, so_file_name)
 
     # 静态shape编译流程
     static_shape_compile(args, temp_dir, src_file)
@@ -327,7 +240,7 @@ def main(argv: List[str], temp_dir):
         os.makedirs(dst_dir_path)
 
     print("src file path: ", src_file)
-    print("dst file path:", dst_file)
+    print("dst file path: ", dst_file)
 
     shutil.copy(src_file, dst_file)
     print(f'copy file {so_file_name} to {dst_dir_path}')
