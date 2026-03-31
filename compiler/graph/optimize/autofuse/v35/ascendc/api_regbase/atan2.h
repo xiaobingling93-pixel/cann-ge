@@ -13,10 +13,12 @@
 
 using namespace AscendC;
 
-constexpr float NEG_HALF_PI = 0 - HALF_PI;
-constexpr float NEG_PI = 0 - PI;
-constexpr float FLOAT_NAN = 0x7fc00000;
-constexpr float HALF_NAN = 0x7e00;
+constexpr float ATAN2_PI = 3.14159265358979323846264338327950288;
+constexpr float ATAN2_HALF_PI = 1.57079632679489661923132169163975144;
+constexpr float ATAN2_NEG_HALF_PI = 0 - ATAN2_HALF_PI;
+constexpr float ATAN2_NEG_PI = 0 - ATAN2_PI;
+constexpr float ATAN2_FLOAT_NAN = 0x7fc00000;
+constexpr float ATAN2_HALF_NAN = 0x7e00;
 
 /* atan2(y, x) 的实现：
 
@@ -44,14 +46,14 @@ __aicore__ inline void AtanPostProcess(__ubuf__ T* dst, __ubuf__ T* src0, __ubuf
   MicroAPI::MaskReg full_mask, dst_mask;
   full_mask = MicroAPI::CreateMask<uint8_t>();
   if constexpr (std::is_same_v<T, float>) {
-    MicroAPI::Duplicate(nan_reg, FLOAT_NAN, full_mask);
+    MicroAPI::Duplicate(nan_reg, ATAN2_FLOAT_NAN, full_mask);
   } else if constexpr (std::is_same_v<T, half>) {
-    MicroAPI::Duplicate(nan_reg, HALF_NAN, full_mask);
+    MicroAPI::Duplicate(nan_reg, ATAN2_HALF_NAN, full_mask);
   }
-  MicroAPI::Duplicate(half_PI_reg, HALF_PI, full_mask);
-  MicroAPI::Duplicate(neg_half_PI_reg, NEG_HALF_PI, full_mask);
-  MicroAPI::Duplicate(PI_reg, PI, full_mask);
-  MicroAPI::Duplicate(neg_PI_reg, NEG_PI, full_mask);
+  MicroAPI::Duplicate(half_PI_reg, ATAN2_HALF_PI, full_mask);
+  MicroAPI::Duplicate(neg_half_PI_reg, ATAN2_NEG_HALF_PI, full_mask);
+  MicroAPI::Duplicate(PI_reg, ATAN2_PI, full_mask);
+  MicroAPI::Duplicate(neg_PI_reg, ATAN2_NEG_PI, full_mask);
 
   MicroAPI::MaskReg mask;
   // mainBlock
