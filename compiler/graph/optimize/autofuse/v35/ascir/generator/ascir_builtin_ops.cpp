@@ -549,11 +549,10 @@ REG_ASC_IR(Where)
            {{"T1", TensorType{DT_UINT8}}, {"T2", TensorType{DT_FLOAT16, DT_FLOAT, DT_INT16, DT_INT32, DT_INT64, DT_BF16, DT_INT8, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}}}});
 
 // Ub2ub是在sched阶段添加的，不需要在py构图中对外体现
-// todo:Ub2ub DT_INT64 后面根据需要放开
 REG_ASC_IR(Ub2ub)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::Ub2ubAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::Ub2ubAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_UINT64,
+                            {{"T", TensorType{DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_INT64, DT_UINT64,
                                               DT_FLOAT16, DT_FLOAT}}}});
 
 REG_ASC_IR(LeakyRelu)

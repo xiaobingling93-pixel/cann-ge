@@ -352,6 +352,13 @@ void BufQueAllocator::InitTensorReuseInfoAndLifeTime(const ascir::NodeView &node
                                                      TensorInfo &tensor_info, bool is_reduce_mem_reuse,
                                                      bool is_cube_none_db) const {
   bool is_node_cached = ascgen_utils::IsNodeCacheable(node);
+  InitTensorReuseInfo(node, output, tensor_info, is_reduce_mem_reuse, is_node_cached);
+  InitTensorLifeTime(node, output, tensor_info, is_node_cached, is_cube_none_db);
+}
+
+void BufQueAllocator::InitTensorReuseInfo(const ascir::NodeView &node, const ge::AscTensor *output,
+                                          TensorInfo &tensor_info, bool is_reduce_mem_reuse,
+                                          bool is_node_cached) const {
   if (output->attr.mem.position == ge::Position::kPositionVecCalc &&
       ascgen_utils::IsScalarInput(output->attr.repeats)) {
     tensor_info.is_reusable = false;
@@ -367,6 +374,13 @@ void BufQueAllocator::InitTensorReuseInfoAndLifeTime(const ascir::NodeView &node
   if (!is_reduce_mem_reuse) {
     tensor_info.is_reusable = false;
   }
+  std::vector<int64_t> no_reuse_output_indices;
+  (void)ge::AttrUtils::GetListInt(node->GetOpDesc(), kAttrNameNoReuseOutputIndices, no_reuse_output_indices);
+  if (std::find(no_reuse_output_indices.cbegin(), no_reuse_output_indices.cend(), output->anchor.GetIdx()) !=
+      no_reuse_output_indices.cend()) {
+    tensor_info.is_reusable = false;
+    tensor_info.is_can_reuse_others = false;
+  }
   if (is_node_cached) {
     const auto &next_in_anchors = output->anchor.GetPeerInDataAnchors();
     for (auto &next_in_anchor : next_in_anchors) {
@@ -376,7 +390,10 @@ void BufQueAllocator::InitTensorReuseInfoAndLifeTime(const ascir::NodeView &node
       }
     }
   }
+}
 
+void BufQueAllocator::InitTensorLifeTime(const ascir::NodeView &node, const ge::AscTensor *output,
+                                         TensorInfo &tensor_info, bool is_node_cached, bool is_cube_none_db) {
   tensor_info.life_start = node->GetOpDescBarePtr()->GetId();
   tensor_info.life_end = node->GetOpDescBarePtr()->GetId();
   if (tensor_info.is_reusable) {

@@ -31,6 +31,10 @@ class BufQueAllocator {
   static void SetGlobalMemInfo(const ge::AscTensor &tensor, int64_t tensor_id);
   void InitTensorReuseInfoAndLifeTime(const ascir::NodeView &node, const ge::AscTensor *output,
                                       TensorInfo &tensor_info, bool is_reduce_mem_reuse, bool is_cube_none_db) const;
+  void InitTensorReuseInfo(const ascir::NodeView &node, const ge::AscTensor *output, TensorInfo &tensor_info,
+                           bool is_reduce_mem_reuse, bool is_node_cached) const;
+  static void InitTensorLifeTime(const ascir::NodeView &node, const ge::AscTensor *output, TensorInfo &tensor_info,
+                                 bool is_node_cached, bool is_cube_none_db);
   static Status InitTensorMemInfo(ge::AscGraph &graph, const ge::AscTensor *output, TensorInfo &tensor_info);
   Status InitTensorInfo(ge::AscGraph &graph, TensorInfoMap &tensor_attr_to_tensor_info,
                         bool is_reduce_mem_reuse) const;
