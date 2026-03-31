@@ -231,6 +231,7 @@ target_include_directories(ge_executor PRIVATE
     ${TOP_DIR}/runtime/include/external/acl/error_codes
     ${TOP_DIR}/hcomm/pkg_inc
     ${TOP_DIR}/hcomm/include
+    ${TOP_DIR}/hcomm/include/hccl
 )
 
 target_link_libraries(ge_executor PRIVATE
@@ -296,6 +297,7 @@ target_include_directories(ge_executor_shared PRIVATE
     ${TOP_DIR}/runtime/include/external/acl/error_codes
     ${TOP_DIR}/hcomm/pkg_inc
     ${TOP_DIR}/hcomm/include
+    ${TOP_DIR}/hcomm/include/hccl
 )
 
 target_link_options(ge_executor_shared PRIVATE
@@ -361,6 +363,7 @@ target_compile_definitions(davinci_executor PRIVATE
 target_include_directories(davinci_executor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ASCEND_INSTALL_PATH}/pkg_inc
+    ${ASCEND_INSTALL_PATH}/include/hccl
     ${AIR_CODE_DIR}
     ${AIR_CODE_DIR}/base
     ${AIR_CODE_DIR}/compiler
@@ -378,6 +381,7 @@ target_include_directories(davinci_executor PRIVATE
     ${TOP_DIR}/runtime/include/external/acl/error_codes
     ${TOP_DIR}/hcomm/pkg_inc
     ${TOP_DIR}/hcomm/include
+    ${TOP_DIR}/hcomm/include/hccl
 )
 
 target_link_options(davinci_executor PRIVATE
@@ -475,6 +479,7 @@ target_include_directories(hybrid_executor PRIVATE
     ${TOP_DIR}/runtime/include/external/acl/error_codes
     ${TOP_DIR}/hcomm/pkg_inc
     ${TOP_DIR}/hcomm/include
+    ${TOP_DIR}/hcomm/include/hccl
 )
 
 target_link_options(hybrid_executor PRIVATE
