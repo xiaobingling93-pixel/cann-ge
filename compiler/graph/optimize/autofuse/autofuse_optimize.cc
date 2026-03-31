@@ -203,7 +203,7 @@ Status AutofuseOptimize::Run(const ge::ComputeGraphPtr &compute_graph, const std
   GE_TRACE_START(Symbolize);
   GE_ASSERT_GRAPH_SUCCESS(SymbolicShapeSymbolizer::Symbolize(compute_graph, inputs), "Symbolize graph input failed, graph %s",
                           compute_graph->GetName().c_str());
-  GE_COMPILE_TRACE_TIMESTAMP_END(Symbolize, "SymbolicShapeInference::Symbolize::" + compute_graph->GetName());
+  GE_COMPILE_TRACE_TIMESTAMP_END(Symbolize, ("SymbolicShapeInference::Symbolize::" + compute_graph->GetName()).c_str());
   GE_ASSERT_SUCCESS(SymbolicInfoPreProcessor::Run(compute_graph, inputs));
   GE_CHK_STATUS_RET(graph_pass_for_autofuse.AddPass("PreRun::AutoFusePass", new (std::nothrow) AutoFusePass()));
   GE_CHK_STATUS_RET(graph_pass_for_autofuse.Run(compute_graph));

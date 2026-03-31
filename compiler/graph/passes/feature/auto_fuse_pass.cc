@@ -67,11 +67,11 @@ Status AutoFusePass::Run(ComputeGraphPtr graph) {
   GE_DUMP(graph, "AutoFuser_BeforeAutoFuse");
   GE_TRACE_START(PreProcess);
   GE_ASSERT_SUCCESS(PreProcess(graph));
-  GE_COMPILE_TRACE_TIMESTAMP_END(PreProcess, "AutoFusePass::PreProcess::" + graph->GetName());
+  GE_COMPILE_TRACE_TIMESTAMP_END(PreProcess, ("AutoFusePass::PreProcess::" + graph->GetName()).c_str());
   SymbolicShapeInference symbolic_shape_inference;
   GE_TRACE_START(Infer);
   GE_ASSERT_SUCCESS(symbolic_shape_inference.Infer(graph));
-  GE_COMPILE_TRACE_TIMESTAMP_END(Infer, "SymbolicShapeInference::Infer::" + graph->GetName());
+  GE_COMPILE_TRACE_TIMESTAMP_END(Infer, ("SymbolicShapeInference::Infer::" + graph->GetName()).c_str());
   GE_DUMP(graph, "AutoFuser_AfterPreprocess");
 
   auto root_graph = ge::GraphUtils::FindRootGraph(graph);

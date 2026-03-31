@@ -392,6 +392,17 @@ REG_OP(GatherV2)
     .ATTR(negative_index_support, Bool, false)
     .OP_END_FACTORY_REG(GatherV2)
 
+REG_OP(GatherNd)
+    .INPUT(x, TensorType({DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT16, DT_INT32, DT_INT64,
+                          DT_INT8, DT_QINT16, DT_QINT32, DT_QINT8, DT_QUINT16, DT_QUINT8, DT_UINT16, DT_UINT32,
+                          DT_UINT64, DT_UINT8, DT_BOOL, DT_STRING, DT_BF16}))
+    .INPUT(indices, TensorType::IndexNumberType())
+    .OUTPUT(y, TensorType({DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT16, DT_INT32, DT_INT64,
+                           DT_INT8, DT_QINT16, DT_QINT32, DT_QINT8, DT_QUINT16, DT_QUINT8, DT_UINT16, DT_UINT32,
+                           DT_UINT64, DT_UINT8, DT_BOOL, DT_STRING, DT_BF16}))
+    .ATTR(negative_index_support, Bool, false)
+    .OP_END_FACTORY_REG(GatherNd)
+
 REG_OP(Gelu)
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
@@ -820,6 +831,29 @@ REG_OP(StridedSlice)
     .OUTPUT(y, TensorType({BasicType(), DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
     .OP_END_FACTORY_REG(StridedSlice)
 
+REG_OP(StridedSliceV2)
+    .INPUT(x, TensorType({BasicType(), DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .INPUT(begin, TensorType::IndexNumberType())
+    .INPUT(end, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(axes, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(strides, TensorType::IndexNumberType())
+    .ATTR(begin_mask, Int, 0)
+    .ATTR(end_mask, Int, 0)
+    .ATTR(ellipsis_mask, Int, 0)
+    .ATTR(new_axis_mask, Int, 0)
+    .ATTR(shrink_axis_mask, Int, 0)
+    .OUTPUT(y, TensorType({BasicType(), DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .OP_END_FACTORY_REG(StridedSliceV2)
+
+REG_OP(StridedSliceV3)
+    .INPUT(x, TensorType({BasicType(), DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .INPUT(begin, TensorType::IndexNumberType())
+    .INPUT(end, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(axes, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(strides, TensorType::IndexNumberType())
+    .OUTPUT(y, TensorType({BasicType(), DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .OP_END_FACTORY_REG(StridedSliceV3)
+
 REG_OP(StridedSliceD)
     .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT64, DT_UINT8, DT_INT8,
                           DT_BOOL, DT_BF16, DT_COMPLEX32, DT_COMPLEX64}))
@@ -956,6 +990,27 @@ REG_OP(FlattenV2)
     .ATTR(axis, Int, 1)
     .ATTR(end_axis, Int, -1)
     .OP_END_FACTORY_REG(FlattenV2)
+
+REG_OP(Adds)
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT16, DT_INT32, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT16, DT_INT32, DT_FLOAT16}))
+    .REQUIRED_ATTR(alpha, Float)
+    .OP_END_FACTORY_REG(Adds)
+
+REG_OP(Expand)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .INPUT(shape, TensorType({DT_INT16, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT8, DT_UINT8}))
+    .OP_END_FACTORY_REG(Expand)
+
+ REG_OP(MatrixDiagV2)
+    .INPUT(diagonal, TensorType::BasicType())
+    .INPUT(k, TensorType({DT_INT32}))
+    .INPUT(num_rows, TensorType({DT_INT32}))
+    .INPUT(num_cols, TensorType({DT_INT32}))
+    .INPUT(padding_value, TensorType::BasicType())
+    .OUTPUT(output, TensorType::BasicType())
+    .OP_END_FACTORY_REG(MatrixDiagV2)
     
 }  // namespace ge 
 

@@ -565,6 +565,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
       COV_DIRS+=("${BUILD_PATH}/runtime/v2")
       COV_DIRS+=("${BUILD_PATH}/runtime/stub")
       COV_DIRS+=("${BUILD_PATH}/runtime/ops")
+      COV_DIRS+=("${BUILD_PATH}/compiler")
     fi
 
     if [[ "X$ENABLE_RT2_ST" = "Xon" ]]; then

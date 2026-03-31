@@ -738,6 +738,275 @@ TEST_F(SymbolicShapeInferenceUT, test_stridedslice_infershape) {
   ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
 }
 
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev2_infershape) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {0, 1, 2, 3};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {5, 5, 5, 5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+  // axes
+  std::vector<int64_t> data3_value = {0, 1, 2, 3};
+  auto data3 = EsCreateVectorInt64(graph_, data3_value.data(), data3_value.size());
+  // strides
+  std::vector<int64_t> data4_value = {1, 1, 1, 1};
+  auto data4 = EsCreateVectorInt64(graph_, data4_value.data(), data4_value.size());
+
+  auto strided_slice =
+      EsStridedSliceV2(data0, data1, data2, data3, data4, static_cast<int64_t>(0b0010), static_cast<int64_t>(0b0010),
+                       static_cast<int64_t>(0b0100), static_cast<int64_t>(0b1101), static_cast<int64_t>(0b0111));
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  const std::vector<Expression> expect_output_shape = {Symbol(1),
+                                                       Symbol("s1"),
+                                                       Symbol("s2"),
+                                                       Symbol("s3"),
+                                                       Symbol(1),
+                                                       Symbol("s4")};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV2, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev2_infershape_no_optional_input) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {0, 1, 2, 3};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {5, 5, 5, 5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+
+  auto strided_slice =
+      EsStridedSliceV2(data0, data1, data2, nullptr, nullptr, static_cast<int64_t>(0b0010), static_cast<int64_t>(0b0010),
+                       static_cast<int64_t>(0b0100), static_cast<int64_t>(0b1101), static_cast<int64_t>(0b0111));
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  const std::vector<Expression> expect_output_shape = {Symbol(1),
+                                                       Symbol("s1"),
+                                                       Symbol("s2"),
+                                                       Symbol("s3"),
+                                                       Symbol(1),
+                                                       Symbol("s4")};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV2, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev2_infershape_with_negative) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {0, 1, 2, 3};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {5, 5, 5, 5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+  // axes
+  std::vector<int64_t> data3_value = {0, -1};
+  auto data3 = EsCreateVectorInt64(graph_, data3_value.data(), data3_value.size());
+  // strides
+  std::vector<int64_t> data4_value = {1, 1, 1, 1};
+  auto data4 = EsCreateVectorInt64(graph_, data4_value.data(), data4_value.size());
+
+  auto strided_slice =
+      EsStridedSliceV2(data0, data1, data2, data3, data4, static_cast<int64_t>(0b0010), static_cast<int64_t>(0b0010),
+                       static_cast<int64_t>(0b0100), static_cast<int64_t>(0b1101), static_cast<int64_t>(0b0111));
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  const std::vector<Expression> expect_output_shape = {Symbol(1),
+                                                       Symbol("s1"),
+                                                       Symbol("s2"),
+                                                       Symbol("s3"),
+                                                       Symbol(1),
+                                                       Symbol(4)};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV2, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev3_infershape) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {0, 1, 2, 3};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {5, 5, 5, 5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+  // axes
+  std::vector<int64_t> data3_value = {0, 1, 2, 3};
+  auto data3 = EsCreateVectorInt64(graph_, data3_value.data(), data3_value.size());
+  // strides
+  std::vector<int64_t> data4_value = {1, 1, 1, 1};
+  auto data4 = EsCreateVectorInt64(graph_, data4_value.data(), data4_value.size());
+
+  auto strided_slice = EsStridedSliceV3(data0, data1, data2, data3, data4);
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  const std::vector<Expression> expect_output_shape = {Symbol(5),
+                                                       Symbol(4),
+                                                       Symbol(3),
+                                                       Symbol(2),
+                                                       Symbol("s4")};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV3, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev3_infershape_no_optinal_input) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {0, 1, 2, 3};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {5, 5, 5, 5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+
+  auto strided_slice = EsStridedSliceV3(data0, data1, data2, nullptr, nullptr);
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1, -1, -1, -1, -1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {5, 6, 7, 8, 9};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  const std::vector<Expression> expect_output_shape = {Symbol(5),
+                                                       Symbol(4),
+                                                       Symbol(3),
+                                                       Symbol(2),
+                                                       sym::Ceiling(Symbol("s4"))};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV3, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_stridedslicev3_infershape_with_negative) {
+  const auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data_0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0"}).data(), 1), 0);
+
+  // begin
+  std::vector<int64_t> data1_value = {9};
+  auto data1 = EsCreateVectorInt64(graph_, data1_value.data(), data1_value.size());
+  // end
+  std::vector<int64_t> data2_value = {-5};
+  auto data2 = EsCreateVectorInt64(graph_, data2_value.data(), data2_value.size());
+  // axes
+  std::vector<int64_t> data3_value = {0};
+  auto data3 = EsCreateVectorInt64(graph_, data3_value.data(), data3_value.size());
+  // strides
+  std::vector<int64_t> data4_value = {17};
+  auto data4 = EsCreateVectorInt64(graph_, data4_value.data(), data4_value.size());
+
+  auto strided_slice = EsStridedSliceV3(data0, data1, data2, data3, data4);
+  ASSERT_EQ(EsSetGraphOutput(strided_slice, 0), 0);
+
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  // 跳过hostcompute
+  DataInfo di = {ge::FORMAT_ND, DT_INT64, {-1}};
+  SetNoStorage(cg, "data_0", di, 0);
+
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {2147483649};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT64};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+  const std::vector<Expression> expect_output_shape = {sym::Ceiling((Symbol("s0") - Symbol(5) - Symbol(9)) / Symbol(17))};
+  ExpectNodeInfo expect_node(STRIDEDSLICEV3, expect_output_shape, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
 /**
  *      Data0    Data1
  *        |    /   |
@@ -2818,6 +3087,93 @@ TEST_F(SymbolicShapeInferenceUT, InferShapeForGather) {
   ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
 }
 
+TEST_F(SymbolicShapeInferenceUT, InferShapeForGatherNd) {
+  auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_NE(data0, nullptr);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2", "s3"}).data(), 4), 0);
+
+  std::vector<int64_t> const_data = {11, 22, 33, 44, 55, 66};
+  std::vector<int64_t> const_dim = {2, 3};
+  auto const0 = EsCreateConstInt64(graph_, const_data.data(), const_dim.data(), const_dim.size());
+  ASSERT_NE(const0, nullptr);
+
+  auto gather_nd = EsGatherNd(data0, const0, false);
+  ASSERT_EQ(EsSetGraphOutput(gather_nd, 0), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("GatherNd");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  op_desc->MutableInputDesc(1)->SetDataType(DT_INT32);
+  std::vector<Expression> expect_dim = {Symbol(2), ge::Symbol("s3")};
+  ExpectNodeInfo expect_node("GatherNd", expect_dim, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, InferShapeForGatherNdNotConst) {
+  auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_NE(data0, nullptr);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2", "s3"}).data(), 4), 0);
+
+  auto data1 = EsCreateGraphInputWithDetails(
+      graph_, 1, "data1", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_NE(data1, nullptr);
+  ASSERT_EQ(EsSetOriginSymbolShape(data1, std::vector<const char *>({"s0", "s1"}).data(), 2), 0);
+
+  auto gather_nd = EsGatherNd(data0, data1, false);
+  ASSERT_EQ(EsSetGraphOutput(gather_nd, 0), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("GatherNd");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  op_desc->MutableInputDesc(1)->SetDataType(DT_INT32);
+  std::vector<Expression> expect_dim = {Symbol(2), ge::Symbol("s3")};
+  ExpectNodeInfo expect_node("GatherNd", expect_dim, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, InferShapeForGatherNd_with_invalid_input) {
+  auto data0 = EsCreateGraphInputWithDetails(
+      graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
+  ASSERT_NE(data0, nullptr);
+  ASSERT_EQ(EsSetOriginSymbolShape(data0, std::vector<const char *>({"s0", "s1", "s2", "s3"}).data(), 4), 0);
+
+  std::vector<int64_t> const_data = {11, 22, 33, 44, 55, 66, 77, 88, 99, 0};
+  std::vector<int64_t> const_dim = {2, 5};
+  auto const0 = EsCreateConstInt64(graph_, const_data.data(), const_dim.data(), const_dim.size());
+  ASSERT_NE(const0, nullptr);
+
+  auto gather_nd = EsGatherNd(data0, const0, false);
+  ASSERT_EQ(EsSetGraphOutput(gather_nd, 0), 0);
+  auto graph = std::unique_ptr<Graph>(reinterpret_cast<Graph *>(EsBuildGraphAndReset(graph_)));
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("GatherNd");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  op_desc->MutableInputDesc(1)->SetDataType(DT_INT32);
+  std::vector<Expression> expect_dim = {Symbol(2), ge::Symbol("s3")};
+  ExpectNodeInfo expect_node("GatherNd", expect_dim, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
 TEST_F(SymbolicShapeInferenceUT, InferShapeForBroadCastToGraphWithGuard) {
   auto data0 = EsCreateGraphInputWithDetails(graph_, 0, "data0", nullptr, C_DataType::C_DT_FLOAT, C_Format::C_FORMAT_ND, nullptr, 0);
   std::vector<int32_t> const_data0 = {3, 2, 3, 4};
@@ -3113,4 +3469,796 @@ TEST_F(SymbolicShapeInferenceUT, MultiBatchInferTest) {
   }
   GetLocalOmgContext().need_multi_batch = false;
 }
+
+ /**
+ *      Data0   Const(float)
+ *        |  \    /
+ *        |   Adds
+ *        |   /
+ *         Mul
+ *          |
+ *         Relu
+ *          |
+ *       NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, InferShapeForAdds) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto data0 = es_graph->CreateInput(0, "data0");
+  float const_float = 1.0f;
+  auto add = es::Adds(data0, const_float);
+  auto mul = es::Mul(data0, add);
+  auto relu = es::Relu(mul);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(relu, 0), 0);
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  DataInfo di = {ge::FORMAT_ND, DT_INT32, {-1, -1, -1, -1}};
+  SetNoStorage(cg, "data0", di, 0);
+  std::vector<ge::GeTensor> input_vec;
+  std::vector<int64_t> dims_vec0 = {2, 3, 4, 4};
+  ge::Shape shape0({dims_vec0});
+  ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+  td0.SetOriginShape(shape0);
+  ge::Tensor tensor0{td0};
+  input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+  std::vector<Expression> expect_dims = {Symbol("s0"), Symbol("s1"), Symbol("s2"), Symbol("s3")};
+  ExpectNodeInfo expect_node("Relu_2", expect_dims, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+/** 
+ * 测试Expand算子符号化推导
+ *      Data0     Data1
+ *        |  \    /
+ *        |   Expand
+ *        |   /
+ *         Add
+ *          |
+ *       NetOutput
+*/
+
+// 1. 正常场景，输入的维度和目标维度一致
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSameDim) {
+	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+	auto data0 = es_graph->CreateInput(0, "data0");
+	auto data1 = es_graph->CreateVector(std::vector<int64_t>{0, 1, 1, 2});
+	auto expand = es::Expand(data0, data1);
+	auto add = es::Add(data0, expand);
+	ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+	auto graph = es_graph->BuildAndReset();
+	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+	ASSERT_NE(cg, nullptr);
+
+	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {-1, 1, -1, -1}};
+	SetNoStorage(cg, "data0", di0, 0);
+
+	std::vector<ge::GeTensor> input_vec;
+	std::vector<int64_t> dims_vec0 = {1, 1, 3, 2};
+	ge::Shape shape0({dims_vec0});
+	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+	td0.SetOriginShape(shape0);
+	ge::Tensor tensor0{td0};
+
+
+	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+	std::vector<Expression> expect_dims = {Symbol(0), Symbol(1), Symbol("s1"), Symbol(2)};
+	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+	std::vector<ExpectNodeInfo> expect_node_vec;
+	expect_node_vec.push_back(expect_node);
+ 	ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+// 2. 正常场景，输入的维度和目标维度不一致
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandNotSameDim) {
+	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+	auto data0 = es_graph->CreateInput(0, "data0");
+	auto data1 = es_graph->CreateVector(std::vector<int64_t>{0, 1});
+	auto expand = es::Expand(data0, data1);
+	auto add = es::Add(data0, expand);
+	ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+	auto graph = es_graph->BuildAndReset();
+	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+	ASSERT_NE(cg, nullptr);
+
+	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {-1, -1, -1}};
+	SetNoStorage(cg, "data0", di0, 0);
+
+	std::vector<ge::GeTensor> input_vec;
+	std::vector<int64_t> dims_vec0 = {1, 1, 4};
+	ge::Shape shape0({dims_vec0});
+	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+	td0.SetOriginShape(shape0);
+	ge::Tensor tensor0{td0};
+
+
+	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+	std::vector<Expression> expect_dims = {Symbol("s0"), Symbol(0), Symbol("s2")};
+	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+	std::vector<ExpectNodeInfo> expect_node_vec;
+	expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+// 3. targetshape较大
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSymbolDiff) {
+ 	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+ 	auto data0 = es_graph->CreateInput(0, "data0");
+ 	auto data1 = es_graph->CreateVector(std::vector<int64_t>{0, 1, 1, 1});
+ 	auto expand = es::Expand(data0, data1);
+ 	auto add = es::Add(data0, expand);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+ 	auto graph = es_graph->BuildAndReset();
+ 	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+ 	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {-1, -1}};
+ 	SetNoStorage(cg, "data0", di0, 0);
+
+ 	std::vector<ge::GeTensor> input_vec;
+ 	std::vector<int64_t> dims_vec0 = {1, 2};
+ 	ge::Shape shape0({dims_vec0});
+ 	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+ 	td0.SetOriginShape(shape0);
+ 	ge::Tensor tensor0{td0};
+
+ 	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+ 	std::vector<Expression> expect_dims = {Symbol(0), Symbol(1), Symbol(1), Symbol("s1")};
+ 	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+ 	std::vector<ExpectNodeInfo> expect_node_vec;
+ 	expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+// 4. 输入存在1
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSymbolInputEq1) {
+ 	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+ 	auto data0 = es_graph->CreateInput(0, "data0");
+ 	auto data1 = es_graph->CreateVector(std::vector<int64_t>{0, 1, 1, 1});
+ 	auto expand = es::Expand(data0, data1);
+ 	auto add = es::Add(data0, expand);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+ 	auto graph = es_graph->BuildAndReset();
+ 	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+ 	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {1, 1}};
+ 	SetNoStorage(cg, "data0", di0, 0);
+
+ 	std::vector<ge::GeTensor> input_vec;
+ 	std::vector<int64_t> dims_vec0 = {1, 2};
+ 	ge::Shape shape0({dims_vec0});
+ 	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+ 	td0.SetOriginShape(shape0);
+ 	ge::Tensor tensor0{td0};
+
+ 	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+ 	std::vector<Expression> expect_dims = {Symbol(0), Symbol(1), Symbol(1), Symbol(1)};
+ 	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+ 	std::vector<ExpectNodeInfo> expect_node_vec;
+ 	expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+// 5. 输入存在1
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSymbolInputGt1) {
+ 	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+ 	auto data0 = es_graph->CreateInput(0, "data0");
+ 	auto data1 = es_graph->CreateVector(std::vector<int64_t>{1, 3});
+ 	auto expand = es::Expand(data0, data1);
+ 	auto add = es::Add(data0, expand);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+ 	auto graph = es_graph->BuildAndReset();
+ 	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+ 	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {1, 2}};
+ 	SetNoStorage(cg, "data0", di0, 0);
+
+ 	std::vector<ge::GeTensor> input_vec;
+ 	std::vector<int64_t> dims_vec0 = {1, 2};
+ 	ge::Shape shape0({dims_vec0});
+ 	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+ 	td0.SetOriginShape(shape0);
+ 	ge::Tensor tensor0{td0};
+
+ 	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+ 	std::vector<Expression> expect_dims = {Symbol(1), Symbol(3)};
+ 	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+ 	std::vector<ExpectNodeInfo> expect_node_vec;
+ 	expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+// 5. 输入存在异常
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSymbolInputException) {
+ 	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+ 	auto data0 = es_graph->CreateInput(0, "data0");
+ 	auto data1 = es_graph->CreateVector(std::vector<int64_t>{1, 3});
+ 	auto expand = es::Expand(data0, data1);
+ 	auto add = es::Add(data0, expand);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+ 	auto graph = es_graph->BuildAndReset();
+ 	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+ 	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {1, 2}};
+ 	SetNoStorage(cg, "data0", di0, 0);
+
+ 	std::vector<ge::GeTensor> input_vec;
+ 	std::vector<int64_t> dims_vec0 = {1, 2};
+ 	ge::Shape shape0({dims_vec0});
+ 	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+ 	td0.SetOriginShape(shape0);
+ 	ge::Tensor tensor0{td0};
+
+ 	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+ 	std::vector<Expression> expect_dims = {Symbol(0), Symbol(1), Symbol(1), Symbol(1)};
+ 	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+ 	std::vector<ExpectNodeInfo> expect_node_vec;
+ 	expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+
+TEST_F(SymbolicShapeInferenceUT, InferShapeForExpandSymbolDiff_2) {
+ 	auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+ 	auto data0 = es_graph->CreateInput(0, "data0");
+ 	auto data1 = es_graph->CreateVector(std::vector<int64_t>{0, 1, 1, 1});
+ 	auto expand = es::Expand(data0, data1);
+ 	auto add = es::Add(data0, expand);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(add, 0), 0);
+ 	auto graph = es_graph->BuildAndReset();
+ 	auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+ 	DataInfo di0 = {ge::FORMAT_ND, DT_INT32, {-1, -1}};
+ 	SetNoStorage(cg, "data0", di0, 0);
+
+ 	std::vector<ge::GeTensor> input_vec;
+ 	std::vector<int64_t> dims_vec0 = {2, 3};
+ 	ge::Shape shape0({dims_vec0});
+ 	ge::TensorDesc td0{shape0, ge::FORMAT_ND, DT_INT32};
+ 	td0.SetOriginShape(shape0);
+ 	ge::Tensor tensor0{td0};
+
+ 	input_vec.emplace_back(ge::TensorAdapter::AsGeTensor(tensor0));
+
+ 	std::vector<Expression> expect_dims = {Symbol(0), Symbol(1), Symbol("s0"), Symbol("s1")};
+ 	ExpectNodeInfo expect_node("Expand", expect_dims, {}, {}, {});
+ 	std::vector<ExpectNodeInfo> expect_node_vec;
+ 	expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, input_vec), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_single_diag) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k([-1,1])    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |               |                |               |
+ *            \     |               |                |               |
+ *             \    |               |                |               |
+ *              \   |               |                |               |
+ *               \  |               |                |               |
+ *                \ |               |                |               |
+ *                 \|               |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_multi_diag) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "3", "s1"}));
+  
+  auto k = es_graph->CreateVector(std::vector<int32_t>{-1, 1});
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(1) + s1, Symbol(1) + s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(5)    num_cols(6)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|                     |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_with_explicit_dims) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "5"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(5));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(5));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(5), Symbol(5)}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(-2)    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_negative_k) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(-2));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(2) + s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(3)    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *                     \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_positive_k) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(3));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, Symbol(3) + s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k([0,0])    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |               |                |               |
+ *            \     |               |                |               |
+ *             \    |               |                |               |
+ *              \   |               |                |               |
+ *               \  |               |                |               |
+ *                \ |               |                |               |
+ *                 \|               |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_single_element_k) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "1", "s1"}));
+  
+  auto k = es_graph->CreateVector(std::vector<int32_t>{0, 0});
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(1), s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k([-2,2])    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |                 |                |               |
+ *            \     |                 |                |               |
+ *             \    |                 |                |               |
+ *              \   |                 |                |               |
+ *               \  |                 |                |               |
+ *                \ |                 |                |               |
+ *                 \|                 |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_larger_diag_range) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "5", "s1"}));
+  
+  auto k = es_graph->CreateVector(std::vector<int32_t>{-2, 2});
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(2) + s1, Symbol(2) + s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(5)    num_cols(-1)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_specify_num_rows_only) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "6"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(6));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(6));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, Symbol(6), Symbol(6)}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_3d_input) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "s2"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), (0));
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s2, s2}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k([-1,1])    num_rows(-1)    num_cols(-1)    padding_value(0.0)
+ *           \      |               |                |               |
+ *            \     |               |                |               |
+ *             \    |               |                |               |
+ *              \   |               |                |               |
+ *               \  |               |                |               |
+ *                \ |               |                |               |
+ *                 \|               |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_4d_input_multi_diag) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "3", "s2"}));
+  
+  auto k = es_graph->CreateVector(std::vector<int32_t>{-1, 1});
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, Symbol(1) + s2, Symbol(1) + s2}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(0)    num_cols(-1)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_zero_num_rows) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+/**
+ *      diagonal    k(0)    num_rows(-1)    num_cols(0)    padding_value(0.0)
+ *           \      |           |                |               |
+ *            \     |           |                |               |
+ *             \    |           |                |               |
+ *              \   |           |                |               |
+ *               \  |           |                |               |
+ *                \ |           |                |               |
+ *                 \|           |                |               |
+ *              MatrixDiagV2
+ *                   |
+ *              NetOutput
+ */
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_zero_num_cols) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(-1));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_EQ(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_col_less_than_min) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "3"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(3));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferenceUT, test_matrixdiagv2_row_less_than_min) {
+  auto es_graph = std::unique_ptr<es::EsGraphBuilder>(new es::EsGraphBuilder("cpp_graph"));
+  auto diagonal = es_graph->CreateInput(0, "diagonal");
+  diagonal.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "3"}));
+  
+  auto k = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_rows = es_graph->CreateScalar(static_cast<int32_t>(0));
+  auto num_cols = es_graph->CreateScalar(static_cast<int32_t>(3));
+  auto padding_value = es_graph->CreateScalar(static_cast<float>(0.0f));
+  
+  auto matrix_diag_v2 = es::MatrixDiagV2(diagonal, k, num_rows, num_cols, padding_value);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(matrix_diag_v2, 0), 0);
+  
+  auto graph = es_graph->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  
+  ExpectNodeInfo expect_node("MatrixDiagV2", std::vector<Expression>{s0, s1, s1}, {}, {}, {});
+  std::vector<ExpectNodeInfo> expect_node_vec;
+  expect_node_vec.push_back(expect_node);
+  ASSERT_NE(RunSymbolInferenceTest(cg, expect_node_vec, {}), SUCCESS);
+} 
 } // namespace ge
