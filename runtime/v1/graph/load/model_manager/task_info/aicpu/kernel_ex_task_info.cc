@@ -405,6 +405,11 @@ Status KernelExTaskInfo::AssembleWorkSpaceAddr(const domi::KernelExDef &kernel_d
 Status KernelExTaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("KernelExTaskInfo %s Distribute Start.", op_desc_->GetNamePtr());
+  if (davinci_model_ != nullptr && davinci_model_->IsDumpOpWithAdump()) {
+    GELOGD("Both overflow detection and persistent stream unlimited enabled, disable dump for op %s",
+            op_desc_ ? op_desc_->GetName().c_str() : "unknown");
+    is_data_dump_ = false;
+  }
   const TaskProfGuarder prof_guarder(this);
   SetTaskTag(op_desc_->GetName().c_str());
   LaunchKernelParam launch_kernel_param;

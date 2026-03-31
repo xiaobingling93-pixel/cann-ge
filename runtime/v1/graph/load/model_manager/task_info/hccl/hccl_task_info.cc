@@ -382,7 +382,7 @@ void HcclTaskInfo::HcclWatcherModeProcess(const ModelTaskType task_type) {
     FirstLevelAddressInfo first_level_address_info{true, args};
 
     davinci_model_->SaveDumpTask({0U, 0U, 0U, 0U}, hccl_op_desc_, static_cast<uintptr_t>(PtrToValue(args.data())),
-                                 first_level_address_info, {}, task_type);
+                                 first_level_address_info, {}, task_type, stream_);
     GELOGI("Save hccl dump watcher op %s, op type: %s, input size: %zu, output size: %zu",
            hccl_op_desc_->GetName().c_str(), hccl_op_desc_->GetType().c_str(), hccl_op_desc_->GetInputsSize(),
            hccl_op_desc_->GetOutputsSize());
@@ -436,7 +436,7 @@ void HcclTaskInfo::PostProcess(const domi::TaskDef &task_def) {
 
       davinci_model_->SaveDumpTask({hccl_dump_infos_[i].task_id, hccl_dump_infos_[i].stream_id, 0U, 0U}, sdma_op_desc,
                                    static_cast<uintptr_t>(PtrToValue(args.data())), first_level_address_info, {},
-                                   task_type);
+                                   task_type, stream_);
       GELOGD("Save dump op %s, op type: %s, task id: %u, stream id: %u, input size: %zu, output size: %zu",
              op_desc->GetName().c_str(), op_desc->GetType().c_str(), hccl_dump_infos_[i].task_id,
              hccl_dump_infos_[i].stream_id, hccl_dump_infos_[i].input_size, hccl_dump_infos_[i].output_size);

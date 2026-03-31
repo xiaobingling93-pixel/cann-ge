@@ -934,10 +934,12 @@ Status DavinciModel::SetTSDevice() {
 Status DavinciModel::OpDebugRegister() {
   if (GetDumpProperties().IsOpDebugOpen() && (!is_op_debug_reg_)) {
     const uint32_t op_debug_mode = GetDumpProperties().GetOpDebugMode();
-    const auto ret = opdebug_register_.RegisterDebugForModel(rt_model_handle_, op_debug_mode, data_dumper_);
-    if (ret != SUCCESS) {
-      GELOGE(ret, "[Call][RegisterDebugForModel] Register known shape op debug failed, ret: 0x%X", ret);
-      return ret;
+    if (!IsDumpOpWithAdump()) {
+      const auto ret = opdebug_register_.RegisterDebugForModel(rt_model_handle_, op_debug_mode, data_dumper_);
+      if (ret != SUCCESS) {
+        GELOGE(ret, "[Call][RegisterDebugForModel] Register known shape op debug failed, ret: 0x%X", ret);
+        return ret;
+      }
     }
     is_op_debug_reg_ = true;
   }
@@ -946,7 +948,9 @@ Status DavinciModel::OpDebugRegister() {
 
 void DavinciModel::OpDebugUnRegister() {
   if (is_op_debug_reg_) {
-    opdebug_register_.UnregisterDebugForModel(rt_model_handle_);
+    if (!IsDumpOpWithAdump()) {
+      opdebug_register_.UnregisterDebugForModel(rt_model_handle_);
+    }
     is_op_debug_reg_ = false;
   }
   return;
@@ -6278,7 +6282,7 @@ void DavinciModel::SaveDfxInfo(const uint32_t op_idx, const domi::TaskDef &task_
       GELOGI("Start to SaveDumpTask for op[%s], task_type[%u]", op_desc->GetName().c_str(),
              static_cast<uint32_t>(task_type));
       SaveDumpTask({task_info.GetTaskID(), task_info.GetStreamId(), 0U, 0U}, op_desc, task_info.GetDumpArgs(),
-                   {}, task_info.GetCustToRelevantOffset(), task_type);
+                   {}, task_info.GetCustToRelevantOffset(), task_type, reinterpret_cast<rtStream_t>(const_cast<TaskInfo&>(task_info).GetTaskStream()));
     }
   }
 
@@ -6296,7 +6300,7 @@ void DavinciModel::SaveDfxInfo(const uint32_t op_idx, const domi::TaskDef &task_
     GELOGI("Start to SavePrintDumpTask for op[%s], task_type[%u]", op_desc->GetName().c_str(),
            static_cast<uint32_t>(task_type));
     SavePrintDumpTask({task_info.GetTaskID(), task_info.GetStreamId(), 0U, 0U}, op_desc, task_info.GetDumpArgs(), {},
-                      task_type);
+                      task_type, reinterpret_cast<rtStream_t>(const_cast<TaskInfo&>(task_info).GetTaskStream()));
     SavePrintWorkInfo(op_desc);
   }
 
@@ -8119,7 +8123,7 @@ Status DavinciModel::SetDataDumperArgs(const ComputeGraphPtr &graph,
   data_dumper_.SetOmName(om_name_);
   data_dumper_.SetComputeGraph(graph);
   data_dumper_.SetRefInfo(saved_task_addrs_);
-
+  
   int32_t tmp_device_id = -1;
   GE_CHK_RT_RET(aclrtGetDevice(&tmp_device_id));
   data_dumper_.SetDeviceId(static_cast<uint32_t>(tmp_device_id));

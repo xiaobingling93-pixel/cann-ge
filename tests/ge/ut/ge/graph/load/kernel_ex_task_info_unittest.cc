@@ -728,4 +728,48 @@ TEST_F(UtestKernelExTaskInfo, testHeadFile) {
   free(ValueToPtr(args[0].dev_addr));
 }
 
+TEST_F(UtestKernelExTaskInfo, dump_op_with_adump_enabled) {
+  // 1. 构造一个基本的 KernelExDef，包含空扩展信息（或最小有效信息）
+  std::vector<char> aicpu_ext_info(0, 0);  // 无扩展信息，KernelExTaskInfo 不要求必须有扩展
+  domi::TaskDef task_def;
+  domi::KernelExDef kernel_ex_def;
+  kernel_ex_def.set_kernel_ext_info(aicpu_ext_info.data(), aicpu_ext_info.size());
+  kernel_ex_def.set_kernel_ext_info_size(aicpu_ext_info.size());
+  *task_def.mutable_kernel_ex() = kernel_ex_def;
+
+  // 2. 创建 OpDesc（非阻塞，避免额外处理）
+  OpDescPtr op_desc = CreateOpDesc("test_op", "TestOp");
+  ge::AttrUtils::SetBool(op_desc, ATTR_NAME_IS_BLOCKING_OP, false);
+
+  // 3. 初始化 KernelExTaskInfo
+  KernelExTaskInfo kernel_ex_task_info;
+  kernel_ex_task_info.op_desc_ = op_desc;
+
+  // 4. 创建 DavinciModel 并设置 DataDumper 使 IsDumpOpWithAdump() 返回 true
+  DavinciModel davinci_model(0, nullptr);
+  // 需要访问 private 成员，测试环境通常已通过 #define private public 开启
+  davinci_model.data_dumper_.overflow_enabled_ = true;
+  davinci_model.data_dumper_.persistent_unlimited_enabled_ = true;
+  davinci_model.data_dumper_.adump_interface_available_ = true;
+  kernel_ex_task_info.davinci_model_ = &davinci_model;
+
+  // 验证条件成立（可选）
+  EXPECT_TRUE(davinci_model.data_dumper_.IsDumpOpWithAdump());
+
+  // 5. 初始化扩展信息（此处空信息）
+  EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(kernel_ex_def.kernel_ext_info(), op_desc), SUCCESS);
+
+  // 6. 设置必要的成员，使 Distribute 能顺利执行
+  kernel_ex_task_info.func_handle_ = reinterpret_cast<void*>(0x12000);  // 模拟有效函数句柄
+  // 分配一个简单的 kernel 参数缓冲区（避免空指针）
+  std::vector<uint8_t> dummy_buf(64, 0);
+  kernel_ex_task_info.kernel_buf_ = dummy_buf.data();
+  kernel_ex_task_info.kernel_buf_size_ = dummy_buf.size();
+  // 设置流（可选，如果已有 stub 支持可为空）
+  kernel_ex_task_info.stream_ = nullptr;  // 如果 stub 允许 null，否则需创建有效流
+
+  // 7. 调用 Distribute，应覆盖 if 分支内部
+  EXPECT_EQ(kernel_ex_task_info.Distribute(), SUCCESS);
+}
+
 }  // namespace ge

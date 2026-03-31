@@ -618,6 +618,12 @@ Status KernelTaskInfo::DistributeTask() {
 Status KernelTaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("KernelTaskInfo Distribute Start, op: %s", op_desc_->GetName().c_str());
+  if (davinci_model_ != nullptr && davinci_model_->IsDumpOpWithAdump()) {
+    GELOGD("Both overflow detection and persistent stream unlimited enabled, disable dump for op %s",
+            op_desc_ ? op_desc_->GetName().c_str() : "unknown");
+    dump_flag_ &= ~RT_KERNEL_DUMPFLAG;
+    is_data_dump_ = false;
+  }
   const TaskProfGuarder prof_guarder(this);
   const bool is_built_tiling_device = (kernel_type_ == ccKernelType::AI_CPU)
       && (task_type_ == ModelTaskType::MODEL_TASK_PREPROCESS_KERNEL);

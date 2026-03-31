@@ -873,6 +873,11 @@ Status FusionTaskInfo::Distribute() {
   const TaskProfGuarder prof_guarder(this);
   const string op_name = op_desc_->GetName();
   GELOGI("Start to launch kernel of %s.", op_name.c_str());
+  if (davinci_model_ != nullptr && davinci_model_->IsDumpOpWithAdump()) {
+    GELOGD("Both overflow detection and persistent stream unlimited enabled, disable dump for op %s",
+            op_desc_ ? op_desc_->GetName().c_str() : "unknown");
+    dump_flag_ &= ~RT_KERNEL_DUMPFLAG;
+  }
   SetTaskTag(op_name.c_str());
 
   // 构造参数下发

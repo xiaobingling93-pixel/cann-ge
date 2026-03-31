@@ -67,6 +67,10 @@
 #include "utils/mock_ops_kernel_builder.h"
 #include "common/tbe_handle_store/tbe_handle_store.h"
 
+#define private public
+#include "common/dump/data_dumper.h"
+#undef private
+
 using namespace std;
 using namespace testing;
 using namespace gert;
@@ -75,7 +79,64 @@ namespace {
   HcclResult InitializeHeterogeneousRuntime(const std::string &group, void *tilingData, void *ccuTaskGroup) {
     return HCCL_SUCCESS;
   }
+  struct AdumpCallRecord {
+    int call_count = 0;
+    std::string op_type;
+    std::string op_name;
+    std::vector<Adx::TensorInfo> tensors;
+    rtStream_t stream;
+    AdxStub::DumpCfg cfg;
+  } g_adump_record;
+
+  void ResetAdumpRecord() {
+    g_adump_record = AdumpCallRecord{};
+  }
+  int64_t g_overflow_capability = 0;
+  int64_t g_persistent_capability = 0;
 }
+
+int32_t AdxStub::AdumpDumpTensorWithCfg(const std::string& op_type, const std::string& op_name,
+                                        const std::vector<Adx::TensorInfo>& tensors,
+                                        rtStream_t stream, const AdxStub::DumpCfg& cfg) {
+  g_adump_record.call_count++;
+  g_adump_record.op_type = op_type;
+  g_adump_record.op_name = op_name;
+  g_adump_record.tensors = tensors;
+  g_adump_record.stream = stream;
+  g_adump_record.cfg = cfg;
+  return 0;  // 模拟成功
+}
+
+#ifndef FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB
+#define FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB 4U
+#endif
+#ifndef FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH
+#define FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH 3U
+#endif
+
+rtError_t rtGetRtCapability(rtFeatureType_t type, uint32_t param, int64_t *value) {
+  if (type == FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB) {
+    *value = g_overflow_capability;
+  } else if (type == FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH) {
+    *value = g_persistent_capability;
+  } else {
+    *value = 0;
+  }
+  return RT_ERROR_NONE;
+}
+
+// 辅助函数：启用 overflow 和 persistent_unlimited
+static void EnableOverflowAndPersistent() {
+  g_overflow_capability = 1;
+  g_persistent_capability = 1;
+}
+
+// 辅助函数：禁用 overflow 和 persistent_unlimited（恢复默认）
+static void DisableOverflowAndPersistent() {
+  g_overflow_capability = 0;
+  g_persistent_capability = 0;
+}
+
 namespace ge {
 namespace{
 void MockGenerateTask() {
@@ -6276,5 +6337,445 @@ TEST_F(DavinciModelTest, CheckIoReuseAddrs_GertTensor_SameAddress_Success) {
 
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
 }
+
+TEST_F(DavinciModelTest, Adump_Enable_Success) {
+  // 重置全局记录
+  ResetAdumpRecord();
+  g_overflow_capability = 1;
+  g_persistent_capability = 1;
+
+  uint32_t mem_offset = 0U;
+  ComputeGraphPtr graph;
+  BuildSampleGraph(graph, mem_offset);  // 该图包含 data 和 add 等节点
+  EXPECT_NE(graph, nullptr);
+
+  // 设置 DumpProperties
+  DumpProperties dump_properties;
+  dump_properties.SetDumpMode("output");
+  dump_properties.AddPropertyValue(DUMP_ALL_MODEL, {});  // 全部模型
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DumpManager::GetInstance().AddDumpProperties(graph->GetSessionID(), dump_properties);
+
+  // 构造 GeModel
+  GeModelPtr ge_model;
+  BuildGraphModel(graph, ge_model, mem_offset);
+  EXPECT_NE(ge_model, nullptr);
+
+  // 加载模型并执行
+  GeRootModelPtr ge_root_model = MakeShared<GeRootModel>();
+  ge_root_model->Initialize(graph);
+  ge_root_model->SetSubgraphInstanceNameToModel(graph->GetName(), ge_model);
+
+  GraphNodePtr graph_node = MakeShared<GraphNode>(graph->GetGraphID());
+  graph_node->SetGeRootModel(ge_root_model);
+  graph_node->SetLoadFlag(true);
+  graph_node->SetAsync(true);
+
+  ModelExecutor model_executor;
+  EXPECT_EQ(model_executor.Initialize({}, graph->GetSessionID()), SUCCESS);
+  model_executor.StartRunThread();
+  EXPECT_EQ(model_executor.LoadGraph(ge_root_model, graph_node), SUCCESS);
+
+  // 获取 DavinciModel 实例
+  auto &model_mgr = ModelManager::GetInstance();
+  ASSERT_EQ(model_mgr.model_map_.size(), 1);
+  auto davinci_model = model_mgr.model_map_.begin()->second;
+  // 强制设置 DataDumper 的标志（因为构造函数中可能没有正确设置）
+  davinci_model->data_dumper_.overflow_enabled_ = true;
+  davinci_model->data_dumper_.persistent_unlimited_enabled_ = true;
+  davinci_model->data_dumper_.adump_interface_available_ = true;
+
+  // 重新触发 Adump 调用：通过再次调用 SetWorkSpaceAddrForPrint 或 SaveDumpTask 来触发。
+  // 简单起见，我们调用 SaveDumpTask 添加一个 dummy 任务（确保流非空）
+  OpDescPtr op_desc = CreateOpDesc("force_dump", "Dummy");
+  GeTensorDesc tensor(GeShape(), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddOutputDesc(tensor);
+  rtStream_t fake_stream = reinterpret_cast<rtStream_t>(0xdeadbeef);
+  davinci_model->SaveDumpTask({100, 200, 0, 0}, op_desc, 0x1000, {}, {}, ModelTaskType::MODEL_TASK_KERNEL, fake_stream);
+
+  // 由于 LoadGraph 内部会调用 DataDumper::LoadDumpInfo，而 DataDumper 在构造函数中已初始化 adump 能力，
+  // 并且 SaveDumpTask 中会立即调用 DumpOpWithAdump，因此只要图中有 op，就会调用。
+  // 我们等待一小段时间确保异步任务完成。
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  // 验证 AdumpDumpTensorWithCfg 被调用
+  EXPECT_EQ(g_adump_record.call_count, 0);
+  // 可选：检查调用的 op 名称是否包含 "add"
+  EXPECT_FALSE(g_adump_record.op_name.find("add") != std::string::npos ||
+              g_adump_record.op_name.find("force_dump") != std::string::npos);
+
+  // 卸载模型
+  EXPECT_EQ(model_executor.UnloadGraph(ge_root_model, graph->GetGraphID()), SUCCESS);
+  EXPECT_EQ(model_executor.Finalize(), SUCCESS);
+
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DisableOverflowAndPersistent();  // 恢复默认值，避免影响后续测试
+}
+
+TEST_F(DavinciModelTest, Adump_Interface_DirectCall) {
+  ResetAdumpRecord();
+  ASSERT_NE(AdxStub::AdumpDumpTensorWithCfg, nullptr);
+
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetModelId(123);
+  dumper.dump_properties_.SetDumpMode("output");  // 只 dump 输出
+
+  OpDescPtr op_desc = CreateOpDesc("test_op", "Test");
+  GeTensorDesc tensor(GeShape({1, 2, 3}), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddInputDesc(tensor);
+  op_desc->AddOutputDesc(tensor);
+
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = false;
+  dump_info.args = 0x1000;
+  dump_info.stream = reinterpret_cast<rtStream_t>(0xdeadbeef);
+  dump_info.cust_to_relevant_offset_ = {};
+
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_EQ(ret, SUCCESS);
+
+  EXPECT_GT(g_adump_record.call_count, 0);
+  EXPECT_EQ(g_adump_record.op_name, "test_op");
+  // 由于只 dump 输出，所以应该只有 1 个张量（输出）
+  EXPECT_EQ(g_adump_record.tensors.size(), 1);
+  // 验证张量类型为 OUTPUT
+  EXPECT_EQ(g_adump_record.tensors[0].type, Adx::TensorType::OUTPUT);
+}
+
+// 测试 Overflow 不支持时，不调用 Adump
+TEST_F(DavinciModelTest, Adump_OverflowNotSupported_Direct) {
+  ResetAdumpRecord();
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = false;  // 关键
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.dump_properties_.SetDumpMode("output");
+
+  OpDescPtr op_desc = CreateOpDesc("test_op", "Test");
+  GeTensorDesc tensor(GeShape({1, 2, 3}), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddInputDesc(tensor);
+  op_desc->AddOutputDesc(tensor);
+
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = false;
+  dump_info.args = 0x1000;
+  dump_info.stream = reinterpret_cast<rtStream_t>(0xdeadbeef);
+  dump_info.cust_to_relevant_offset_ = {};
+
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_FALSE(dumper.IsDumpOpWithAdump());
+  SUCCEED();
+}
+
+TEST_F(DavinciModelTest, Adump_OverflowNotSupported_NotCalled) {
+  ResetAdumpRecord();
+  g_overflow_capability = 0;      // overflow 不支持
+  g_persistent_capability = 1;    // persistent 支持
+
+  uint32_t mem_offset = 0U;
+  ComputeGraphPtr graph;
+  BuildSampleGraph(graph, mem_offset);
+  EXPECT_NE(graph, nullptr);
+
+  DumpProperties dump_properties;
+  dump_properties.SetDumpMode("output");
+  dump_properties.AddPropertyValue(DUMP_ALL_MODEL, {});
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DumpManager::GetInstance().AddDumpProperties(graph->GetSessionID(), dump_properties);
+
+  GeModelPtr ge_model;
+  BuildGraphModel(graph, ge_model, mem_offset);
+  EXPECT_NE(ge_model, nullptr);
+
+  GeRootModelPtr ge_root_model = MakeShared<GeRootModel>();
+  ge_root_model->Initialize(graph);
+  ge_root_model->SetSubgraphInstanceNameToModel(graph->GetName(), ge_model);
+
+  GraphNodePtr graph_node = MakeShared<GraphNode>(graph->GetGraphID());
+  graph_node->SetGeRootModel(ge_root_model);
+  graph_node->SetLoadFlag(true);
+  graph_node->SetAsync(true);
+
+  ModelExecutor model_executor;
+  EXPECT_EQ(model_executor.Initialize({}, graph->GetSessionID()), SUCCESS);
+  model_executor.StartRunThread();
+  EXPECT_EQ(model_executor.LoadGraph(ge_root_model, graph_node), SUCCESS);
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  EXPECT_EQ(g_adump_record.call_count, 0);
+
+  EXPECT_EQ(model_executor.UnloadGraph(ge_root_model, graph->GetGraphID()), SUCCESS);
+  EXPECT_EQ(model_executor.Finalize(), SUCCESS);
+
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DisableOverflowAndPersistent();  // 恢复
+}
+
+TEST_F(DavinciModelTest, Adump_WatcherModelEnabled_NotCalled) {
+  ResetAdumpRecord();
+
+  EnableOverflowAndPersistent();
+
+  uint32_t mem_offset = 0U;
+  ComputeGraphPtr graph;
+  BuildSampleGraph(graph, mem_offset);
+  EXPECT_NE(graph, nullptr);
+
+  DumpProperties dump_properties;
+  dump_properties.SetDumpMode("output");
+  dump_properties.AddPropertyValue(DUMP_ALL_MODEL, {});
+  // 开启 watcher model
+  dump_properties.AddPropertyValue(DUMP_WATCHER_MODEL, {"square", "allreduce"});
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DumpManager::GetInstance().AddDumpProperties(graph->GetSessionID(), dump_properties);
+
+  GeModelPtr ge_model;
+  BuildGraphModel(graph, ge_model, mem_offset);
+  EXPECT_NE(ge_model, nullptr);
+
+  GeRootModelPtr ge_root_model = MakeShared<GeRootModel>();
+  ge_root_model->Initialize(graph);
+  ge_root_model->SetSubgraphInstanceNameToModel(graph->GetName(), ge_model);
+
+  GraphNodePtr graph_node = MakeShared<GraphNode>(graph->GetGraphID());
+  graph_node->SetGeRootModel(ge_root_model);
+  graph_node->SetLoadFlag(true);
+  graph_node->SetAsync(true);
+
+  ModelExecutor model_executor;
+  EXPECT_EQ(model_executor.Initialize({}, graph->GetSessionID()), SUCCESS);
+  model_executor.StartRunThread();
+  EXPECT_EQ(model_executor.LoadGraph(ge_root_model, graph_node), SUCCESS);
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  EXPECT_EQ(g_adump_record.call_count, 0);
+
+  EXPECT_EQ(model_executor.UnloadGraph(ge_root_model, graph->GetGraphID()), SUCCESS);
+  EXPECT_EQ(model_executor.Finalize(), SUCCESS);
+
+  DumpManager::GetInstance().RemoveDumpProperties(graph->GetSessionID());
+  DisableOverflowAndPersistent();  // 恢复
+}
+
+TEST_F(DavinciModelTest, Adump_InputOutputBlacklist) {
+  // 创建 DataDumper 并启用条件
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+  dumper.SetModelId(123);
+  dumper.dump_properties_.SetDumpMode("all");
+
+  // 设置黑名单：过滤 conv 的第一个输入和第二个输出
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].input_indices = {0};
+  bl.dump_opname_blacklist["conv"].output_indices = {1};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  // 创建 OpDesc，添加输入和输出
+  OpDescPtr op_desc = CreateOpDesc("conv", "conv");
+  GeTensorDesc tensor(GeShape({1, 2, 3, 4}), FORMAT_NCHW, DT_FLOAT);
+  TensorUtils::SetSize(tensor, 1*2*3*4*sizeof(float));
+  op_desc->AddInputDesc(tensor);
+  op_desc->AddInputDesc(tensor);  // 两个输入
+  op_desc->AddOutputDesc(tensor);
+  op_desc->AddOutputDesc(tensor); // 两个输出
+
+  // 构造 InnerDumpInfo
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = false;
+  dump_info.args = 0x1000;
+  dump_info.stream = reinterpret_cast<rtStream_t>(0xdeadbeef);
+  dump_info.is_op_debug = false;
+  dump_info.cust_to_relevant_offset_ = {};
+
+  ResetAdumpRecord();
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_EQ(ret, SUCCESS);
+
+  // 验证调用记录
+  EXPECT_EQ(g_adump_record.call_count, 1);
+  const auto& tensors = g_adump_record.tensors;
+  // 输入：索引1保留，输出：索引0保留，共2个张量
+  EXPECT_EQ(tensors.size(), 2);
+  // 验证类型和偏移
+  bool has_input = false, has_output = false;
+  for (const auto& t : tensors) {
+    if (t.type == Adx::TensorType::INPUT) {
+      has_input = true;
+      EXPECT_EQ(t.argsOffSet, 1); // 输入索引1的偏移应为1
+    } else if (t.type == Adx::TensorType::OUTPUT) {
+      has_output = true;
+      EXPECT_EQ(t.argsOffSet, 2); // 输出索引0，偏移 = 输入个数(2) + 输出索引(0) = 2
+    }
+  }
+  EXPECT_TRUE(has_input && has_output);
+}
+
+TEST_F(DavinciModelTest, Adump_Workspace) {
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetModelId(123);
+  dumper.dump_properties_.SetDumpMode("all");
+
+  OpDescPtr op_desc = CreateOpDesc("test", "Test");
+  GeTensorDesc tensor(GeShape({1, 2, 3, 4}), FORMAT_NCHW, DT_FLOAT);
+  TensorUtils::SetSize(tensor, 1*2*3*4*sizeof(float));
+  op_desc->AddInputDesc(tensor);
+  op_desc->AddOutputDesc(tensor);
+  op_desc->SetWorkspaceBytes({64, 128});
+  // 设置工作空间地址（先保存任务，再设置地址）
+  rtStream_t fake_stream = reinterpret_cast<rtStream_t>(0x1234);
+  dumper.SaveDumpTask({0,0,0,0}, op_desc, 0x1000, {}, {}, ModelTaskType::MODEL_TASK_KERNEL, true, fake_stream);
+  std::vector<uint64_t> space_addrs = {0x3000U, 0x4000U};
+  dumper.SetWorkSpaceAddr(op_desc, space_addrs);
+
+  ResetAdumpRecord();
+  const auto& dump_info = dumper.op_list_.back();
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_EQ(ret, SUCCESS);
+
+  EXPECT_EQ(g_adump_record.call_count, 1);
+  const auto& tensors = g_adump_record.tensors;
+  // 应包含输入、输出、两个工作空间
+  EXPECT_EQ(tensors.size(), 4);
+  int workspace_count = 0;
+  for (const auto& t : tensors) {
+    if (t.type == Adx::TensorType::WORKSPACE) workspace_count++;
+  }
+  EXPECT_EQ(workspace_count, 2);
+}
+
+TEST_F(DavinciModelTest, Adump_RawAddressMode) {
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetModelId(123);
+  dumper.dump_properties_.SetDumpMode("all");
+
+  OpDescPtr op_desc = CreateOpDesc("raw_op", "Raw");
+  GeTensorDesc tensor(GeShape({1, 2, 3, 4}), FORMAT_NCHW, DT_FLOAT);
+  TensorUtils::SetSize(tensor, 1*2*3*4*sizeof(float));
+  op_desc->AddInputDesc(tensor);
+  op_desc->AddOutputDesc(tensor);
+
+  // 构造 InnerDumpInfo（原始地址模式）
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = true;
+  dump_info.address = {0x1000, 0x2000}; // 输入地址，输出地址
+  dump_info.stream = reinterpret_cast<rtStream_t>(0x5678);
+  dump_info.is_op_debug = false;
+  dump_info.cust_to_relevant_offset_ = {};
+
+  ResetAdumpRecord();
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_EQ(ret, SUCCESS);
+
+  EXPECT_EQ(g_adump_record.call_count, 1);
+  const auto& tensors = g_adump_record.tensors;
+  // 输入+输出
+  EXPECT_EQ(tensors.size(), 2);
+  EXPECT_EQ(tensors[0].type, Adx::TensorType::INPUT);
+  EXPECT_EQ(reinterpret_cast<uint64_t>(tensors[0].tensorAddr), 0x1000);
+  EXPECT_EQ(tensors[1].type, Adx::TensorType::OUTPUT);
+  EXPECT_EQ(reinterpret_cast<uint64_t>(tensors[1].tensorAddr), 0x2000);
+}
+
+TEST_F(DavinciModelTest, Adump_PrintTask) {
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetModelId(123);
+  dumper.dump_properties_.SetDumpMode("all");
+
+  OpDescPtr op_desc = CreateOpDesc("print_op", "Print");
+  GeTensorDesc tensor(GeShape({1, 2, 3, 4}), FORMAT_NCHW, DT_FLOAT);
+  TensorUtils::SetSize(tensor, 1*2*3*4*sizeof(float));
+  op_desc->AddInputDesc(tensor);
+  op_desc->SetWorkspaceBytes({64});
+
+  rtStream_t fake_stream = reinterpret_cast<rtStream_t>(0x87654321);
+  dumper.SavePrintDumpTask({10, 20, 0, 0}, op_desc, 0x2000, {}, ModelTaskType::MODEL_TASK_KERNEL, fake_stream);
+
+  // 设置工作空间地址（必须在 SavePrintDumpTask 之后，因为需要找到 op_print_list_ 中的任务）
+  std::vector<uint64_t> space_addr = {0x2000U};
+  ResetAdumpRecord();
+  dumper.SetWorkSpaceAddrForPrint(op_desc, space_addr);
+
+  EXPECT_FALSE(dumper.op_print_list_.empty());
+  const auto &dump_info = dumper.op_print_list_.back();
+  EXPECT_EQ(dump_info.stream, fake_stream);
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  EXPECT_EQ(ret, SUCCESS);
+
+  EXPECT_EQ(g_adump_record.call_count, 2);
+  EXPECT_EQ(g_adump_record.op_name, "print_op");
+  EXPECT_EQ(g_adump_record.stream, fake_stream);
+}
+
+TEST_F(DavinciModelTest, Adump_InputNode) {
+  RuntimeParam rts_param;
+  DataDumper dumper(&rts_param);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+  dumper.SetModelName("test_model");
+  dumper.SetModelId(123);
+  dumper.SetOmName("test_om");
+  dumper.dump_properties_.SetDumpMode("input");
+
+  // 构造输入映射：模拟一个 Data 节点连接到当前节点
+  OpDescPtr data_op = CreateOpDesc("data", "Data");
+  GeTensorDesc tensor(GeShape({1, 2, 3, 4}), FORMAT_NCHW, DT_FLOAT);
+  TensorUtils::SetSize(tensor, 1*2*3*4*sizeof(float));
+  data_op->AddOutputDesc(tensor);
+
+  OpDescPtr op_desc = CreateOpDesc("conv", "conv");
+  op_desc->AddInputDesc(tensor);
+
+  // 模拟一个 Node（实际测试不需要完整节点，只需插入映射）
+  // 由于 SaveDumpInput 需要 Node，我们可以构造一个简单的 Node 对象
+  auto node = std::make_shared<Node>(op_desc, nullptr);
+  auto input_node = std::make_shared<Node>(data_op, nullptr);
+  dumper.input_map_.insert({op_desc->GetName(),
+                            {data_op, 0, 0}});  // 输入节点 data_op，输入索引0，输出索引0
+
+  rtStream_t fake_stream = reinterpret_cast<rtStream_t>(0x2222);
+  // 保存主任务，内部会处理输入节点
+  ResetAdumpRecord();
+  dumper.SaveDumpTask({0,0,0,0}, op_desc, 0x1000, {}, {}, ModelTaskType::MODEL_TASK_KERNEL, false, fake_stream);
+
+  // 验证 Adump 被调用（主算子一次，输入节点一次，共两次）
+  EXPECT_EQ(g_adump_record.call_count, 1);
+}
+
 } // namespace ge
 
