@@ -566,9 +566,83 @@ codegen_e2e_st() {
                     load_rsum_invalid_axis_store_e2e \
                     load_gather_first_axis_split_b_t_abs_store_e2e \
                     load_logicalnot_store_e2e"
-    # backend_e2e_st
-  MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
-                    add_abs_test_e2e \
+  if [[ "X$RUN_V35_TESTS" = "Xon" ]]; then
+    MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
+                      load_abs_store_expect_code_e2e_v2 \
+                      load_scalar_abs_brc_store_expect_code_e2e_v2 \
+                      load_scalar_clip_store_expect_code_e2e_v2 \
+                      load_div_store_expect_code_e2e_v2 \
+                      load_scalar_sub_store_expect_code_e2e_v2 \
+                      load_scalar_div_store_expect_code_e2e_v2 \
+                      load_switch_scalar_sub_store_expect_code_e2e_v2 \
+                      load_nan_out_for_store_expect_code_e2e_v2"
+  fi
+  MAKE_TARGET_LIST_CODEGEN=$(echo "${MAKE_TARGET_LIST}" | sed 's/e2e/codegen/g')
+  echo "MAKE_TARGET_LIST_CODEGEN"
+  echo $MAKE_TARGET_LIST_CODEGEN
+  make -j${THREAD_NUM} $MAKE_TARGET_LIST_CODEGEN
+  if [ $? -ne 0 ]
+  then
+    echo "execute command: make codegen_e2e_st_test1 failed."
+    return 1
+  fi
+  echo "$(date '+%F %T') make codegen_e2e_st_test1 end"
+
+  export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test1 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test1.log
+  if [ $? -ne 0 ]; then
+    echo "execute command: run codegen_e2e_st_test1 failed."
+    return 1
+  fi
+
+  make -j${THREAD_NUM} $MAKE_TARGET_LIST
+  if [ $? -ne 0 ]
+  then
+    echo "execute command: make codegen_e2e_st_test2 failed."
+    return 1
+  fi
+  echo "$(date '+%F %T') make codegen_e2e_st_test2 end"
+
+  export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test2 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test2.log
+  if [ $? -ne 0 ]; then
+    echo "execute command: run codegen_e2e_st_test2 failed."
+    return 1
+  fi
+  unset LD_LIBRARY_PATH
+  echo "$(date '+%F %T') codegen_e2e_st execute success!"
+}
+
+build_backend() {
+  echo "$(date '+%F %T') create build directory and build build_backend";
+  mk_dir "${BUILD_PATH}"
+  cd "${BUILD_PATH}"
+  g++ -v
+
+  ASCEND_INSTALL_LIB_PATH=${ASCEND_INSTALL_PATH}/$(uname -m)-linux/lib64/
+  CMAKE_ARGS="-D CMAKE_C_COMPILER=gcc \
+            -D CMAKE_CXX_COMPILER=g++ \
+            -D ASCEND_3RD_LIB_PATH=${ASCEND_3RD_LIB_PATH} \
+            -D ASCEND_INSTALL_PATH=${ASCEND_INSTALL_PATH} \
+            -D CMAKE_INSTALL_PREFIX=${OUTPUT_PATH} \
+            -D ASCEND_INSTALL_LIB_PATH=${ASCEND_INSTALL_LIB_PATH} \
+            -D ENABLE_OPEN_SRC=True \
+            -D BUILD_METADEF=ON \
+            -D ENABLE_PKG=${ENABLE_PKG} \
+            -D ENABLE_TEST=True \
+            -D ENABLE_GE_ST=on \
+            -D ENABLE_LLT_PKG=ON"
+
+  ORIGINAL_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+  unset LD_LIBRARY_PATH
+  env
+
+  cmake $CMAKE_ARGS ../
+
+  # st用例可执行文件的列表
+  MAKE_TARGET_LIST="add_abs_test_e2e \
                     axpy_abs_test_e2e \
                     sub_abs_test_e2e \
                     scalar_float_inf_test_e2e \
@@ -598,16 +672,6 @@ codegen_e2e_st() {
                     axpy_abs_test_e2e \
                     load_logical_not_store_test_e2e"
   if [[ "X$RUN_V35_TESTS" = "Xon" ]]; then
-    MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
-                      load_abs_store_expect_code_e2e_v2 \
-                      load_scalar_abs_brc_store_expect_code_e2e_v2 \
-                      load_scalar_clip_store_expect_code_e2e_v2 \
-                      load_div_store_expect_code_e2e_v2 \
-                      load_scalar_sub_store_expect_code_e2e_v2 \
-                      load_scalar_div_store_expect_code_e2e_v2 \
-                      load_switch_scalar_sub_store_expect_code_e2e_v2 \
-                      load_nan_out_for_store_expect_code_e2e_v2"
-    # backend_e2e_st
     MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
                       load_loop_mode_test_e2e_v2\
                       add_abs_test_e2e_v2 \
@@ -711,36 +775,36 @@ codegen_e2e_st() {
   make -j${THREAD_NUM} $MAKE_TARGET_LIST_CODEGEN
   if [ $? -ne 0 ]
   then
-    echo "execute command: make codegen_e2e_st_test1 failed."
+    echo "execute command: make build_backend_test1 failed."
     return 1
   fi
-  echo "$(date '+%F %T') make codegen_e2e_st_test1 end"
+  echo "$(date '+%F %T') make build_backend_test1 end"
 
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
-  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test1 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
-        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test1.log
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L build_backend_test1 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_build_backend_test1.log
   if [ $? -ne 0 ]; then
-    echo "execute command: run codegen_e2e_st_test1 failed."
+    echo "execute command: run build_backend_test1 failed."
     return 1
   fi
 
   make -j${THREAD_NUM} $MAKE_TARGET_LIST
   if [ $? -ne 0 ]
   then
-    echo "execute command: make codegen_e2e_st_test2 failed."
+    echo "execute command: make build_backend_test2 failed."
     return 1
   fi
-  echo "$(date '+%F %T') make codegen_e2e_st_test2 end"
+  echo "$(date '+%F %T') make build_backend_test2 end"
 
   export LD_LIBRARY_PATH=${METADEF_LIB_PATH}:${ASCEND_INSTALL_LIB_PATH}:${LD_LIBRARY_PATH}
-  ctest --output-on-failure -j${THREAD_NUM} -L st -L codegen_e2e_st_test2 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
-        -O ${BUILD_PATH}/ctest_codegen_e2e_st_test2.log
+  ctest --output-on-failure -j${THREAD_NUM} -L st -L build_backend_test2 --test-dir ${BUILD_PATH}/tests/autofuse --no-tests=error \
+        -O ${BUILD_PATH}/ctest_build_backend_test2.log
   if [ $? -ne 0 ]; then
-    echo "execute command: run codegen_e2e_st_test2 failed."
+    echo "execute command: run build_backend_test2 failed."
     return 1
   fi
   unset LD_LIBRARY_PATH
-  echo "$(date '+%F %T') codegen_e2e_st execute success!"
+  echo "$(date '+%F %T') build_backend execute success!"
 }
 
 build_kernel_tool() {
@@ -935,10 +999,16 @@ build_st() {
     "tools")
       build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
       ;;
+    "backend")
+      build_backend || { echo "run backend st failed."; exit 1; }
+      ;;
+    "e2e")
+      codegen_e2e_st || { echo "test build e2e st code generator failed."; exit 1; }
+      ;;
     "ascendc_api")
       build_test_ascir_st || { echo "run ascir st failed."; exit 1; }
       build_st_codegen || { echo "run codegen st failed."; exit 1; }
-      codegen_e2e_st || { echo "test build e2e st code generator failed."; exit 1; }
+      build_backend || { echo "run backend st failed."; exit 1; }
       build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
       ;;
     "framework")
@@ -955,6 +1025,7 @@ build_st() {
       build_st_codegen || { echo "run codegen st failed."; exit 1; }
       build_st_common || { echo "run common st failed."; exit 1; }
       build_st_optimize || { echo "run optimize st failed."; exit 1; }
+      build_backend || { echo "run backend st failed."; exit 1; }
       codegen_e2e_st || { echo "test build e2e st code generator failed."; exit 1; }
       build_kernel_tool || { echo "test kernel tool failed."; exit 1; }
       py_module_st || { echo "run py module st failed."; exit 1; }
