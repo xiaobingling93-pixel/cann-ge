@@ -21,11 +21,23 @@ inline __aicore__ void ArgmaxLEOneRepeat(const LocalTensor<int64_t>& dstTensor, 
     const LocalTensor<uint8_t>& sharedTmpBuffer, const uint32_t repeatTimes, const uint32_t last) 
 {
     LocalTensor<float> tailTmp = sharedTmpBuffer.ReinterpretCast<float>();
-    LocalTensor<float> dstTensorLocal = sharedTmpBuffer[256].ReinterpretCast<float>();
+    LocalTensor<uint8_t> tmpMask = sharedTmpBuffer[256];
+    LocalTensor<float> dstTensorLocal = sharedTmpBuffer[512].ReinterpretCast<float>();
 
     uint32_t copyNum = last;
 
     for (uint32_t i = 0; i < repeatTimes; ++i) {
+        // tailTmp used for ±0 first, then process tail
+        if constexpr (std::is_same_v<T, float>) {
+            AscendC::PipeBarrier<PIPE_V>();
+            Duplicate(tailTmp, 0.0f, 64);
+            AscendC::PipeBarrier<PIPE_V>();
+            Compare(tmpMask, srcTensor, tailTmp, AscendC::CMPMODE::NE, 64);
+            AscendC::PipeBarrier<PIPE_V>();
+            Select(srcTensor, tmpMask, srcTensor, 0.0f, AscendC::SELMODE::VSEL_TENSOR_SCALAR_MODE, 64);
+            AscendC::PipeBarrier<PIPE_V>();
+        }
+        AscendC::PipeBarrier<PIPE_V>();
         Duplicate(tailTmp, -INFINITY, 64);
         if constexpr (std::is_same_v<T, float>) {
             AscendC::PipeBarrier<PIPE_V>();
@@ -73,25 +85,16 @@ __aicore__ void ArgmaxGTOneRepeat(const LocalTensor<int64_t>& dstTensor, const L
     uint32_t copyNum = (tailNum == 0) ? 64 : tailNum;
     uint32_t tailCtrl = 1; // force tail process
 
-    if constexpr (std::is_same_v<T, float>) {
-        if (last <= 128) {
-            DataCopy(maxBefore, srcTensor, 64);
-        } 
-    } else if constexpr (std::is_same_v<T, int32_t>) {
-        if (last <= 128) {
-            Cast<float, int32_t>(maxBefore, srcTensor, AscendC::RoundMode::CAST_NONE, 64);
-        }
-    }
-
     for (uint32_t i = 0; i < first; ++i) {
         Duplicate(tmpdstTensor, 0.0f, tmpdstTensor.GetSize());
+        AscendC::PipeBarrier<PIPE_V>();
+        if constexpr (std::is_same_v<T, float>) {
+            DataCopy(maxBefore, srcTensor[i * last], 64);
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            Cast<float, int32_t>(maxBefore, srcTensor[i * last], AscendC::RoundMode::CAST_NONE, 64);
+        }
+        AscendC::PipeBarrier<PIPE_V>();
         for (uint32_t j = 0; j < repeatTimesOneRow - 2; ++j) {
-            AscendC::PipeBarrier<PIPE_V>();
-            if constexpr (std::is_same_v<T, float>) {
-                DataCopy(maxBefore, srcTensor[i * last], 64);
-            } else if constexpr (std::is_same_v<T, int32_t>) {
-                Cast<float, int32_t>(maxBefore, srcTensor[i * last], AscendC::RoundMode::CAST_NONE, 64);
-            }
             AscendC::PipeBarrier<PIPE_V>();
             Duplicate(dupIndexTensor, (j + 1) * 64.0f, 64);
             AscendC::PipeBarrier<PIPE_V>();
