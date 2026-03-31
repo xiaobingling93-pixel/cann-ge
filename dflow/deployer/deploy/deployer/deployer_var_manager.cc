@@ -14,7 +14,6 @@
 #include "common/debug/ge_log.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "common/util.h"
-#include "common/utils/bind_cpu_utils.h"
 #include "common/config/configurations.h"
 #include "securec.h"
 #include "graph_metadef/graph/utils/file_utils.h"

@@ -16,7 +16,6 @@
 #include "event_handler.h"
 #include "common/compile_profiling/ge_call_wrapper.h"
 #include "common/profiling/profiling_init.h"
-#include "common/utils/bind_cpu_utils.h"
 #include "dflow/base/utils/process_utils.h"
 #include "common/utils/memory_statistic_manager.h"
 #include "common/config/device_debug_config.h"
