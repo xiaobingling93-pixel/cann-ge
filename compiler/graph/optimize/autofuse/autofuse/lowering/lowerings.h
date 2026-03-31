@@ -62,7 +62,6 @@ class LoweringManager {
 
   std::map<std::string, std::function<graphStatus(const NodePtr &)>> lowerings_;
 };
-
 }  // namespace ge
 
 #endif  // AUTOFUSE_LOWERING_LOWERINGS_H_

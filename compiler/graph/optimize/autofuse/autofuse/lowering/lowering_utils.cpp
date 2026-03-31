@@ -11,6 +11,10 @@
 #include "lowering_utils.h"
 
 #include <map>
+#include <iostream>
+#include <stdexcept>
+#include <algorithm>
+#include <mutex>
 #include "common/ge_common/ge_types.h"
 #include "framework/common/debug/ge_log.h"
 #include "utils/node_utils.h"
@@ -365,4 +369,109 @@ graphStatus LoweringUtils::AssembleConcreteEdges(loop::KernelBox &kernel_box, Au
   return GRAPH_SUCCESS;
 }
 
+GraphFusionReasonStore::Storage& GraphFusionReasonStore::GetGlobalStorage() {
+  static Storage global_storage;
+  return global_storage;
+}
+
+void GraphFusionReasonStore::StartProcessGraph(const std::string& graph_name) {
+  if (!IsLogEnable(GE_MODULE_NAME, DLOG_INFO)) {
+    return;
+  }
+  if (graph_name.empty()) {
+    GELOGW("Graph name can not be null");
+    return;
+  }
+  Storage& storage = GetGlobalStorage();
+  std::lock_guard<std::mutex> lock(storage.mutex_);
+  storage.current_graph_ = graph_name;
+
+  if (std::find(storage.graph_process_order_.begin(), storage.graph_process_order_.end(), graph_name) == storage.graph_process_order_.end()) {
+    storage.graph_process_order_.emplace_back(graph_name);
+  }
+  storage.graph_node_info_[graph_name].clear();
+}
+
+void GraphFusionReasonStore::AddCurrentGraphNode(const std::string& node_name, const std::string& node_type) {
+  if (!IsLogEnable(GE_MODULE_NAME, DLOG_INFO)) {
+    return;
+  }
+  Storage& storage = GetGlobalStorage();
+  std::lock_guard<std::mutex> lock(storage.mutex_);
+  if (storage.current_graph_.empty()) {
+    GELOGW("Current graph must be set, before add Node info");
+    return;
+  }
+  if (node_name.empty() || node_type.empty()) {
+    GELOGW("Node name or node type can not be null");
+    return;
+  }
+  storage.graph_node_info_[storage.current_graph_][node_name] = {node_type, storage.global_node_order_.fetch_add(1)};
+}
+
+void GraphFusionReasonStore::CountNodeFuseFailReason(const std::string& node_name, const std::string& reason, FailReasonCategory category) {
+  if (!IsLogEnable(GE_MODULE_NAME, DLOG_INFO) && !IsLogEnable(GE_MODULE_NAME, DLOG_DEBUG)) {
+    return;
+  }
+  if (node_name.empty() || reason.empty()) {
+    return;
+  }
+  Storage& storage = GetGlobalStorage();
+  std::lock_guard<std::mutex> lock(storage.mutex_);
+  storage.node_fusion_reason_[node_name] = {reason, category};
+  GELOGI("Skip lowering node %s, as: %s (category: %s)", node_name.c_str(), reason.c_str(), GetCategoryName(category));
+}
+
+void GraphFusionReasonStore::ShowGraphFusionFailReasons(const std::string& graph_name) {
+  if (!IsLogEnable(GE_MODULE_NAME, DLOG_INFO) && !IsLogEnable(GE_MODULE_NAME, DLOG_DEBUG)) {
+    return;
+  }
+  Storage& storage = GetGlobalStorage();
+  std::lock_guard<std::mutex> lock(storage.mutex_);
+  auto graph_it = storage.graph_node_info_.find(graph_name);
+  if (graph_it == storage.graph_node_info_.end()) {
+    GELOGW("Graph [%s] has no valid node!", graph_name.c_str());
+    return;
+  }
+
+  std::vector<std::pair<std::string, NodeInfo>> all_nodes(graph_it->second.begin(), graph_it->second.end());
+  std::sort(all_nodes.begin(), all_nodes.end(),
+            [](const auto& a, const auto& b) { return a.second.insert_order < b.second.insert_order; });
+
+  std::map<FailReasonCategory, std::vector<std::pair<std::string, NodeInfo>>> nodes_by_category;
+  for (const auto& [node_name, node_info] : all_nodes) {
+    auto reason_it = storage.node_fusion_reason_.find(node_name);
+    if (reason_it != storage.node_fusion_reason_.end()) {
+      nodes_by_category[reason_it->second.category].emplace_back(node_name, node_info);
+    }
+  }
+
+  if (nodes_by_category.empty()) {
+    GELOGW("Graph [%s] all nodes has beed lowerered!", graph_name.c_str());
+    return;
+  }
+
+  for (const auto& [category, nodes] : nodes_by_category) {
+    GELOGI("========== Graph [%s] - %s (%zu nodes) ==========", graph_name.c_str(), GetCategoryName(category), nodes.size());
+    for (const auto& [node_name, node_info] : nodes) {
+      const FailReasonInfo& reason_info = storage.node_fusion_reason_.at(node_name);
+      GELOGI("  Node name: %s, type: %s, reason: %s", node_name.c_str(), node_info.node_type.c_str(), reason_info.reason.c_str());
+    }
+  }
+}
+
+void GraphFusionReasonStore::ClearGraphData(const std::string& graph_name) {
+  if (!IsLogEnable(GE_MODULE_NAME, DLOG_INFO)) {
+    return;
+  }
+  Storage& storage = GetGlobalStorage();
+  std::lock_guard<std::mutex> lock(storage.mutex_);
+  storage.graph_node_info_.erase(graph_name);
+  auto it = std::find(storage.graph_process_order_.begin(), storage.graph_process_order_.end(), graph_name);
+  if (it != storage.graph_process_order_.end()) {
+    storage.graph_process_order_.erase(it);
+  }
+  storage.node_fusion_reason_.erase(graph_name);
+  storage.global_node_order_.store(0);
+}
 }

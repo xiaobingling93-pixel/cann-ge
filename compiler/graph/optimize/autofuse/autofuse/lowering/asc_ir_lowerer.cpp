@@ -191,6 +191,8 @@ graphStatus AscIrLowerer::Lowering(const ComputeGraphPtr &graph) {
   for (const auto &subgraph : graphs) {
     GE_ASSERT_GRAPH_SUCCESS(RemoveDirectNodeUnusedEdges(subgraph));
   }
+  GraphFusionReasonStore::ShowGraphFusionFailReasons(graph->GetName());
+  GraphFusionReasonStore::ClearGraphData(graph->GetName());
   do_lowered_ = true;
   return GRAPH_SUCCESS;
 }
