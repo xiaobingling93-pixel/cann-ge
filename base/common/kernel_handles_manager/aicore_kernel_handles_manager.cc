@@ -15,7 +15,7 @@
 #include "kernel_handle_utils.h"
 
 namespace ge {
-rtBinHandle AicoreKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
+aclrtBinHandle AicoreKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
     const std::string &bin_name) {
   GE_ASSERT_TRUE(!bin_name.empty(), "Bin handle name is empty.");
   auto *aicore_register_info = std::get_if<AicoreRegisterInfo>(&register_info);
@@ -24,14 +24,14 @@ rtBinHandle AicoreKernelHandlesManager::RegisterKernel(const KernelRegisterInfo 
   const auto kernel_bin = aicore_register_info->kernel_bin;
   GE_ASSERT_NOTNULL(kernel_bin, "Aicore kernel bin is nullptr, bin_name: %s", bin_name.c_str());
 
-  rtLoadBinaryConfig_t load_options;
-  rtLoadBinaryOption_t option;
+  aclrtBinaryLoadOptions load_options;
+  aclrtBinaryLoadOption option;
   load_options.numOpt = 1;
   load_options.options = &option;
-  option.optionId = RT_LOAD_BINARY_OPT_MAGIC;
+  option.type = ACL_RT_BINARY_LOAD_OPT_MAGIC;
   option.value.magic = magic;
-  rtBinHandle bin_handle;
-  GE_ASSERT_RT_OK(rtsBinaryLoadFromData(kernel_bin->GetBinData(), kernel_bin->GetBinDataSize(),
+  aclrtBinHandle bin_handle;
+  GE_ASSERT_RT_OK(aclrtBinaryLoadFromData(kernel_bin->GetBinData(), kernel_bin->GetBinDataSize(),
       &load_options, &bin_handle));
 
   StoredKernelHandle(bin_handle, bin_name);

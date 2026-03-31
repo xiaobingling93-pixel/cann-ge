@@ -72,7 +72,8 @@ float Topology::CalculateCost(const Communication &op, float size, vector<int> &
   return cost;
 }
 
-float Topology::CalculateStartUpCost(const Communication &op, float size, vector<int> &slices, int divisor) const {
+float Topology::CalculateStartUpCost(const Communication &op, float size, vector<int> &slices,
+                                     [[maybe_unused]] int divisor) const {
   float syncCost;
   float fixedCost;
   float cost;
@@ -111,7 +112,7 @@ float Topology::CalculateComputeCost(const Communication &op, float size, vector
   return cost;
 }
 
-float Topology::CalculateSyncCost(const Communication &op, float size, vector<int> &slices) const {
+float Topology::CalculateSyncCost(const Communication &op, [[maybe_unused]] float size, vector<int> &slices) const {
   float cost = 0.0;
   float xferNum = 0.0;
   float bubbleNum = 0.0;
@@ -148,7 +149,7 @@ float Topology::CalculateBubbleCost(const Communication &op, float size, vector<
   return cost;
 }
 
-float Topology::CalculateFixedCost(const Communication &op, float size, vector<int> &slices) const {
+float Topology::CalculateFixedCost(const Communication &op, [[maybe_unused]] float size, vector<int> &slices) const {
   float cost = 0.0;
   float xferNum;
 

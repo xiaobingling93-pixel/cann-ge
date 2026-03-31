@@ -86,6 +86,7 @@ target_include_directories(fe PRIVATE
         ${NN_ENG_DIR}/inc/
         ${NN_ENG_DIR}/utils/
         ${NN_ENG_DIR}/fusion/
+        ${AIR_CODE_DIR}/
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/framework
         ${AIR_CODE_DIR}/inc/external

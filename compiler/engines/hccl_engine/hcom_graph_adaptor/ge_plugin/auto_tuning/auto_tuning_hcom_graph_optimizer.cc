@@ -121,7 +121,7 @@ ge::Status AutoTuningHcomGraphOptimizer::Initialize(const std::map<std::string, 
   return ge::SUCCESS;
 }
 
-HcclResult AutoTuningHcomGraphOptimizer::ParseProfilingConfig(bool profilingMode, std::string &profilingOption) {
+HcclResult AutoTuningHcomGraphOptimizer::ParseProfilingConfig(bool &profilingMode, std::string &profilingOption) {
   char *mmSysGetEnvValue = nullptr;
   MM_SYS_GET_ENV(MM_ENV_PROFILING_MODE, mmSysGetEnvValue);
   std::string profilingEnv = (mmSysGetEnvValue != nullptr) ? mmSysGetEnvValue : "EmptyString";

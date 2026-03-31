@@ -90,6 +90,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Div)              \
   OP(Mul)              \
   OP(TrueDiv)          \
+  OP(Remainder)        \
   OP(Minimum)          \
   OP(Maximum)          \
   OP(LogicalOr)        \
@@ -105,6 +106,13 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Transpose)        \
   OP(BitwiseAnd)       \
   OP(Ln)               \
+  OP(FloorToInt)       \
+  OP(Fmod)             \
+  OP(Hypot)            \
+  OP(Lgamma)           \
+  OP(Log10)            \
+  OP(LogicalXor)       \
+  OP(Log1p)            \
   OP(Expm)             \
   OP(Log2)             \
   OP(LShift)           \
@@ -121,5 +129,13 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(Split)            \
   OP(Axpy)             \
   OP(CopySign)         \
-  OP(Ceil2Int)
+  OP(Ceil2Int)         \
+  OP(RoundToInt)       \
+  OP(Square)           \
+  OP(Sinh)             \
+  OP(Tan)              \
+  OP(Trunc)            \
+  OP(TruncToInt)       \
+  OP(TruncDiv)         \
+  OP(Xor)              
 #endif

@@ -1,6 +1,7 @@
 add_executable(codegen_st
         test.cpp
         test_codegen_infershape.cpp
+        test_codegen_graph_check.cpp
 )
 target_compile_definitions(codegen_st PRIVATE
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"

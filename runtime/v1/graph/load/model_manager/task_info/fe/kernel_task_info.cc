@@ -307,7 +307,7 @@ void KernelTaskInfo::UpdateIoAndWorkspaceAddrs(const IowAddrs &iow_addrs) {
   }
 }
 
-rtBinHandle KernelTaskInfo::GetBinHandle(const domi::TaskDef &task_def) const {
+aclrtBinHandle KernelTaskInfo::GetBinHandle(const domi::TaskDef &task_def) const {
   if (IsAllKernel(task_type_) || ModelUtils::IsAICoreKernel(kernel_type_)) {
     auto kernel_handles_manager = davinci_model_->GetKernelHandlesManager(KernelHandleType::kAicore);
     GE_ASSERT_NOTNULL(kernel_handles_manager);
@@ -351,7 +351,7 @@ rtBinHandle KernelTaskInfo::GetBinHandle(const domi::TaskDef &task_def) const {
   return nullptr;
 }
 
-void KernelTaskInfo::SetExceptionCallback(rtBinHandle bin_handle) {
+void KernelTaskInfo::SetExceptionCallback(aclrtBinHandle bin_handle) {
   const auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry(
     static_cast<gert::OppImplVersionTag>(op_desc_->GetOppImplVersion()));
   if (space_registry == nullptr) {
@@ -372,7 +372,7 @@ void KernelTaskInfo::SetExceptionCallback(rtBinHandle bin_handle) {
   }
 }
 
-rtFuncHandle KernelTaskInfo::GetFuncHandle(const domi::TaskDef &task_def) {
+aclrtFuncHandle KernelTaskInfo::GetFuncHandle(const domi::TaskDef &task_def) {
   auto bin_handle = GetBinHandle(task_def);
   GE_ASSERT_NOTNULL(bin_handle);
   GE_ASSERT_NOTNULL(op_desc_);
@@ -455,7 +455,7 @@ Status KernelTaskInfo::InitKernel(const domi::TaskDef &task_def, const PisToArgs
 
   // Old model will not take this value, its default value is 0,need to convert to the real default value 1.
   block_dim_ = (kernel_def.block_dim() == 0U) ? 1U : kernel_def.block_dim();
-  cfg_.blockDimOffset = kernel_def.block_dim_offset();
+  block_dim_offset_ = kernel_def.block_dim_offset();
   is_block_task_prefetch_ = kernel_def.is_block_task_prefetch();
   is_separately_clean_task_ = IsSeparatelyCleanTask(op_desc_, kernel_def.kernel_name());
 
@@ -500,7 +500,7 @@ Status KernelTaskInfo::InitKernelWithHandle(const domi::TaskDef &task_def, const
 
   // Old model will not take this value, its default value is 0,need to convert to the real default value 1.
   block_dim_ = (kernel_def.block_dim() == 0U) ? 1U : kernel_def.block_dim();
-  cfg_.blockDimOffset = kernel_def.block_dim_offset();
+  block_dim_offset_ = kernel_def.block_dim_offset();
   is_block_task_prefetch_ = kernel_def.is_block_task_prefetch();
   GE_CHK_STATUS_RET_NOLOG(InitKernelByContext(task_def, context, args));
 
@@ -579,13 +579,13 @@ Status KernelTaskInfo::DistributeTask() {
     launch_kernel_param.block_dim = 1U;
   }
   launch_kernel_param.stream = stream_;
-  launch_kernel_param.launch_config.schedule_mode = cfg_.schemMode;
+  launch_kernel_param.launch_config.schedule_mode = schedule_mode_;
   launch_kernel_param.launch_config.local_memory_size = local_memory_size_;
-  launch_kernel_param.launch_config.block_dim_offset = cfg_.blockDimOffset;
+  launch_kernel_param.launch_config.block_dim_offset = block_dim_offset_;
   launch_kernel_param.launch_config.is_block_task_prefetch = is_block_task_prefetch_;
   launch_kernel_param.launch_config.is_data_dump = is_data_dump_;
   if ((task_type_ == ModelTaskType::MODEL_TASK_VECTOR_ALL_KERNEL) || (task_type_ == ModelTaskType::MODEL_TASK_VECTOR_KERNEL)) {
-    launch_kernel_param.launch_config.engine_type = RT_ENGINE_TYPE_AIV;
+    launch_kernel_param.launch_config.engine_type = ACL_RT_ENGINE_TYPE_AIV;
   }
   bool op_exec_never_timeout = false;
   if (AttrUtils::GetBool(op_desc_, public_attr::OP_EXEC_NEVER_TIMEOUT, op_exec_never_timeout)
@@ -645,9 +645,9 @@ Status KernelTaskInfo::Distribute() {
       return FAILED;
     }
   }
-  GELOGI("KernelTaskInfo Distribute Success, op: %s, taskid: %d, stubfunc: %p, blockdim: %d, "
+  GELOGI("KernelTaskInfo Distribute Success, op: %s, taskid: %d, blockdim: %d, "
          "streamid: %u, stream: %p, dump_flag: %u",
-         op_desc_->GetName().c_str(), task_id_, stub_func_, block_dim_, stream_id_, stream_, dump_flag_);
+         op_desc_->GetName().c_str(), task_id_, block_dim_, stream_id_, stream_, dump_flag_);
   if (!domi::GetContext().is_online_model) {
     op_desc_.reset(); // Release OpDesc after Distribute.
     operator_.reset();
@@ -1633,12 +1633,12 @@ Status KernelTaskInfo::CopyTilingDataIfNeeded() {
     GE_CHK_STATUS_RET(UpdateRunInfoByTilingResult(run_info.get()), "Update run info by tiling result failed.");
     // 软同步操作后会刷新runInfo，需要重新memcheck
     GELOGD("OpName: %s update schedule mode from tiling info: %u", op_desc_->GetNamePtr(),
-           static_cast<uint32_t>(cfg_.schemMode));
+           static_cast<uint32_t>(schedule_mode_));
   }
 
   if (run_info != nullptr) {
     local_memory_size_ = run_info->GetLocalMemorySize();
-    cfg_.schemMode = static_cast<uint8_t>(run_info->GetScheduleMode() & k2BitsMask);
+    schedule_mode_ = static_cast<uint8_t>(run_info->GetScheduleMode() & k2BitsMask);
     if (run_info->GetAllTilingData().str().empty()) {
       GELOGD("Tiling data of %s is empty.", op_desc_->GetNamePtr());
       return SUCCESS;
@@ -1907,9 +1907,9 @@ Status KernelTaskInfo::InitTVMTask(const domi::KernelDefWithHandle &kernel_def) 
   GELOGD("Do InitTVMTask with handle of %s.", op_desc_->GetName().c_str());
   GE_CHK_STATUS_RET_NOLOG(InitTVMContext(kernel_def.context()));
   node_info_ = kernel_def.node_info() + "/";
-  cfg_.schemMode = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
+  schedule_mode_ = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
   GELOGD("OpName: %s set schedule mode from kernel def: %u",
-      op_desc_->GetName().c_str(), static_cast<uint32_t>(cfg_.schemMode));
+      op_desc_->GetName().c_str(), static_cast<uint32_t>(schedule_mode_));
   return InitTVMTask();
 }
 
@@ -1928,9 +1928,9 @@ Status KernelTaskInfo::InitTVMTask(const domi::KernelDef &kernel_def) {
     io_addr_mem_types_.resize(io_addrs_.size(), static_cast<uint64_t>(MemoryAppType::kMemoryTypeFix));
   }
 
-  cfg_.schemMode = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
+  schedule_mode_ = static_cast<uint8_t>(kernel_def.schedule_mode() & k2BitsMask);
   GELOGD("OpName: %s set schedule mode from kernel def: %u",
-      op_desc_->GetName().c_str(), static_cast<uint32_t>(cfg_.schemMode));
+      op_desc_->GetName().c_str(), static_cast<uint32_t>(schedule_mode_));
   return InitTVMTask();
 }
 
@@ -2148,13 +2148,6 @@ Status KernelTaskInfo::InitAicpuTask(const OpDescPtr &op_desc, const domi::Kerne
 
   GE_ASSERT_SUCCESS(InitPreprocessTask(op_desc), "Init preprocess task of op[%s] failed.", op_desc->GetName().c_str());
 
-  if (kernel_type_ == ccKernelType::CUST_AI_CPU) {
-    bool loaded = false;
-    auto &model_mgr = ModelManager::GetInstance();
-    GE_CHK_STATUS_RET(model_mgr.LoadCustAicpuSo(davinci_model_->GetCustAICPUKernel(op_desc), so_name_, loaded),
-                      "[Launch][CustAicpuSo] failed, node: %s", op_desc->GetName().c_str());
-  }
-
   // copy args to new host memory
   args_addr_.resize(static_cast<size_t>(args_size_));
   GE_PRINT_DYNAMIC_MEMORY(new, "cce task physical memory.", sizeof(uint8_t) * args_size_);
@@ -2209,7 +2202,6 @@ Status KernelTaskInfo::InitAicpuKfcTask(const domi::KernelDef &kernel_def) {
     args_size_max -= addrs_size;
   }
   // kernel_name
-  aicpu_args_ex_.kernelNameAddrOffset = static_cast<uint32_t>(cur_offset - args_format_holder_.sink_tensor_size);
   const size_t kernel_name_size = kernel_name_.size() + 1UL;
   GE_ASSERT(args_size_max >= kernel_name_size);
   GE_ASSERT_EOK(strncpy_s(reinterpret_cast<char_t *>(&(args_addr_[cur_offset])), args_size_max, kernel_name_.c_str(),
@@ -2218,7 +2210,6 @@ Status KernelTaskInfo::InitAicpuKfcTask(const domi::KernelDef &kernel_def) {
   args_size_max -= kernel_name_size;
 
   // so_name
-  aicpu_args_ex_.soNameAddrOffset = static_cast<uint32_t>(cur_offset - args_format_holder_.sink_tensor_size);
   const size_t so_name_size = so_name_.size() + 1UL;
   GE_ASSERT(args_size_max >= so_name_size);
   GE_ASSERT_EOK(strncpy_s(reinterpret_cast<char_t *>(&(args_addr_[cur_offset])), args_size_max, so_name_.c_str(),
@@ -2228,11 +2219,8 @@ Status KernelTaskInfo::InitAicpuKfcTask(const domi::KernelDef &kernel_def) {
 
   args_ = ValueToPtr(PtrToValue(args_) + args_format_holder_.sink_tensor_size);
 
-  GELOGD(
-      "Init AicpuKfc Kernel successfully, Op:[%s], kernel_name_offset:[%u], so_name_offset:[%u], "
-      "sink_tensor_size:[%zu]. ",
-      op_desc_->GetNamePtr(), aicpu_args_ex_.kernelNameAddrOffset,
-      aicpu_args_ex_.soNameAddrOffset, args_format_holder_.sink_tensor_size);
+  GELOGD("Init AicpuKfc Kernel successfully, Op:[%s], sink_tensor_size:[%zu]. ",
+      op_desc_->GetNamePtr(), args_format_holder_.sink_tensor_size);
   GE_CHK_STATUS_RET(AssembleArgs(io_addrs_), "[Assemble][Addrs] failed, node: %s", op_desc_->GetName().c_str());
   return SUCCESS;
 }

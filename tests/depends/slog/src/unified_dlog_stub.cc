@@ -12,6 +12,12 @@
 #include "plog.h"
 #include "slog_stub.h"
 
+#ifdef __cplusplus
+#ifndef LOG_CPP
+extern "C" {
+#endif
+#endif // __cplusplus
+
 void dav_log(int module_id, const char *fmt, ...) {}
 
 void DlogRecord(int moduleId, int level, const char *fmt, ...) {
@@ -149,3 +155,9 @@ void DlogVaList(int module_id, int level, const char *fmt, va_list valist) {
       break;
   }
 }
+
+#ifdef __cplusplus
+#ifndef LOG_CPP
+}
+#endif // LOG_CPP
+#endif // __cplusplus

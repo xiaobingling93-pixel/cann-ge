@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -532,6 +532,29 @@ ge::ComputeGraphPtr CreateGraphWithIsolatedConst() {
 
   builder.AddDataEdge(data, 0, relu, 0);
   builder.AddDataEdge(relu, 0, netoutput, 0);
+  return builder.GetGraph();
+}
+
+/*      Data
+ *       |
+ *      cast1
+ *       |     \
+ *       |     cast2
+ *       |    /
+ *    Netoutput
+ */
+
+ge::ComputeGraphPtr CreateGraphWithNullOutput() {
+  ge::ut::GraphBuilder builder("graph");
+  auto data = builder.AddNode("data", "Data", 1, 1);
+  auto cast1 = builder.AddNode("cast1", "Cast", 1, 2);
+  auto cast2 = builder.AddNode("cast2", "Cast", 1, 2);
+  auto netoutput = builder.AddNode("Node_Output", "NetOutput", 2, 0);
+
+  builder.AddDataEdge(data, 0, cast1, 0);
+  builder.AddDataEdge(cast1, 0, netoutput, 0);
+  builder.AddDataEdge(cast1, 0, cast2, 0);
+  builder.AddDataEdge(cast2, 0, netoutput, 1);
   return builder.GetGraph();
 }
 
@@ -2719,6 +2742,100 @@ TEST_F(UtestGraphManagerTest, ChangeAndDeleteConst_success) {
   EXPECT_EQ(status, ge::SUCCESS);
   auto all_nodes = graph->GetDirectNode();
   EXPECT_EQ(all_nodes.size(), 3);
+}
+
+TEST_F(UtestGraphManagerTest, ProcessNullableOutput_success) {
+  gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2(true);
+  auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry();
+  ASSERT_NE(space_registry, nullptr);
+  auto op_impl_func = space_registry->CreateOrGetOpImpl("Cast");
+  op_impl_func->NullableOutput(1);
+
+  auto graph = CreateGraphWithNullOutput();
+  auto cast1_node_raw = graph->FindNode("cast1");
+  cast1_node_raw->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  cast1_node_raw->GetOpDesc()->AppendIrOutput("y", IrOutputType::kIrOutputRequired);
+  cast1_node_raw->GetOpDesc()->AppendIrOutput("z", IrOutputType::kIrOutputRequired);
+
+  cast1_node_raw->GetOpDesc()->MutableAllInputName() = {{"x", 0}};
+  cast1_node_raw->GetOpDesc()->MutableAllOutputName() = {{"y", 0}, {"z", 1}};
+
+  auto cast2_node_raw = graph->FindNode("cast2");
+  cast2_node_raw->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  cast2_node_raw->GetOpDesc()->AppendIrOutput("y", IrOutputType::kIrOutputRequired);
+  cast2_node_raw->GetOpDesc()->AppendIrOutput("z", IrOutputType::kIrOutputRequired);
+  cast2_node_raw->GetOpDesc()->MutableAllInputName() = {{"x", 0}};
+  cast2_node_raw->GetOpDesc()->MutableAllOutputName() = {{"y", 0}, {"z", 1}};
+
+  GraphManager graph_manager;
+  EXPECT_EQ(graph_manager.ProcessNullableOutput(graph), ge::SUCCESS);
+
+  bool is_null_output = false;
+  bool ret = true;
+  auto cast1_node = graph->FindNode("cast1");
+  EXPECT_NE(cast1_node, nullptr);
+  const auto &tensor_desc_1_0 = cast1_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_1_0, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+  const auto &tensor_desc_1_1 = cast1_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_1_1, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+
+  auto cast2_node = graph->FindNode("cast2");
+  EXPECT_NE(cast2_node, nullptr);
+  const auto &tensor_desc_2_0 = cast2_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_2_0, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+  const auto &tensor_desc_2_1 = cast2_node->GetOpDesc()->GetOutputDesc(1);
+  ret = ge::AttrUtils::GetBool(tensor_desc_2_1, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, true);
+  EXPECT_EQ(is_null_output, true);
+}
+
+TEST_F(UtestGraphManagerTest, ProcessNullableOutput_with_dynamic_output_success) {
+  gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2(true);
+  auto space_registry = gert::DefaultOpImplSpaceRegistryV2::GetInstance().GetSpaceRegistry();
+  ASSERT_NE(space_registry, nullptr);
+  auto op_impl_func = space_registry->CreateOrGetOpImpl("Cast");
+  op_impl_func->NullableOutput(1);
+
+  auto graph = CreateGraphWithNullOutput();
+  auto cast1_node_raw = graph->FindNode("cast1");
+  cast1_node_raw->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  cast1_node_raw->GetOpDesc()->AppendIrOutput("y", IrOutputType::kIrOutputRequired);
+  cast1_node_raw->GetOpDesc()->AppendIrOutput("z", IrOutputType::kIrOutputDynamic);
+  cast1_node_raw->GetOpDesc()->MutableAllInputName() = {{"x", 0}};
+  cast1_node_raw->GetOpDesc()->MutableAllOutputName() = {{"y", 0}, {"z0", 1}};
+
+  auto cast2_node_raw = graph->FindNode("cast2");
+  cast2_node_raw->GetOpDesc()->AppendIrInput("x", IrInputType::kIrInputRequired);
+  cast2_node_raw->GetOpDesc()->AppendIrOutput("y", IrOutputType::kIrOutputRequired);
+  cast2_node_raw->GetOpDesc()->AppendIrOutput("z", IrOutputType::kIrOutputDynamic);
+  cast2_node_raw->GetOpDesc()->MutableAllInputName() = {{"x", 0}};
+  cast2_node_raw->GetOpDesc()->MutableAllOutputName() = {{"y", 0}, {"z0", 1}};
+
+  GraphManager graph_manager;
+  EXPECT_EQ(graph_manager.ProcessNullableOutput(graph), ge::SUCCESS);
+
+  bool is_null_output = true;
+  bool ret = true;
+  auto cast1_node = graph->FindNode("cast1");
+  EXPECT_NE(cast1_node, nullptr);
+  const auto &tensor_desc_1_0 = cast1_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_1_0, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+  const auto &tensor_desc_1_1 = cast1_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_1_1, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+
+  auto cast2_node = graph->FindNode("cast2");
+  EXPECT_NE(cast2_node, nullptr);
+  const auto &tensor_desc_2_0 = cast2_node->GetOpDesc()->GetOutputDesc(0);
+  ret = ge::AttrUtils::GetBool(tensor_desc_2_0, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
+  const auto &tensor_desc_2_1 = cast2_node->GetOpDesc()->GetOutputDesc(1);
+  ret = ge::AttrUtils::GetBool(tensor_desc_2_1, ge::ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+  EXPECT_EQ(ret, false);
 }
 
 TEST_F(UtestGraphManagerTest, test_set_run_context) {

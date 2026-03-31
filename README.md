@@ -47,3 +47,6 @@ GE 提供对 PyTorch、TensorFlow 前端的友好接入能力，并同时支持 
 -   [安全声明](SECURITY.md)
 -   [许可证](LICENSE)
 
+## 📝 联系我们
+
+<img src="docs\GE_contact.png">

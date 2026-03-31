@@ -34,12 +34,12 @@ HcomFusionOptimizer::HcomFusionOptimizer() {}
 
 HcomFusionOptimizer::~HcomFusionOptimizer() {}
 
-ge::Status HcomFusionOptimizer::Initialize(const std::map<std::string, std::string> &options,
-                                           ge::OptimizeUtility *const optimizeUtility) {
+ge::Status HcomFusionOptimizer::Initialize([[maybe_unused]] const std::map<std::string, std::string> &options,
+                                           [[maybe_unused]] ge::OptimizeUtility *const optimizeUtility) {
   return ge::SUCCESS;
 }
 
-ge::Status HcomFusionOptimizer::OptimizeGraphPrepare(ge::ComputeGraph &graph) {
+ge::Status HcomFusionOptimizer::OptimizeGraphPrepare([[maybe_unused]] ge::ComputeGraph &graph) {
   return ge::SUCCESS;
 }
 
@@ -112,11 +112,11 @@ HcclResult HcomFusionOptimizer::HcomOptimizeSetAttr(ge::ComputeGraph &graph) {
   return HCCL_SUCCESS;
 }
 
-ge::Status HcomFusionOptimizer::OptimizeFusedGraph(ge::ComputeGraph &graph) {
+ge::Status HcomFusionOptimizer::OptimizeFusedGraph([[maybe_unused]] ge::ComputeGraph &graph) {
   return ge::SUCCESS;
 }
 
-ge::Status HcomFusionOptimizer::OptimizeWholeGraph(ge::ComputeGraph &graph) {
+ge::Status HcomFusionOptimizer::OptimizeWholeGraph([[maybe_unused]] ge::ComputeGraph &graph) {
   return ge::SUCCESS;
 }
 

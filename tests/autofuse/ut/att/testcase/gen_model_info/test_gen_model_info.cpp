@@ -1027,6 +1027,10 @@ TEST_F(TestGenModelInfo, gen_softmax_api_tiling_success)
 
 TEST_F(TestGenModelInfo, gen_schedule_group_cache_success)
 {
+  // 设置环境变量启用 OperatorCache
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+
   std::vector<ge::AscGraph> graphs;
   std::string json_info;
   std::vector<att::ModelInfo> model_info_list;
@@ -1061,6 +1065,10 @@ TEST_F(TestGenModelInfo, gen_schedule_group_cache_success)
   oss << "#include \"FlashSoftmax_tiling_data.h\"\n";
   oss << tiling_func;
   oss.close();
+
+  // 清理环境变量
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }
 
 TEST_F(TestGenModelInfo, gen_workspace_with_tensor_id) {
@@ -1316,6 +1324,10 @@ TEST_F(TestGenModelInfo, gen_schedule_group_with_var_relation)
  * 备注：验证缓存类型定义和函数声明正确生成
  */
 TEST_F(TestGenModelInfo, op_level_cache_basic) {
+  // 设置环境变量启用 OperatorCache
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+
   std::vector<ge::AscGraph> graphs;
   std::string json_info;
   std::vector<att::ModelInfo> model_info_list;
@@ -1354,6 +1366,10 @@ TEST_F(TestGenModelInfo, op_level_cache_basic) {
 
   // 注意：缓存查询代码(input_shapes数组构建)只在有缓存复用信息时生成
   // 这是当前设计的限制，算子级缓存类型和函数已正确生成
+
+  // 清理环境变量
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }
 
 /**
@@ -1366,6 +1382,10 @@ TEST_F(TestGenModelInfo, op_level_cache_basic) {
  * 备注：验证两级缓存类型和函数正确生成
  */
 TEST_F(TestGenModelInfo, two_level_cache_generation) {
+  // 设置环境变量启用 OperatorCache
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+
   std::vector<ge::AscGraph> graphs;
   ge::AscGraph graph_normal("graph_normal");
   graph_normal.SetTilingKey(1101u);
@@ -1405,4 +1425,8 @@ TEST_F(TestGenModelInfo, two_level_cache_generation) {
   // 验证TilingCacheContext类生成（使用unique_ptr避免栈溢出）
   EXPECT_NE(tiling_func.find("class TilingCacheContext"), std::string::npos);
   EXPECT_NE(tiling_func.find("thread_local std::unique_ptr<OperatorLevelCache> operator_cache_"), std::string::npos);
+
+  // 清理环境变量
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }

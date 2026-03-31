@@ -33,6 +33,7 @@ target_link_libraries(llm_mmpa_stub PRIVATE
         slog_stub
         -Wl,-as-needed
         ${AIR_COMMON_LINK_OPTION}
+        $<BUILD_INTERFACE:intf_llt_pub>
 )
 
 target_compile_options(llm_mmpa_stub PRIVATE
@@ -75,7 +76,7 @@ target_link_libraries(llm_engine_base PRIVATE
         air_headers
         slog_headers
         metadef_headers
-        intf_llt_pub
+        $<BUILD_INTERFACE:intf_llt_pub>
         llm_mmpa_stub
         mmpa
         slog_stub

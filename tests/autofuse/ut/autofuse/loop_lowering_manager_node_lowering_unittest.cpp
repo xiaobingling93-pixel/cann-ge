@@ -2443,9 +2443,9 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering) {
 "tmp2 = ops.Load(\"m:0\")\n"
 "tmp3 = ops.Load(\"v:0\")\n"
 "tmp4 = ops.Load(\"v:0\")\n"
-"tmp5 = ops.Scalar(\"DT_FLOAT(0.230000)\")\n"
+"tmp5 = ops.Scalar(\"DT_FLOAT(0.23000001907348632812)\")\n"
 "tmp6 = ops.Broadcast(tmp5, \"[]->[d0, d1, d2]\")\n"
-"tmp7 = ops.Scalar(\"DT_FLOAT(0.950000)\")\n"
+"tmp7 = ops.Scalar(\"DT_FLOAT(0.94999998807907104492)\")\n"
 "tmp8 = ops.Broadcast(tmp7, \"[]->[d0, d1, d2]\")\n"
 "tmp9 = ops.Scalar(\"DT_FLOAT(5.29999971389770507812e-01)\")\n"
 "tmp10 = ops.Broadcast(tmp9, \"[]->[d0, d1, d2]\")\n"
@@ -2455,7 +2455,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering) {
 "tmp14 = ops.Sub(tmp13, tmp2)\n"
 "tmp15 = ops.Mul(tmp6, tmp14)\n"
 "tmp16 = ops.Add(tmp2, tmp15)\n"
-"tmp17 = ops.Scalar(\"DT_FLOAT(0.122373)\")\n"
+"tmp17 = ops.Scalar(\"DT_FLOAT(0.12237314134836196899)\")\n"
 "tmp18 = ops.Broadcast(tmp17, \"[]->[d0, d1, d2]\")\n"
 "tmp19 = ops.Mul(tmp13, tmp13)\n"
 "tmp20 = ops.Sub(tmp19, tmp4)\n"
@@ -2472,7 +2472,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering) {
   ASSERT_FALSE(asc_kernel1.IsExternKernel());
   EXPECT_EQ(asc_kernel1.Readable(), "tmp0 = ops.Load(\"m:0\")\n"
 "tmp1 = ops.Load(\"m:0\")\n"
-"tmp2 = ops.Scalar(\"DT_FLOAT(0.230000)\")\n"
+"tmp2 = ops.Scalar(\"DT_FLOAT(0.23000001907348632812)\")\n"
 "tmp3 = ops.Broadcast(tmp2, \"[]->[d0, d1, d2]\")\n"
 "tmp4 = ops.Load(\"grad:0\")\n"
 "tmp5 = ops.Sub(tmp4, tmp1)\n"
@@ -2484,7 +2484,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering) {
   ASSERT_FALSE(asc_kernel2.IsExternKernel());
   EXPECT_EQ(asc_kernel2.Readable(), "tmp0 = ops.Load(\"v:0\")\n"
 "tmp1 = ops.Load(\"v:0\")\n"
-"tmp2 = ops.Scalar(\"DT_FLOAT(0.950000)\")\n"
+"tmp2 = ops.Scalar(\"DT_FLOAT(0.94999998807907104492)\")\n"
 "tmp3 = ops.Broadcast(tmp2, \"[]->[d0, d1, d2]\")\n"
 "tmp4 = ops.Load(\"grad:0\")\n"
 "tmp5 = ops.Load(\"grad:0\")\n"
@@ -2540,11 +2540,11 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering1) {
 "tmp4 = ops.Load(\"v:0\")\n"
 "tmp5 = ops.Scalar(\"DT_FLOAT(7.69999980926513671875e-01)\")\n"
 "tmp6 = ops.Broadcast(tmp5, \"[]->[d0, d1, d2]\")\n"
-"tmp7 = ops.Scalar(\"DT_FLOAT(0.230000)\")\n"
-"tmp8 = ops.Scalar(\"DT_FLOAT(0.230000)\")\n"
+"tmp7 = ops.Scalar(\"DT_FLOAT(0.23000001907348632812)\")\n"
+"tmp8 = ops.Scalar(\"DT_FLOAT(0.23000001907348632812)\")\n"
 "tmp9 = ops.Broadcast(tmp8, \"[]->[d0, d1, d2]\")\n"
 "tmp10 = ops.Broadcast(tmp8, \"[]->[d0, d1, d2]\")\n"
-"tmp11 = ops.Scalar(\"DT_FLOAT(0.950000)\")\n"
+"tmp11 = ops.Scalar(\"DT_FLOAT(0.94999998807907104492)\")\n"
 "tmp12 = ops.Broadcast(tmp11, \"[]->[d0, d1, d2]\")\n"
 "tmp13 = ops.Scalar(\"DT_FLOAT(5.29999971389770507812e-01)\")\n"
 "tmp14 = ops.Broadcast(tmp13, \"[]->[d0, d1, d2]\")\n"
@@ -2555,7 +2555,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering1) {
 "tmp19 = ops.Sub(tmp18, tmp2)\n"
 "tmp20 = ops.Mul(tmp10, tmp19)\n"
 "tmp21 = ops.Add(tmp2, tmp20)\n"
-"tmp22 = ops.Scalar(\"DT_FLOAT(0.122373)\")\n"
+"tmp22 = ops.Scalar(\"DT_FLOAT(0.12237314134836196899)\")\n"
 "tmp23 = ops.Broadcast(tmp22, \"[]->[d0, d1, d2]\")\n"
 "tmp24 = ops.Mul(tmp18, tmp18)\n"
 "tmp25 = ops.Sub(tmp24, tmp4)\n"
@@ -2575,7 +2575,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering1) {
   ASSERT_FALSE(asc_kernel1.IsExternKernel());
   EXPECT_EQ(asc_kernel1.Readable(), "tmp0 = ops.Load(\"m:0\")\n"
 "tmp1 = ops.Load(\"m:0\")\n"
-"tmp2 = ops.Scalar(\"DT_FLOAT(0.230000)\")\n"
+"tmp2 = ops.Scalar(\"DT_FLOAT(0.23000001907348632812)\")\n"
 "tmp3 = ops.Broadcast(tmp2, \"[]->[d0, d1, d2]\")\n"
 "tmp4 = ops.Load(\"grad:0\")\n"
 "tmp5 = ops.Sub(tmp4, tmp1)\n"
@@ -2587,7 +2587,7 @@ TEST_F(LoopNodeLoweringUT, ApplyAdamDLowering1) {
   ASSERT_FALSE(asc_kernel2.IsExternKernel());
   EXPECT_EQ(asc_kernel2.Readable(), "tmp0 = ops.Load(\"v:0\")\n"
 "tmp1 = ops.Load(\"v:0\")\n"
-"tmp2 = ops.Scalar(\"DT_FLOAT(0.950000)\")\n"
+"tmp2 = ops.Scalar(\"DT_FLOAT(0.94999998807907104492)\")\n"
 "tmp3 = ops.Broadcast(tmp2, \"[]->[d0, d1, d2]\")\n"
 "tmp4 = ops.Load(\"grad:0\")\n"
 "tmp5 = ops.Load(\"grad:0\")\n"
@@ -3126,8 +3126,8 @@ TEST_F(LoopNodeLoweringUT, LoweringLoadSupportAbsUnsupported) {
   auto data0 = cg->FindNode("data0");
   ASSERT_NE(data0, nullptr);
   auto input0_desc = data0->GetOpDesc()->MutableOutputDesc(0);
-  input0_desc->SetDataType(DT_INT32);
-  input0_desc->SetOriginDataType(DT_INT32);
+  input0_desc->SetDataType(DT_INT16);
+  input0_desc->SetOriginDataType(DT_INT16);
 
   ASSERT_EQ(LoweringManager::LoweringGraph(cg), GRAPH_SUCCESS);
 

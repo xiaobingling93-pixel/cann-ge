@@ -12,21 +12,21 @@
 #define EXECUTOR_GRAPH_LOAD_MODEL_MANAGER_KERNEL_MANAGER_KERBEL_HANDLE_UTILS_H
 
 #include <string>
-#include "rts/rts_kernel.h"
+#include "acl/acl_rt.h"
 #include "kernel_handles_manager.h"
 
 namespace ge {
 struct LaunchKernelConfig {
   uint8_t schedule_mode{0U};
   uint32_t local_memory_size{0U};
-  rtEngineType engine_type{RT_ENGINE_TYPE_AIC};
+  aclrtEngineType engine_type{ACL_RT_ENGINE_TYPE_AIC};
   uint32_t block_dim_offset{0U};
   bool is_block_task_prefetch{false};
   bool is_data_dump{false};
   int16_t time_out{-1};
 };
 
-using RefreshAddrInfo = rtPlaceHolderInfo_t;
+using RefreshAddrInfo = aclrtPlaceHolderInfo;
 
 struct LaunchKernelParam {
   uint32_t block_dim{0U};
@@ -40,11 +40,11 @@ struct LaunchKernelParam {
 
 class KernelHandleUtils {
  public:
-  static rtFuncHandle GetFuncHandle(const rtBinHandle &bin_handle, const std::string &kernel_name);
-  static rtFuncHandle GetCustAicpuFuncHandle(const rtBinHandle &bin_handle,
+  static aclrtFuncHandle GetFuncHandle(const aclrtBinHandle &bin_handle, const std::string &kernel_name);
+  static aclrtFuncHandle GetCustAicpuFuncHandle(const aclrtBinHandle &bin_handle,
       const std::string &op_type, const std::string &func_name);
-  static rtFuncHandle GetFuncHandle(const rtBinHandle &bin_handle, const uint64_t &tiling_key);
-  static graphStatus LaunchKernel(const rtFuncHandle func_handle, const LaunchKernelParam &launch_param);
+  static aclrtFuncHandle GetFuncHandle(const aclrtBinHandle &bin_handle, const uint64_t &tiling_key);
+  static graphStatus LaunchKernel(const aclrtFuncHandle func_handle, const LaunchKernelParam &launch_param);
 };
 }
 

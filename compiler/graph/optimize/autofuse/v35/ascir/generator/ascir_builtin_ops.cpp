@@ -28,6 +28,88 @@ class AscIrAttStubV2 : public ge::ascir::AscIrAtt {
 
 const std::vector<std::string> v2_soc_versions{"3510", "5102"};
 
+REG_ASC_IR(Square)
+    .Input("x", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::SquareAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::SquareAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16, DT_UINT16, DT_UINT32, DT_INT64, DT_UINT64, DT_BF16, DT_UINT8}}}});
+
+REG_ASC_IR(RoundToInt)
+    .Input("x", "T1")
+    .Output("y", "T2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions,
+          {ge::ascir::AscIrImplCreator<ge::ascir::RoundToIntAscIrAttImplV2>(),
+           ge::ascir::AscIrImplCreator<ge::ascir::RoundToIntAscIrCodegenImplV2>(),
+           {{{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
+             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}}});
+
+REG_ASC_IR(TruncToInt)
+    .Input("x", "T1")
+    .Output("y", "T2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions,
+          {ge::ascir::AscIrImplCreator<ge::ascir::TruncToIntAscIrAttImplV2>(),
+           ge::ascir::AscIrImplCreator<ge::ascir::TruncToIntAscIrCodegenImplV2>(),
+           {{{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
+             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}}});
+
+REG_ASC_IR(Xor)
+    .Input("x1", "T")
+    .Input("x2", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::XorAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::XorAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_UINT8}}}});
+
+REG_ASC_IR(Trunc)
+    .Input("x", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::TruncAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::TruncAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+
+REG_ASC_IR(Tan)
+    .Input("x", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::TanAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::TanAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+
+REG_ASC_IR(TruncDiv)
+    .Input("x1", "T")
+    .Input("x2", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .DataType("T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16})
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::TruncDivAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::TruncDivAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+
+REG_ASC_IR(Sinh)
+    .Input("x", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .DataType("T", TensorType{DT_FLOAT, DT_FLOAT16, DT_BF16})
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::SinhAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::SinhAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT, DT_FLOAT16, DT_BF16}}}});
+
+REG_ASC_IR(Remainder)
+    .Input("x1", "T")
+    .Input("x2", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .DataType("T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16})
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::RemainderAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::RemainderAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+
 REG_ASC_IR(VectorFunc)
     .DynamicInput("x", "T")
     .DynamicOutput("y", "T")
@@ -71,7 +153,7 @@ REG_ASC_IR(Load)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LoadAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LoadAscIrCodegenImplV2>(),
                             {{"T", TensorType{DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16,
-                                              DT_FLOAT, DT_INT64, DT_BF16}}}});
+                                              DT_FLOAT, DT_INT64, DT_BF16, DT_UINT64}}}});
 
 REG_ASC_IR(Nddma)
     .Input("x", "T")
@@ -99,7 +181,8 @@ REG_ASC_IR(Broadcast)
 REG_ASC_IR(RemovePad)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::RemovePadAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT}}}});
+                            {{"T", TensorType{DT_INT16, DT_UINT16, DT_INT32, DT_UINT32, DT_FLOAT16, DT_FLOAT,
+                                              DT_BF16}}}});
 
 REG_ASC_IR(Pad)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::PadAscIrAttImplV2>(),
@@ -181,7 +264,7 @@ REG_ASC_IR(Fma)
     .ComputeType(ge::ComputeType::kComputeElewise)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::FmaAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::FmaAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_UINT8}}}});
 
 REG_ASC_IR(Ln)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LnAscIrAttImplV2>(),
@@ -212,8 +295,8 @@ REG_ASC_IR(LShift)
     .ComputeType(ge::ComputeType::kComputeElewise)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LShiftAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LShiftAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_INT8, DT_INT16, DT_INT32, DT_INT64}}, 
-                             {"T2", TensorType{DT_INT8, DT_INT16, DT_INT32, DT_INT64}}}});
+                            {{"T1", TensorType{DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}}, 
+                             {"T2", TensorType{DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}}}});
 
 REG_ASC_IR(Mod)
     .Input("x1", "T")
@@ -257,12 +340,12 @@ REG_ASC_IR(Tanh)
 REG_ASC_IR(Isnan)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::IsnanAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::IsnanAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}, {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(IsFinite)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::IsFiniteAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::IsFiniteAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}, {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Relu)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ReluAscIrAttImplV2>(),
@@ -278,8 +361,10 @@ REG_ASC_IR(Neg)
 REG_ASC_IR(LogicalNot)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LogicalNotAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LogicalNotAscIrCodegenImplV2>(),
-                            {{"T1", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT16, DT_INT32, DT_INT8, DT_INT64}},
-                             {"T2", OrderedTensorTypeList{DT_UINT8,   DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8}}}});
+                            {{"T1", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT16, DT_INT32, DT_INT8, DT_INT64,
+                                                          DT_BF16, DT_UINT16, DT_UINT32, DT_UINT64}},
+                             {"T2", OrderedTensorTypeList{DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8,
+                                                          DT_UINT8, DT_UINT8, DT_UINT8, DT_UINT8}}}});
 
 REG_ASC_IR(Max)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::MaxAscIrAttImplV2>(),
@@ -340,28 +425,33 @@ REG_ASC_IR(Div)
 REG_ASC_IR(Mul)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::MulAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::MulAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_INT8, DT_UINT8, DT_BF16, DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_INT64}}}});
+                            {{"T", TensorType{DT_INT8, DT_UINT8, DT_BF16, DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_INT64,
+                                              DT_UINT32, DT_UINT64}}}});
 
 REG_ASC_IR(Minimum)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::MinimumAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::MinimumAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_BF16, DT_INT8, DT_INT16, DT_INT64, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8}}}});
+                            {{"T", TensorType{DT_BF16, DT_INT8, DT_INT16, DT_INT64, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8,
+                                              DT_UINT16, DT_UINT32, DT_UINT64}}}});
 
 REG_ASC_IR(Maximum)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::MaximumAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::MaximumAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_BF16, DT_INT8, DT_INT16, DT_INT64, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8}}}});
+                            {{"T", TensorType{DT_BF16, DT_INT8, DT_INT16, DT_INT64, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8,
+                                              DT_UINT16, DT_UINT32, DT_UINT64}}}});
 
 REG_ASC_IR(TrueDiv)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::TrueDivAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::TrueDivAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
+                            {{"T1", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_BF16}},
+                             {"T2", OrderedTensorTypeList{DT_FLOAT16, DT_FLOAT, DT_BF16}}}});
 
 // todo:LogicalOr DT_INT64 后面根据需要放开
 REG_ASC_IR(LogicalOr)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LogicalOrAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LogicalOrAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_BF16, DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT8, DT_UINT32, DT_INT64}},
+                            {{"T1", TensorType{DT_BF16, DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT8, DT_UINT32, DT_INT64,
+                                               DT_UINT16, DT_UINT64}},
                              {"T2", TensorType{DT_UINT8}}}});
 
 // todo:LogicalAnd DT_INT64 后面根据需要放开
@@ -369,7 +459,7 @@ REG_ASC_IR(LogicalAnd)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LogicalAndAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LogicalAndAscIrCodegenImplV2>(),
                             {{"T1", TensorType{DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT8, DT_INT64,
-                                               DT_UINT32, DT_BF16}},
+                                               DT_UINT32, DT_BF16, DT_UINT16, DT_UINT64}},
                              {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Pow)
@@ -380,13 +470,16 @@ REG_ASC_IR(Pow)
 REG_ASC_IR(ClipByValue)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ClipByValueAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::ClipByValueAscIrCodegenImplV2>(),
-                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_INT32}}}});
+                            {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_INT32, DT_BF16, DT_INT8, DT_INT16, DT_INT64,
+                                              DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}}}});
 
 // todo:Ge Eq Ne Gt Le  DT_INT64 后面根据需要放开
 REG_ASC_IR(Ge)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::GeAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::GeAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64,
+                                               DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}},
+                             {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Eq)
     .Impl(v2_soc_versions,
@@ -399,24 +492,28 @@ REG_ASC_IR(Eq)
 REG_ASC_IR(Ne)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::NeAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::NeAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_INT8, DT_UINT8, DT_INT16, DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_INT8, DT_UINT8, DT_INT16, DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64,
+                                               DT_UINT16, DT_UINT32, DT_UINT64}},
+                             {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Gt)
-    .Impl(v2_soc_versions,
-          {ge::ascir::AscIrImplCreator<ge::ascir::GtAscIrAttImplV2>(),
-           ge::ascir::AscIrImplCreator<ge::ascir::GtAscIrCodegenImplV2>(),
-           {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8}}, {"T2", TensorType{DT_UINT8}}}});
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::GtAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::GtAscIrCodegenImplV2>(),
+                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64,
+                                               DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}},
+                             {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Le)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LeAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LeAscIrCodegenImplV2>(),
-                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8}}, {"T2", TensorType{DT_UINT8}}}});
+                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}},
+                             {"T2", TensorType{DT_UINT8}}}});
 
 REG_ASC_IR(Lt)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LtAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::LtAscIrCodegenImplV2>(),
                             {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32,
-                                               DT_INT64, DT_UINT8}},
+                                               DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}},
                             {"T2", TensorType{DT_UINT8}}}});
 
 // todo:Concat DT_INT64 后面根据需要放开
@@ -604,6 +701,71 @@ REG_ASC_IR(FloorDiv)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::FloorDivAscIrAttImplV2>(),
                             ge::ascir::AscIrImplCreator<ge::ascir::FloorDivAscIrCodegenImplV2>(),
                             {{"T", TensorType{DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT16, DT_UINT8}}}});
+
+REG_ASC_IR(FloorToInt)
+    .Input("x", "T1")
+    .Output("y", "T2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::FloorToIntAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::FloorToIntAscIrCodegenImplV2>(),
+                            {{"T1", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}},
+                             {"T2", TensorType{DT_INT32}}}});
+
+REG_ASC_IR(Fmod)
+    .Input("x1", "T")
+    .Input("x2", "T")
+    .Output("y", "T")
+    .CalcTmpBufSize("CalcVoidTmpSizeV2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::FmodAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::FmodAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+
+REG_ASC_IR(Hypot)
+    .Input("x1", "T")
+    .Input("x2", "T")
+    .Output("y", "T")
+    .CalcTmpBufSize("CalcVoidTmpSizeV2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::HypotAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::HypotAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+
+REG_ASC_IR(Lgamma)
+    .Input("x", "T")
+    .Output("y", "T")
+    .CalcTmpBufSize("CalcLgammaTmpSizeV2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LgammaAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::LgammaAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+
+REG_ASC_IR(Log10)
+    .Input("x", "T")
+    .Output("y", "T")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::Log10AscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::Log10AscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
+
+REG_ASC_IR(LogicalXor)
+    .Input("x1", "T1")
+    .Input("x2", "T1")
+    .Output("y", "T2")
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::LogicalXorAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::LogicalXorAscIrCodegenImplV2>(),
+                            {{"T1", TensorType{DT_BF16, DT_INT16, DT_INT32, DT_FLOAT16, DT_FLOAT, DT_UINT8, DT_INT8, DT_UINT32, DT_INT64, DT_UINT16, DT_UINT64}},
+                             {"T2", TensorType{DT_UINT8}}}});
+
+REG_ASC_IR(Log1p)
+    .Input("x", "T")
+    .Output("y", "T")
+    .DataType("T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT})
+    .ComputeType(ge::ComputeType::kComputeElewise)
+    .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::Log1pAscIrAttImplV2>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::Log1pAscIrCodegenImplV2>(),
+                            {{"T", TensorType{DT_BF16, DT_FLOAT16, DT_FLOAT}}}});
 
 REG_ASC_IR(Gelu)
     .Impl(v2_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::GeluAscIrAttImplV2>(),

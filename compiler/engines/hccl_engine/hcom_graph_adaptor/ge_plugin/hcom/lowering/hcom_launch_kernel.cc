@@ -473,7 +473,7 @@ HcclResult HcomBroadcastKernelV2(HcomOpLaunchArgs &launchArgs, HcomOpInputStruct
 
 #ifndef OPEN_BUILD_PROJECT
 HcclResult HcomLaunchBroadcastKernelV2(const HcomOpInputStruct *inputStruct, std::vector<void *> &inputAddrs,
-                                       std::vector<void *> &outputAddrs) {
+                                       [[maybe_unused]] std::vector<void *> &outputAddrs) {
   HcomOpLaunchArgs launchArgs = inputStruct->launchArgs;
   void *hcclCommPtr = inputStruct->hcclCommPtr;
   uint64_t count = inputStruct->count;
@@ -872,7 +872,7 @@ HcclResult HcomSendKernel(HcomOpLaunchArgs &launchArgs, HcomOpInputStruct *input
 
 #ifndef OPEN_BUILD_PROJECT
 HcclResult HcomLaunchSendKernelV2(const HcomOpInputStruct *inputStruct, std::vector<void *> &inputAddrs,
-                                  std::vector<void *> &outputAddrs) {
+                                  [[maybe_unused]] std::vector<void *> &outputAddrs) {
   HcomOpLaunchArgs launchArgs = inputStruct->launchArgs;
   void *hcclCommPtr = inputStruct->hcclCommPtr;
 
@@ -1133,7 +1133,7 @@ REGISTER_KERNEL(PrepareHcomKernel)
     .OutputsCreator(BuildPrepareHcomKernelOutput);
 REGISTER_KERNEL(LaunchHcomKernel).RunFunc(LaunchHcomKernel);
 
-ge::graphStatus LaunchHcomKernelInitComm(gert::KernelContext *context) {
+ge::graphStatus LaunchHcomKernelInitComm([[maybe_unused]] gert::KernelContext *context) {
   // 获取ge option 初始化hccl world group和group list
   CHK_RET(HcomInitialize());
   CHK_RET(InitGroup());

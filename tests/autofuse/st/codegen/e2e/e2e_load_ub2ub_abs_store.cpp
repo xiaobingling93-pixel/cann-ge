@@ -57,6 +57,7 @@ void LoadUb2ubAbsStore_BeforeAutofuse(ge::AscGraph &graph) {
   abs.attr.sched.axis = {z0.id, z1.id, z2.id};
   *abs.y.repeats = {s0, s1, s2};
   *abs.y.strides = {s1*s2, s2, One};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
 
   Store store("store");
   graph.AddNode(store);

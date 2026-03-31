@@ -33,6 +33,7 @@ namespace {
 static const size_t PAIR_ELEMENT_SIZE = 2UL;
 static const size_t PAIR_ELEMENT_KEY = 0UL;
 static const size_t PAIR_ELEMENT_VALUE = 1UL;
+static const size_t MEMORY_SIZE_CALC_TYPE__ALWAYS_EMPTY = 1UL;
 const char_t *const kKeyDataTypeSelfDefined = "__tensor_desc_data_type__";
 const std::map<DataType, ::ge::proto::DataType> kDataTypeMap = {
     {DT_UNDEFINED, proto::DT_UNDEFINED},
@@ -1895,5 +1896,20 @@ bool TensorUtils::IsShapeEqual(const GeShape &src, const GeShape &dst) {
     }
   }
   return true;
+}
+
+bool TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(const GeTensorDesc &tensor_desc) {
+  int32_t calc_type = 0;
+  (void)ge::AttrUtils::GetInt(tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
+
+  bool is_null_output = false;
+  (void)ge::AttrUtils::GetBool(tensor_desc, ATTR_NAME_IS_NULL_OUTPUT, is_null_output);
+
+  if ((calc_type == MEMORY_SIZE_CALC_TYPE__ALWAYS_EMPTY) || is_null_output) {
+    GELOGI("Calc type: %d, output is null: %d", calc_type, static_cast<int32_t>(is_null_output));
+    return true;
+  }
+
+  return false;
 }
 }  // namespace ge

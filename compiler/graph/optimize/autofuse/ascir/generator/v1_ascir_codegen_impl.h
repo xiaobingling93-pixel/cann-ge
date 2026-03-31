@@ -185,19 +185,27 @@ class CastAscIrCodegenImpl : public AscIrCodegen {
 
 class AbsAscIrCodegenImpl : public AscIrCodegen {
  public:
+  std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcAbsTmpSize(node);
+  }
   std::string GetApiCallName() const override {
-    return "UnaryApiCall";
+    return "UnaryTmpApiCall";
   }
   std::string GetApiName() const override {
-    return "Abs";
-  }
+    return "AbsExtend";
+  } 
   bool IsInplaceSupported(const ge::AscNode &abs_node) const override {
     (void) abs_node;
     return true;
   }
+  std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"abs.h"};
+  }
   std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
       "basic_api/kernel_operator_vec_unary_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_binary_intf.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
@@ -1257,35 +1265,56 @@ class TrueDivAscIrCodegenImpl : public AscIrCodegen {
     return CalcTrueDivTmpSize(node);
   }
   std::string GetApiCallName() const override {
-    return "BinaryApiCall";
+    return "TrueDivApiCall";
   }
   std::string GetApiName() const override {
-    return "Div";
+    return "TrueDivExtend";
   }
   std::vector<std::string> LoadApiHeaderFiles() const override {
-    return {"scalar_div.h"};
-  }
-
-  bool IsBrcInlineSupported(const ge::AscNode &node) const override {
-    (void)node;
-    return true;
-  }
-  bool IsScalarInputSupported(const std::vector<bool> &is_scalar_list) const override {
-    (void)is_scalar_list; // 支持任意输入是scalar
-    return true;
-  }
-  bool IsInplaceSupported(const ge::AscNode &true_div_node) const override {
-    (void) true_div_node;
-    return true;
+    return {"true_div.h"};
   }
   std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
       "basic_api/kernel_operator_vec_binary_intf.h",
       "basic_api/kernel_operator_vec_binary_scalar_intf.h",
       "basic_api/kernel_operator_vec_duplicate_intf.h",
+      "basic_api/kernel_operator_vec_vconv_intf.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node, {true, {0, 1}}), "Node %s[%s] check shape consistency failed",
+                      node.GetTypePtr(), node.GetNamePtr());
+    return true;
+  }
+};
+
+class RemainderAscIrCodegenImpl : public AscIrCodegen {
+ public:
+  std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcRemainderTmpSize(node);
+  }
+  std::string GetApiCallName() const override {
+    return "BinaryTmpApiCallV2";
+  }
+  std::string GetApiName() const override {
+    return "RemainderExtend";
+  }
+  std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"remainder.h"};
+  }
+  std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/kernel_operator_vec_binary_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_duplicate_intf.h",
+      "basic_api/kernel_operator_vec_vconv_intf.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
     GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node, {true, {0, 1}}), "Node %s[%s] check shape consistency failed",
                       node.GetTypePtr(), node.GetNamePtr());
     return true;

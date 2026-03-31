@@ -8642,6 +8642,7 @@ ComputeGraphPtr ShareGraph::BuildDynamicAndStaticGraph() {
   vector<char> buffer(kernel_bin, kernel_bin + strlen(kernel_bin));
   ge::OpKernelBinPtr kernel_bin_ptr = std::make_shared<ge::OpKernelBin>(op_desc->GetName(), std::move(buffer));
   op_desc->SetExtAttr(OP_EXTATTR_CUSTAICPU_KERNEL, kernel_bin_ptr);
+  (void)ge::AttrUtils::SetStr(op_desc, "kernelSo", "libtest_cust.so");
   // tbe kernel
   const char dummy_kernel_bin[] = "test";
   vector<char> buffer2(dummy_kernel_bin, dummy_kernel_bin + strlen(dummy_kernel_bin));

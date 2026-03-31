@@ -25,6 +25,13 @@ inline __aicore__ void LogicalAndExtend(const LocalTensor<uint8_t> &dst, const L
 }
 
 template <typename T>
+inline __aicore__ void LogicalXorExtend(const LocalTensor<uint8_t> &dst, const LocalTensor<T> &src1,
+                                        const LocalTensor<T> &src2, const uint32_t size) {
+    auto dst_tmp = dst.template ReinterpretCast<bool>();
+    AscendC::LogicalXor(dst_tmp, src1, src2, size);
+}
+
+template <typename T>
 inline __aicore__ void LogicalOrExtends(const LocalTensor<uint8_t> &dst, const LocalTensor<T> &src1,
                                         const T src2, const uint32_t size) {
     auto dst_tmp = dst.template ReinterpretCast<bool>();

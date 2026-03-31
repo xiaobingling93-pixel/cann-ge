@@ -1052,6 +1052,7 @@ target_include_directories(ut_libge_distinct_load_utest PRIVATE
     ${AIR_CODE_DIR}/runtime/communication
     ${AIR_CODE_DIR}/tests/ge/ut/ge/runtime/fast_v2
     ${AIR_CODE_DIR}/tests/depends/op_stub
+    ${AIR_CODE_DIR}/tests/framework/ge_runtime_stub/include
     ${ASCEND_INSTALL_PATH}/include)
 
 target_link_options(ut_libge_distinct_load_utest PRIVATE

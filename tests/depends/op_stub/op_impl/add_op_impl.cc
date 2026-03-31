@@ -250,7 +250,9 @@ IMPL_OP(Transpose).InputsDataDependency({1});
 IMPL_OP(TransposeD).InputsDataDependency({1});
 IMPL_OP(Reshape).InputsDataDependency({1});
 IMPL_OP(Squeeze).InputsDataDependency({});
+IMPL_OP(SqueezeV3).InputsDataDependency({1});
 IMPL_OP(Unsqueeze).InputsDataDependency({});
+IMPL_OP(UnsqueezeV3).InputsDataDependency({1});
 IMPL_OP(GatherV2).InputsDataDependency({2});
 IMPL_OP(Pack).InputsDataDependency({});
 IMPL_OP(Unpack).InputsDataDependency({}).PrivateAttr("axis", static_cast<int64_t>(0));
@@ -266,4 +268,5 @@ IMPL_OP(Repeat).InputsDataDependency({1});
 IMPL_OP(PadV3).InputsDataDependency({1});
 IMPL_OP(UnsortedSegmentMin).InputsDataDependency({2});
 IMPL_OP(UnsortedSegmentMax).InputsDataDependency({2});
+IMPL_OP(FlattenV2).InputsDataDependency({});
 }  // namespace ops

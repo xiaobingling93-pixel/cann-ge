@@ -3,7 +3,11 @@ Python3_add_library(pyautofuse MODULE
         pyautofuse.cpp
 )
 
-target_compile_options(pyautofuse PRIVATE -Wno-error=variadic-macros -Wall)
+target_compile_options(pyautofuse PRIVATE
+        -Wno-error=variadic-macros -Wall
+        -Wno-missing-field-initializers # TODO(For autofuse): Remove this option and fix the related compilation errors.
+        -Wno-cast-function-type # TODO(For autofuse): Remove this option and fix the related compilation errors.
+)
 
 target_include_directories(pyautofuse PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../
@@ -19,6 +23,8 @@ target_compile_definitions(pyautofuse PRIVATE
 target_link_options(pyautofuse PRIVATE
         $<$<CONFIG:Release>:-s>
 )
+
+target_link_libraries(pyautofuse PRIVATE $<BUILD_INTERFACE:intf_pub>)
 
 if (ENABLE_OPEN_SRC)
     target_link_libraries(pyautofuse PUBLIC

@@ -97,9 +97,10 @@ NodePtr UselessBinaryOpRemovePass::AddBroadcastNode(const ComputeGraphPtr &graph
   GE_ASSERT_NOTNULL(src_node);
   const auto &src_op_desc = src_node->GetOpDesc();
   GE_ASSERT_NOTNULL(src_op_desc);
-  GE_ASSERT_GRAPH_SUCCESS(op_desc->UpdateInputDesc(data_index, src_op_desc->GetOutputDesc(out_anchor->GetIdx())));
-  const auto const_index = 1 - data_index;
-  GE_ASSERT_GRAPH_SUCCESS(op_desc->UpdateInputDesc(const_index, tensor_desc));
+  constexpr uint32_t kIndexData = 0U;
+  constexpr uint32_t kIndexShape = 1U;
+  GE_ASSERT_GRAPH_SUCCESS(op_desc->UpdateInputDesc(kIndexData, src_op_desc->GetOutputDesc(out_anchor->GetIdx())));
+  GE_ASSERT_GRAPH_SUCCESS(op_desc->UpdateInputDesc(kIndexShape, tensor_desc));
   GE_ASSERT_GRAPH_SUCCESS(op_desc->UpdateOutputDesc(0, node->GetOpDesc()->GetOutputDesc(0)));
   auto broadcast_to_node = graph->AddNode(op_desc);
   GE_ASSERT_NOTNULL(broadcast_to_node);

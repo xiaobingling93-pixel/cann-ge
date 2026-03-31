@@ -68,6 +68,7 @@ target_include_directories(st_flow_func_executor PRIVATE
 target_link_libraries(st_flow_func_executor PRIVATE
         c_sec
         ascend_protobuf
+        ascendalog
         flow_func
         udf_static
         udf_dump

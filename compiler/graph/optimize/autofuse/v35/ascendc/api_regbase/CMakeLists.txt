@@ -17,6 +17,7 @@ set(ascendc_api_regbase_extend_src
         where_v2.h
         erf.h
         exp2.h
+        log1p.h
         tanh.h
         sub.h
         div.h
@@ -26,6 +27,8 @@ set(ascendc_api_regbase_extend_src
         copy_sign.h
         erfcx.h
         expm.h
+        trunc_div.h
+        remainder.h
 )
 
 set(generated_regbase_files)

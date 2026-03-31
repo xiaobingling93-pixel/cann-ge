@@ -19,6 +19,14 @@ add_library(test_regbase_ascendc OBJECT
     ./test_reciprocal.cpp
     ./test_relu.cpp
     ./test_round.cpp
+    ./test_sinh.cpp
+    ./test_tan.cpp
+    ./test_square.cpp
+    ./test_round_to_int.cpp
+    ./test_trunc_div.cpp
+    ./test_trunc_to_int.cpp
+    ./test_xor.cpp
+    ./test_remainder.cpp
     )
 target_link_libraries(test_regbase_ascendc
     ascendc_api_regbase_extend

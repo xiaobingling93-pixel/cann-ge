@@ -361,6 +361,7 @@ class STestGenConcat : public ::testing::Test {
   void SetUp() override {
     // Code here will be called immediately after the constructor (right
     // before each test).
+    setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
     AutoFuseConfig::MutableAttStrategyConfig().Reset();
     setenv("ASCEND_GLOBAL_LOG_LEVEL", "4", 1);
     AutoFuseConfig::MutableAttStrategyConfig().force_template_op_name = "";
@@ -2706,6 +2707,12 @@ TEST_F(STestGenConcat, reuse_schedule_group_with_same_input_axis_name)
 
   // 准备测试环境和编译
   PrepareTestEnvironmentFiles(kConcatTilingTestHead);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "namespace AscGraph0ScheduleResult0G0"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "using GroupLevelCache = FixedSizeHashMap<kInputShapeSize, 4, TilingDataCopy>"), true);
+  EXPECT_EQ(ResultCheckerUtils::IsFileContainsString("Concat_tiling_func.cpp",
+              "bool GetTiling(AscGraph0ScheduleResult0G0TilingData &tiling_data, std::unordered_map<int64_t, uint64_t> &workspace_map, int32_t tiling_case_id, GroupLevelCache *cache"), true);
 
   std::ofstream oss;
   oss.open("tiling_func_main_concat.cpp", std::ios::out);

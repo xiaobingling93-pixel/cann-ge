@@ -139,5 +139,23 @@ GeFakeLaunchArgs::GeFakeLaunchArgs(const rtFuncHandle funcHandle, const uint32_t
   args_addr_ = const_cast<void*>(devArgs);
   (void)reserve;
 }
+GeFakeLaunchArgs::GeFakeLaunchArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+    aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum, std::unique_ptr<std::string> tag)
+    : blockDim_(numBlocks), stream_(stream), arg_size_(argsSize), tag_name_(std::move(tag)) {
+  (void)cfg;
+  (void)funcHandle;
+  args_addr_ = hostArgs;
+  (void)placeHolderArray;
+  (void)placeHolderNum;
+}
 
+GeFakeLaunchArgs::GeFakeLaunchArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+    const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg,
+    aclrtStream stream, std::unique_ptr<std::string> tag)
+    : blockDim_(numBlocks), stream_(stream), arg_size_(argsSize), tag_name_(std::move(tag)) {
+  (void)cfg;
+  (void)funcHandle;
+  args_addr_ = const_cast<void*>(argsData);
+}
 }  // namespace ge

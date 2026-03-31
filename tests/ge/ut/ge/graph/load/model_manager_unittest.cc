@@ -39,6 +39,7 @@
 #include "runtime/v1/graph/manager/mem_manager.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "common/env_path.h"
+#include "stub/gert_runtime_stub.h"
 
 using namespace std;
 using namespace testing;
@@ -69,6 +70,20 @@ class MockRuntime : public RuntimeStub {
   }
 
   MOCK_METHOD3(rtStreamCreateWithFlags, rtError_t(rtStream_t *, int32_t, uint32_t));
+};
+
+class MockAclRuntime : public AclRuntimeStub {
+public:
+  aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize,
+      aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum) {
+    return -1;
+  }
+
+  aclError aclrtLaunchKernelV2(aclrtFuncHandle funcHandle, uint32_t numBlocks,
+      const void *argsData, size_t argsSize, aclrtLaunchKernelCfg *cfg, aclrtStream stream) {
+    return -1;
+  }
 };
 
 int32_t g_call_stream_create_times = 0;
@@ -1149,12 +1164,14 @@ TEST_F(UtestModelManagerModelManager, DestroyAicpuSessionMultiDeviceSuccess) {
 }
 
 TEST_F(UtestModelManagerModelManager, DestroyAicpuSessionMultiDeviceFailed) {
+  AclRuntimeStub::SetInstance(std::make_shared<MockAclRuntime>());
   RuntimeStub::SetInstance(std::make_shared<MockRuntime>());
   ModelManager mm;
   GetContext().SetCtxDeviceId(0);
   mm.sess_id_to_device_ids_[0] = {0};
   mm.DestroyAicpuSession(0, false);
   EXPECT_EQ(mm.sess_id_to_device_ids_.size(), 1);
+  AclRuntimeStub::Reset();
   RuntimeStub::Reset();
 }
 

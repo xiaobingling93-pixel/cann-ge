@@ -33,50 +33,51 @@ bool IsCtrlSrcDataInputTo(const NodePtr &ctrl_src, const NodePtr &output_node) {
   return std::find(input_nodes.begin(), input_nodes.end(), ctrl_src) != input_nodes.end();
 }
 
-// 条件：const_node 的所有数据输出节点都必须以 ctrl_src 为数据输入
-// 这样可以确保删除 ctrl_src -ctrl-> const_node 后，执行顺序仍然被保持
-bool CanRemoveControlEdge(const NodePtr &ctrl_src, const NodePtr &const_node) {
-  const auto &out_nodes = const_node->GetOutAllNodes();
-  if (out_nodes.empty()) {
+// 条件：const_node 的所有数据输出节点的数据输入都全部包含 const_node 的控制边输入
+// 只有满足这个条件，才能删除 const_node 的所有控制边
+bool CanRemoveAllControlEdges(const NodePtr &const_node) {
+  const auto &ctrl_srcs = const_node->GetInControlNodes();
+  if (ctrl_srcs.empty()) {
     return false;
   }
-
-  // 检查所有输出节点是否都以 ctrl_src 为数据输入
-  for (const auto &output_node: out_nodes) {
-    if (!IsCtrlSrcDataInputTo(ctrl_src, output_node)) {
-      GELOGD("Cannot remove control edge: output node %s is not a data input of ctrl_src %s",
-             output_node->GetNamePtr(), ctrl_src->GetNamePtr());
-      return false;
+  // 检查每个数据输出节点是否都以所有控制边输入源为数据输入
+  for (const auto &data_out_node: const_node->GetOutDataNodes()) {
+    for (const auto &ctrl_src: ctrl_srcs) {
+      if (!IsCtrlSrcDataInputTo(ctrl_src, data_out_node)) {
+        GELOGD("Cannot remove control edges: data output node %s does not have ctrl_src %s as data input",
+               data_out_node->GetNamePtr(), ctrl_src->GetNamePtr());
+        return false;
+      }
     }
   }
 
   return true;
 }
 
-// 移除单个 Const 节点的冗余控制边
-graphStatus RemoveRedundantControlEdges(const NodePtr &const_node) {
-  const auto &out_nodes = const_node->GetOutDataNodes();
-  // 收集需要删除的控制边
-  std::vector<NodePtr> ctrl_srcs_to_remove;
-  for (const auto &ctrl_src_node: const_node->GetInControlNodes()) {
-    if (CanRemoveControlEdge(ctrl_src_node, const_node)) {
-      ctrl_srcs_to_remove.push_back(ctrl_src_node);
-    }
+// 移除单个 Const 节点的所有冗余控制边
+graphStatus RemoveRedundantControlEdges(const NodePtr &const_node, bool &changed) {
+  if (!CanRemoveAllControlEdges(const_node)) {
+    return GRAPH_SUCCESS; // 不满足条件不算错误
   }
 
-  // 执行删除
+  const auto &out_nodes = const_node->GetOutDataNodes();
+  std::vector<NodePtr> ctrl_srcs_to_remove;
+  for (const auto &ctrl_src_node: const_node->GetInControlNodes()) {
+    ctrl_srcs_to_remove.push_back(ctrl_src_node);
+  }
+  // 删除所有控制边
   for (const auto &ctrl_src_node: ctrl_srcs_to_remove) {
     auto ret = GraphUtils::RemoveEdge(ctrl_src_node->GetOutControlAnchor(),
                                       const_node->GetInControlAnchor());
     if (ret != GRAPH_SUCCESS) {
-      GELOGW("Failed to remove control edge from %s to %s",
+      GELOGE(GRAPH_FAILED, "Failed to remove control edge from %s to %s",
              ctrl_src_node->GetNamePtr(), const_node->GetNamePtr());
       return ret;
     }
-    GELOGI("Removed redundant control edge: %s -ctrl-> %s (controls all %zu outputs)",
+    GELOGI("Removed redundant control edge: %s -ctrl-> %s (all %zu outputs contain all ctrl inputs)",
            ctrl_src_node->GetNamePtr(), const_node->GetNamePtr(), out_nodes.size());
   }
-
+  changed = true;
   return GRAPH_SUCCESS;
 }
 } // namespace
@@ -84,25 +85,14 @@ graphStatus RemoveRedundantControlEdges(const NodePtr &const_node) {
 graphStatus RedundantControlEdgeRemovePass::Run(const ComputeGraphPtr &graph, bool &changed) const {
   GE_ASSERT_NOTNULL(graph);
 
-  uint32_t processed_count = 0U;
   for (const auto &node: graph->GetDirectNode()) {
     GE_ASSERT_NOTNULL(node);
     if (!IsConstNode(node) || !HasIncomingControlEdges(node) ||
         node->GetOutDataNodesSize() == 0UL) {
       continue;
     }
-
-    auto ret = RemoveRedundantControlEdges(node);
-    if (ret != GRAPH_SUCCESS) {
-      GELOGD("Failed to remove control edges for node: %s", node->GetNamePtr());
-      continue;
-    }
-    processed_count++;
-  }
-
-  if (processed_count > 0U) {
-    GELOGI("Removed redundant control edges for %u const nodes", processed_count);
-    changed = true;
+    GE_ASSERT_SUCCESS(RemoveRedundantControlEdges(node, changed), "Failed to remove control edges for node: %s",
+                      node->GetNamePtr());
   }
 
   return GRAPH_SUCCESS;

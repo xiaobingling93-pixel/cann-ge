@@ -1792,6 +1792,10 @@ void TilingLib::TilingSetShapeDim(std::stringstream &tiling_set_shape_dim, const
     auto scheduled_results = fused_schedule_result.node_idx_to_scheduled_results[i];
     if ((scheduled_results.empty()) ||
         ((scheduled_results.size() == 1) && (scheduled_results[0].schedule_groups.size() == 1))) {
+      // 检查变量是否被此 schedule_group 使用
+      if (!IsVarUsedInScheduleGroup(var_define, scheduled_results[0].schedule_groups[0])) {
+        continue;
+      }
       // 简单情况：直接设置（保持原逻辑）
       tiling_set_shape_dim << "  tiling->set_" << var_define << "(" << var_define << ");" << std::endl;
     } else {

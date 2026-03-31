@@ -26,7 +26,7 @@ bool mmCompareAndSwap(mmAtomicType *ptr, uint32_t oldval, uint32_t newval) {
   return __sync_bool_compare_and_swap(ptr, oldval, newval);
 }
 
-bool mmCompareAndSwap64(mmAtomicType *ptr, uint32_t oldval, uint32_t newval) {
+bool mmCompareAndSwap64(mmAtomicType64 *ptr, uint32_t oldval, uint32_t newval) {
   return __sync_bool_compare_and_swap(ptr, oldval, newval);
 }
 

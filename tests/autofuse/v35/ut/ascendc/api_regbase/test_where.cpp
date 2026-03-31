@@ -207,7 +207,7 @@ class TestRegbaseApiWhereUT : public testing::Test {
     GmToUb(l_y, param.y, param.y_stride * param.m);
 
     if constexpr (dim == 1) {
-        const uint16_t output_dims[dim] = {param.size};
+        const uint16_t output_dims[dim] = {(uint16_t)param.size};
         const uint16_t output_stride[dim] = {1};
         const uint16_t mask_stride[dim] = {1};
         const uint16_t input_stride[dim] = {1};
@@ -222,10 +222,10 @@ class TestRegbaseApiWhereUT : public testing::Test {
           WhereExtend<false, false, 1, T, T, T>(l_y, l_x1, l_x2, l_x3, output_dims, output_stride, mask_stride, input_stride);
         }
     } else if constexpr (dim == 2) {
-        const uint16_t output_dims[dim] = {param.m, param.size};
-        const uint16_t output_stride[dim] = {param.y_stride, 1};
-        const uint16_t mask_stride[dim] = {param.x1_stride, 1};
-        const uint16_t input_stride[dim] = {param.x2_stride, 1};
+        const uint16_t output_dims[dim] = {(uint16_t)param.m, (uint16_t)param.size};
+        const uint16_t output_stride[dim] = {(uint16_t)param.y_stride, 1};
+        const uint16_t mask_stride[dim] = {(uint16_t)param.x1_stride, 1};
+        const uint16_t input_stride[dim] = {(uint16_t)param.x2_stride, 1};
         
         if (param.x2_bcast && param.x3_bcast) {
           WhereExtend<true, true, 2, T, T, T>(l_y, l_x1, l_x2_, l_x3_, output_dims, output_stride, mask_stride, input_stride);

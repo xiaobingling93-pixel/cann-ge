@@ -24,6 +24,7 @@
 #include "graph/utils/node_utils_ex.h"
 #include "common/util/mem_utils.h"
 #include "graph/utils/op_type_utils.h"
+#include "graph/operator_factory.h"
 
 namespace ge {
 graphStatus GraphUtilsEx::InferOriginFormat(const ComputeGraphPtr &graph) {
@@ -125,7 +126,15 @@ graphStatus GraphUtilsEx::CopyGraph(const Graph &src_graph, Graph &dst_graph) {
   std::swap(dst_graph, tmp_graph);
   return GRAPH_SUCCESS;
 }
-} // namespace ge
+
+Graph GraphUtilsEx::CreateGraph() {
+  return Graph("");
+}
+
+Operator GraphUtilsEx::CreateOperator(const char_t *const operator_name, const char_t *const operator_type) {
+  return ge::OperatorFactory::CreateOperator(operator_name, operator_type);
+}
+}// namespace ge
 
 ge::Graph GeApiWrapper_CreateGraphFromComputeGraph(const ge::ComputeGraphPtr &compute_graph) {
   return ge::GraphUtilsEx::CreateGraphFromComputeGraph(compute_graph);

@@ -17,13 +17,14 @@
 #include "graph/def_types.h"
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/load/model_manager/task_info/args_format/args_format_utils.h"
-#include "hybrid/node_executor/aicpu/aicpu_ext_info_handler.h"
 #include "graph/ge_context.h"
+#include "hybrid/node_executor/aicpu/aicpu_ext_info_handler.h"
 #include "graph/utils/attr_utils.h"
-#include "framework/omg/parser/parser_types.h"
 #include "framework/common/types.h"
+#include "framework/omg/parser/parser_types.h"
 #include "register/op_tiling_registry.h"
 #include "common/dump/kernel_tracing_utils.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class SuperKernelV2TaskInfo : public TaskInfo {
@@ -32,8 +33,6 @@ class SuperKernelV2TaskInfo : public TaskInfo {
 
   ~SuperKernelV2TaskInfo() override {
     davinci_model_ = nullptr;
-    stub_func_ = nullptr;
-    sm_desc_ = nullptr;
     args_ = nullptr;
   }
 
@@ -64,9 +63,6 @@ class SuperKernelV2TaskInfo : public TaskInfo {
 
   Status GetTaskArgsRefreshInfos(std::vector<TaskArgsRefreshInfo> &infos) override;
 
-  void ResetArgsEx() {
-    args_ex_ = rtArgsEx_t{};
-  }
   void PostProcess(const domi::TaskDef &task_def) override;
   bool CallSaveDumpInfo() const override  { return call_save_dump_; }
  private:
@@ -123,11 +119,8 @@ class SuperKernelV2TaskInfo : public TaskInfo {
   Status AppendInputOutputAddr(size_t node_idx, size_t ir_idx, bool is_input);
   void InsertL0DumpList(size_t node_idx, size_t io_idx, bool is_input);
   void InsertCustToRelevantOffset(size_t node_idx, size_t io_idx, bool is_input);
-  rtFuncHandle GetFuncHandle();
-  rtArgsEx_t args_ex_{};
-  const void *stub_func_{nullptr};
+  aclrtFuncHandle GetFuncHandle();
   void *args_{nullptr};
-  void *sm_desc_{nullptr};
   uint32_t block_dim_{0U};
   uint32_t args_size_{0U};
   uint32_t task_id_{0U};
@@ -137,7 +130,6 @@ class SuperKernelV2TaskInfo : public TaskInfo {
   std::vector<uint64_t> io_addr_mem_types_;
   DavinciModel *davinci_model_{nullptr};
   size_t io_addr_offset_{0U};
-  rtTaskCfgInfo_t cfg_ = {};
   ModelTaskType task_type_ = ModelTaskType::MODEL_TASK_KERNEL;
   std::shared_ptr<Operator> operator_;
   ArgsIoAddrsUpdater args_io_addrs_updater_;
@@ -145,6 +137,8 @@ class SuperKernelV2TaskInfo : public TaskInfo {
   ArgsFormatInfo args_format_holder_;
   ccKernelType kernel_type_{ccKernelType::CCE_AI_CORE};
   uint32_t local_memory_size_ = 0U;  // for simt op
+  uint8_t schedule_mode_{0U};
+  uint32_t block_dim_offset_{0UL};
 
   // super kernel 特有的数据结构
   std::vector<int32_t> sub_node_op_index_list_;  // 和args format里subtask的顺序保持一致
@@ -164,7 +158,7 @@ class SuperKernelV2TaskInfo : public TaskInfo {
   std::map<SubNodeIoIndex, size_t> sub_node_io_idx_to_super_kernel_io_idx_;
   std::map<uint64_t, uint64_t> cust_to_relevant_offset_;
   std::vector<uint64_t> l0_dump_list_;
-  rtFuncHandle func_handle_{nullptr};
+  aclrtFuncHandle func_handle_{nullptr};
   bool is_block_task_prefetch_{false};
   bool is_data_dump_{false};
 };

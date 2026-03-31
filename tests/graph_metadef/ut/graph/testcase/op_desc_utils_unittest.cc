@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -163,6 +163,31 @@ ComputeGraphPtr BuildGraph5() {
 
   builder.AddControlEdge(data, noop);
   return builder.GetGraph();
+}
+///        a       b
+///          \   /
+///        DynamicOpUt
+///
+ComputeGraphPtr BuildGraph6(size_t dynamic_output_num) {
+  ut::GraphBuilder builder = ut::GraphBuilder("graph");
+  auto data0 = builder.AddNode("a", "Data", 1, 1);
+  auto data1 = builder.AddNode("b", "Data", 1, 1);
+  auto dynamic_op_ut = builder.AddNode("dynamic_op_ut", "DynamicOpUt",
+                                       2, 1 + dynamic_output_num + 1);
+
+  size_t dst_index = 0;
+  builder.AddDataEdge(data0, 0, dynamic_op_ut, dst_index++);
+  builder.AddDataEdge(data1, 0, dynamic_op_ut, dst_index++);
+
+  auto graph = builder.GetGraph();
+  auto dynamic_op_ut_node = graph->FindNode("dynamic_op_ut");
+  auto op_desc = dynamic_op_ut_node->GetOpDesc();
+  op_desc->AppendIrInput("a", kIrInputRequired);
+  op_desc->AppendIrInput("b", kIrInputRequired);
+  op_desc->AppendIrOutput("x", kIrOutputRequired);
+  op_desc->AppendIrOutput("y", kIrOutputDynamic);
+  op_desc->AppendIrOutput("z", kIrOutputRequired);
+  return graph;
 }
 }
 TEST_F(UtestOpDescUtils, SetWeight) {
@@ -1065,6 +1090,87 @@ TEST_F(UtestOpDescUtils, GetInputIrIndexeByInstanceIndexe_ActualInputsIsMoreThan
   ASSERT_EQ(ret, GRAPH_SUCCESS);
   EXPECT_EQ(ir_index, std::numeric_limits<size_t>::max());
 }
+
+void GetOutputIrIndexCheck(size_t dynamic_output_num) {
+  auto graph = BuildGraph6(dynamic_output_num);
+  auto dynamic_op_ut_node = graph->FindNode("dynamic_op_ut");
+  auto op_desc = dynamic_op_ut_node->GetOpDesc();
+
+  // 只处理output
+  size_t index = 0;
+  auto &name_index = op_desc->MutableAllOutputName();
+  name_index.clear();
+  name_index["x"] = index++;
+  for (size_t i = 0U; i < dynamic_output_num; ++i) {
+    name_index["y" + std::to_string(i)] = index++;
+  }
+  name_index["z"] = index++;
+
+  index = 0U;
+  std::map<size_t, size_t> expect_instance_index_to_ir_index_map;
+  expect_instance_index_to_ir_index_map[index++] = 0; // x
+  for (size_t i = 0U; i < dynamic_output_num; ++i) { // y
+    expect_instance_index_to_ir_index_map[index++] = 1;
+  }
+  expect_instance_index_to_ir_index_map[index++] = 2;
+
+  for (auto &instance_index_to_ir_index : expect_instance_index_to_ir_index_map) {
+    auto input_index = instance_index_to_ir_index.first;
+    size_t ir_index;
+    auto ret = OpDescUtils::GetOutputIrIndexByInstanceIndex(op_desc, input_index, ir_index);
+    ASSERT_EQ(ret, GRAPH_SUCCESS);
+    ASSERT_EQ(ir_index, instance_index_to_ir_index.second);
+  }
+}
+
+TEST_F(UtestOpDescUtils, GetOutputIrIndexByInstanceIndex_Success) {
+  GetOutputIrIndexCheck(0);
+  GetOutputIrIndexCheck(1);
+  GetOutputIrIndexCheck(2);
+  GetOutputIrIndexCheck(3);
+}
+
+TEST_F(UtestOpDescUtils, GetOutputIrIndexByInstanceIndexDynamicNameNotmatch_Failed) {
+  auto graph = BuildGraph6(2);
+  auto dynamic_op_ut_node = graph->FindNode("dynamic_op_ut");
+  auto op_desc = dynamic_op_ut_node->GetOpDesc();
+
+  // 只处理output
+  size_t index = 0;
+  auto &name_index = op_desc->MutableAllOutputName();
+  name_index.clear();
+  name_index["x"] = index++;
+  name_index["y0"] = index++;
+  name_index["y2"] = index++;
+  name_index["z"] = index++;
+
+  size_t ir_index;
+  auto ret = OpDescUtils::GetOutputIrIndexByInstanceIndex(op_desc, 1, ir_index);
+  ASSERT_EQ(ret, GRAPH_SUCCESS);
+  EXPECT_EQ(ir_index, std::numeric_limits<size_t>::max());
+}
+
+TEST_F(UtestOpDescUtils, GetOutputIrIndexByInstanceIndexActualInputsIsMoreThanIrOutputsNum_Success) {
+  auto graph = BuildGraph6(2);
+  auto dynamic_op_ut_node = graph->FindNode("dynamic_op_ut");
+  auto op_desc = dynamic_op_ut_node->GetOpDesc();
+
+  // 只处理output
+  size_t index = 0;
+  auto &name_index = op_desc->MutableAllOutputName();
+  name_index.clear();
+  name_index["x"] = index++;
+  name_index["y0"] = index++;
+  name_index["y1"] = index++;
+  name_index["z"] = index++;
+  name_index["u"] = index++;
+
+  size_t ir_index;
+  auto ret = OpDescUtils::GetOutputIrIndexByInstanceIndex(op_desc, 4, ir_index);
+  ASSERT_EQ(ret, GRAPH_SUCCESS);
+  EXPECT_EQ(ir_index, std::numeric_limits<size_t>::max());
+}
+
 TEST_F(UtestOpDescUtils, GetOutputIrIndexeByInstanceIndexe_NoOutput_Success) {
   auto graph = BuildGraph5();
   auto node_without_outputs = graph->FindNode("noop");

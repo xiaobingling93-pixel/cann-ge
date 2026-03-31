@@ -54,7 +54,7 @@ graphStatus GenerateJsonFile(const KernelRegisterInfo &register_info, std::strin
   return SUCCESS;
 }
 }
-rtBinHandle AicpuKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
+aclrtBinHandle AicpuKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &register_info,
     const std::string &bin_name) {
   GE_ASSERT_TRUE(!bin_name.empty(), "Bin handle name is empty.");
   std::string json_path;
@@ -63,15 +63,15 @@ rtBinHandle AicpuKernelHandlesManager::RegisterKernel(const KernelRegisterInfo &
     (void)std::remove(json_path.c_str());
   });
   GE_ASSERT_TRUE(!json_path.empty());
-  rtLoadBinaryConfig_t load_options;
-  rtLoadBinaryOption_t option;
+  aclrtBinaryLoadOptions load_options;
+  aclrtBinaryLoadOption option;
   load_options.numOpt = 1;
   load_options.options = &option;
-  option.optionId = RT_LOAD_BINARY_OPT_CPU_KERNEL_MODE;
+  option.type = ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE;
   constexpr const int32_t cpu_kernel_mode = 0;
   option.value.cpuKernelMode = cpu_kernel_mode;
-  rtBinHandle bin_handle;
-  GE_ASSERT_RT_OK(rtsBinaryLoadFromFile(json_path.c_str(), &load_options, &bin_handle));
+  aclrtBinHandle bin_handle;
+  GE_ASSERT_RT_OK(aclrtBinaryLoadFromFile(json_path.c_str(), &load_options, &bin_handle));
 
   StoredKernelHandle(bin_handle, bin_name);
   GELOGI("Aicpu kernel register success, kernel bin_name: %s", bin_name.c_str());

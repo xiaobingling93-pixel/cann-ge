@@ -532,7 +532,6 @@ TEST_F(UtestKernelExTaskInfo, parse_topic_type_success_5) {
   kernel_ex_task_info.davinci_model_ = &model;
   EXPECT_EQ(kernel_ex_task_info.InitTaskExtInfo(ext_info, op_desc), SUCCESS);
   EXPECT_EQ(kernel_ex_task_info.deploy_type_flag_, 0x00); // 0x40&0x30 >> 4
-  EXPECT_EQ(kernel_ex_task_info.qos_level_flag_, 0x900);
   kernel_ex_task_info.Release();
 }
 

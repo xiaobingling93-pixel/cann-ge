@@ -142,7 +142,8 @@ HcclResult AutoTuningHcomAllReduceFusion::AddTraceNode(ge::ComputeGraph &graph, 
   return HCCL_SUCCESS;
 }
 
-HcclResult AutoTuningHcomAllReduceFusion::GetGradientDataInfo(ge::ComputeGraph &graph, ge::NodePtr &nodePtr,
+HcclResult AutoTuningHcomAllReduceFusion::GetGradientDataInfo([[maybe_unused]] ge::ComputeGraph &graph,
+                                                              ge::NodePtr &nodePtr,
                                                               GradientDataInfo &gradientNodeInfo) {
   auto inputTensor = nodePtr->GetOpDesc()->GetInputDesc(0);
   auto shape = inputTensor.GetShape();
@@ -262,7 +263,8 @@ HcclResult AutoTuningHcomAllReduceFusion::GetDataTypeName(const ge::DataType dat
   return HCCL_SUCCESS;
 }
 
-HcclResult AutoTuningHcomAllReduceFusion::GetGradSplitStrategy(const std::string &modelName, const std::string &sGroup,
+HcclResult AutoTuningHcomAllReduceFusion::GetGradSplitStrategy([[maybe_unused]] const std::string &modelName,
+                                                               [[maybe_unused]] const std::string &sGroup,
                                                                const std::vector<ge::NodePtr> &fusionOps,
                                                                u32 &segmentNum, std::vector<u32> &segmentIndex) {
   segmentNum = 1;

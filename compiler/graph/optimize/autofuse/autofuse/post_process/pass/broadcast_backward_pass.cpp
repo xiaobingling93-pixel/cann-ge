@@ -297,22 +297,7 @@ bool IsMulInputsCanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePt
   return true;
 }
 
-bool IsB8WithoutCast(NodePtr &next_node) {
-  GeTensorDescPtr output_tensor_desc;
-  GE_ASSERT_SUCCESS(asc_adapt::GetOutputTensorDesc(next_node, output_tensor_desc));
-  DataType dtype = output_tensor_desc->GetDataType();
-  if (dtype != DT_UINT8 && dtype != DT_INT8) {
-    return false;
-  }
-  // 判断紧邻的下一个节点是不是cast
-  NodePtr peek_node;
-  if (GetSingleNextNode(next_node, peek_node) != SUCCESS || peek_node->GetType() != kCastType) {
-    GELOGI("Node %s(%s) output dtype is B8 and next node is not Cast, stop backward.",
-           next_node->GetName().c_str(), next_node->GetType().c_str());
-    return true;
-  }
-  return false;
-}
+
 
 bool CanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePtr> &bro_nodes, AscGraph &graph,
                  std::set<NodePtr> &mul_input_nodes) {
@@ -333,11 +318,6 @@ bool CanBackward(NodePtr &cur_node, NodePtr &next_node, vector<NodePtr> &bro_nod
     // Broadcast不支持的dtype不进行后移
     GELOGI("Node %s(%s) can not backward with dtype(%s)", next_node->GetName().c_str(), next_node->GetType().c_str(),
            TypeUtils::DataTypeToSerialString(output_dtype).c_str());
-    return false;
-  }
-
-  if (IsB8WithoutCast(next_node)) {
-    // 节点输出为B8时，需要下一个节点为Cast才允许后移
     return false;
   }
 
@@ -525,6 +505,8 @@ Status BroadcastBackwardReally(std::vector<NodePtr> &compute_nodes, std::vector<
   GE_ASSERT_SUCCESS(UpdateBroadcastNodesDataType(bro_nodes, compute_nodes.back()));
   return SUCCESS;
 }
+
+
 
 /**
  * 找到图上所有brc的前驱节点，作为后移判断开始的起点

@@ -48,6 +48,7 @@ void LoadScalarAbsBrcStore_BeforeAutofuse(ge::AscGraph &graph) {
   *abs.y.axis = {z0.id, z1.id};
   *abs.y.repeats = {s0, One};
   *abs.y.strides = {One, Zero};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
 
   ge::ascir_op::Broadcast broadcast("broadcast");
   graph.AddNode(broadcast);

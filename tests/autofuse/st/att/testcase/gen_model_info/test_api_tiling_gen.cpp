@@ -1435,6 +1435,10 @@ TEST_F(TestApiTilingGen, gen_softmax_api_tiling_success) {
 }
 
 TEST_F(TestApiTilingGen, gen_schedule_group_cache_success) {
+  // 设置环境变量启用 OperatorCache
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
+
   std::vector<ascir::AscGraph> graphs;
   std::string json_info;
   std::vector<att::ModelInfo> model_info_list;
@@ -1465,6 +1469,10 @@ TEST_F(TestApiTilingGen, gen_schedule_group_cache_success) {
   // TTODO 当前仅检查是否有生成使能cache后的字符串，后续需要增加端到端验证用例
   // 更新：新API使用SaveOperatorCache替代SaveCache
   EXPECT_NE(tiling_func.find("SaveOperatorCache"), std::string::npos);
+
+  // 清理环境变量
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }
 
 TEST_F(TestApiTilingGen, gen_schedule_group_reduce_tile_r) {
@@ -1710,7 +1718,8 @@ TEST_F(TestApiTilingGen, gen_mat_mul_tiling_success) {
  */
 TEST_F(TestApiTilingGen, gen_op_level_cache_basic) {
   // 设置环境变量启用缓存
-  setenv("AUTOFUSE_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 
   std::vector<ascir::AscGraph> graphs;
   std::string json_info;
@@ -1752,7 +1761,8 @@ TEST_F(TestApiTilingGen, gen_op_level_cache_basic) {
   // 注意：缓存查询代码(input_shapes数组构建)只在有缓存复用信息时生成
   // 这是当前设计的限制，算子级缓存类型和函数已正确生成
 
-  unsetenv("AUTOFUSE_FLAGS");
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }
 
 /**
@@ -1778,14 +1788,15 @@ TEST_F(TestApiTilingGen, gen_op_level_cache_basic) {
  * - 图名: FlashSoftmax
  *
  * 预期结果：
- * 生成的代码包含：
- * - `bool FindOperatorCache`（函数定义存在）
+ * 生成的代码不包含：
+ * - `using OperatorLevelCache`
+ * - `thread_local` 缓存变量
+ * - `TilingCacheContext` 类
  *
- * 备注：根据最新修改，IsCacheEnabled()直接返回true，缓存开关在编译时确定
+ * 备注：OperatorCache 默认关闭，通过环境变量显式开启时才生成
  */
 TEST_F(TestApiTilingGen, gen_op_level_cache_disabled) {
-  // 设置环境变量禁用缓存
-  setenv("AUTOFUSE_DFX_FLAGS", "--disable_cache=true", 1);
+  // 不设置AUTOFUSE_FLAGS，使用默认配置（OperatorCache禁用）
 
   std::vector<ascir::AscGraph> graphs;
   std::string json_info;
@@ -1815,8 +1826,18 @@ TEST_F(TestApiTilingGen, gen_op_level_cache_disabled) {
   std::string tiling_func;
   ge::ascir::cg::CombineTilings(tiling_funcs, tiling_func);
 
-  // 即使禁用缓存，函数定义仍然生成，但查询代码不会执行
-  EXPECT_NE(tiling_func.find("FindOperatorCache(const"), std::string::npos);
+  // 验证OperatorCache类型未生成（默认禁用）
+  EXPECT_EQ(tiling_func.find("using OperatorLevelCache"), std::string::npos);
+
+  // 验证TilingCacheContext类未生成
+  EXPECT_EQ(tiling_func.find("class TilingCacheContext"), std::string::npos);
+
+  // 验证OperatorCache专属thread_local缓存变量未生成
+  EXPECT_EQ(tiling_func.find("thread_local std::unique_ptr<OperatorLevelCache> operator_cache_"), std::string::npos);
+
+  // Group Cache 仍然可以正常工作（由with_reuse_info_控制）
+  // 验证GroupCache相关代码存在（如果有reuse_info）
+  EXPECT_NE(tiling_func.find("using GroupLevelCache"), std::string::npos);
 
   unsetenv("AUTOFUSE_DFX_FLAGS");
 }
@@ -1833,7 +1854,8 @@ TEST_F(TestApiTilingGen, gen_op_level_cache_disabled) {
  */
 TEST_F(TestApiTilingGen, two_level_cache_full_test) {
   // 设置环境变量启用缓存
-  setenv("AUTOFUSE_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  setenv("AUTOFUSE_DFX_FLAGS", "--autofuse_enable_tiling_cache=true", 1);
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 
   std::vector<ascir::AscGraph> graphs;
   ascir::AscGraph graph_normal("graph_normal");
@@ -1877,5 +1899,6 @@ TEST_F(TestApiTilingGen, two_level_cache_full_test) {
   EXPECT_NE(tiling_func.find("class TilingCacheContext"), std::string::npos);
   EXPECT_NE(tiling_func.find("thread_local std::unique_ptr<OperatorLevelCache> operator_cache_"), std::string::npos);
 
-  unsetenv("AUTOFUSE_FLAGS");
+  unsetenv("AUTOFUSE_DFX_FLAGS");
+  att::AutoFuseConfig::MutableAttStrategyConfig().Reset();
 }

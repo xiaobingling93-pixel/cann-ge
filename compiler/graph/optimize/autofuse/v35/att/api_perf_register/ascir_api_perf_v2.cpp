@@ -661,6 +661,13 @@ ApiPerfRegister<ApiPerf> round_api_perf_v2(ApiPerfRegisterV2(kRound, GetPerfFunc
 ApiPerfRegister<ApiPerf> nop_api_perf_v2(ApiPerfRegisterV2(kNop, GetPerfFunc(kUnitVector), nullptr,
                                                            &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> ln_api_perf_v2(ApiPerfRegisterV2(kLn, GetPerfFunc(kLn + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> floor_to_int_api_perf_v2(ApiPerfRegisterV2(kFloorToInt, GetPerfFunc(kFloorToInt + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> fmod_api_perf_v2(ApiPerfRegisterV2(kFmod, GetPerfFunc(kFmod + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> hypot_api_perf_v2(ApiPerfRegisterV2(kHypot, GetPerfFunc(kHypot + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> lgamma_api_perf_v2(ApiPerfRegisterV2(kLgamma, GetPerfFunc(kLgamma + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> log10_api_perf_v2(ApiPerfRegisterV2(kLog10, GetPerfFunc(kLog10 + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> logical_xor_api_perf_v2(ApiPerfRegisterV2(kLogicalXor, GetPerfFunc(kLogicalXor + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> log1p_api_perf_v2(ApiPerfRegisterV2(kLog1p, GetPerfFunc(kLog1p + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> expm_api_perf_v2(ApiPerfRegisterV2(kExpm, GetPerfFunc(kExpm + "V2"), nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> log2_api_perf_v2(ApiPerfRegisterV2(kLog2, GetPerfFunc(kLog2 + "V2"), nullptr,
                                                             &perf_param_table_v2, &tiling_schedule_config_table_v2));
@@ -702,6 +709,24 @@ ApiPerfRegister<ApiPerf> floor_div_api_perf_v2(ApiPerfRegisterV2(kFloorDiv, GetP
                                                                  &perf_param_table_v2, &tiling_schedule_config_table_v2));
 ApiPerfRegister<ApiPerf> gelu_api_perf_v2(ApiPerfRegisterV2(kGelu, GetPerfFunc(kGelu + "V2"), nullptr,
                                                             &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> trunc_api_perf_v2(ApiPerfRegisterV2(kTrunc, GetPerfFunc(kTrunc + "V2"), nullptr,
+                                                             &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> tan_api_perf_v2(ApiPerfRegisterV2(kTan, GetPerfFunc(kTan + "V2"), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> sinh_api_perf_v2(ApiPerfRegisterV2(kSinh, GetPerfFunc(kSinh + "V2"), nullptr,
+                                                            &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> trunc_div_api_perf_v2(ApiPerfRegisterV2(kTruncDiv, GetPerfFunc(kTruncDiv + "V2"), nullptr,
+                                                                 &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> trunc_to_int_api_perf_v2(ApiPerfRegisterV2(kTruncToInt, GetPerfFunc(kTruncToInt + "V2"), nullptr,
+                                                                    &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> round_to_int_api_perf_v2(ApiPerfRegisterV2(kRoundToInt, GetPerfFunc(kRoundToInt + "V2"), nullptr,
+                                                                    &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> xor_api_perf_v2(ApiPerfRegisterV2(kXor, GetPerfFunc(kXor + "V2"), nullptr,
+                                                           &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> remainder_api_perf_v2(ApiPerfRegisterV2(kRemainder, GetPerfFunc(kRemainder + "V2"), nullptr,
+                                                                 &perf_param_table_v2, &tiling_schedule_config_table_v2));
+ApiPerfRegister<ApiPerf> square_api_perf_v2(ApiPerfRegisterV2(kSquare, GetPerfFunc(kSquare + "V2"), nullptr,
+                                                              &perf_param_table_v2, &tiling_schedule_config_table_v2));
 
 ApiPerfRegister<ApiPerf> vector_func_api_perf(kVectorFunc, DefaultGetPerf, nullptr, &perf_param_table_v2, &tiling_schedule_config_table_v2);
 }  // namespace

@@ -24,6 +24,7 @@
 #include "framework/common/types.h"
 #include "register/op_tiling_registry.h"
 #include "common/dump/kernel_tracing_utils.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 struct ArgsFormatInfo {
@@ -45,7 +46,6 @@ class KernelTaskInfo : public TaskInfo {
 
   ~KernelTaskInfo() override {
     davinci_model_ = nullptr;
-    stub_func_ = nullptr;
     args_ = nullptr;
   }
 
@@ -235,13 +235,11 @@ class KernelTaskInfo : public TaskInfo {
   Status AppendInputOutputAddr(size_t ir_idx, bool is_input);
   Status PreprocessForSkNode();
   Status FindSkSubNode(const OpDescPtr &sk_op, const int32_t id,  NodePtr &sub_node) const;
-  rtBinHandle GetBinHandle(const domi::TaskDef &task_def) const;
-  rtFuncHandle GetFuncHandle(const domi::TaskDef &task_def);
-  void SetExceptionCallback(rtBinHandle bin_handle);
+  aclrtBinHandle GetBinHandle(const domi::TaskDef &task_def) const;
+  aclrtFuncHandle GetFuncHandle(const domi::TaskDef &task_def);
+  void SetExceptionCallback(aclrtBinHandle bin_handle);
   Status DistributeTask();
   rtArgsEx_t args_ex_{};
-  rtAicpuArgsEx_t aicpu_args_ex_{};
-  const void *stub_func_{nullptr};
   void *args_{nullptr};
   uint32_t block_dim_{0U};
   uint32_t args_size_{0U};
@@ -265,7 +263,6 @@ class KernelTaskInfo : public TaskInfo {
   bool call_save_dump_ = false;
   int32_t deploy_type_flag_{0};
   uint32_t qos_level_flag_{0U};
-  rtTaskCfgInfo_t cfg_ = {};
 
   // aicpu ext_info device mem
   void *aicpu_ext_info_addr_ = nullptr;
@@ -283,7 +280,6 @@ class KernelTaskInfo : public TaskInfo {
   size_t tiling_data_size_ = 0UL;
   bool has_tiling_{false};
   std::string node_info_;
-  void *handle_ = nullptr;
   ModelTaskType task_type_ = ModelTaskType::MODEL_TASK_KERNEL;
   uint32_t op_index_ = 0U;
   bool clear_atomic_ = false;
@@ -291,6 +287,9 @@ class KernelTaskInfo : public TaskInfo {
   uint32_t local_memory_size_ = 0U;  // for simt op
   bool is_block_task_prefetch_{false};
   bool is_data_dump_{false};
+  uint8_t schedule_mode_{0U};
+  uint32_t block_dim_offset_{0UL};
+
   struct AICPUCustomInfo {
    private:
     friend class KernelTaskInfo;
@@ -323,7 +322,7 @@ class KernelTaskInfo : public TaskInfo {
   std::map<uint64_t, uint64_t> cust_to_relevant_offset_;
   std::vector<uint64_t> l0_dump_list_;
   int64_t args_offset_from_pls_{0};
-  rtFuncHandle func_handle_{nullptr};
+  aclrtFuncHandle func_handle_{nullptr};
 };
 }  // namespace ge
 #endif  // GE_GRAPH_LOAD_NEW_MODEL_MANAGER_TASK_INFO_KERNEL_TASK_INFO_H_

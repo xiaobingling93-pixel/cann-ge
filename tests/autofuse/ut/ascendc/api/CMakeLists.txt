@@ -1,11 +1,13 @@
 add_library(test_ascendc OBJECT
     ./test_utils.cpp
+    ./test_argmax.cpp
     ./test_transpose.cpp
     ./test_broadcast.cpp
     ./test_cast.cpp
     ./test_clipbyvalue.cpp
     ./test_pow.cpp
     ./test_reduceprod.cpp
+    ./test_reduce_max_extend.cpp
     ./test_concat.cpp
     ./test_scalardiv.cpp
     ./test_where.cpp
@@ -20,14 +22,18 @@ add_library(test_ascendc OBJECT
     ./test_sign.cpp
     ./test_reduce.cpp
     ./test_reduce_init.cpp
+    ./test_reduce_any.cpp
     ./test_reciprocal.cpp
     ./test_sigmoid.cpp
     ./test_bitwiseand.cpp
     ./test_transpose.cpp
     ./test_gather.cpp
     ./test_subs.cpp
+    ./test_true_div.cpp
     ./test_floor_div.cpp
-    ./test_brc_inline_api.cpp)
+    ./test_remainder.cpp
+    ./test_brc_inline_api.cpp
+    ./test_abs_extend.cpp)
 target_link_libraries(test_ascendc
     ascendc_api_extend
     tikicpulib_ascend910B1

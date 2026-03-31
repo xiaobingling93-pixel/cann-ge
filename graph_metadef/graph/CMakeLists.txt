@@ -8,8 +8,6 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-include(${AIR_CODE_DIR}/cmake/build_type.cmake)
-
 ######### for base #############
 set(GRAPH_BASE_SOURCE_LIST
     "type/types.cc"
@@ -171,6 +169,7 @@ target_include_directories(graph_base PRIVATE
 
 target_link_options(graph_base PRIVATE
     -Wl,-Bsymbolic
+    -Wl,--no-undefined
 )
 
 target_link_libraries(graph_base
@@ -190,7 +189,7 @@ target_link_libraries(graph_base
 )
 
 target_link_libraries(graph_base PRIVATE ascend_protobuf error_manager)
-target_compile_options(graph_base PRIVATE -O2 -Werror -DNO_METADEF_ABI_COMPATIABLE)
+target_compile_options(graph_base PRIVATE ${OPTIMIZE_OPTION} -DNO_METADEF_ABI_COMPATIABLE)
 
 ######### libgraph_base.a #############
 if (NOT ENABLE_OPEN_SRC)
@@ -262,7 +261,7 @@ target_link_libraries(graph
 )
 
 target_link_libraries(graph PRIVATE graph_base error_manager)
-target_compile_options(graph PRIVATE -O2 -Werror)
+target_compile_options(graph PRIVATE ${OPTIMIZE_OPTION})
 
 if (${ENABLE_OPEN_SRC} STREQUAL "True")
 else()
@@ -322,9 +321,8 @@ else()
 
     target_link_libraries(graph_share PRIVATE ascend_protobuf error_manager)
     target_link_libraries(graph_static PRIVATE ascend_protobuf_static)
-
-    target_compile_options(graph_share PRIVATE -O2)
-    target_compile_options(graph_static PRIVATE $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:-O2 -fPIC -Wextra -Wfloat-equal>)
+    target_compile_options(graph_share PRIVATE ${OPTIMIZE_OPTION})
+    target_compile_options(graph_static PRIVATE $<$<STREQUAL:${TARGET_SYSTEM_NAME},Linux>:${OPTIMIZE_OPTION} -fPIC>)
 
     set_target_properties(graph_static PROPERTIES
             WINDOWS_EXPORT_ALL_SYMBOLS TRUE

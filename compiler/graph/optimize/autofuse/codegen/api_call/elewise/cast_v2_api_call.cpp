@@ -32,6 +32,7 @@ Status CastV2ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axis
   (void)this->api_name_;
   auto x = inputs[0].get();
   auto y = outputs[0].get();
+  GELOGD("x, is_constant:%d", static_cast<int32_t>(x.is_constant));
   GELOGI("cast x_dtype:%d, y.dtype:%d.", static_cast<int32_t>(x.dtype), static_cast<int32_t>(y.dtype));
   GE_ASSERT_TRUE((x.dtype != y.dtype), "cast s_dtype:%d, y.dtype:%d", static_cast<int32_t>(x.dtype),
                  static_cast<int32_t>(y.dtype));
@@ -43,7 +44,9 @@ Status CastV2ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axis
   ApiLoopParams param;
   std::vector<Tensor> ub_inputs;
   std::vector<Tensor> ub_outputs;
-  ub_inputs.push_back(x);
+  if (!x.is_constant) {
+    ub_inputs.push_back(x);
+  }
   ub_outputs.push_back(y);
   VectorizedAxisLoopMergeStatus merge_info;
   bool status = GenerateVectorizedAxisMergeStatus(ub_inputs, ub_outputs, merge_info, tpipe);
@@ -51,12 +54,20 @@ Status CastV2ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axis
   SaveApiLoopAxisParams(merge_info, param);
   stringstream ss;
   size_t outer_repeats_size = param.outer_repeats.size();
+  std::string scalar_local_blk_tensor_name = "local_blk_tensor_of_" + x.name;
   if (outer_repeats_size == 0U) {
     GELOGD("outer_repeats_size is 0, x_dtype = %s, y_dtype = %s", x_dtype.c_str(), y_dtype.c_str());
-    ss << this->api_name_ << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
-       << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
-       << "{" << "ConvertToUint32(" << x.actual_size << ")" << "}, "
-       << "{ConvertToUint32(1)}, {ConvertToUint32(1)});" << std::endl;
+    if (x.is_constant) {
+      ss << this->api_name_ << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
+         << scalar_local_blk_tensor_name << "[0], "
+         << "{" << "ConvertToUint32(" << y.actual_size << ")" << "}, "
+         << "{ConvertToUint32(1)}, {ConvertToUint32(1)});" << std::endl;
+    } else {
+      ss << this->api_name_ << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
+         << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
+         << "{" << "ConvertToUint32(" << x.actual_size << ")" << "}, "
+         << "{ConvertToUint32(1)}, {ConvertToUint32(1)});" << std::endl;
+    }
   } else {
     GELOGD("enable cast mask mode optimize, x_dtype = %s, y_dtype = %s", x_dtype.c_str(), y_dtype.c_str());
     // 获取输入输出中最大的数据类型max_dtype_size

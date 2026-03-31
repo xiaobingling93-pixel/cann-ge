@@ -336,7 +336,6 @@ class TPipe : public Variable {
   void SetUsingAttCalcQBTSizeConfig(bool using_att_calc_qbt_size);
   Status GetCVFusionCubeOutputUBTensorIdAndQueId(const ascir::ImplGraph &graph);
   Status LocalTensorDefine(std::string &result) const;
-  Status LocalTBufAssign(const TBuf &buf, std::string &result) const;
   std::string TensorSizeDefine() const;
   Status TensorSizeAssign(std::string dtype_name, std::string &result) const;
   std::string GenDuplicateBufDefine(const std::set<std::pair<std::string, std::string>>& pre_api_extract_dup) const;
@@ -497,7 +496,6 @@ struct Loop {
 
   Status Generate(const Tiler& tiler, const TPipe& tpipe, std::string &result,
                   ComputeStage stage = ComputeStage::kDefault);
-  bool IsReduceAxisNeedDivideSum(const TPipe &tpipe) const;
   const Tensor& GetReduceApiTensor(const TPipe &tpipe, bool is_input = false) const;
   void CollectTensorCrossLoop(std::map<ascir::AxisId, std::vector<ApiCall *>> &api_calls);
   Status ActualSizeDefine(const Tiler &tiler, const TPipe &tpipe, std::string dtype_name, std::string &result);

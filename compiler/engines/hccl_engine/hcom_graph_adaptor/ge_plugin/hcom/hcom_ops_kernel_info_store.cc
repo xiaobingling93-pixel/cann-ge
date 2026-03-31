@@ -2309,7 +2309,7 @@ HcclResult HcomOpsKernelInfoStore::SetUnknownShapeWorkspaceResource(const ge::GE
 }
 
 HcclResult HcomOpsKernelInfoStore::SetKnownShapeWorkspaceResource(const ge::GETaskInfo &task,
-                                                                  const std::string &sCollectiveType,
+                                                                  [[maybe_unused]] const std::string &sCollectiveType,
                                                                   const std::vector<std::string> &tagVec) {
   std::string group;
   int64_t comm = 0;

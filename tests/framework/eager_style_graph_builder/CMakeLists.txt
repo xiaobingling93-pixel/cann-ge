@@ -21,6 +21,7 @@ target_include_directories(test_ops_proto PRIVATE
 
 target_link_libraries(test_ops_proto PRIVATE
     metadef_headers
+    $<BUILD_INTERFACE:intf_llt_pub>
 )
 
 if(ENABLE_CROSS_COMPILE)

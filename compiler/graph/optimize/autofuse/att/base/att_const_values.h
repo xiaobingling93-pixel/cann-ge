@@ -292,6 +292,13 @@ inline const std::string kPow = "Pow";
 inline const std::string kPad = "Pad";
 inline const std::string kRound = "Round";
 inline const std::string kLn = "Ln";
+inline const std::string kFloorToInt = "FloorToInt";
+inline const std::string kFmod = "Fmod";
+inline const std::string kHypot = "Hypot";
+inline const std::string kLgamma = "Lgamma";
+inline const std::string kLog10 = "Log10";
+inline const std::string kLogicalXor = "LogicalXor";
+inline const std::string kLog1p = "Log1p";
 inline const std::string kLog2 = "Log2";
 inline const std::string kExpm = "Expm";
 inline const std::string kLShift = "LShift";
@@ -306,6 +313,7 @@ inline const std::string kAtanh = "Atanh";
 inline const std::string kRShift = "RShift";
 inline const std::string kIsFinite = "IsFinite";
 inline const std::string kTrueDiv = "TrueDiv";
+inline const std::string kRemainder = "Remainder";
 inline const std::string kClipByValue = "ClipByValue";
 inline const std::string kLeakyRelu = "LeakyRelu";
 inline const std::string kBitwiseAnd = "BitwiseAnd";
@@ -315,6 +323,13 @@ inline const std::string kConcat = "Concat";
 inline const std::string kNop = "Nop";
 inline const std::string kTranspose = "Transpose";
 inline const std::string kSplit = "Split";
+inline const std::string kTan = "Tan";
+inline const std::string kSinh = "Sinh";
+inline const std::string kSquare = "Square";
+inline const std::string kTruncDiv = "TruncDiv";
+inline const std::string kRoundToInt = "RoundToInt";
+inline const std::string kTruncToInt = "TruncToInt";
+inline const std::string kTrunc = "Trunc";
 #define JOIN(a, b) a##b
 #define JOIN_A_B_C(a, b, c) a##b##c
 }  // namespace att

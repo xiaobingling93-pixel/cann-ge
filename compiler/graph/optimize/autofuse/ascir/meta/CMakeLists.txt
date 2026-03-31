@@ -15,7 +15,8 @@ target_compile_options(ascir PRIVATE
     -Wfloat-equal -Wextra -Wall
 )
 
-target_link_libraries(ascir PUBLIC
+target_link_libraries(ascir
+    PUBLIC
         graph graph_base
         ascir_ops_headers
         c_sec
@@ -24,6 +25,8 @@ target_link_libraries(ascir PUBLIC
         aihac_ir
         ascend_protobuf
         metadef_headers
+    PRIVATE
+        $<BUILD_INTERFACE:intf_pub>
 )
 
 ################################################################################

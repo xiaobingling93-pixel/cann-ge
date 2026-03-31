@@ -14,13 +14,13 @@
 #include <mutex>
 #include <variant>
 #include <unordered_map>
-#include "rts/rts_kernel.h"
+#include "acl/acl_rt.h"
 #include "graph/ge_error_codes.h"
 #include "common/tbe_handle_store/kernel_store.h"
 
 namespace ge {
 struct KernelBinInfo {
-  rtBinHandle bin_handle{nullptr};
+  aclrtBinHandle bin_handle{nullptr};
   int64_t refer_cnt{0};
 };
 
@@ -46,14 +46,14 @@ class KernelHandlesManager {
   KernelHandlesManager() = default;
   virtual ~KernelHandlesManager();
   virtual std::string GenerateKey(const KernelRegisterInfo &register_info) = 0;
-  rtBinHandle GetOrRegisterKernel(const KernelRegisterInfo &register_info,
+  aclrtBinHandle GetOrRegisterKernel(const KernelRegisterInfo &register_info,
       const std::string &bin_name);
   graphStatus ClearKernel();
-  rtBinHandle FindKernel(const std::string &bin_name);
+  aclrtBinHandle FindKernel(const std::string &bin_name);
  protected:
-  virtual rtBinHandle RegisterKernel(const KernelRegisterInfo &register_info,
+  virtual aclrtBinHandle RegisterKernel(const KernelRegisterInfo &register_info,
       const std::string &bin_name) = 0;
-  void StoredKernelHandle(const rtBinHandle bin_handle, const std::string &bin_name);
+  void StoredKernelHandle(const aclrtBinHandle bin_handle, const std::string &bin_name);
   std::unordered_map<std::string, int64_t> local_refer_cnt_;
   static std::unordered_map<std::string, KernelBinInfo> global_bin_store_;
   static std::recursive_mutex mtx_;

@@ -106,7 +106,7 @@ HcclResult AutoTuningHcomOpsKernelInfoStore::HCCLOpsKernel(const ge::GETaskInfo 
   return HCCL_SUCCESS;
 }
 
-HcclResult AutoTuningHcomOpsKernelInfoStore::HcomBroadcastOpKernel(const ge::GETaskInfo &task) {
+HcclResult AutoTuningHcomOpsKernelInfoStore::HcomBroadcastOpKernel([[maybe_unused]] const ge::GETaskInfo &task) {
   return HCCL_SUCCESS;
 }
 
@@ -394,11 +394,11 @@ HcclResult AutoTuningHcomOpsKernelInfoStore::HcomReduceScatterOpKernel(const ge:
   return HCCL_SUCCESS;
 }
 
-HcclResult AutoTuningHcomOpsKernelInfoStore::HcomReceiveOpKernel(const ge::GETaskInfo &task) {
+HcclResult AutoTuningHcomOpsKernelInfoStore::HcomReceiveOpKernel([[maybe_unused]] const ge::GETaskInfo &task) {
   return HCCL_SUCCESS;
 }
 
-HcclResult AutoTuningHcomOpsKernelInfoStore::HcomSendOpKernel(const ge::GETaskInfo &task) {
+HcclResult AutoTuningHcomOpsKernelInfoStore::HcomSendOpKernel([[maybe_unused]] const ge::GETaskInfo &task) {
   return HCCL_SUCCESS;
 }
 
@@ -435,7 +435,7 @@ ge::Status AutoTuningHcomOpsKernelInfoStore::LoadTask(ge::GETaskInfo &task) {
   return ge::SUCCESS;
 }
 
-ge::Status AutoTuningHcomOpsKernelInfoStore::UnloadTask(ge::GETaskInfo &task) {
+ge::Status AutoTuningHcomOpsKernelInfoStore::UnloadTask([[maybe_unused]] ge::GETaskInfo &task) {
   HCCL_INFO("UnloadTask skip.");
   return ge::SUCCESS;
 }

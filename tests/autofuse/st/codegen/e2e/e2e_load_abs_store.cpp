@@ -95,6 +95,7 @@ void LoadAbsStore_BeforeAutofuse_DiscreteStore(ge::AscGraph &graph) {
   abs.attr.sched.axis = {z0.id, z1.id, z2.id};
   *abs.y.repeats = {s0, s1, s2};
   *abs.y.strides = {s1*s2, s2, One};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
 
   Store store("store");
   graph.AddNode(store);
@@ -235,6 +236,7 @@ void LoadAbsStore_BeforeAutofuse_StoreScalar(ge::AscGraph &graph) {
   abs.attr.sched.axis = {z0.id, z1.id, z2.id};
   *abs.y.repeats = {s0, s1, s2};
   *abs.y.strides = {Zero, Zero, Zero};
+  abs.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
 
   Store store("store");
   graph.AddNode(store);

@@ -9,6 +9,8 @@
  */
 
 #include "lowering_impl.h"
+#include <iomanip>
+#include <sstream>
 #include "common/checker.h"
 #include "graph_metadef/graph/debug/ge_util.h"
 #include "graph/debug/ge_attr_define.h"
@@ -2092,6 +2094,13 @@ REGISTER_LOWERING(ApplyAdagradD) {
   return GRAPH_SUCCESS;
 }
 
+template <typename T>
+string FloatToStringWithPrecision(T value) {
+  std::ostringstream oss;
+  oss << std::setprecision(20) << value;
+  return oss.str();
+}
+
 graphStatus CalculateApplyAdamDScalarStr(const NodePtr &node, string &sub_beta1, string &sub_beta2, string &lr_str) {
   const auto op = ge::OpDescUtils::CreateOperatorFromNode(node);
   ge::Tensor beta1_power, beta2_power, beta1, beta2, lr;
@@ -2114,7 +2123,7 @@ graphStatus CalculateApplyAdamDScalarStr(const NodePtr &node, string &sub_beta1,
         [](auto &&beta1) -> string {
           using tensor_type = std::decay_t<decltype(beta1)>;
           tensor_type result = static_cast<tensor_type>(1) - beta1;
-          return std::to_string(result);
+          return FloatToStringWithPrecision(result);
         },
         scalar_tensors[0]);
   });
@@ -2123,7 +2132,7 @@ graphStatus CalculateApplyAdamDScalarStr(const NodePtr &node, string &sub_beta1,
         [](auto &&beta2) -> string {
           using tensor_type = std::decay_t<decltype(beta2)>;
           tensor_type result = static_cast<tensor_type>(1) - beta2;
-          return std::to_string(result);
+          return FloatToStringWithPrecision(result);
         },
         scalar_tensors[0]);
   });
@@ -2139,7 +2148,7 @@ graphStatus CalculateApplyAdamDScalarStr(const NodePtr &node, string &sub_beta1,
           }
           tensor_type result =
               static_cast<tensor_type>(lr * (std::sqrt(static_cast<tensor_type>(1) - beta2_power)) / (static_cast<tensor_type>(1) - beta1_power));
-          return std::to_string(result);
+          return FloatToStringWithPrecision(result);
         },
         scalar_tensors[0], scalar_tensors[1], scalar_tensors[beta2_power_idx]);
   });

@@ -34,8 +34,8 @@ TEST_P(E2E_RoundBf16_Code, CalculateCorrect) {
 
   // Prepare test and expect data
   for (int i = 0; i < test_size; i++) {
-    x[i] = static_cast<bfloat16_t>(static_cast<float>(i % 100) / 2.0f - 5.3f);
-    expect[i] = static_cast<bfloat16_t>(std::round(static_cast<float>(x[i])));
+    x[i] = static_cast<bfloat16_t>(static_cast<float>(i) / 2.0f - 5.3f);
+    expect[i] = static_cast<bfloat16_t>(std::rint(static_cast<float>(x[i])));
   }
 
   // Launch

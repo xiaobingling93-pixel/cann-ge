@@ -11,14 +11,12 @@
 #include "file_utils.h"
 #include "common/helper/om2/zip_archive.h"
 #include <gtest/gtest.h>
-#include <filesystem>
 #include <fstream>
 #include <unordered_set>
 #include "common/env_path.h"
 #include "mmpa/mmpa_api.h"
 
 namespace ge {
-namespace fs = std::filesystem;
 
 class ZipArchiveUt : public ::testing::Test {
  public:
@@ -149,7 +147,7 @@ TEST_F(ZipArchiveUt, TestRaiiZipArchive_Ok_DecompressArchive) {
     ASSERT_EQ(file_names.size(), 2);
     for (const auto &file_name : file_names) {
       ASSERT_TRUE(archive.ExtractToFile(file_name, extract_path));
-      ASSERT_TRUE(fs::exists(PathUtils::Join({extract_path, file_name})));
+      ASSERT_EQ(mmAccess2(PathUtils::Join({extract_path, file_name}).c_str(), M_F_OK), EN_OK);
     }
   }
 }

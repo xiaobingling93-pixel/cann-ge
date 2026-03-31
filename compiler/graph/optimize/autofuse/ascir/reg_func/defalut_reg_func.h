@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -24,6 +24,7 @@ uint32_t GetNonScalarAxisId(ge::AscNodeInputs &node_inputs);
 bool IsAllScalarOrUbScalar(ge::AscNodeInputs &node_inputs);
 
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcBroadCastTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcArgMaxTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcConcatTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcConcatTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcPadTmpSize(const ge::AscNode &node);
@@ -40,7 +41,9 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcLtTmpSize(const ge::AscNode &no
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcNeTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcPowTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcReduceTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcReduceMaxTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcRsqrtTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcRemainderTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSelectTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSigmoidTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSubTmpSize(const ge::AscNode &node);
@@ -55,7 +58,9 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTanhTmpSize(const ge::AscNode &
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcWhereTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAxpyTmpSize(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSplitTmpSizeV2(const ge::AscNode &node);
-
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAbsTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcWelfordUpdateTmpSize(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcWelfordFinalizeTmpSize(const ge::AscNode &node);
 }  // namespace ascir
 }  // namespace ge
 #endif  // __ASCIR_REG_FUNC_DEFAULT_REG_FUNC_H__

@@ -9,6 +9,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <chrono>
+#include <filesystem>
 #include <gtest/gtest.h>
 
 #include "graph/ascendc_ir/ascendc_ir_core/ascendc_ir.h"
@@ -28,6 +29,7 @@
 #include "can_fuse/fusion_strategy_solver.h"
 #include "can_fuse/backend/fusion_decider_registry.h"
 #include "can_fuse/backend/asc_backend_fusion_decider.h"
+#include "utils/auto_fuse_config.h"
 
 using namespace std;
 using namespace testing;
@@ -35,7 +37,7 @@ using namespace testing;
 namespace ge {
 namespace {
 }  // namespace
-
+using namespace autofuse;
 class FusionStrategySolverST : public testing::Test {
  public:
  protected:
@@ -46,6 +48,23 @@ class FusionStrategySolverST : public testing::Test {
   }
   void TearDown() override {}
   std::unique_ptr<es::Graph> es_graph_;
+};
+
+class ScopedSubgraphRecoverFlag {
+ public:
+  ScopedSubgraphRecoverFlag()
+      : flag_(AutoFuseConfig::MutableLoweringConfig().enable_subgraph_recover), old_(flag_) {}
+  ~ScopedSubgraphRecoverFlag() {
+    flag_ = old_;
+  }
+
+  void Set(const bool value) {
+    flag_ = value;
+  }
+
+ private:
+  bool &flag_;
+  bool old_;
 };
 
 template <typename T>
@@ -228,5 +247,32 @@ TEST_F(FusionStrategySolverST, ZerolikeHorizonFuseWithTransposeNotCanfuse) {
   EXPECT_EQ(fusion_strategy_solver.Fuse(cg), SUCCESS);
   ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
   ASSERT_EQ(cg->GetAllNodesSize(), 4U);
+}
+
+TEST_F(FusionStrategySolverST, SubgraphRecoverEnabledDoesNotBreakLowering) {
+  ScopedSubgraphRecoverFlag scoped_subgraph_recover_flag;
+  // 使能 enable_subgraph_recover=true，Lowering 会深拷贝原始图
+  // DfxForAscBackendOp 中 DumpSubgraphFromOriginNodes 尝试落盘，但不影响主流程返回值
+  [this]() {
+    auto x = es_graph_->CreateInput(0, "x", nullptr);
+    x.SetSymbolShape({"s0", "s1", "s2"});
+    auto abs = es::Abs(x);
+    abs.SetSymbolShape({"s0", "s1", "s2"});
+    auto exp = es::Exp(abs);
+    exp.SetSymbolShape({"s0", "s1", "s2"});
+    es_graph_->SetOutput(exp, 0);
+  }();
+
+  auto graph = es_graph_->Build();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_TRUE(AttrUtils::SetStr(cg, "_session_graph_id", "0"));
+
+  scoped_subgraph_recover_flag.Set(true);
+
+  ge::AscIrLowerer lowerer;
+  ASSERT_EQ(lowerer.Lowering(cg), GRAPH_SUCCESS);
+  ASSERT_EQ(lowerer.Lifting(cg), GRAPH_SUCCESS);
+
+  std::filesystem::remove_all("./subgraph_recover");
 }
 }  // namespace ge

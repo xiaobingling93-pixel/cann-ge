@@ -184,9 +184,8 @@ TEST_F(CacheableTilingUt, CacheableTiling_Fail_CallTilingFuncFailed) {
   ASSERT_NE(cache_strategy, nullptr);
   TilingFwkData fwk_data = {.tiling_func = reinterpret_cast<void *>(StubTilingFuncFail), .launch_arg = fake_launch_arg};
   std::string func_name = "BuildGeneralTilingCacheKey";
-  CacheableTilingFwkData cacheable_fwk_data = {.fwk_data = fwk_data,
-                                               .tiling_cache_mgr = TilingCacheManager(std::move(cache_strategy)),
-                                               .build_tiling_cache_key_func_name = func_name.data()};
+  CacheableTilingFwkData cacheable_fwk_data{
+      fwk_data, TilingCacheManager(std::move(cache_strategy)), 0UL, func_name.data()};
   // 准备Tiling的输出
   auto workspace_sizes_holder = CreateWorkspaceSizesWithDummyData(16UL);
   ASSERT_NE(workspace_sizes_holder, nullptr);
@@ -233,9 +232,8 @@ TEST_F(CacheableTilingUt, CacheableTiling_Ok_TilingResultAddedAndFetched) {
   ASSERT_NE(cache_strategy, nullptr);
   TilingFwkData fwk_data = {.tiling_func = reinterpret_cast<void *>(StubTilingFuncFail), .launch_arg = fake_launch_arg};
   std::string func_name = "BuildGeneralTilingCacheKey";
-  CacheableTilingFwkData cacheable_fwk_data = {.fwk_data = fwk_data,
-      .tiling_cache_mgr = TilingCacheManager(std::move(cache_strategy)),
-      .build_tiling_cache_key_func_name = func_name.data()};
+  CacheableTilingFwkData cacheable_fwk_data{
+      fwk_data, TilingCacheManager(std::move(cache_strategy)), 0UL, func_name.data()};
   const auto execute_kernel_and_check = [&](KernelRegistry::KernelFunc stub_func) {
     const TilingFwkData fwk_data = {.tiling_func = reinterpret_cast<void *>(stub_func), .launch_arg = fake_launch_arg};
     cacheable_fwk_data.fwk_data = fwk_data;
@@ -322,10 +320,8 @@ TEST_F(CacheableTilingUt, CacheableTiling_Ok_DataDependentTilingResultAddedAndFe
   ASSERT_NE(cache_strategy, nullptr);
   TilingFwkData fwk_data = {.tiling_func = reinterpret_cast<void *>(StubTilingFuncFail), .launch_arg = fake_launch_arg};
   std::string func_name = "BuildGeneralTilingCacheKey";
-  CacheableTilingFwkData cacheable_fwk_data = {.fwk_data = fwk_data,
-                                               .tiling_cache_mgr = TilingCacheManager(std::move(cache_strategy)),
-                                               .data_dependency = 3UL,
-                                               .build_tiling_cache_key_func_name = func_name.data()};
+  CacheableTilingFwkData cacheable_fwk_data{
+      fwk_data, TilingCacheManager(std::move(cache_strategy)), 3UL, func_name.data()};
   const auto execute_kernel_and_check = [&](KernelRegistry::KernelFunc stub_func) {
     cacheable_fwk_data.fwk_data.tiling_func = reinterpret_cast<void *>(stub_func);
     auto td_output_holder = TilingData::CreateCap(1024UL);
@@ -365,9 +361,8 @@ TEST_F(CacheableTilingUt, CacheableFallibleTiling_ok_TilingFuncSucc) {
   kernel::TilingFwkData fwk_data = {.tiling_func = reinterpret_cast<void *>(StubTilingFuncSuccEmpty),
                                     .launch_arg = fake_launch_arg};
   std::string func_name = "BuildGeneralTilingCacheKey";
-  CacheableTilingFwkData cacheable_fwk_data = {.fwk_data = fwk_data,
-      .tiling_cache_mgr = TilingCacheManager(std::move(cache_strategy)),
-      .build_tiling_cache_key_func_name = func_name.data()};
+  CacheableTilingFwkData cacheable_fwk_data{
+      fwk_data, TilingCacheManager(std::move(cache_strategy)), 0UL, func_name.data()};
   auto context_holder =
       KernelRunContextFaker()
           .KernelIONum(2, static_cast<size_t>(kernel::FallibleTilingExOutputIndex::kFallibleOutputNum))

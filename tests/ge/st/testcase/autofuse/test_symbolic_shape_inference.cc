@@ -6838,6 +6838,65 @@ TEST_F(SymbolicShapeInferenceST, InferShapeForSqueeze) {
   EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({s0, s1, s2}));
 }
 
+TEST_F(SymbolicShapeInferenceST, InferShapeForSqueezeV3) {
+  auto data0 = builder_->CreateInput(0, "data0");
+  ASSERT_NE(data0.GetCTensorHolder(), nullptr);
+  data0.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "1", "s2", "1"}));
+  std::vector<int32_t> const_data0 = {2, 4};
+  std::vector<int64_t> const_dim = {1, 2};
+  auto const0 = builder_->CreateConst(const_data0, const_dim);
+
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  auto squeezeV3 = es::SqueezeV3(data0, const0);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(squeezeV3, 0), 0);
+  auto graph = builder_->BuildAndReset();
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("SqueezeV3");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
+
+  const auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({s0, s1, s2}));
+}
+
+TEST_F(SymbolicShapeInferenceST, InferShapeForUnsqueezeV3) {
+  auto data0 = builder_->CreateInput(0, "data0");
+  ASSERT_NE(data0.GetCTensorHolder(), nullptr);
+  data0.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "s2"}));
+  std::vector<int32_t> const_data0 = {2, 4};
+  std::vector<int64_t> const_dim = {1, 2};
+  auto const0 = builder_->CreateConst(const_data0, const_dim);
+
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  auto unsqueezeV3 = es::UnsqueezeV3(data0, const0);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(unsqueezeV3, 0), 0);
+  auto graph = builder_->BuildAndReset();
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("UnsqueezeV3");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
+
+  const auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(),
+            gert::SymbolShape({s0, s1, ge::Symbol(1), s2, ge::Symbol(1)}));
+}
+
 TEST_F(SymbolicShapeInferenceST, InferShapeForTileDInDimsGtMultiSize) {
   auto data0 = builder_->CreateInput(0, "data0");
   ASSERT_NE(data0.GetCTensorHolder(), nullptr);
@@ -7413,5 +7472,35 @@ TEST_F(SymbolicShapeInferenceST, MultiBatchInferTest) {
     }
   }
   GetLocalOmgContext().need_multi_batch = false;
+}
+
+TEST_F(SymbolicShapeInferenceST, InferShapeForFlattenV2) {
+  auto data0 = builder_->CreateInput(0, "data0");
+  ASSERT_NE(data0.GetCTensorHolder(), nullptr);
+  data0.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1", "s2", "s3"}));
+
+  int64_t axis = 2;
+  int64_t end_axis = 3;
+  auto flattenV2 = es::FlattenV2(data0, axis, end_axis);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(flattenV2, 0), 0);
+  auto graph = builder_->BuildAndReset();
+
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+  auto node = cg->FindFirstNodeMatchType("FlattenV2");
+  ASSERT_NE(node, nullptr);
+  auto op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
+
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto s2 = ge::Symbol("s2");
+  auto s3 = ge::Symbol("s3");
+
+  const auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({s0, s1, s2 * s3}));
 }
 }  // namespace ge

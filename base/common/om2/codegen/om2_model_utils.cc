@@ -273,9 +273,7 @@ Status Om2ModelUtils::GenOutputAddrCode(TaskDistributionContext &context, std::v
     output_addr_nodes.emplace_back();
     output_addr_nodes.back().mem_type = Om2MemoryAppType::kMemoryTypeFix;
     std::string output_ptr_name = "op" + std::to_string(op_index) + "_output" + std::to_string(i);
-    int32_t calc_type = 0;
-    (void)AttrUtils::GetInt(tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    if (calc_type == static_cast<int32_t>(MemorySizeCalcType::ALWAYS_EMPTY)) {
+    if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(*tensor_desc)) {
       if (has_optional_addr) {
         output_addr_nodes.back().nodes.push_back(RAW_CODE_STMT(context.ast_ctx, "  auto " + output_ptr_name + " = nullptr;"));
         output_addr_nodes.back().var_name = output_ptr_name;

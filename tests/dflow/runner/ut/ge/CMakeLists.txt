@@ -182,6 +182,7 @@ target_link_libraries(ut_libge_helper_utest
     dflow_runner
     ge_compiler
     flow_graph
+    mmpa_stub
     udf_compiler
     model_deployer
     deployer_daemon_static

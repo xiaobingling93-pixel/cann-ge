@@ -425,102 +425,88 @@ TEST_F(HybridModelAsyncTest, test_ascend_aicpu_load_success) {
   ge::diagnoseSwitch::DisableDumper();
 }
 
+ge::Status ShapeInferSqueezeV3(Operator &op) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  const auto input_desc_x = op_desc->MutableInputDesc(0);
+  const auto &input_shape = input_desc_x->GetShape();
+  const auto x_shape_dim = input_shape.GetDims();
+  auto output_desc = op_desc->MutableOutputDesc(0);
+
+  output_desc->SetDataType(input_desc_x->GetDataType());
+  output_desc->SetOriginDataType(input_desc_x->GetDataType());
+
+  const std::vector<string> dep_inputs = {"axes"};
+  op_desc->SetOpInferDepends(dep_inputs);
+  std::vector<int64_t> axes_val;
+  const auto axes_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("axes"));
+  const GeTensor *tensor = OpDescUtils::GetInputConstData(op, axes_idx);
+  if (tensor != nullptr) {
+    auto pbuff = tensor->GetData().GetData();
+    if (pbuff == nullptr) {
+      GELOGE(FAILED, "[InferShape] Get data from axis input failed, as data buff is null");
+      return GRAPH_FAILED;
+    }
+    const auto axes_len = tensor->GetData().GetSize();
+    auto axes_pbuff = const_cast<int64_t *>(reinterpret_cast<const int64_t *>(pbuff));
+    for (size_t i = 0UL; i < (axes_len / sizeof(int64_t)); ++i) {
+      axes_val.emplace_back(axes_pbuff[i]);
+    }
+  } else {
+    GELOGW("Op get input const data of axes failed");
+  }
+  GeShape &output_shape = output_desc->MutableShape();
+  const auto dim_size = x_shape_dim.size();
+  output_shape.SetDimNum(dim_size);
+
+  std::vector<int64_t> dim_idx(dim_size);
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  std::for_each(axes_val.begin(), axes_val.end(), [&dim_idx](const int64_t axis) { dim_idx[axis] = -1; });
+
+  uint64_t idx = 0UL;
+  for (size_t i = 0UL; i < dim_size; ++i) {
+    if (dim_idx[i] != -1) {
+      output_shape.SetDim(idx, x_shape_dim[i]);
+      ++idx;
+    }
+  }
+  output_shape.SetDimNum(idx);
+  output_desc->SetShapeRange(output_range);
+  output_desc->SetOriginShape(output_shape);
+  return GRAPH_SUCCESS;
+}
+
 TEST_F(HybridModelAsyncTest, test_dynamic_shape_with_squeezev3_success) {
   ProfilingProperties::Instance().SetLoadProfiling(false);
   DEF_GRAPH(dynamic_op) {
-    auto op_ptr = OP_CFG(DATA)
-                      .InCnt(1)
-                      .OutCnt(1)
-                      .TensorDesc(FORMAT_NCHW, DT_FLOAT, {1, 1, 3, 4})
+    auto op_ptr = OP_CFG(DATA).InCnt(1).OutCnt(1).TensorDesc(FORMAT_NCHW, DT_FLOAT, {1, 1, 3, 4})
                       .Attr("_ge_attr_op_kernel_lib_name", "DNN_VM_GE_LOCAL_OP_STORE")
-                      .Attr("compile_info_key", "ddd")
-                      .Attr("compile_info_json", "cccc")
-                      .Build("data1");
+                      .Attr("compile_info_key", "ddd").Attr("compile_info_json", "cccc").Build("data1");
 
-    auto op_ptr2 = OP_CFG(DATA)
-                       .InCnt(1)
-                       .OutCnt(1)
-                       .TensorDesc(FORMAT_NCHW, DT_FLOAT, {1})
+    auto op_ptr2 = OP_CFG(DATA).InCnt(1).OutCnt(1).TensorDesc(FORMAT_NCHW, DT_FLOAT, {1})
                        .Attr("_ge_attr_op_kernel_lib_name", "DNN_VM_GE_LOCAL_OP_STORE")
-                       .Attr("compile_info_key", "ddd")
-                       .Attr("compile_info_json", "cccc")
-                       .Attr("_force_unknown_shape", true)
-                       .Build("axes");
+                       .Attr("compile_info_key", "ddd").Attr("compile_info_json", "cccc")
+                       .Attr("_force_unknown_shape", true).Build("axes");
 
-    auto squeezev3 = OP_CFG(SQUEEZEV3)
-                         .InCnt(2)
-                         .OutCnt(1)
+    auto squeezev3 = OP_CFG(SQUEEZEV3).InCnt(2).OutCnt(1)
                          .Attr("_ge_attr_op_kernel_lib_name", "DNN_VM_GE_LOCAL_OP_STORE")
-                         .Attr("_force_infershape_when_running", true)
-                         .Attr("_force_unknown_shape", true)
-                         .Build("SqueezeV3");
+                         .Attr("_force_infershape_when_running", true).Attr("_force_unknown_shape", true).Build("SqueezeV3");
 
-    auto net_output = OP_CFG(NETOUTPUT)
-                          .InCnt(1)
-                          .OutCnt(1)
-                          .Attr("_ge_attr_op_kernel_lib_name", "DNN_VM_GE_LOCAL_OP_STORE")
-                          .Build("net_output");
+    auto net_output = OP_CFG(NETOUTPUT).InCnt(1).OutCnt(1)
+                          .Attr("_ge_attr_op_kernel_lib_name", "DNN_VM_GE_LOCAL_OP_STORE").Build("net_output");
 
     CHAIN(NODE(op_ptr)->EDGE(0, 0)->NODE(squeezev3)->EDGE(0, 0)->NODE(net_output));
     CHAIN(NODE(op_ptr2)->EDGE(0, 1)->NODE(squeezev3));
   };
 
-  const auto ShapeInfer = [](Operator &op) {
-    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-    const auto input_desc_x = op_desc->MutableInputDesc(0);
-    const auto &input_shape = input_desc_x->GetShape();
-    const auto x_shape_dim = input_shape.GetDims();
-    auto output_desc = op_desc->MutableOutputDesc(0);
-
-    output_desc->SetDataType(input_desc_x->GetDataType());
-    output_desc->SetOriginDataType(input_desc_x->GetDataType());
-
-    const std::vector<string> dep_inputs = {"axes"};
-    op_desc->SetOpInferDepends(dep_inputs);
-    std::vector<int64_t> axes_val;
-    const auto axes_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("axes"));
-    const GeTensor *tensor = OpDescUtils::GetInputConstData(op, axes_idx);
-    if (tensor != nullptr) {
-      auto pbuff = tensor->GetData().GetData();
-      if (pbuff == nullptr) {
-        GELOGE(FAILED, "[InferShape] Get data from axis input failed, as data buff is null");
-        return GRAPH_FAILED;
-      }
-      const auto axes_len = tensor->GetData().GetSize();
-      auto axes_pbuff = const_cast<int64_t *>(reinterpret_cast<const int64_t *>(pbuff));
-      for (size_t i = 0UL; i < (axes_len / sizeof(int64_t)); ++i) {
-        axes_val.emplace_back(axes_pbuff[i]);
-      }
-    } else {
-      GELOGW("Op get input const data of axes failed");
-    }
-    GeShape &output_shape = output_desc->MutableShape();
-    const auto dim_size = x_shape_dim.size();
-    output_shape.SetDimNum(dim_size);
-
-    std::vector<int64_t> dim_idx(dim_size);
-    std::vector<std::pair<int64_t, int64_t>> output_range;
-    std::for_each(axes_val.begin(), axes_val.end(), [&dim_idx](const int64_t axis) { dim_idx[axis] = -1; });
-
-    uint64_t idx = 0UL;
-    for (size_t i = 0UL; i < dim_size; ++i) {
-      if (dim_idx[i] != -1) {
-        output_shape.SetDim(idx, x_shape_dim[i]);
-        ++idx;
-      }
-    }
-    output_shape.SetDimNum(idx);
-    output_desc->SetShapeRange(output_range);
-    output_desc->SetOriginShape(output_shape);
-    return GRAPH_SUCCESS;
-  };
   auto graph = ToGeGraph(dynamic_op);
   auto compute_graph = GraphUtilsEx::GetComputeGraph(graph);
+  compute_graph->TopologicalSorting();
   auto squeezev3 = compute_graph->FindNode("SqueezeV3");
-  std::map<string, uint32_t> names;
-  names["input0"] = 0;
-  names["axes"] = 1;
+  std::map<string, uint32_t> names = {{"x", 0}, {"axes", 1}};
   squeezev3->GetOpDesc()->UpdateInputName(names);
+  // Add IR input config
+  squeezev3->GetOpDesc()->AppendIrInput("x", ge::kIrInputRequired);
+  squeezev3->GetOpDesc()->AppendIrInput("axes", ge::kIrInputOptional);
   auto axes_desc = squeezev3->GetOpDesc()->MutableInputDesc(1);
   GeTensor weight;
   int64_t data = 0;
@@ -547,7 +533,7 @@ TEST_F(HybridModelAsyncTest, test_dynamic_shape_with_squeezev3_success) {
   ge::DynamicSingleOp *singleOp = nullptr;
   EXPECT_EQ(ge::GeExecutor::LoadDynamicSingleOpV2("dynamic_op", modelData, nullptr, &singleOp, 1), SUCCESS);
 
-  OperatorFactoryImpl::operator_infershape_funcs_->emplace("SqueezeV3", ShapeInfer);
+  OperatorFactoryImpl::operator_infershape_funcs_->emplace("SqueezeV3", ShapeInferSqueezeV3);
   EXPECT_EQ(singleOp->ExecuteAsync(input_desc, input_buffers, output_desc, output_buffers), SUCCESS);
 }
 

@@ -22,7 +22,7 @@ OpFusionBase::OpFusionBase() {}
 
 OpFusionBase::~OpFusionBase() {}
 
-HcclResult OpFusionBase::Run(ge::ComputeGraph &graph) {
+HcclResult OpFusionBase::Run([[maybe_unused]] ge::ComputeGraph &graph) {
   return HCCL_SUCCESS;
 }
 

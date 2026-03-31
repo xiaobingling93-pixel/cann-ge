@@ -25,6 +25,7 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTanhTmpSizeV2(const ge::AscNode
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcGatherTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcPowTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcExp2TmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcLgammaTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcVoidTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> GetCompareSizeV2([[maybe_unused]]const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSinTmpSizeV2(const ge::AscNode &node);
@@ -40,6 +41,10 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcErfcTmpSizeV2(const ge::AscNode
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAcoshTmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcAtan2TmpSizeV2(const ge::AscNode &node);
 std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcCeilTmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcSinhTmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTanTmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTruncTmpSizeV2(const ge::AscNode &node);
+std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcXorTmpSizeV2(const ge::AscNode &node);
 }  // namespace ascir
 }  // namespace ge
 #endif  // __ASCIR_REG_FUNC_DEFAULT_REG_FUNC_V2_H__

@@ -459,7 +459,10 @@ class FmaAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
     std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
-      {DT_BF16, DT_FLOAT}
+      {DT_BF16, DT_FLOAT},
+      {DT_INT8, DT_FLOAT16},
+      {DT_INT16, DT_FLOAT},
+      {DT_UINT8, DT_FLOAT16}
     };
     return GetConversionFromDtypeMap(node, dtype_conversion_map);
   }
@@ -993,6 +996,12 @@ class IsnanAscIrCodegenImplV2 : public AscIrCodegenV2 {
   [[nodiscard]] std::string GetApiName() const override {
     return "IsNan";
   }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
       "adv_api/math/is_nan.h",
@@ -1014,6 +1023,12 @@ class IsFiniteAscIrCodegenImplV2 : public AscIrCodegenV2 {
   }
   [[nodiscard]] std::string GetApiName() const override {
     return "IsFinite";
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
   }
   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
     return {
@@ -3022,6 +3037,7 @@ class LogicalOrAscIrCodegenImplV2 : public AscIrCodegenV2 {
       "adv_api/math/logical_ands.h",
       "adv_api/math/logical_or.h",
       "adv_api/math/logical_ors.h",
+      "adv_api/math/logical_xor.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
@@ -3060,6 +3076,7 @@ class LogicalAndAscIrCodegenImplV2 : public AscIrCodegenV2 {
       "adv_api/math/logical_ands.h",
       "adv_api/math/logical_or.h",
       "adv_api/math/logical_ors.h",
+      "adv_api/math/logical_xor.h",
     };
   }
   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
@@ -3203,6 +3220,202 @@ class FloorDivAscIrCodegenImplV2 : public AscIrCodegenV2 {
                       node.GetNamePtr());
     return true;
   }
+};
+
+class FloorToIntAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "FloorToIntApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "FloorToInt";
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/reg_compute/kernel_reg_compute_intf.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class FmodAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcVoidTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryTmpApiCallV2";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Fmod";
+  }
+  // 如果需要插入cast节点，返回cast的目的类型
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/fmod.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class HypotAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcVoidTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryTmpApiCallV2";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Hypot";
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/hypot.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class LgammaAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcLgammaTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "UnaryApiTmpV2Call";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Lgamma";
+  }
+  // 如果需要插入cast节点，返回cast的目的类型
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/lgamma.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class Log10AscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "UnaryApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Log10";
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/log.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class LogicalXorAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "LogicalXorExtend";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"logical_reg_base.h"};
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/logical_and.h",
+      "adv_api/math/logical_ands.h",
+      "adv_api/math/logical_or.h",
+      "adv_api/math/logical_ors.h",
+      "adv_api/math/logical_xor.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class Log1pAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+   [[nodiscard]] std::string GetApiCallName() const override {
+     return "UnaryApiCall";
+   }
+   [[nodiscard]] std::string GetApiName() const override {
+     return "Log1p";
+   }
+   [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+   GetConversionDtype(const ge::AscNode &node) {
+     std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+       {DT_BF16, DT_FLOAT}
+     };
+     return GetConversionFromDtypeMap(node, dtype_conversion_map);
+   }
+   [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+     return {"log1p_reg_base.h"};
+   }
+   [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+     return {
+       "basic_api/kernel_operator_vec_unary_intf.h",
+       "basic_api/reg_compute/kernel_reg_compute_intf.h",
+     };
+   }
+   [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+     GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                    node.GetNamePtr());
+     GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                       node.GetNamePtr());
+     return true;
+   }
 };
 /*********************************************************************************/
 
@@ -3382,6 +3595,254 @@ class RShiftAscIrCodegenImplV2 : public AscIrCodegenV2 {
                    node.GetNamePtr());
     GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
                       node.GetNamePtr());
+    return true;
+  }
+};
+
+class RoundToIntAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcVoidTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "RoundToIntApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "RoundToInt";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {std::string("cast") + std::string("_reg_base.h")};
+  }
+
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class TruncToIntAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcVoidTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "TruncToIntApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "TruncToInt";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {std::string("cast") + std::string("_reg_base.h")};
+  }
+
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class TruncAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcTruncTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "UnaryApiTmpV2Call";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Trunc";
+  }
+  // 如果需要插入cast节点，返回cast的目的类型
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/trunc.h",
+    };
+  }
+};
+
+class SinhAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcSinhTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "UnaryApiTmpV2Call";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Sinh";
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>> GetConversionDtype(
+      const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+        {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/sinh.h",
+    };
+  }
+};
+
+class TanAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcTanTmpSizeV2(node);
+  }
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "UnaryApiTmpV2Call";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Tan";
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/tan.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class XorAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryApiCallV2";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Xor";
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "adv_api/math/xor.h",
+    };
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_UINT8, DT_INT16}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcXorTmpSizeV2(node);
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class TruncDivAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryApiCallV2";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "TruncDivExtend";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"trunc_div_reg_base.h"};
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT},
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/reg_compute/kernel_reg_compute_intf.h",
+    };
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_TRUE(!IsNodeHasScalarInput(node), "Node %s[%s] not support scalar input", node.GetTypePtr(),
+                   node.GetNamePtr());
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node), "Node %s[%s] check shape consistency failed", node.GetTypePtr(),
+                      node.GetNamePtr());
+    return true;
+  }
+};
+
+class SquareAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "SquareApiCall";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "Square";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"scalar_mul.h"};
+  }
+  [[nodiscard]] std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/kernel_operator_vec_binary_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/reg_compute/kernel_reg_compute_intf.h",
+    };
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_UINT8, DT_INT16}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node, {true, {0, 1}}), "Node %s[%s] check shape consistency failed",
+                      node.GetTypePtr(), node.GetNamePtr());
+    return true;
+  }
+};
+
+class RemainderAscIrCodegenImplV2 : public AscIrCodegenV2 {
+ public:
+  [[nodiscard]] std::string GetApiCallName() const override {
+    return "BinaryApiCallV2";
+  }
+  [[nodiscard]] std::string GetApiName() const override {
+    return "RemainderExtend";
+  }
+  [[nodiscard]] std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"remainder_reg_base.h"};
+  }
+  [[nodiscard]] std::pair<std::vector<ge::DataType>, std::vector<ge::DataType>>
+  GetConversionDtype(const ge::AscNode &node) override {
+    std::map<ge::DataType, ge::DataType> dtype_conversion_map = {
+      {DT_BF16, DT_FLOAT}
+    };
+    return GetConversionFromDtypeMap(node, dtype_conversion_map);
+  }
+  [[nodiscard]] bool IsNodeValid(const ge::AscNode &node) const override {
+    GE_ASSERT_SUCCESS(ValidateShapeConsistencyWithSingleOutput(node, {true, {0, 1}}), "Node %s[%s] check shape consistency failed",
+                      node.GetTypePtr(), node.GetNamePtr());
     return true;
   }
 };

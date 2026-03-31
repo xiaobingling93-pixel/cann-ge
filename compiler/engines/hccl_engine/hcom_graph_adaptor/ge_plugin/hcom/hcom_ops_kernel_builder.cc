@@ -264,7 +264,6 @@ HcclResult HcomOpsKernelBuilder::CheckSuperKernelEligibility(ge::Node &node, con
     HCCL_WARNING("op type[%s] not support super kernel", sCollectiveType.c_str());
     return HCCL_SUCCESS;
   }
-  HcclCMDType supportedType = GetOpType(sCollectiveType);
 
   // 步骤3：检查是否具有super_kernel_scope属性
   if (!ge::AttrUtils::HasAttr(opDescPtr, "_super_kernel_scope")) {
@@ -498,7 +497,7 @@ HcclResult HcomOpsKernelBuilder::GetSuperKernelFromDesc(const ge::OpDescPtr &op,
   return HCCL_SUCCESS;
 }
 
-ge::Status HcomOpsKernelBuilder::GenerateTask(const ge::Node &node, ge::RunContext &runContext,
+ge::Status HcomOpsKernelBuilder::GenerateTask([[maybe_unused]] const ge::Node &node, [[maybe_unused]] ge::RunContext &runContext,
                                               std::vector<domi::TaskDef> &taskDefList) {
   bool unknownShapeNode = false;
   CHK_PRT_RET((ge::NodeUtils::GetNodeUnknownShapeStatus(node, unknownShapeNode) != ge::GRAPH_SUCCESS),
@@ -980,7 +979,7 @@ HcclResult HcomOpsKernelBuilder::SetOpWorkerSpaceForKnowShape(ge::Node &node, u6
   return HCCL_SUCCESS;
 }
 
-HcclResult HcomOpsKernelBuilder::GetCrackParamsInfo(const ge::Node &node, u32 tensorNum, int64_t *tensorOffset,
+HcclResult HcomOpsKernelBuilder::GetCrackParamsInfo([[maybe_unused]] const ge::Node &node, u32 tensorNum, int64_t *tensorOffset,
                                                     int64_t *tensorSize, int64_t *crackOffset, int64_t *crackSize) {
   // 获取缝隙的offset和size
   for (u32 i = 0; i < tensorNum; i++) {
@@ -1646,7 +1645,6 @@ HcclResult HcomOpsKernelBuilder::SetHcomOpParam(const ge::Node &node, HcomOpPara
   }
 
   u64 count = 0;
-  const u32 deviceEight = 8;
   ret = HcomOpUtils::GetAccuracyCountFromOpDesc(node.GetOpDesc(), sCollectiveType, dataType, count, rankSize);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][OpWorkspaceMemSize]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),

@@ -1069,14 +1069,15 @@ TEST_F(PatternFusionPassTest, SliceForwardMultiInputFromSameSource) {
 }
 
 TEST_F(PatternFusionPassTest, RemoveConstControlEdgeForConcatFusion) {
-  // 测试场景：形成"环"的冗余控制边应该被删除
+  // 测试场景：单控制边输入，所有数据输出都以控制边源为数据输入
   // 图结构：
   //   data1 -data------> concat1
   //   data1 -ctrl-> const1 -data-> concat1
   //   data2 -----------> concat1
   //
-  // 形成环：data1 -> const1 -> concat1 且 data1 -> concat1
-  // 预期：RedundantControlEdgeRemovePass 删除 data1->const1 的控制边
+  // 新逻辑：concat1 以 data1 为数据输入，const1 只有一个控制边输入 data1
+  // 所有输出（concat1）都以所有控制边输入（data1）为数据输入 → 可删除
+  // 预期：删除 data1->const1 的控制边
 
   auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {10, 20}).InCnt(0).OutCnt(1).Build("data1");
   auto data2 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {5, 20}).InCnt(0).OutCnt(1).Build("data2");
@@ -1098,48 +1099,7 @@ TEST_F(PatternFusionPassTest, RemoveConstControlEdgeForConcatFusion) {
   AttrUtils::SetInt(graph->FindNode("concat1")->GetOpDesc(), "concat_dim", 0);
   AttrUtils::SetInt(graph->FindNode("concat1")->GetOpDesc(), "N", 3);
 
-  // 添加控制边：data1 -ctrl-> const1（形成环）
-  auto data1_node = graph->FindNode("data1");
-  auto const1_node = graph->FindNode("const1");
-  ASSERT_NE(data1_node, nullptr);
-  ASSERT_NE(const1_node, nullptr);
-  auto ret = GraphUtils::AddEdge(data1_node->GetOutControlAnchor(), const1_node->GetInControlAnchor());
-  ASSERT_EQ(ret, GRAPH_SUCCESS);
-
-  // 验证控制边已添加
-  EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
-
-  // 运行 RedundantControlEdgeRemovePass
-  bool changed = false;
-  EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
-
-  // 验证控制边已被删除（data1 是 const1 输出节点 concat1 的数据输入，形成环）
-  EXPECT_EQ(const1_node->GetInControlNodesSize(), 0);
-}
-
-TEST_F(PatternFusionPassTest, RemoveConstControlEdgeSingleRef) {
-  // 测试场景：单引用 const 的控制边形成"环"时应该被删除
-  // 图结构：
-  //   data1 -data-> add
-  //   const1 -data-> add
-  //   data1 -ctrl-> const1
-  //
-  // 形成环：data1 -> const1 -> add 且 data1 -> add
-  // 预期：删除 data1->const1 的控制边
-
-  auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
-  auto const1 = OP_CFG("Const").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("const1");
-  auto add = OP_CFG("Add").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(2).OutCnt(1).Build("add");
-
-  DEF_GRAPH(test_graph) {
-    CHAIN(NODE(data1)->DATA_EDGE(0, 0)->NODE(add));
-    CHAIN(NODE(const1)->DATA_EDGE(0, 1)->NODE(add));
-    CHAIN(NODE(add)->NODE("output_0", NETOUTPUT));
-  };
-
-  auto graph = ToComputeGraph(test_graph);
-
-  // 添加控制边：data1 -ctrl-> const1（形成环）
+  // 添加控制边：data1 -ctrl-> const1
   auto data1_node = graph->FindNode("data1");
   auto const1_node = graph->FindNode("const1");
   ASSERT_NE(data1_node, nullptr);
@@ -1154,12 +1114,54 @@ TEST_F(PatternFusionPassTest, RemoveConstControlEdgeSingleRef) {
   bool changed = false;
   EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
 
-  // 验证控制边已被删除（data1 是 const1 输出节点 add 的数据输入，形成环）
+  // 验证控制边已被删除
+  EXPECT_EQ(const1_node->GetInControlNodesSize(), 0);
+}
+
+TEST_F(PatternFusionPassTest, RemoveConstControlEdgeSingleRef) {
+  // 测试场景：单控制边输入，所有数据输出都以控制边源为数据输入
+  // 图结构：
+  //   data1 -data-> add
+  //   const1 -data-> add
+  //   data1 -ctrl-> const1
+  //
+  // 新逻辑：add 以 data1 为数据输入，const1 只有一个控制边输入 data1
+  // 所有输出（add）都以所有控制边输入（data1）为数据输入 → 可删除
+  // 预期：删除 data1->const1 的控制边
+
+  auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
+  auto const1 = OP_CFG("Const").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("const1");
+  auto add = OP_CFG("Add").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(2).OutCnt(1).Build("add");
+
+  DEF_GRAPH(test_graph) {
+    CHAIN(NODE(data1)->DATA_EDGE(0, 0)->NODE(add));
+    CHAIN(NODE(const1)->DATA_EDGE(0, 1)->NODE(add));
+    CHAIN(NODE(add)->NODE("output_0", NETOUTPUT));
+  };
+
+  auto graph = ToComputeGraph(test_graph);
+
+  // 添加控制边：data1 -ctrl-> const1
+  auto data1_node = graph->FindNode("data1");
+  auto const1_node = graph->FindNode("const1");
+  ASSERT_NE(data1_node, nullptr);
+  ASSERT_NE(const1_node, nullptr);
+  auto ret = GraphUtils::AddEdge(data1_node->GetOutControlAnchor(), const1_node->GetInControlAnchor());
+  ASSERT_EQ(ret, GRAPH_SUCCESS);
+
+  // 验证控制边已添加
+  EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
+
+  // 运行 Pass
+  bool changed = false;
+  EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
+
+  // 验证控制边已被删除
   EXPECT_EQ(const1_node->GetInControlNodesSize(), 0);
 }
 
 TEST_F(PatternFusionPassTest, RemoveConstControlEdgeMultiRefAllOutputsControlled) {
-  // 测试场景：多引用 const，但所有输出都以 ctrl_src 为数据输入，控制边应该被删除
+  // 测试场景：单控制边输入，多数据输出，所有数据输出都以控制边源为数据输入
   // 图结构：
   //   data1 -data-> add1
   //   data1 -data-> add2
@@ -1167,7 +1169,8 @@ TEST_F(PatternFusionPassTest, RemoveConstControlEdgeMultiRefAllOutputsControlled
   //   const1 -data-> add2
   //   data1 -ctrl-> const1
   //
-  // 形成环：data1 通过数据边控制 add1 和 add2，而 const1 也输出到 add1 和 add2
+  // 新逻辑：add1 和 add2 都以 data1 为数据输入，const1 只有一个控制边输入 data1
+  // 所有输出都以所有控制边输入为数据输入 → 可删除
   // 预期：删除 data1->const1 的控制边
 
   auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
@@ -1201,12 +1204,12 @@ TEST_F(PatternFusionPassTest, RemoveConstControlEdgeMultiRefAllOutputsControlled
   bool changed = false;
   EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
 
-  // 验证控制边已被删除（所有输出 add1/add2 都以 data1 为数据输入）
+  // 验证控制边已被删除
   EXPECT_EQ(const1_node->GetInControlNodesSize(), 0);
 }
 
-TEST_F(PatternFusionPassTest, NotRemoveConstControlEdgeMultiRefPartialOutputsControlled) {
-  // 测试场景：多引用 const，但只有部分输出以 ctrl_src 为数据输入，控制边不应该被删除
+TEST_F(PatternFusionPassTest, NotRemoveConstControlEdgePartialOutputsControlled) {
+  // 测试场景：单控制边输入，多数据输出，只有部分数据输出以控制边源为数据输入
   // 图结构：
   //   data1 -data-> add1
   //   data2 -data-> add2  (data2 不是 data1)
@@ -1214,7 +1217,8 @@ TEST_F(PatternFusionPassTest, NotRemoveConstControlEdgeMultiRefPartialOutputsCon
   //   const1 -data-> add2
   //   data1 -ctrl-> const1
   //
-  // 不形成完整环：add2 不以 data1 为数据输入
+  // 新逻辑：add1 以 data1 为数据输入，但 add2 不以 data1 为数据输入
+  // 不是所有输出都以所有控制边输入为数据输入 → 不能删除
   // 预期：保留 data1->const1 的控制边
 
   auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
@@ -1253,14 +1257,15 @@ TEST_F(PatternFusionPassTest, NotRemoveConstControlEdgeMultiRefPartialOutputsCon
   EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
 }
 
-TEST_F(PatternFusionPassTest, NotRemoveControlEdgeWhenSrcNotDataInput) {
-  // 测试场景：控制边来源不是输出节点的数据输入，不删除
+TEST_F(PatternFusionPassTest, NotRemoveControlEdgeWhenSrcNotDataInputToAnyOutput) {
+  // 测试场景：控制边来源不是任何数据输出的数据输入
   // 图结构：
   //   data1 -data-> add
   //   const1 -data-> add
   //   other -ctrl-> const1
   //
-  // 不形成环：other 不是 add 的数据输入
+  // 新逻辑：add 不以 other 为数据输入
+  // 不是所有输出都以所有控制边输入为数据输入 → 不能删除
   // 预期：保留 other->const1 的控制边
 
   auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
@@ -1277,7 +1282,7 @@ TEST_F(PatternFusionPassTest, NotRemoveControlEdgeWhenSrcNotDataInput) {
 
   auto graph = ToComputeGraph(test_graph);
 
-  // 添加控制边：other -ctrl-> const1（不形成环，因为 other 不是 add 的数据输入）
+  // 添加控制边：other -ctrl-> const1
   auto other_node = graph->FindNode("other");
   auto const1_node = graph->FindNode("const1");
   ASSERT_NE(other_node, nullptr);
@@ -1292,57 +1297,55 @@ TEST_F(PatternFusionPassTest, NotRemoveControlEdgeWhenSrcNotDataInput) {
   bool changed = false;
   EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
 
-  // 验证控制边未被删除（other 不是 const1 输出节点 add 的数据输入，不形成环）
+  // 验证控制边未被删除
   EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
 }
 
-TEST_F(PatternFusionPassTest, NotRemoveConstControlEdgeWhenConstHasOutControlEdge) {
-  // 测试场景：Const 有外出控制边时，不删除其入控制边
-  // 图结构：
-  //   data1 -data-> add
-  //   const1 -data-> add
-  //   data1 -ctrl-> const1
-  //   const1 -ctrl-> other  (const1 有外出控制边)
-  //
-  // 预期：保留 data1->const1 的控制边（因为删除后可能破坏 data1 与 other 之间的执行顺序）
+TEST_F(PatternFusionPassTest, NotRemoveMultiControlEdgeMultiDataOutput) {
+  //   A -ctrl-> const1 -data-> B
+  //   A -data-> B
+  //   C -ctrl-> const1 -data-> D
+  //   C -data-> D
+  // 预期：保留所有控制边
 
-  auto data1 = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("data1");
-  auto const1 = OP_CFG("Const").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(1).Build("const1");
-  auto add = OP_CFG("Add").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(2).OutCnt(1).Build("add");
-  auto other = OP_CFG("ReLU").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(1).OutCnt(1).Build("other");
+  auto node_a = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(2).Build("A");
+  auto node_c = OP_CFG("Data").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(2).Build("C");
+  auto const1 = OP_CFG("Const").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(0).OutCnt(2).Build("const1");
+  auto node_b = OP_CFG("Add").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(2).OutCnt(1).Build("B");
+  auto node_d = OP_CFG("Add").TensorDesc(FORMAT_ND, DT_FLOAT, {2, 3}).InCnt(2).OutCnt(1).Build("D");
 
   DEF_GRAPH(test_graph) {
-    CHAIN(NODE(data1)->DATA_EDGE(0, 0)->NODE(add));
-    CHAIN(NODE(const1)->DATA_EDGE(0, 1)->NODE(add));
-    CHAIN(NODE(other)->NODE("output_0", NETOUTPUT));
-    CHAIN(NODE(add)->NODE("output_1", NETOUTPUT));
+    CHAIN(NODE(node_a)->DATA_EDGE(0, 0)->NODE(node_b)); // A -> B (data)
+    CHAIN(NODE(node_c)->DATA_EDGE(0, 0)->NODE(node_d)); // C -> D (data)
+    CHAIN(NODE(const1)->DATA_EDGE(0, 1)->NODE(node_b)); // const1 -> B (data)
+    CHAIN(NODE(const1)->DATA_EDGE(1, 1)->NODE(node_d)); // const1 -> D (data)
+    CHAIN(NODE(node_b)->NODE("output_0", NETOUTPUT));
+    CHAIN(NODE(node_d)->NODE("output_1", NETOUTPUT));
   };
 
   auto graph = ToComputeGraph(test_graph);
 
-  // 添加控制边：data1 -ctrl-> const1，const1 -ctrl-> other
-  auto data1_node = graph->FindNode("data1");
+  // 添加控制边：A -ctrl-> const1，C -ctrl-> const1
+  auto a_node = graph->FindNode("A");
+  auto c_node = graph->FindNode("C");
   auto const1_node = graph->FindNode("const1");
-  auto other_node = graph->FindNode("other");
-  ASSERT_NE(data1_node, nullptr);
+  ASSERT_NE(a_node, nullptr);
+  ASSERT_NE(c_node, nullptr);
   ASSERT_NE(const1_node, nullptr);
-  ASSERT_NE(other_node, nullptr);
 
-  auto ret = GraphUtils::AddEdge(data1_node->GetOutControlAnchor(), const1_node->GetInControlAnchor());
+  auto ret = GraphUtils::AddEdge(a_node->GetOutControlAnchor(), const1_node->GetInControlAnchor());
   ASSERT_EQ(ret, GRAPH_SUCCESS);
-  ret = GraphUtils::AddEdge(const1_node->GetOutControlAnchor(), other_node->GetInControlAnchor());
+  ret = GraphUtils::AddEdge(c_node->GetOutControlAnchor(), const1_node->GetInControlAnchor());
   ASSERT_EQ(ret, GRAPH_SUCCESS);
 
   // 验证控制边已添加
-  EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
-  EXPECT_EQ(const1_node->GetOutControlNodesSize(), 1);
+  EXPECT_EQ(const1_node->GetInControlNodesSize(), 2);
 
   // 运行 Pass
   bool changed = false;
   EXPECT_EQ(RedundantControlEdgeRemovePass().Run(graph, changed), GRAPH_SUCCESS);
 
-  // 验证控制边未被删除（const1 有外出控制边）
-  EXPECT_EQ(const1_node->GetInControlNodesSize(), 1);
+  // 验证控制边未被删除（B 不以 C 为数据输入，D 不以 A 为数据输入）
+  EXPECT_EQ(const1_node->GetInControlNodesSize(), 2);
 }
-
 }  // namespace ge

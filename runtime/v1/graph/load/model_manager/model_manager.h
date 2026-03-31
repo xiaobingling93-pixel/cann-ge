@@ -343,10 +343,10 @@ class ModelManager {
   static uint8_t *MallocWeightsMem(const std::string &weights_mem_id, const uint32_t device_id,
                                    const size_t weights_size);
   static Status FreeWeightsMem(const std::string &weights_mem_id, const uint32_t device_id, uint8_t *weights_mem_base);
-  rtBinHandle GetPlatformBinHandle() const {
+  aclrtBinHandle GetPlatformBinHandle() const {
     return platform_bin_handle_;
   }
-  void SetPlatformBinHandle(const rtBinHandle &bin_handle) {
+  void SetPlatformBinHandle(const aclrtBinHandle &bin_handle) {
     if (platform_bin_handle_ == nullptr) {
       platform_bin_handle_ = bin_handle;
     }
@@ -428,7 +428,7 @@ class ModelManager {
   std::string trigger_file_name_;
   bool is_dump_registered_ = false;
   std::mutex dump_regis_mutex_;
-  rtBinHandle platform_bin_handle_{nullptr};
+  aclrtBinHandle platform_bin_handle_{nullptr};
   std::mutex op_master_device_mutex_;
   std::unordered_map<std::string, OpSoBinPtr> built_in_op_master_so_names_to_bin_;
   std::unordered_map<std::string, OpSoBinPtr> cust_op_master_so_names_to_bin_;

@@ -22,7 +22,7 @@
 #include "schedule_utils.h"
 #include "platform_context.h"
 #include "optimize/platformv2.h"
-#include "easy_graph/easy_asc_graph.h"
+#include "ascgraph_info_complete.h"
 #include "runtime_stub.h"
 #include "optimize.h"
 
@@ -34,6 +34,55 @@ using namespace optimize::autoschedule;
 
 namespace optimize {
 using namespace ge;
+
+namespace {
+void SetupGraphAxes(ge::AscGraph &graph, const std::vector<ge::Symbol> &loops) {
+  for (size_t i = 0UL; i < loops.size(); ++i) {
+    graph.CreateAxis("z" + std::to_string(i), loops[i]);
+  }
+  optimize::AscGraphInfoComplete::CompleteApiInfo(graph);
+
+  auto axes = graph.GetAllAxis();
+  std::vector<ge::Expression> loop_repeats;
+  std::vector<ge::AxisId> axis_ids;
+  for (const auto &axis : axes) {
+    loop_repeats.push_back(axis->size);
+    axis_ids.push_back(axis->id);
+  }
+
+  auto SetStrides = [](const std::vector<ge::Expression> &repeats, std::vector<ge::Expression> &strides) {
+    ge::Expression stride = ge::sym::kSymbolOne;
+    for (auto iter = repeats.rbegin(); iter != repeats.rend(); ++iter) {
+      if (ge::SymbolicUtils::StaticCheckEq(*iter, ge::sym::kSymbolOne) == ge::TriBool::kTrue) {
+        strides.push_back(ge::sym::kSymbolZero);
+      } else {
+        strides.push_back(stride);
+        stride = stride * *iter;
+      }
+    }
+    std::reverse(strides.begin(), strides.end());
+  };
+
+  for (const auto &node : graph.GetAllNodes()) {
+    node->attr.sched.axis = axis_ids;
+    if (ScheduleUtils::IsBuffer(node)) continue;
+    bool is_follow_input = (node->attr.api.compute_type == ge::ComputeType::kComputeElewise ||
+                            node->attr.api.compute_type == ge::ComputeType::kComputeStore);
+    for (auto &output : node->outputs()) {
+      output->attr.axis = axis_ids;
+      output->attr.vectorized_axis = axis_ids;
+      if (is_follow_input) {
+        output->attr.repeats = node->inputs[0].attr.repeats;
+      } else {
+        output->attr.repeats = loop_repeats;
+      }
+      auto &reps = is_follow_input ? node->inputs[0].attr.repeats : loop_repeats;
+      SetStrides(reps, output->attr.strides);
+      SetStrides(reps, output->attr.vectorized_strides);
+    }
+  }
+}
+}  // namespace
 
 class VfPartition : public testing::Test {
 protected:
@@ -843,8 +892,7 @@ TEST_F(VfPartition, cast_fused) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol("s0"), ge::Symbol("s1")});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol("s0"), ge::Symbol("s1")});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -900,8 +948,7 @@ TEST_F(VfPartition, vf_cascade) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol("s0"), ge::Symbol("s1")});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol("s0"), ge::Symbol("s1")});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -935,8 +982,7 @@ TEST_F(VfPartition, all_zero_axis_stride) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1), ge::Symbol(1)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(1), ge::Symbol(1)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -985,8 +1031,7 @@ TEST_F(VfPartition, ScalarInputDisableVf) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(10), ge::Symbol(2)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(10), ge::Symbol(2)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -1052,8 +1097,7 @@ TEST_F(VfPartition, test_scalar_brc) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32), ge::Symbol(16)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(32), ge::Symbol(16)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1111,8 +1155,7 @@ TEST_F(VfPartition, test_scalar_brc_unsupport_vf) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(32), ge::Symbol(16)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(32), ge::Symbol(16)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1172,8 +1215,7 @@ TEST_F(VfPartition, test_scalar_brc_multi_output) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(1)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1227,8 +1269,7 @@ TEST_F(VfPartition, test_vf_no_cache) {
   out1.x = store1.y;
   out1.ir_attr.SetIndex(1);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(1)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1326,8 +1367,7 @@ TEST_F(VfPartition, VFWithCycleDetectBug) {
   out3.x = store3.y;
   out3.ir_attr.SetIndex(3);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(1)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1379,8 +1419,7 @@ TEST_F(VfPartition, test_vf_cache) {
   out1.x = store1.y;
   out1.ir_attr.SetIndex(1);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(1)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(1)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
 
@@ -1430,8 +1469,7 @@ TEST_F(VfPartition, cast_bitwidth_gap_exactly_2x) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(10), ge::Symbol(10)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(10), ge::Symbol(10)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -1492,8 +1530,7 @@ TEST_F(VfPartition, cast_bitwidth_gap_exceed_2x) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(10), ge::Symbol(10)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(10), ge::Symbol(10)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -1536,8 +1573,7 @@ TEST_F(VfPartition, cast_high_to_low_no_fuse_with_output) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(10), ge::Symbol(10)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(10), ge::Symbol(10)});
 
   ASSERT_EQ(AlignmentHandler::AlignVectorizedStrides(graph), ge::SUCCESS);
   VectorFuncPartitioner partitioner(graph);
@@ -1607,8 +1643,7 @@ TEST_F(VfPartition, CompareWhereForceMerge) {
   out.x = store.y;
   out.ir_attr.SetIndex(0);
 
-  auto eg = ge::EaseAscGraph(graph).Loops({ge::Symbol(10), ge::Symbol(10)});
-  eg.Build();
+  SetupGraphAxes(graph, {ge::Symbol(10), ge::Symbol(10)});
 
   ::ascir::utils::DumpImplGraphs({graph}, "BeforePartition");
 

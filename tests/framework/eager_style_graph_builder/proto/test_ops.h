@@ -796,6 +796,12 @@ REG_OP(Squeeze)
     .ATTR(axis, ListInt, {})
     .OP_END_FACTORY_REG(Squeeze)
 
+REG_OP(SqueezeV3)
+    .INPUT(x, TensorType::ALL())
+    .OPTIONAL_INPUT(axes, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType::ALL())
+    .OP_END_FACTORY_REG(SqueezeV3)    
+
 REG_OP(StopGradient)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
@@ -914,6 +920,13 @@ REG_OP(Unsqueeze)
     .ATTR(axes, ListInt, {})
     .OP_END_FACTORY_REG(Unsqueeze)
 
+REG_OP(UnsqueezeV3)
+    .INPUT(x, TensorType::ALL())
+    .INPUT(axes, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType::ALL())
+    .OP_END_FACTORY_REG(UnsqueezeV3)
+
+
 REG_OP(While)
     .DYNAMIC_INPUT(input, TensorType::ALL())
     .DYNAMIC_OUTPUT(output, TensorType::ALL())
@@ -936,8 +949,14 @@ REG_OP(MapIndex)
     .OUTPUT(y, TensorType({DT_INT32}))
     .ATTR(transpose, Bool, false)
     .OP_END_FACTORY_REG(MapIndex)
-
     
-}  // namespace ge
+REG_OP(FlattenV2)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+    .ATTR(axis, Int, 1)
+    .ATTR(end_axis, Int, -1)
+    .OP_END_FACTORY_REG(FlattenV2)
+    
+}  // namespace ge 
 
 #endif  // GE_TESTS_FRAMEWORK_ESB_TEST_OPS_H_

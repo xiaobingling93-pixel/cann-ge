@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -818,9 +818,7 @@ std::vector<void *> ModelUtils::GetOutputDataAddrs(const RuntimeParam &model_par
       GELOGW("Op: %s, Index: %zu, Tensor Desc is null", op_desc->GetName().c_str(), i);
       continue;
     }
-    int32_t calc_type = 0;
-    (void)AttrUtils::GetInt(tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    if (calc_type == static_cast<int32_t>(MemorySizeCalcType::ALWAYS_EMPTY)) {
+    if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(*tensor_desc)) {
       if (has_optional_addr) {
         v_output_data_addr.push_back(nullptr);
         mem_type.push_back(kFixMemType);
@@ -915,9 +913,7 @@ Status ModelUtils::GetInputOutputDescAddrs(const RuntimeParam &model_param, cons
   (void) AttrUtils::GetListInt(op_desc, ATTR_NAME_OUTPUT_MEM_TYPE_LIST, v_data_mem_type);
   size_t tensor_cnt = 0UL;
   for (const auto &tensor_desc : tensor_desc_visitor) {
-    int32_t calc_type = 0;
-    const bool ret = AttrUtils::GetInt(tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-    if (ret && (calc_type == static_cast<int32_t>(MemorySizeCalcType::ALWAYS_EMPTY))) {
+    if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(*tensor_desc)) {
       if (has_optional_addr) {
         tensor_cnt++;
       }

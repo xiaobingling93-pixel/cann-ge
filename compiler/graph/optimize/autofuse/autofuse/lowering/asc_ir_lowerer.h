@@ -33,6 +33,7 @@ class AscIrLowerer {
   graphStatus RecoverInitControlEdge(const ComputeGraphPtr &graph);
   std::set<NodePtr> replaced_nodes_;
   CounterPtr counter_ = nullptr;
+  ComputeGraphPtr pre_lowering_graph_;  // Lowering 前的原始图深拷贝，供落盘子图使用
   std::map<std::string, std::vector<NodePtr>> node_in_control_to_const_;
   std::map<std::string, std::vector<NodePtr>> node_out_control_to_const_;
 };

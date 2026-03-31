@@ -21,4 +21,4 @@ inline __aicore__ void Exp2(const AscendC::LocalTensor<T> &dst, const AscendC::L
     Power(dst, (T)2, src, tmp_buf, calCount);
   }
 }
-#endif  // __ASCENDC_API_POW_H__
+#endif  // __ASCENDC_API_EXP2_H__

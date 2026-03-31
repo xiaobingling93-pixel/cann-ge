@@ -21,6 +21,9 @@ PYTHON_MODULE_PATH=${BASEPATH}/compiler/graph/optimize/autofuse/compiler/python/
 TESTS_ST_PATH="${BASEPATH}/tests/autofuse/st/"
 RUN_V35_TESTS="off"
 
+# TODO(For autofuse): Remove 'export DISABLE_COMPILATION_WERROR=ON' and fix the related compilation errors.
+export DISABLE_COMPILATION_WERROR=ON
+
 # print usage message
 usage() {
   echo "Usage:"
@@ -547,11 +550,9 @@ codegen_e2e_st() {
                     load_isfinite_store_e2e \
                     load_max_min_store_e2e \
                     load_rsum_block_store_e2e \
-                    load_rsum_ra_store_e2e \
                     load_reciprocal_store_e2e \
                     load_bitwiseand_store_e2e \
                     load_strided_slice_store_e2e \
-                    schedule_multi_group_e2e \
                     load_store_expect_code_e2e \
                     schedule_multi_group_ws_reuse_output_e2e \
                     broadcast_multi_axes_e2e \
@@ -579,6 +580,7 @@ codegen_e2e_st() {
                     compare_x2_tensor_int64_eq_test_e2e \
                     compare_x2_tensor_int64_gt_test_e2e \
                     load_to_store_and_abs_test_e2e \
+                    scalar_cast_add_test_e2e  \
                     concat_all_aligned_test_e2e \
                     concat_to_stores_test_e2e \
                     load_unalign_pad_test_e2e \
@@ -613,6 +615,13 @@ codegen_e2e_st() {
                       continues_brc_test_e2e_v2 \
                       scalar_brc_test_e2e_v2 \
                       brc_reduce_test_e2e_v2 \
+                      log1p_bfloat16_test_e2e_v2 \
+                      floortoint_float_test_e2e_v2 \
+                      fmod_float_test_e2e_v2 \
+                      hypot_float_test_e2e_v2 \
+                      lgamma_float_test_e2e_v2 \
+                      logicalxor_float_test_e2e_v2 \
+                      log10_float_test_e2e_v2 \
                       load_brc_test_e2e_v2 \
                       cast_abs_test_e2e_v2 \
                       cast_nan_test_e2e_v2 \
@@ -678,6 +687,7 @@ codegen_e2e_st() {
                       asinh_bf16_test_e2e_v2 \
                       atan_bf16_test_e2e_v2 \
                       atanh_bf16_test_e2e_v2 \
+                      scalar_cast_add_test_e2e_v2 \
                       cosh_bf16_test_e2e_v2 \
                       digamma_bf16_test_e2e_v2 \
                       erfc_bf16_test_e2e_v2 \

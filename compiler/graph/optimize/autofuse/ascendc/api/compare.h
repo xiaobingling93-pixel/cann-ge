@@ -196,6 +196,8 @@ inline __aicore__ void ApplyCompareMode(LocalTensor<int32_t> &inter_buf, CMPMODE
       AscendC::PipeBarrier<PIPE_V>();
       AscendC::Mul(inter_buf, inter_buf, inter_buf, num_elements);
       break;
+    default:
+      break;
   }
   AscendC::PipeBarrier<PIPE_V>();
 }

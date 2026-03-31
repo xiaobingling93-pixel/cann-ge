@@ -192,6 +192,7 @@ target_include_directories(fe_st PRIVATE
         ${AIR_CODE_DIR}/compiler/opcompiler/op_compile_adapter/source
 
         #ge_compiler_depends
+        ${AIR_CODE_DIR}/
         ${AIR_CODE_DIR}/inc
         ${AIR_CODE_DIR}/inc/external
         ${AIR_CODE_DIR}/inc/framework

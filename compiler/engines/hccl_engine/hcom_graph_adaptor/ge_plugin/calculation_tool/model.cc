@@ -174,7 +174,7 @@ Model::SliceMeth Model::CalculateTrail(Cluster &cluster, const Communication &op
   return slice;
 }
 
-vector<int> Model::GradientSlicing(Cluster &cluster, const Communication &op, int batchSize) {
+vector<int> Model::GradientSlicing(Cluster &cluster, const Communication &op, [[maybe_unused]] int batchSize) {
   float trailCost = 0.0;
   vector<int> slices;
   vector<float> sliceBySize;

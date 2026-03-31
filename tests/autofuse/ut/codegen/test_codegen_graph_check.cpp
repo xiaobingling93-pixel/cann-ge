@@ -155,15 +155,15 @@ TEST(CodegenKernel, Kernel_DataTypeRepeatsNodeUnsupportCheck) {
   graph.AddNode(store_op);
   graph.AddNode(y_op);
 
-  scalar.y.dtype = ge::DT_INT32;
+  scalar.y.dtype = ge::DT_INT16;
   abs_op.x = scalar.y;
-  abs_op.y.dtype = ge::DT_INT32;
+  abs_op.y.dtype = ge::DT_INT16;
 
   store_op.x = abs_op.y;
-  store_op.y.dtype = ge::DT_INT32;
+  store_op.y.dtype = ge::DT_INT16;
 
   y_op.x = store_op.y;
-  y_op.y.dtype = ge::DT_INT32;
+  y_op.y.dtype = ge::DT_INT16;
 
   auto abs = graph.FindNode("abs");
   auto store = graph.FindNode("store");
@@ -195,11 +195,11 @@ TEST(CodegenKernel, Kernel_DataTypeRepeatsNodeUnsupportCheck) {
 
 TEST(CodegenKernel, Kernel_ShapeConsistencyInValidCheck) {
   ge::AscGraph graph("test_graph");
-  auto s0 = graph.CreateSizeVar("s0");
+  const Expression s0 = graph.CreateSizeVar(3);
   auto z0 = graph.CreateAxis("z0", s0);
-  auto s1 = graph.CreateSizeVar("s1");
+  const Expression s1 = graph.CreateSizeVar(4);
   auto z1 = graph.CreateAxis("z1", s1);
-  auto s2 = graph.CreateSizeVar("s2");
+  const Expression s2 = graph.CreateSizeVar(5);
   auto z2 = graph.CreateAxis("z2", s2);
 
   ge::ascir_op::Data x1_op("x1", graph);
@@ -298,7 +298,7 @@ TEST(CodegenKernel, Kernel_ShapeConsistencyInValidCheck) {
   EXPECT_NE(ret, ge::SUCCESS);
 }
 
-TEST(CodegenKernel, Kernel_ShapeBrcDirDifferentCheck) {
+TEST(CodegenKernel, Kernel_DynamicShapeConsistencyCheckValid) {
   ge::AscGraph graph("test_graph");
   auto s0 = graph.CreateSizeVar("s0");
   auto z0 = graph.CreateAxis("z0", s0);
@@ -354,8 +354,8 @@ TEST(CodegenKernel, Kernel_ShapeBrcDirDifferentCheck) {
   load1->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
   load1->outputs[0].attr.vectorized_axis = {z2.id};
   load1->outputs[0].attr.vectorized_strides = {One};
-  load1->outputs[0].attr.repeats = {z1.size, One, z2.size};
-  load1->outputs[0].attr.strides = {z2.size, Zero, One};
+  load1->outputs[0].attr.repeats = {z1.size, One, One};
+  load1->outputs[0].attr.strides = {z2.size, Zero, Zero};
   load1->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
   load1->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
   load1->outputs[0].attr.mem.tensor_id = 2;
@@ -400,5 +400,215 @@ TEST(CodegenKernel, Kernel_ShapeBrcDirDifferentCheck) {
   fused_schedule_result.output_nodes.push_back(y);
   codegen::Kernel kernel(graph.GetName());
   auto ret = CheckGraphValidity(graph);
+  EXPECT_EQ(ret, ge::SUCCESS);
+}
+
+TEST(CodegenKernel, Kernel_StaticShapeVecAxisConsistencyInValidCheck) {
+  ge::AscGraph graph("test_graph");
+  const Expression s0 = graph.CreateSizeVar(3);
+  auto z0 = graph.CreateAxis("z0", s0);
+  const Expression s1 = graph.CreateSizeVar(4);
+  auto z1 = graph.CreateAxis("z1", s1);
+  const Expression s2 = graph.CreateSizeVar(5);
+  auto z2 = graph.CreateAxis("z2", s2);
+
+  ge::ascir_op::Data x1_op("x1", graph);
+  x1_op.ir_attr.SetIndex(0);
+  ge::ascir_op::Data x2_op("x2", graph);
+  x2_op.ir_attr.SetIndex(1);
+
+  ge::ascir_op::Load load1_op("load1");
+  ge::ascir_op::Load load2_op("load2");
+  ge::ascir_op::Pow pow_op("pow");
+  ge::ascir_op::Store store_op("store");
+  ge::ascir_op::Output y_op("y");
+  y_op.ir_attr.SetIndex(0);
+
+  x1_op.y.dtype = ge::DT_FLOAT;
+  x2_op.y.dtype = ge::DT_FLOAT;
+
+  load1_op.x = x1_op.y;
+  load1_op.y.dtype = ge::DT_FLOAT;
+
+  load2_op.x = x2_op.y;
+  load2_op.y.dtype = ge::DT_FLOAT;
+
+  pow_op.x1 = load1_op.y;
+  pow_op.x2 = load2_op.y;
+  pow_op.y.dtype = ge::DT_FLOAT;
+
+  store_op.x = pow_op.y;
+  store_op.y.dtype = ge::DT_FLOAT;
+
+  y_op.x = store_op.y;
+  y_op.y.dtype = ge::DT_FLOAT;
+
+  auto x1 = graph.FindNode("x1");
+  auto x2 = graph.FindNode("x2");
+  auto load1 = graph.FindNode("load1");
+  auto load2 = graph.FindNode("load2");
+  auto pow = graph.FindNode("pow");
+  auto store = graph.FindNode("store");
+  auto y = graph.FindNode("y");
+
+  x1->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  x1->outputs[0].attr.mem.tensor_id = 0;
+  x2->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  x2->outputs[0].attr.mem.tensor_id = 1;
+
+  load1->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  load1->outputs[0].attr.vectorized_axis = {z2.id};
+  load1->outputs[0].attr.vectorized_strides = {One};
+  load1->outputs[0].attr.repeats = {z0.size, z1.size, ge::Symbol(2)};
+  load1->outputs[0].attr.strides = {z1.size * ge::Symbol(2), ge::Symbol(2), One};
+  load1->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  load1->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  load1->outputs[0].attr.mem.tensor_id = 2;
+  load1->outputs[0].attr.que.id = 0;
+  load1->outputs[0].attr.mem.reuse_id = 0;
+  load1->outputs[0].attr.que.depth = 2;
+  load1->outputs[0].attr.que.buf_num = 2;
+  load1->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  load2->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  load2->outputs[0].attr.vectorized_axis = {z2.id};
+  load2->outputs[0].attr.vectorized_strides = {One};
+  load2->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  load2->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  load2->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  load2->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  load2->outputs[0].attr.mem.tensor_id = 3;
+  load2->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.mem.reuse_id = 0;
+  load2->outputs[0].attr.que.depth = 2;
+  load2->outputs[0].attr.que.buf_num = 2;
+  load2->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  pow->attr.api.unit = ge::ComputeUnit::kUnitVector;
+  pow->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  pow->outputs[0].attr.vectorized_axis = {z2.id};
+  pow->outputs[0].attr.vectorized_strides = {One};
+  pow->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  pow->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  pow->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
+  pow->outputs[0].attr.mem.tensor_id = 4;
+  pow->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  pow->outputs[0].attr.que.id = 2;
+  pow->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  store->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  store->outputs[0].attr.mem.tensor_id = 5;
+
+  ::ascir::FusedScheduledResult fused_schedule_result;
+  fused_schedule_result.input_nodes.push_back(x1);
+  fused_schedule_result.input_nodes.push_back(x2);
+  fused_schedule_result.output_nodes.push_back(y);
+  codegen::Kernel kernel(graph.GetName());
+  auto ret = CheckGraphValidity(graph);
   EXPECT_NE(ret, ge::SUCCESS);
+}
+
+TEST(CodegenKernel, Kernel_DynamicShapeVecAxisConsistencyInValidCheck) {
+  ge::AscGraph graph("test_graph");
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", s0);
+  auto s1 = graph.CreateSizeVar("s1");
+  auto z1 = graph.CreateAxis("z1", s1);
+  auto s2 = graph.CreateSizeVar("s2");
+  auto z2 = graph.CreateAxis("z2", s2);
+
+  ge::ascir_op::Data x1_op("x1", graph);
+  x1_op.ir_attr.SetIndex(0);
+  ge::ascir_op::Data x2_op("x2", graph);
+  x2_op.ir_attr.SetIndex(1);
+
+  ge::ascir_op::Load load1_op("load1");
+  ge::ascir_op::Load load2_op("load2");
+  ge::ascir_op::Pow pow_op("pow");
+  ge::ascir_op::Store store_op("store");
+  ge::ascir_op::Output y_op("y");
+  y_op.ir_attr.SetIndex(0);
+
+  x1_op.y.dtype = ge::DT_FLOAT;
+  x2_op.y.dtype = ge::DT_FLOAT;
+
+  load1_op.x = x1_op.y;
+  load1_op.y.dtype = ge::DT_FLOAT;
+
+  load2_op.x = x2_op.y;
+  load2_op.y.dtype = ge::DT_FLOAT;
+
+  pow_op.x1 = load1_op.y;
+  pow_op.x2 = load2_op.y;
+  pow_op.y.dtype = ge::DT_FLOAT;
+
+  store_op.x = pow_op.y;
+  store_op.y.dtype = ge::DT_FLOAT;
+
+  y_op.x = store_op.y;
+  y_op.y.dtype = ge::DT_FLOAT;
+
+  auto x1 = graph.FindNode("x1");
+  auto x2 = graph.FindNode("x2");
+  auto load1 = graph.FindNode("load1");
+  auto load2 = graph.FindNode("load2");
+  auto pow = graph.FindNode("pow");
+  auto store = graph.FindNode("store");
+  auto y = graph.FindNode("y");
+
+  x1->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  x1->outputs[0].attr.mem.tensor_id = 0;
+  x2->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  x2->outputs[0].attr.mem.tensor_id = 1;
+
+  load1->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  load1->outputs[0].attr.vectorized_axis = {z2.id};
+  load1->outputs[0].attr.vectorized_strides = {One};
+  load1->outputs[0].attr.repeats = {z0.size, z1.size, ge::Symbol(2)};
+  load1->outputs[0].attr.strides = {z1.size * ge::Symbol(2), ge::Symbol(2), One};
+  load1->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  load1->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  load1->outputs[0].attr.mem.tensor_id = 2;
+  load1->outputs[0].attr.que.id = 0;
+  load1->outputs[0].attr.mem.reuse_id = 0;
+  load1->outputs[0].attr.que.depth = 2;
+  load1->outputs[0].attr.que.buf_num = 2;
+  load1->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  load2->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  load2->outputs[0].attr.vectorized_axis = {z2.id};
+  load2->outputs[0].attr.vectorized_strides = {One};
+  load2->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  load2->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  load2->outputs[0].attr.mem.position = ge::Position::kPositionVecIn;
+  load2->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  load2->outputs[0].attr.mem.tensor_id = 3;
+  load2->outputs[0].attr.que.id = 1;
+  load2->outputs[0].attr.mem.reuse_id = 0;
+  load2->outputs[0].attr.que.depth = 2;
+  load2->outputs[0].attr.que.buf_num = 2;
+  load2->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  pow->attr.api.unit = ge::ComputeUnit::kUnitVector;
+  pow->outputs[0].attr.axis = {z0.id, z1.id, z2.id};
+  pow->outputs[0].attr.vectorized_axis = {z2.id};
+  pow->outputs[0].attr.vectorized_strides = {One};
+  pow->outputs[0].attr.repeats = {z0.size, z1.size, z2.size};
+  pow->outputs[0].attr.strides = {z1.size * z2.size, z2.size, One};
+  pow->outputs[0].attr.mem.position = ge::Position::kPositionVecOut;
+  pow->outputs[0].attr.mem.tensor_id = 4;
+  pow->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeQueue;
+  pow->outputs[0].attr.que.id = 2;
+  pow->outputs[0].attr.opt.merge_scope = ge::kIdNone;
+
+  store->outputs[0].attr.mem.alloc_type = ge::AllocType::kAllocTypeGlobal;
+  store->outputs[0].attr.mem.tensor_id = 5;
+
+  ::ascir::FusedScheduledResult fused_schedule_result;
+  fused_schedule_result.input_nodes.push_back(x1);
+  fused_schedule_result.input_nodes.push_back(x2);
+  fused_schedule_result.output_nodes.push_back(y);
+  codegen::Kernel kernel(graph.GetName());
+  auto ret = CheckGraphValidity(graph);
+  EXPECT_EQ(ret, ge::SUCCESS);
 }

@@ -1,9 +1,9 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
@@ -13,6 +13,7 @@
 #include "framework/common/debug/ge_log.h"
 #include "graph/utils/op_type_utils.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/tensor_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "common/checker.h"
 #include "graph/build/memory/block_mem_assigner.h"
@@ -86,9 +87,7 @@ bool NoNeedToCheck(const Node *node) {
 }
 
 bool IsSkip(const GeTensorDescPtr &output_tensor_desc, const int64_t memory_type, const int64_t mem_size) {
-  int32_t calc_type = 0;
-  bool ret = ge::AttrUtils::GetInt(output_tensor_desc, ATTR_NAME_MEMORY_SIZE_CALC_TYPE, calc_type);
-  if (ret && (calc_type == static_cast<int32_t>(ge::MemorySizeCalcType::ALWAYS_EMPTY))) {
+  if (TensorUtils::IsMemorySizeCalcTypeAlwaysEmpty(*output_tensor_desc)) {
     return true;
   }
 
@@ -99,7 +98,7 @@ bool IsSkip(const GeTensorDescPtr &output_tensor_desc, const int64_t memory_type
     return true;
   }
   int32_t tensor_type = 0;
-  ret = ge::AttrUtils::GetInt(output_tensor_desc, ATTR_NAME_TENSOR_MEMORY_SCOPE, tensor_type);
+  bool ret = ge::AttrUtils::GetInt(output_tensor_desc, ATTR_NAME_TENSOR_MEMORY_SCOPE, tensor_type);
   if (ret && tensor_type == kOutputMemoryGlobalType) {
     return true;
   }
