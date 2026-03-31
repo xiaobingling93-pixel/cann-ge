@@ -17,10 +17,31 @@
 
 EG_NS_BEGIN
 
+class LdPreloadGuard {
+ public:
+  LdPreloadGuard() {
+    const auto *val = getenv("LD_PRELOAD");
+    if (val != nullptr) {
+      original_ = val;
+      unsetenv("LD_PRELOAD");
+    }
+  }
+  ~LdPreloadGuard() {
+    if (!original_.empty()) {
+      setenv("LD_PRELOAD", original_.c_str(), 1);
+    }
+  }
+ private:
+  std::string original_;
+};
+
 Status ShellExecutor::execute(const std::string &script) {
   EG_DBG("%s", script.c_str());
 
+  // 消除perl里的内存泄漏误报
+  LdPreloadGuard guard;
   pid_t status = system(script.c_str());
+
   if (-1 == status) {
     EG_ERR("system execute return error!");
     return EG_FAILURE;
