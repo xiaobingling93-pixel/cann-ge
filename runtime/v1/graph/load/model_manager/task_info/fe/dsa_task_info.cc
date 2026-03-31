@@ -301,7 +301,11 @@ Status DSATaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("DSATaskInfo Distribute Start.");
   SetTaskTag(op_desc_->GetName().c_str());
-
+  if (davinci_model_ != nullptr && davinci_model_->IsDumpOpWithAdump()) {
+    GELOGD("Both overflow detection and persistent stream unlimited enabled, disable dump for op %s",
+            op_desc_ ? op_desc_->GetName().c_str() : "unknown");
+    dump_flag_ &= ~RT_KERNEL_DUMPFLAG;
+  }
   const TaskProfGuarder prof_guarder(this);
   GE_CHK_RT_RET(ge::rtStarsTaskLaunchWithFlag(&dsa_sqe_, static_cast<uint32_t>(sizeof(dsa_sqe_)), stream_, dump_flag_));
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
@@ -377,13 +381,13 @@ void DSATaskInfo::PostDumpProcess(const domi::TaskDef &task_def) {
   if ((!support_refresh_) || (!davinci_model_->IsFeatureBaseRefreshable())) {
       // 兼容性考虑 support_refresh_ 为false表示是老的drv包是老包, 或者不支持刷新的场景下, 走一级指针dump
       davinci_model_->SaveDumpTask(id, op_desc, static_cast<uintptr_t>(PtrToValue(args.data())),
-                                   first_level_address_info, {}, task_type);
+                                   first_level_address_info, {}, task_type, stream_);
   } else {
     // support_refresh_ 为true表示是dsa支持可刷新, 走二级指针dump流程, 仅纯静态图在此拷贝, 其他走args table拷贝
     (void)rtMemcpy(ValueToPtr(dump_args_), sizeof(uint64_t) * dump_io_addr.size(), dump_io_addr.data(),
                    sizeof(uint64_t) * dump_io_addr.size(), RT_MEMCPY_HOST_TO_DEVICE);
     // Dump of second-level addresses
-    davinci_model_->SaveDumpTask(id, op_desc, static_cast<uintptr_t>(dump_args_), {false, {}}, {}, task_type);
+    davinci_model_->SaveDumpTask(id, op_desc, static_cast<uintptr_t>(dump_args_), {false, {}}, {}, task_type, stream_);
   }
 
   return;

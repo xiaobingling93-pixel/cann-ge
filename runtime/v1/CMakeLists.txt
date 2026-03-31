@@ -381,6 +381,7 @@ target_include_directories(davinci_executor PRIVATE
     ${TOP_DIR}/hcomm/pkg_inc
     ${TOP_DIR}/hcomm/include
     ${TOP_DIR}/hcomm/include/hccl
+    ${TOP_DIR}/runtime/pkg_inc/dump
 )
 
 target_link_options(davinci_executor PRIVATE
@@ -591,6 +592,7 @@ target_include_directories(hybrid_executor_stub PRIVATE
     ${TOP_DIR}/runtime/include/external
     ${TOP_DIR}/runtime/include/external/acl
     ${TOP_DIR}/runtime/include/external/acl/error_codes
+    ${TOP_DIR}/runtime/pkg_inc/dump
 )
 
 target_link_libraries(hybrid_executor_stub PRIVATE

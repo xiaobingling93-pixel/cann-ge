@@ -471,6 +471,17 @@ Status DumpManager::AddDumpProperties(uint64_t session_id, const DumpProperties 
            config.dumpPath.c_str(), config.dumpMode.c_str(), config.dumpData.c_str());
     GE_ASSERT_TRUE((Adx::AdumpSetDumpConfig(Adx::DumpType::OPERATOR, config) == Adx::ADUMP_SUCCESS),
                    "call AdumpSetDumpConfig to enable data dump failed");
+  } else if (dump_properties.IsOpDebugOpen()) {
+    Adx::DumpConfig config;
+    config.dumpStatus = "on";
+    config.dumpPath = dump_properties.GetDumpPath();
+    config.dumpMode = dump_properties.GetDumpMode();
+    config.dumpData = dump_properties.GetDumpData();
+    config.dumpSwitch = Adx::OPERATOR_OP_DUMP;
+    GELOGI("Add overflow dump properties, session id:%lu, dumpPath:%s, dumpMode: %s, dumpData: %s", session_id,
+           config.dumpPath.c_str(), config.dumpMode.c_str(), config.dumpData.c_str());
+    GE_ASSERT_TRUE((Adx::AdumpSetDumpConfig(Adx::DumpType::OP_OVERFLOW, config) == Adx::ADUMP_SUCCESS),
+                   "call AdumpSetDumpConfig to enable overflow dump failed");
   }
   (void)dump_properties_map_.emplace(session_id, dump_properties);
   GELOGI("Add dump properties, session id:%lu.", session_id);
@@ -497,6 +508,14 @@ void DumpManager::RemoveDumpProperties(uint64_t session_id) {
     config.dumpStatus = "off";
     const auto adx_ret = Adx::AdumpSetDumpConfig(Adx::DumpType::OPERATOR, config);
     GELOGI("call AdumpSetDumpConfig to disable data dump, adx errorCode = %d", adx_ret);
+  }
+
+  if (dump_properties_map_.empty() && (Adx::AdumpGetDumpSwitch(Adx::DumpType::OP_OVERFLOW)) != 0) {
+    Adx::DumpConfig config;
+    config.dumpStatus = "off";
+    config.dumpSwitch = 0;
+    const auto adx_ret = Adx::AdumpSetDumpConfig(Adx::DumpType::OP_OVERFLOW, config);
+    GELOGI("call AdumpSetDumpConfig to disable overflow dump, adx errorCode = %d", adx_ret);
   }
 }
 

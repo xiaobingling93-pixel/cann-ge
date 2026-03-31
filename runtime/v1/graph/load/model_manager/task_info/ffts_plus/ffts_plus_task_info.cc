@@ -611,12 +611,12 @@ void FftsPlusTaskInfo::SavePrintOrDumpTask(const OpDescPtr &op_desc, const domi:
 
     if (need_dump) {
       davinci_model_->SaveDumpTask({task_id_, stream_id_, context_id, static_cast<uint32_t>(slice_idx)}, op_desc,
-          arg_addr, first_level_address_info, ffts_flus_args_helper_->GetCustToRelevantOffset(), task_type);
+          arg_addr, first_level_address_info, ffts_flus_args_helper_->GetCustToRelevantOffset(), task_type, stream_);
     }
 
     if (need_print) {
       davinci_model_->SavePrintDumpTask({task_id_, stream_id_, context_id, static_cast<uint32_t>(slice_idx)}, op_desc,
-          arg_addr, first_level_address_info, task_type);
+          arg_addr, first_level_address_info, task_type, stream_);
       davinci_model_->SavePrintWorkInfo(op_desc);
     }
 

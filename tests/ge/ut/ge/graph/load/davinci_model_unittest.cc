@@ -11053,4 +11053,188 @@ TEST_F(UtestDavinciModel, CheckIoReuseAddrs_GertTensor_DiffAddress_Fail) {
   EXPECT_NE(model.CheckIoReuseAddrs(empty_blobs, empty_blobs, input_tensors, output_tensors), SUCCESS);
 }
 
+TEST_F(UtestDavinciModel, ShouldSkipInput_Blacklist) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].input_indices = {0};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  EXPECT_TRUE(dumper.IsInInputOpBlackIist(op_desc, 0));
+  EXPECT_FALSE(dumper.IsInInputOpBlackIist(op_desc, 1));
+
+  ModelOpBlacklist bl_type;
+  bl_type.dump_optype_blacklist["conv"].input_indices = {1};
+  blacklist["test_model"] = bl_type;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+  EXPECT_TRUE(dumper.IsInInputOpBlackIist(op_desc, 1));
+  EXPECT_FALSE(dumper.IsInInputOpBlackIist(op_desc, 0));
+}
+
+TEST_F(UtestDavinciModel, ShouldSkipOutput_Blacklist) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].output_indices = {0, 2};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  EXPECT_TRUE(dumper.IsInOutputOpBlackIist(op_desc, 0));
+  EXPECT_TRUE(dumper.IsInOutputOpBlackIist(op_desc, 2));
+  EXPECT_FALSE(dumper.IsInOutputOpBlackIist(op_desc, 1));
+
+  ModelOpBlacklist bl_type;
+  bl_type.dump_optype_blacklist["conv"].output_indices = {1};
+  blacklist["test_model"] = bl_type;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+  EXPECT_TRUE(dumper.IsInOutputOpBlackIist(op_desc, 1));
+  EXPECT_FALSE(dumper.IsInOutputOpBlackIist(op_desc, 0));
+}
+
+TEST_F(UtestDavinciModel, FillInputTensorInfos_WithBlacklist) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+
+  // 设置黑名单：跳过 conv 的第一个输入
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].input_indices = {0};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  GeTensorDesc tensor_desc(GeShape(), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddInputDesc(tensor_desc);
+  op_desc->AddInputDesc(tensor_desc);
+
+  std::vector<Adx::TensorInfo> tensors;
+  uintptr_t args_base = 0x1000;
+  std::map<uint64_t, uint64_t> cust_offset;
+  dumper.FillInputTensorInfos(op_desc, args_base, cust_offset, tensors);
+
+  EXPECT_EQ(tensors.size(), 1);
+  EXPECT_EQ(tensors[0].type, Adx::TensorType::INPUT);
+  // 被跳过的输入索引0，剩下索引1
+  EXPECT_EQ(tensors[0].argsOffSet, 1);
+}
+
+TEST_F(UtestDavinciModel, FillOutputTensorInfos_WithBlacklist) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+
+  // 设置黑名单：跳过 conv 的第一个输出
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].output_indices = {0};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  GeTensorDesc tensor_desc(GeShape(), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddOutputDesc(tensor_desc);
+  op_desc->AddOutputDesc(tensor_desc);
+
+  std::vector<Adx::TensorInfo> tensors;
+  uintptr_t args_base = 0x1000;
+  size_t input_count = 2;
+  std::map<uint64_t, uint64_t> cust_offset;
+  dumper.FillOutputTensorInfos(op_desc, args_base, input_count, cust_offset, tensors);
+
+  EXPECT_EQ(tensors.size(), 1);
+  EXPECT_EQ(tensors[0].type, Adx::TensorType::OUTPUT);
+  // 被跳过的输出索引0，剩下索引1，偏移 = input_count + 1 = 3
+  EXPECT_EQ(tensors[0].argsOffSet, 3);
+}
+
+TEST_F(UtestDavinciModel, FillRawTensorInfos_WithBlacklist) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+
+  // 设置黑名单：跳过 conv 的第一个输入和第一个输出
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].input_indices = {0};
+  bl.dump_opname_blacklist["conv"].output_indices = {0};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  GeTensorDesc tensor_desc(GeShape(), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddInputDesc(tensor_desc);
+  op_desc->AddInputDesc(tensor_desc);
+  op_desc->AddOutputDesc(tensor_desc);
+  op_desc->AddOutputDesc(tensor_desc);
+
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = true;
+  dump_info.address = {0x1000, 0x2000, 0x3000, 0x4000};
+
+  std::vector<Adx::TensorInfo> tensors;
+  Status ret = dumper.FillRawTensorInfos(dump_info, tensors);
+  EXPECT_EQ(ret, SUCCESS);
+  EXPECT_EQ(tensors.size(), 2);
+  EXPECT_EQ(tensors[0].type, Adx::TensorType::INPUT);
+  EXPECT_EQ(tensors[0].tensorAddr, reinterpret_cast<int64_t*>(0x2000));
+  EXPECT_EQ(tensors[1].type, Adx::TensorType::OUTPUT);
+  EXPECT_EQ(tensors[1].tensorAddr, reinterpret_cast<int64_t*>(0x4000));
+}
+
+// 修改此测试以适配新的 API
+TEST_F(UtestDavinciModel, DumpOpWithAdump_AllTensorsFiltered) {
+  RuntimeParam param;
+  DataDumper dumper(&param);
+  dumper.SetModelName("test_model");
+  dumper.SetOmName("test_om");
+  dumper.SetModelId(123);
+  dumper.overflow_enabled_ = true;
+  dumper.persistent_unlimited_enabled_ = true;
+  dumper.adump_interface_available_ = true;
+
+  // 设置黑名单：过滤所有输入和输出
+  std::map<std::string, ModelOpBlacklist> blacklist;
+  ModelOpBlacklist bl;
+  bl.dump_opname_blacklist["conv"].input_indices = {0, 1};
+  bl.dump_opname_blacklist["conv"].output_indices = {0, 1};
+  blacklist["test_model"] = bl;
+  dumper.dump_properties_.SetModelDumpBlacklistMap(blacklist);
+
+  auto op_desc = CreateOpDesc("conv", "conv");
+  GeTensorDesc tensor_desc(GeShape(), FORMAT_NCHW, DT_FLOAT);
+  op_desc->AddInputDesc(tensor_desc);
+  op_desc->AddInputDesc(tensor_desc);
+  op_desc->AddOutputDesc(tensor_desc);
+  op_desc->AddOutputDesc(tensor_desc);
+
+  DataDumper::InnerDumpInfo dump_info;
+  dump_info.op = op_desc;
+  dump_info.is_raw_address = false;
+  dump_info.args = 0x1000;
+  // 设置一个有效的流句柄（因为张量被过滤，实际上不会使用，但为了避免空指针检查）
+  dump_info.stream = reinterpret_cast<rtStream_t>(0xdeadbeef);
+  dump_info.cust_to_relevant_offset_ = {};
+
+  // 直接调用新 API，无需 dumpCfg 参数
+  Status ret = dumper.DumpOpWithAdump(dump_info);
+  // 所有张量被过滤，tensors 为空，函数应直接返回 SUCCESS
+  EXPECT_EQ(ret, SUCCESS);
+}
+
 }  // namespace ge

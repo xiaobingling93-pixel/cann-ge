@@ -26,9 +26,11 @@
 #include "framework/common/runtime_tensor_desc.h"
 #include "runtime/rt.h"
 #include "runtime/rts/rts_device.h"
+#include "runtime/rts/rts_stream.h"
 #include "acl/acl_rt.h"
 
 namespace {
+constexpr uint32_t FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB = 4U;
 constexpr uint32_t kAicpuLoadFlag = 1U;
 constexpr uint32_t kAicpuUnloadFlag = 0U;
 constexpr uint64_t kOpDebugSize = 2048U;
@@ -98,6 +100,23 @@ DataDumper::~DataDumper() noexcept {
   GE_FREE_RT_LOG(dev_mem_unload_for_model_);
 }
 
+void DataDumper::InitAdumpCapability() {
+  adump_interface_available_ = (AdxStub::AdumpDumpTensorWithCfg != nullptr);
+  int64_t support = 0;
+  if (rtGetRtCapability(static_cast<rtFeatureType_t>(FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB), 0, &support) == SUCCESS) {
+    overflow_enabled_ = (support == 1);
+  } else {
+    overflow_enabled_ = false;
+  }
+  if (rtGetRtCapability(FEATURE_TYPE_PERSISTENT_STREAM_UNLIMITED_DEPTH, 0, &support) == SUCCESS) {
+    persistent_unlimited_enabled_ = (support == 1);
+  } else {
+    persistent_unlimited_enabled_ = false;
+  }
+  GELOGI("[DataDumper] Init: overflow=%d, persistent_unlimited=%d, adump_available=%d",
+         overflow_enabled_, persistent_unlimited_enabled_, adump_interface_available_);
+}
+
 void DataDumper::SetLoopAddr(const uintptr_t global_step, const uintptr_t loop_per_iter, const uintptr_t loop_cond) {
   global_step_ = global_step;
   loop_per_iter_ = loop_per_iter;
@@ -155,6 +174,14 @@ Status DataDumper::SaveOpDebugId(const uint32_t task_id, const uint32_t stream_i
   return SUCCESS;
 }
 
+bool DataDumper::IsDumpOpWithAdump() const {
+  bool ret = overflow_enabled_ && persistent_unlimited_enabled_ && adump_interface_available_ && !dump_properties_.IsDumpWatcherModelEnable();
+  GELOGD("IsDumpOpWithAdump: overflow=%d, persistent=%d, adump_available=%d, watcher_model_enable=%d, result=%d",
+          overflow_enabled_, persistent_unlimited_enabled_, adump_interface_available_,
+          dump_properties_.IsDumpWatcherModelEnable(), ret);
+  return ret;
+}
+
 void DataDumper::SetWorkSpaceAddr(const std::shared_ptr<OpDesc> &op_desc, const std::vector<uint64_t> &space_addr) {
   for (size_t i = 0U; i < op_list_.size(); ++i) {
     if (op_list_[i].op->GetId() == op_desc->GetId()) {
@@ -174,14 +201,60 @@ void DataDumper::SetWorkSpaceAddrForPrint(const std::shared_ptr<OpDesc> &op_desc
         GELOGI("workspace_info[%zu] addr[0x%llx]", j, space_addr[j]);
         op_print_list_[i].space_addr.emplace_back(space_addr[j]);
       }
+      if (IsDumpOpWithAdump()) {
+        const auto &print_info = op_print_list_[i];
+        Status ret = DumpOpWithAdump(print_info);
+        if (ret != SUCCESS) {
+            GELOGE(ret, "[DumpOpWithAdump] for print op %s", op_desc->GetName().c_str());
+        }
+      }      
     }
-  }
+  } 
+}
+
+std::vector<AdxStub::DumpAttr> DataDumper::BuildDumpAttrs() const {
+  std::vector<AdxStub::DumpAttr> attrs;
+  const std::string& dumpStep = dump_properties_.GetDumpStep();  // 引用成员，保证生命周期
+
+  auto addAttr = [&](AdxStub::DumpAttrId id) {
+    AdxStub::DumpAttr attr;
+    attr.id = id;
+    if (id == AdxStub::DUMP_ATTR_MODEL_NAME) {
+      attr.value.modelName = const_cast<char*>(model_name_.c_str());
+    } else if (id == AdxStub::DUMP_ATTR_MODEL_NAMESIZE) {
+      attr.value.modelNameSize = model_name_.size();
+    } else if (id == AdxStub::DUMP_ATTR_MODEL_ID) {
+      attr.value.modelId = model_id_;
+    } else if (id == AdxStub::DUMP_ATTR_STEP_ID_ADDR) {
+      attr.value.stepIdAddr = static_cast<uint64_t>(global_step_);
+    } else if (id == AdxStub::DUMP_ATTR_ITER_PER_LOOP_ADDR) {
+      attr.value.iterPerLoopAddr = static_cast<uint64_t>(loop_per_iter_);
+    } else if (id == AdxStub::DUMP_ATTR_LOOP_COND_ADDR) {
+      attr.value.loopCondAddr = static_cast<uint64_t>(loop_cond_);
+    } else if (id == AdxStub::DUMP_ATTR_DUMP_STEP) {
+      attr.value.dumpStep = const_cast<char*>(dumpStep.c_str());
+    } else if (id == AdxStub::DUMP_ATTR_DUMP_STEPSIZE) {
+      attr.value.dumpStepSize = dumpStep.size();
+    }
+    attrs.push_back(attr);
+  };
+
+  addAttr(AdxStub::DUMP_ATTR_MODEL_NAME);
+  addAttr(AdxStub::DUMP_ATTR_MODEL_NAMESIZE);
+  addAttr(AdxStub::DUMP_ATTR_MODEL_ID);
+  addAttr(AdxStub::DUMP_ATTR_STEP_ID_ADDR);
+  addAttr(AdxStub::DUMP_ATTR_ITER_PER_LOOP_ADDR);
+  addAttr(AdxStub::DUMP_ATTR_LOOP_COND_ADDR);
+  addAttr(AdxStub::DUMP_ATTR_DUMP_STEP);
+  addAttr(AdxStub::DUMP_ATTR_DUMP_STEPSIZE);
+
+  return attrs;
 }
 
 void DataDumper::SaveDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDesc> &op_desc, const uintptr_t args,
                               const FirstLevelAddressInfo &first_level_address_info,
                               const std::map<uint64_t, uint64_t> &cust_to_relevant_offset,
-                              const ModelTaskType task_type, bool is_op_debug) {
+                              const ModelTaskType task_type, bool is_op_debug, rtStream_t stream) {
   if (op_desc == nullptr) {
     GELOGE(PARAM_INVALID, "[Check][Param] Opdesc is nullptr");
     return;
@@ -193,10 +266,21 @@ void DataDumper::SaveDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDe
          op_desc->GetName().c_str(), id.task_id, id.stream_id, context_id, id.thread_id,
          static_cast<int32_t>(is_op_debug));
 
-  op_list_.push_back({id.task_id, id.stream_id, context_id, id.thread_id, op_desc, args, true, 0, 0, {}, 0,
-                      first_level_address_info.address_type, first_level_address_info.address, {},
-                      cust_to_relevant_offset, task_type, is_op_debug});
+  // 主算子直接推入列表
+  op_list_.push_back({id.task_id, id.stream_id, context_id, id.thread_id, op_desc, args, true, 0, 0, {}, 0,	 
+                      first_level_address_info.address_type, first_level_address_info.address, {},	 
+                      cust_to_relevant_offset, task_type, is_op_debug, stream});
 
+  // 如果满足条件，立即调用 Adump
+  if (IsDumpOpWithAdump()) {
+    const auto &main_info = op_list_.back();
+    Status ret = DumpOpWithAdump(main_info);
+    if (ret != SUCCESS) {
+        GELOGE(ret, "[DumpOpWithAdump] for op %s", op_desc->GetName().c_str());
+    }
+  }
+
+  // 处理输入节点
   for (auto iter = input_map_.equal_range(op_desc->GetName()); iter.first != iter.second; ++iter.first) {
     InnerInputMapping &inner_input_mapping = iter.first->second;
     auto &data_op = inner_input_mapping.data_op;
@@ -208,7 +292,7 @@ void DataDumper::SaveDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDe
     const auto input_tensor = op_desc->GetInputDescPtr(static_cast<uint32_t>(inner_input_mapping.input_anchor_index));
     if (input_tensor == nullptr) {
       GELOGE(PARAM_INVALID, "[Get][InputDescPtr] input_tensor in op:%s is null, index:%d, size:%zu.",
-             op_desc->GetName().c_str(), inner_input_mapping.input_anchor_index, op_desc->GetInputsSize());
+            op_desc->GetName().c_str(), inner_input_mapping.input_anchor_index, op_desc->GetInputsSize());
       return;
     }
 
@@ -218,25 +302,34 @@ void DataDumper::SaveDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDe
     } else {
       if (TensorUtils::GetTensorSizeInBytes(*input_tensor, data_size) != SUCCESS) {
         GELOGE(PARAM_INVALID, "[Get][InputSize] failed in %s, index:%u",
-               op_desc->GetName().c_str(), inner_input_mapping.input_anchor_index);
+              op_desc->GetName().c_str(), inner_input_mapping.input_anchor_index);
         return;
       }
     }
 
-    GELOGI("Save input dump task: %s, id: %u, stream id: %u, data size: %" PRId64 ", input index: %d, output index: %d",
-           data_op->GetName().c_str(), id.task_id, id.stream_id, data_size, inner_input_mapping.input_anchor_index,
-           inner_input_mapping.output_anchor_index);
-    op_list_.push_back({id.task_id, id.stream_id, 0U, id.thread_id, data_op, args, false,
-                        inner_input_mapping.input_anchor_index, inner_input_mapping.output_anchor_index,
-                        input_tensor->GetShape().GetDims(), data_size,
-                        first_level_address_info.address_type, first_level_address_info.address, {},
-                        cust_to_relevant_offset, task_type, is_op_debug});
+    GELOGI("Save input dump task: %s, id: %u, stream id: %u, data size: %" PRId64 ", input index: %d, output index: %d",	 
+          data_op->GetName().c_str(), id.task_id, id.stream_id, data_size, inner_input_mapping.input_anchor_index,	 
+          inner_input_mapping.output_anchor_index);
+
+    // 输入节点推入列表
+    op_list_.push_back({id.task_id, id.stream_id, 0U, id.thread_id, data_op, args, false,	 
+                        inner_input_mapping.input_anchor_index, inner_input_mapping.output_anchor_index,	 
+                        input_tensor->GetShape().GetDims(), data_size,	 
+                        first_level_address_info.address_type, first_level_address_info.address, {},	 
+                        cust_to_relevant_offset, task_type, is_op_debug, stream});
+    if (IsDumpOpWithAdump()) {
+      const auto &input_info = op_list_.back();
+      Status ret = DumpOpWithAdump(input_info);
+      if (ret != SUCCESS) {
+          GELOGE(ret, "[DumpOpWithAdump] for op %s", op_desc->GetName().c_str());
+      }
+    }
   }
 }
 
 void DataDumper::SavePrintDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDesc> &op_desc, const uintptr_t args,
                                    const FirstLevelAddressInfo &first_level_address_info,
-                                   const ModelTaskType task_type) {
+                                   const ModelTaskType task_type, rtStream_t stream) {
   if (op_desc == nullptr) {
     GELOGE(PARAM_INVALID, "[Check][Param] Opdesc is nullptr");
     return;
@@ -245,11 +338,13 @@ void DataDumper::SavePrintDumpTask(const OpDescInfoId &id, const std::shared_ptr
   uint32_t context_id = 0U;
   (void)AttrUtils::GetInt(op_desc, "current_context_id", context_id);
   if ((op_desc->GetType() != "SuperKernel") || (task_type == ModelTaskType::MODEL_TASK_SUPER_KERNEL)) {
-    GELOGI("Save ascendc printf dump task %s, task id: %u, stream id: %u, context id: %u, thread id: %u.",
+    GELOGI("Save ascendc printf dump task %s, task id: %u, stream id: %u, context id: %u, thread id: %u.",	 
            op_desc->GetName().c_str(), id.task_id, id.stream_id, context_id, id.thread_id);
-    op_print_list_.push_back({id.task_id, id.stream_id, context_id, id.thread_id, op_desc, args, true, 0, 0, {}, 0,
-                              first_level_address_info.address_type, first_level_address_info.address, {}, {},
-                              task_type, false});
+    
+    // 推入打印列表
+    op_print_list_.push_back({id.task_id, id.stream_id, context_id, id.thread_id, op_desc, args, true, 0, 0, {}, 0,	 
+                              first_level_address_info.address_type, first_level_address_info.address, {}, {},	 
+                              task_type, false, stream});
   }
 }
 
@@ -419,6 +514,42 @@ uint64_t DataDumper::GetOffset(const InnerDumpInfo &inner_dump_info, const size_
   }
 
   return offset;
+}
+
+bool DataDumper::IsInInputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const {
+  if (dump_properties_.IsInputInOpNameBlacklist(model_name_, op_desc->GetName(), index) ||
+      dump_properties_.IsInputInOpNameBlacklist(om_name_, op_desc->GetName(), index) ||
+      dump_properties_.IsInputInOpNameBlacklist(DUMP_LAYER_OP_MODEL, op_desc->GetName(), index)) {
+    GELOGI("[Dumper] Node name %s, Node type: %s, input index %zu is in opname-blacklist, skip to dump this input.",
+           op_desc->GetName().c_str(), op_desc->GetType().c_str(), index);
+    return true;
+  }
+  if (dump_properties_.IsInputInOpTypeBlacklist(model_name_, op_desc->GetType(), index) ||
+      dump_properties_.IsInputInOpTypeBlacklist(om_name_, op_desc->GetType(), index) ||
+      dump_properties_.IsInputInOpTypeBlacklist(DUMP_LAYER_OP_MODEL, op_desc->GetType(), index)) {
+    GELOGI("[Dumper] Node name %s, Node type: %s, input index %zu is in optype-blacklist, skip to dump this input.",
+           op_desc->GetName().c_str(), op_desc->GetType().c_str(), index);
+    return true;
+  }
+  return false;
+}
+
+bool DataDumper::IsInOutputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const {
+  if (dump_properties_.IsOutputInOpNameBlacklist(model_name_, op_desc->GetName(), index) ||
+      dump_properties_.IsOutputInOpNameBlacklist(om_name_, op_desc->GetName(), index) ||
+      dump_properties_.IsOutputInOpNameBlacklist(DUMP_LAYER_OP_MODEL, op_desc->GetName(), index)) {
+    GELOGI("[Dumper] Node name %s, Node type: %s, output index %zu is in opname-blacklist, skip to dump this output.",
+           op_desc->GetName().c_str(), op_desc->GetType().c_str(), index);
+    return true;
+  }
+  if (dump_properties_.IsOutputInOpTypeBlacklist(model_name_, op_desc->GetType(), index) ||
+      dump_properties_.IsOutputInOpTypeBlacklist(om_name_, op_desc->GetType(), index) ||
+      dump_properties_.IsOutputInOpTypeBlacklist(DUMP_LAYER_OP_MODEL, op_desc->GetType(), index)) {
+    GELOGI("[Dumper] Node name %s, Node type: %s, output index %zu is in optype-blacklist, skip to dump this output.",
+           op_desc->GetName().c_str(), op_desc->GetType().c_str(), index);
+    return true;
+  }
+  return false;
 }
 
 Status DataDumper::DumpOutputWithTask(const InnerDumpInfo &inner_dump_info, toolkit::aicpu::dump::Task &task) {
@@ -948,6 +1079,10 @@ Status DataDumper::GetDumpPath(std::string &dump_path) {
 
 Status DataDumper::LoadDumpInfo() {
   std::string model_name;
+  if (IsDumpOpWithAdump()) {
+    GELOGI("Use AdumpDumpTensorWithCfg to distribute dump task.");
+    return SUCCESS;
+  }
   PrintCheckLog(model_name);
   GELOGI("model name %s, is_single_op_debug %d, op_list size %zu, model id %u", model_name.c_str(),
          is_single_op_debug_, op_list_.size(), model_id_);
@@ -994,6 +1129,277 @@ Status DataDumper::LoadDumpInfo() {
     }
     op_mapping_info_ = std::move(op_mapping_info);
   }
+  return SUCCESS;
+}
+
+void DataDumper::FillInputTensorInfos(const OpDescPtr &op_desc, uintptr_t args_base,
+                                      const std::map<uint64_t, uint64_t>& cust_offset,
+                                      std::vector<Adx::TensorInfo>& tensors) {
+  const auto input_descs = op_desc->GetAllInputsDescPtr();
+  for (size_t i = 0; i < input_descs.size(); ++i) {
+    if (IsInInputOpBlackIist(op_desc, i)) {
+      continue;
+    }
+    uint64_t offset_idx = i; // 默认使用原始索引
+    auto iter = cust_offset.find(i);
+    if (iter != cust_offset.end()) {
+      offset_idx = iter->second;
+    } else {
+      GELOGD("Input %zu of op %s using default offset %zu", i, op_desc->GetName().c_str(), offset_idx);
+    }
+
+    int64_t tensor_size = 0;
+    if (TensorUtils::GetTensorSizeInBytes(*input_descs.at(i), tensor_size) != SUCCESS) {
+      GELOGW("Get input tensor size failed for %s input %zu", op_desc->GetName().c_str(), i);
+      continue;
+    }
+
+    bool no_tiling_mem_type = false;
+    (void)AttrUtils::GetBool(*input_descs.at(i), ATTR_NAME_TENSOR_NO_TILING_MEM_TYPE, no_tiling_mem_type);
+
+    Adx::TensorInfo info;
+    info.type = Adx::TensorType::INPUT;
+    info.tensorSize = static_cast<size_t>(tensor_size);
+    info.format = static_cast<int32_t>(input_descs.at(i)->GetFormat());
+    info.dataType = static_cast<int32_t>(input_descs.at(i)->GetDataType());
+    info.tensorAddr = reinterpret_cast<int64_t*>(args_base + offset_idx * kAddrLength);
+    info.addrType = no_tiling_mem_type ? Adx::AddressType::NOTILING : Adx::AddressType::TRADITIONAL;
+    info.placement = static_cast<int32_t>(gert::TensorPlacement::kOnDeviceHbm);
+    info.argsOffSet = static_cast<uint32_t>(offset_idx);
+    info.shape = input_descs.at(i)->GetShape().GetDims();
+
+    if (input_descs.at(i)->IsOriginShapeInitialized()) {
+      info.originShape = input_descs.at(i)->GetOriginShape().GetDims();
+    }
+
+    tensors.push_back(info);
+  }
+}
+
+void DataDumper::FillOutputTensorInfos(const OpDescPtr &op_desc, uintptr_t args_base,
+                                       size_t input_count, const std::map<uint64_t, uint64_t>& cust_offset,
+                                       std::vector<Adx::TensorInfo>& tensors) {
+  const auto output_descs = op_desc->GetAllOutputsDescPtr();
+  for (size_t i = 0; i < output_descs.size(); ++i) {
+    if (IsInOutputOpBlackIist(op_desc, i)) {
+      continue;
+    }
+    uint64_t raw_offset = input_count + i;
+    uint64_t offset_idx = raw_offset;
+    auto iter = cust_offset.find(raw_offset);
+    if (iter != cust_offset.end()) {
+        offset_idx = iter->second;
+    } else {
+        GELOGD("Output %zu of op %s using default offset %zu", i, op_desc->GetName().c_str(), offset_idx);
+    }
+
+    int64_t tensor_size = 0;
+    if (TensorUtils::GetTensorSizeInBytes(*output_descs.at(i), tensor_size) != SUCCESS) {
+      GELOGW("Get output tensor size failed for %s output %zu", op_desc->GetName().c_str(), i);
+      continue;
+    }
+
+    bool no_tiling_mem_type = false;
+    (void)AttrUtils::GetBool(*output_descs.at(i), ATTR_NAME_TENSOR_NO_TILING_MEM_TYPE, no_tiling_mem_type);
+
+    Adx::TensorInfo info;
+    info.type = Adx::TensorType::OUTPUT;
+    info.tensorSize = static_cast<size_t>(tensor_size);
+    info.format = static_cast<int32_t>(output_descs.at(i)->GetFormat());
+    info.dataType = static_cast<int32_t>(output_descs.at(i)->GetDataType());
+    info.tensorAddr = reinterpret_cast<int64_t*>(args_base + offset_idx * kAddrLength);
+    info.addrType = no_tiling_mem_type ? Adx::AddressType::NOTILING : Adx::AddressType::TRADITIONAL;
+    info.placement = static_cast<int32_t>(gert::TensorPlacement::kOnDeviceHbm);
+    info.argsOffSet = static_cast<uint32_t>(offset_idx);
+    info.shape = output_descs.at(i)->GetShape().GetDims();
+
+    if (output_descs.at(i)->IsOriginShapeInitialized()) {
+      info.originShape = output_descs.at(i)->GetOriginShape().GetDims();
+    }
+
+    tensors.push_back(info);
+  }
+}
+
+// 填充工作空间 Tensor 信息
+void DataDumper::FillWorkspaceTensorInfos(const InnerDumpInfo &dump_info, std::vector<Adx::TensorInfo>& tensors) const {
+  const auto &workspace_bytes = dump_info.op->GetWorkspaceBytes();
+  for (size_t i = 0; i < dump_info.space_addr.size() && i < workspace_bytes.size(); ++i) {
+    if (dump_info.space_addr[i] == 0) continue;
+
+    Adx::TensorInfo info;
+    info.type = Adx::TensorType::WORKSPACE;
+    info.tensorSize = static_cast<size_t>(workspace_bytes[i]);
+    info.format = static_cast<int32_t>(ge::FORMAT_ND);
+    info.dataType = static_cast<int32_t>(ge::DT_UINT8);
+    info.tensorAddr = reinterpret_cast<int64_t*>(dump_info.space_addr[i]);
+    info.addrType = Adx::AddressType::TRADITIONAL;
+    info.placement = static_cast<int32_t>(gert::TensorPlacement::kOnDeviceHbm);
+    info.argsOffSet = std::numeric_limits<uint32_t>::max();
+    info.shape = { workspace_bytes[i] };
+    tensors.push_back(info);
+  }
+}
+
+Status DataDumper::FillRawTensorInfos(const InnerDumpInfo &dump_info, std::vector<Adx::TensorInfo> &tensors,
+                                      bool dump_input, bool dump_output) const {
+  const auto &op_desc = dump_info.op;
+  GE_CHECK_NOTNULL(op_desc);
+
+  const auto input_descs = op_desc->GetAllInputsDescPtr();
+  const auto output_descs = op_desc->GetAllOutputsDescPtr();
+  const size_t input_cnt = input_descs.size();
+  const size_t output_cnt = output_descs.size();
+  if (dump_info.address.size() < input_cnt + output_cnt) {
+    GELOGE(PARAM_INVALID, "Raw address list size %zu less than needed %zu",
+           dump_info.address.size(), input_cnt + output_cnt);
+    return PARAM_INVALID;
+  }
+
+  // 输入张量
+  if (dump_input) {
+    for (size_t i = 0; i < input_cnt; ++i) {
+      if (IsInInputOpBlackIist(op_desc, i)) {
+        continue;
+      }
+      if (dump_info.address[i] == 0) continue;
+
+      int64_t tensor_size = 0;
+      if (TensorUtils::GetTensorSizeInBytes(*input_descs.at(i), tensor_size) != SUCCESS) {
+        GELOGW("Get input tensor size failed for %s input %zu", op_desc->GetName().c_str(), i);
+        continue;
+      }
+
+      Adx::TensorInfo info;
+      info.type = Adx::TensorType::INPUT;
+      info.tensorSize = static_cast<size_t>(tensor_size);
+      info.format = static_cast<int32_t>(input_descs.at(i)->GetFormat());
+      info.dataType = static_cast<int32_t>(input_descs.at(i)->GetDataType());
+      info.tensorAddr = reinterpret_cast<int64_t*>(dump_info.address[i]);
+      info.addrType = Adx::AddressType::RAW;
+      info.placement = static_cast<int32_t>(gert::TensorPlacement::kOnDeviceHbm);
+      info.argsOffSet = std::numeric_limits<uint32_t>::max();
+      info.shape = input_descs.at(i)->GetShape().GetDims();
+      if (input_descs.at(i)->IsOriginShapeInitialized()) {
+        info.originShape = input_descs.at(i)->GetOriginShape().GetDims();
+      }
+      tensors.push_back(info);
+    }
+  }  
+
+  // 输出张量
+  if (dump_output) {
+    for (size_t i = 0; i < output_cnt; ++i) {
+      if (IsInOutputOpBlackIist(op_desc, i)) {
+        continue;
+      }
+      if (dump_info.address[input_cnt + i] == 0) continue;
+
+      int64_t tensor_size = 0;
+      if (TensorUtils::GetTensorSizeInBytes(*output_descs.at(i), tensor_size) != SUCCESS) {
+        GELOGW("Get output tensor size failed for %s output %zu", op_desc->GetName().c_str(), i);
+        continue;
+      }
+
+      Adx::TensorInfo info;
+      info.type = Adx::TensorType::OUTPUT;
+      info.tensorSize = static_cast<size_t>(tensor_size);
+      info.format = static_cast<int32_t>(output_descs.at(i)->GetFormat());
+      info.dataType = static_cast<int32_t>(output_descs.at(i)->GetDataType());
+      info.tensorAddr = reinterpret_cast<int64_t*>(dump_info.address[input_cnt + i]);
+      info.addrType = Adx::AddressType::RAW;
+      info.placement = static_cast<int32_t>(gert::TensorPlacement::kOnDeviceHbm);
+      info.argsOffSet = std::numeric_limits<uint32_t>::max();
+      info.shape = output_descs.at(i)->GetShape().GetDims();
+      if (output_descs.at(i)->IsOriginShapeInitialized()) {
+        info.originShape = output_descs.at(i)->GetOriginShape().GetDims();
+      }
+      tensors.push_back(info);
+    }
+  }  
+
+  // 工作空间
+  FillWorkspaceTensorInfos(dump_info, tensors);
+  return SUCCESS;
+}
+
+Status DataDumper::DumpOpWithAdump(const InnerDumpInfo &dump_info) {
+  const auto &op_desc = dump_info.op;
+  GE_CHECK_NOTNULL(op_desc);
+  const std::string &op_name = op_desc->GetName();
+
+  if (dump_properties_.IsOpDebugOpen() && op_desc->GetType() == "Data") {
+    GELOGW("[Adump] skip data node %s in overflow dump", op_name.c_str());
+    return SUCCESS;
+  }
+
+  // 构建 dumpCfg
+  auto attrs = BuildDumpAttrs();
+  AdxStub::DumpCfg dumpCfg;
+  dumpCfg.attrs = attrs.data();
+  dumpCfg.numAttrs = attrs.size();
+
+  // 打印 dumpCfg 内容
+  GELOGD("[Adump] Dump config for op %s: model_name=%s, model_id=%u, step_id_addr=0x%lx, dump_step=%s",
+         op_name.c_str(),
+         model_name_.c_str(),
+         model_id_,
+         global_step_,
+         dump_properties_.GetDumpStep().c_str());
+
+  const auto dump_mode = dump_properties_.GetDumpMode();
+  const bool is_op_debug = dump_info.is_op_debug;
+  bool dump_input = (dump_mode == kDumpInput || dump_mode == kDumpAll) || is_op_debug;
+  bool dump_output = (dump_mode == kDumpOutput || dump_mode == kDumpAll) || is_op_debug;
+
+  std::vector<Adx::TensorInfo> tensors;
+  Status ret = SUCCESS;
+
+  if (dump_info.is_raw_address) {
+    ret = FillRawTensorInfos(dump_info, tensors, dump_input, dump_output);
+    if (ret != SUCCESS) {
+      GELOGE(ret, "[Adump] FillRawTensorInfos failed for op %s", op_name.c_str());
+      return ret;
+    }
+    GELOGD("[Adump] Raw address mode: op %s, raw address list size=%zu", 
+           op_name.c_str(), dump_info.address.size());
+  } else {
+    size_t input_count = dump_info.op->GetInputsSize();
+    GELOGD("[Adump] Normal mode: op %s, inputs=%zu, outputs=%zu, args_base=0x%lx",
+           op_name.c_str(), input_count, dump_info.op->GetOutputsSize(), dump_info.args);
+    
+    if (dump_input) {
+      FillInputTensorInfos(op_desc, dump_info.args, dump_info.cust_to_relevant_offset_, tensors);
+    }
+    if (dump_output) {
+      FillOutputTensorInfos(op_desc, dump_info.args, input_count, dump_info.cust_to_relevant_offset_, tensors);
+    }
+    if (is_op_debug) {
+      FillWorkspaceTensorInfos(dump_info, tensors);
+    }
+  }
+
+  if (tensors.empty()) {
+    GELOGW("[Adump] No tensor to dump for op %s", op_name.c_str());
+    return SUCCESS;
+  }
+
+  // 获取流句柄
+  if (dump_info.stream == nullptr) {
+    GELOGE(FAILED, "[Adump] Invalid stream for op %s", op_name.c_str());
+    return FAILED;
+  }
+  GE_CHECK_NOTNULL(dump_info.stream);
+
+  if (AdxStub::AdumpDumpTensorWithCfg) {
+    GE_CHK_STATUS_RET(AdumpDumpTensorWithCfg(op_desc->GetType(), op_name.c_str(),
+                      tensors, dump_info.stream, dumpCfg), "[Adump] AdumpDumpTensorWithCfg failed for op %s", op_name.c_str());
+  } else {
+    GELOGE(FAILED, "[Adump] AdumpDumpTensorWithCfg is nullptr");
+    return FAILED;
+  }
+
+  GELOGD("[Adump] AdumpDumpTensorWithCfg success for op %s", op_name.c_str());
   return SUCCESS;
 }
 

@@ -26,6 +26,51 @@
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "framework/common/ge_types.h"
 #include "runtime/base.h"
+#include "dump/adump_pub.h"
+#include "dump/adump_api.h"
+
+//adx代码回蓝之后删除
+namespace AdxStub {
+  typedef enum {
+    DUMP_ATTR_MODEL_NAME = 1,
+    DUMP_ATTR_MODEL_NAMESIZE,
+    DUMP_ATTR_MODEL_ID,
+    DUMP_ATTR_STEP_ID_ADDR,
+    DUMP_ATTR_ITER_PER_LOOP_ADDR,
+    DUMP_ATTR_LOOP_COND_ADDR,
+    DUMP_ATTR_DUMP_STEP,
+    DUMP_ATTR_DUMP_STEPSIZE,
+    DUMP_ATTR_STREAM_MODEL,
+  } DumpAttrId;
+  
+  typedef union {
+    char* modelName;
+    uint64_t modelNameSize;
+    uint32_t modelId;
+    uint64_t stepIdAddr;
+    uint64_t iterPerLoopAddr;
+    uint64_t loopCondAddr;
+    char* dumpStep;
+    uint64_t dumpStepSize;
+    uint32_t streamModel;
+  } DumpAttrVal;
+  
+  typedef struct {
+    DumpAttrId id;
+    DumpAttrVal value;
+  } DumpAttr;
+  
+  typedef struct {
+    DumpAttr* attrs;
+    size_t numAttrs;
+  } DumpCfg;
+
+  __attribute__((weak)) int32_t AdumpDumpTensorWithCfg(const std::string& op_type,
+                                                        const std::string& op_name,
+                                                        const std::vector<Adx::TensorInfo>& tensors,
+                                                        rtStream_t stream,
+                                                        const DumpCfg& cfg);
+}
 
 namespace ge {
 struct FirstLevelAddressInfo {
@@ -53,7 +98,9 @@ class DataDumper {
     std::vector<InnerRealAddressAndSize> output;
   };
 
-  explicit DataDumper(RuntimeParam *const rsh) : runtime_param_(rsh) {}
+  explicit DataDumper(RuntimeParam *const rsh) : runtime_param_(rsh) {
+    InitAdumpCapability();
+  }
 
   ~DataDumper() noexcept;
 
@@ -79,11 +126,11 @@ class DataDumper {
   void SaveDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDesc> &op_desc, const uintptr_t args,
                     const FirstLevelAddressInfo &first_level_address_info = {false, {}},
                     const std::map<uint64_t, uint64_t> &cust_to_relevant_offset = {},
-                    const ModelTaskType task_type = ModelTaskType::MODEL_TASK_KERNEL, bool is_op_debug = false);
+                    const ModelTaskType task_type = ModelTaskType::MODEL_TASK_KERNEL, bool is_op_debug = false, rtStream_t stream = nullptr);
 
   void SavePrintDumpTask(const OpDescInfoId &id, const std::shared_ptr<OpDesc> &op_desc, const uintptr_t args,
                          const FirstLevelAddressInfo &first_level_address_info = {false, {}},
-                         const ModelTaskType task_type = ModelTaskType::MODEL_TASK_KERNEL);
+                         const ModelTaskType task_type = ModelTaskType::MODEL_TASK_KERNEL, rtStream_t stream = nullptr);
 
   void SaveEndGraphId(const uint32_t task_id, const uint32_t stream_id);
 
@@ -107,7 +154,8 @@ class DataDumper {
   void SaveLayerOpInfoOnWatcherMode(LayerOpOnWatcherModeInfo &op_info) {
     layer_op_on_watcher_mode_list_.emplace_back(std::move(op_info));
   }
-
+  void InitAdumpCapability();
+  bool IsDumpOpWithAdump() const;
  private:
   void PrintCheckLog(std::string &dump_list_key);
 
@@ -150,7 +198,9 @@ class DataDumper {
   DumpProperties dump_properties_;
   InnerContext context_;
   toolkit::aicpu::dump::OpMappingInfo op_mapping_info_;
-
+  bool overflow_enabled_{false};
+  bool persistent_unlimited_enabled_{false};
+  bool adump_interface_available_{false};
   // Build task info of op mapping info
   Status BuildTaskInfoForDumpOutput(toolkit::aicpu::dump::OpMappingInfo &op_mapping_info,
                                     const InnerDumpInfo &dump_info, toolkit::aicpu::dump::Task &task);
@@ -188,6 +238,19 @@ class DataDumper {
   Status GetOffsetFromJson(const InnerDumpInfo &inner_dump_info, size_t tensor_idx, size_t input_size,
                            uint64_t &offset) const;
   Status UpdateOpMappingInfo();
+  Status DumpOpWithAdump(const InnerDumpInfo &dump_info);
+  void FillWorkspaceTensorInfos(const InnerDumpInfo &dump_info, std::vector<Adx::TensorInfo>& tensors) const;
+  void FillInputTensorInfos(const OpDescPtr &op_desc, uintptr_t args_base,
+                            const std::map<uint64_t, uint64_t>& cust_offset,
+                            std::vector<Adx::TensorInfo>& tensors);
+  void FillOutputTensorInfos(const OpDescPtr &op_desc, uintptr_t args_base, size_t input_count,
+                            const std::map<uint64_t, uint64_t>& cust_offset,
+                            std::vector<Adx::TensorInfo>& tensors);
+  Status FillRawTensorInfos(const InnerDumpInfo &dump_info, std::vector<Adx::TensorInfo> &tensors,
+                          bool dump_input = true, bool dump_output = true) const;
+  std::vector<AdxStub::DumpAttr> BuildDumpAttrs() const;
+  bool IsInInputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const;
+  bool IsInOutputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const;
 };
 struct DataDumper::InnerDumpInfo {
   uint32_t task_id;
@@ -207,6 +270,7 @@ struct DataDumper::InnerDumpInfo {
   std::map<uint64_t, uint64_t> cust_to_relevant_offset_;
   ModelTaskType task_type;
   bool is_op_debug;  // for op debug
+  rtStream_t stream;
 };
 
 struct DataDumper::InnerInputMapping {

@@ -178,6 +178,12 @@ Status SuperKernelV2TaskInfo::Init(const domi::TaskDef &task_def, DavinciModel *
 Status SuperKernelV2TaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("SuperKernelV2TaskInfo Distribute Start, op: %s", op_desc_->GetName().c_str());
+  if (davinci_model_ != nullptr && davinci_model_->IsDumpOpWithAdump()) {
+    GELOGD("Both overflow detection and persistent stream unlimited enabled, disable dump for op %s",
+            op_desc_ ? op_desc_->GetName().c_str() : "unknown");
+    dump_flag_ &= ~RT_KERNEL_DUMPFLAG;
+    is_data_dump_ = false;
+  }
   const TaskProfGuarder prof_guarder(this);
   GE_CHECK_NOTNULL(op_desc_);
 
