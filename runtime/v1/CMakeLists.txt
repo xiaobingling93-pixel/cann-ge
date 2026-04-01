@@ -210,7 +210,6 @@ target_compile_definitions(ge_executor PRIVATE
     google=ascend_private
     $<IF:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,OS_TYPE=WIN,OS_TYPE=0>
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(ge_executor PRIVATE
@@ -274,7 +273,6 @@ target_compile_definitions(ge_executor_shared PRIVATE
     PROTOBUF_INLINE_NOT_IN_HEADERS=0
     google=ascend_private
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(ge_executor_shared PRIVATE
@@ -356,7 +354,6 @@ target_compile_definitions(davinci_executor PRIVATE
     PROTOBUF_INLINE_NOT_IN_HEADERS=0
     google=ascend_private
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(davinci_executor PRIVATE
@@ -457,7 +454,6 @@ target_compile_definitions(hybrid_executor PRIVATE
     PROTOBUF_INLINE_NOT_IN_HEADERS=0
     google=ascend_private
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(hybrid_executor PRIVATE

@@ -164,7 +164,6 @@ target_compile_options(ut_libge_helper_utest PRIVATE -g
 
 target_compile_definitions(ut_libge_helper_utest PRIVATE
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(ut_libge_helper_utest PRIVATE

@@ -66,7 +66,6 @@ target_compile_definitions(acl_op_compiler PRIVATE
     OS_TYPE=0
     FUNC_VISIBILITY
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 

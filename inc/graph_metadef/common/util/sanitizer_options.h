@@ -12,7 +12,7 @@
 #define COMMON_UTILS_SANITIZERS_SANITIZER_OPTIONS_H_
 
 // active if -fsanitize=address
-#if defined(ONLY_COMPILE_OPEN_SRC) && defined(__SANITIZE_ADDRESS__)
+#if defined(__SANITIZE_ADDRESS__)
 #include "sanitizer/lsan_interface.h"
 /*  如果业务代码中存在已知的内存泄漏的代码块, 并且允许这部分内存泄漏存在, 可在代码块首尾添加开关,
  *  控制地址消毒器关闭与开启.

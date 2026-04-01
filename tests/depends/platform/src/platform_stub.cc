@@ -22,12 +22,10 @@ fe::PlatformInfoManager& fe::PlatformInfoManager::Instance() {
   return pf;
 }
 
-#ifndef ONLY_COMPILE_OPEN_SRC
 fe::PlatformInfoManager& fe::PlatformInfoManager::GeInstance() {
   static fe::PlatformInfoManager pf;
   return pf;
 }
-#endif
 
 uint32_t fe::PlatformInfoManager::InitializePlatformInfo() {
   return 0U;

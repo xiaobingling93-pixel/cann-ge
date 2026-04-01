@@ -228,19 +228,16 @@ target_include_directories(host_engine_utest PRIVATE
 target_compile_definitions(tf_engine_utest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_definitions(cpu_engine_utest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_definitions(host_engine_utest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(tf_engine_utest PRIVATE

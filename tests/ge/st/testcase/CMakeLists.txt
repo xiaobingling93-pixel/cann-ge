@@ -111,7 +111,6 @@ add_executable(graph_engine_test
 add_dependencies(graph_engine_test mdat fmk_parser engine optimizer_priority_pbtxt)
 
 target_compile_definitions(graph_engine_test PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
     CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
 )
@@ -200,7 +199,6 @@ add_executable(graph_engine_compile_test
         )
 
 target_compile_definitions(graph_engine_compile_test PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         google=ascend_private
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         )

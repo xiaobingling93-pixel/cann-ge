@@ -9,9 +9,7 @@
  */
 
 #include "exe_graph/runtime/tensor_data.h"
-#ifdef ONLY_COMPILE_OPEN_SRC
 #include "exe_graph/runtime/tensor_data_utils.h"
-#endif
 #include <gtest/gtest.h>
 namespace gert {
 namespace {

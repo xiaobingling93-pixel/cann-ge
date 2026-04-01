@@ -130,7 +130,6 @@ target_include_directories(ut_acl_model_src PRIVATE
 target_compile_definitions(ut_acl_model_src PRIVATE
     google=ascend_private
     RUN_TEST
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 
@@ -177,7 +176,6 @@ target_include_directories(ut_acl_cblas_src PRIVATE
 target_compile_definitions(ut_acl_cblas_src PRIVATE
     google=ascend_private
     RUN_TEST
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 
@@ -228,7 +226,6 @@ target_include_directories(ut_acl_op_exec_src PRIVATE
 target_compile_definitions(ut_acl_op_exec_src PRIVATE
     google=ascend_private
     RUN_TEST
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 
@@ -280,7 +277,6 @@ target_include_directories(ut_acl_op_compiler_src PRIVATE
 target_compile_definitions(ut_acl_op_compiler_src PRIVATE
     google=ascend_private
     RUN_TEST
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 

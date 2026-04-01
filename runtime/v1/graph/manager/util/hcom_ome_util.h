@@ -20,9 +20,7 @@
 #include "framework/common/string_util.h"
 #include "graph/op_desc.h"
 #include "hccl/hcom.h"
-#ifndef ONLY_COMPILE_OPEN_SRC
 #include "engines/hccl_engine/inc/hcom_executor.h"
-#endif
 #include "proto/task.pb.h"
 
 namespace ge {

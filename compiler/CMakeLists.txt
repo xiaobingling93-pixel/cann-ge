@@ -399,7 +399,6 @@ target_compile_definitions(ge_compiler PRIVATE
     REUSE_MEMORY=1
     FMK_SUPPORT_DUMP
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_TEST},True>:FUNC_VISIBILITY>
 )
 

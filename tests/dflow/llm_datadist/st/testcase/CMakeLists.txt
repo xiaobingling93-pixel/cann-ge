@@ -24,7 +24,6 @@ add_executable(llm_engine_test
 )
 
 target_compile_definitions(llm_engine_test PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         google=ascend_private
 )
 target_compile_options(llm_engine_test PRIVATE

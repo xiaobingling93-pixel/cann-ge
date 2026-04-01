@@ -34,7 +34,6 @@ target_compile_options(ut_expression PRIVATE
 )
 
 target_compile_definitions(ut_expression PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
     FUNC_VISIBILITY
     LOG_CPP

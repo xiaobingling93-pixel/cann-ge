@@ -16,10 +16,6 @@ target_include_directories(ge_running_env_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_compile_definitions(ge_running_env_test PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
-
 target_compile_options(ge_running_env_test PRIVATE
     -g
     -DFUNC_VISIBILITY

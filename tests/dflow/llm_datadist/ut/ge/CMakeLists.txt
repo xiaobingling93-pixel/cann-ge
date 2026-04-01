@@ -69,7 +69,6 @@ target_compile_options(ut_llm_engine_utest PRIVATE
 
 target_compile_definitions(ut_llm_engine_utest PRIVATE
         google=ascend_private
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         )
 
 target_include_directories(ut_llm_engine_utest PRIVATE
