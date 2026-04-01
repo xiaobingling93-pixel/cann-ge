@@ -1096,7 +1096,7 @@ Status GraphManager::PreRunOptimizeOriginalGraph(const GraphNodePtr &graph_node,
   GM_RUN_AND_DUMP_PERF("PrepareRunningFormatRefiner", stages.preparer.PrepareRunningFormatRefiner);
   GM_RUN_AND_DUMP_PERF("RefineRunningPrecision",
       stages.optimizer.OptimizeOriginalGraphJudgePrecisionInsert, compute_graph);
-  GM_RUN_AND_DUMP_PERF("AutofuseWithExtOptimize", AutofuseWithExtOptimize, compute_graph, inputs); 
+  GM_RUN_AND_DUMP_PERF("AfterPrecisionRefine", AfterPrecisionRefine, compute_graph, inputs); 
   GM_RUN_AND_DUMP_PERF("RefineRunningFormat",
       stages.optimizer.OptimizeOriginalGraphJudgeFormatInsert, compute_graph);
   GM_RUN_AND_DUMP_PERF("SubexpressionMigration", SubexpressionMigration, compute_graph);
@@ -3171,19 +3171,16 @@ Status GraphManager::RemoveIsolatedConst(ge::ComputeGraphPtr &compute_graph) {
   return SUCCESS;
 }
 
-Status GraphManager::AutofuseWithExtOptimize(ge::ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs) {
+Status GraphManager::AfterPrecisionRefine(ge::ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs) {
   PassManager after_merge_passes;
-  GE_CHK_STATUS_RET(after_merge_passes.AddPass("AutofuseWithExtOptimize::TransOpWithoutReshapeFusionPass",
+  GE_CHK_STATUS_RET(after_merge_passes.AddPass("AfterPrecisionRefine::TransOpWithoutReshapeFusionPass",
                                                new (std::nothrow) TransOpWithoutReshapeFusionPass));
   GE_TRACE_START(after_merge_passes);
   auto ret = after_merge_passes.Run(compute_graph);
-  GE_COMPILE_TRACE_TIMESTAMP_END(after_merge_passes, "GraphManager::AutofuseWithExtOptimize");
-  if (ret != SUCCESS && ret != NOT_CHANGED) {
-    GELOGE(ret, "[Run][Passes] when AutofuseWithExtOptimize failed, ret:%u.", ret);
-    return ret;
-  }
-
-  GE_DUMP(compute_graph, "AutofuseWithExtOptimize");
+  GE_COMPILE_TRACE_TIMESTAMP_END(after_merge_passes, "GraphManager::AfterPrecisionRefine");
+  GE_CHK_BOOL_RET_STATUS(ret == SUCCESS || ret == NOT_CHANGED, ret,
+                    "[Run][Passes] when AfterPrecisionRefine failed, ret:%u.", ret);
+  GE_DUMP(compute_graph, "AfterPrecisionRefine");
 
   AutofuseOptimize autofuser;
   GE_CHK_STATUS_RET(autofuser.Run(compute_graph, inputs), "Failed to auto fuse optimize for graph:%s",

@@ -377,7 +377,7 @@ class GraphManager {
   Status RemoveIsolatedConst(ComputeGraphPtr &compute_graph);
   Status RemoveIsolatedConstInThisGraph(const ComputeGraphPtr &compute_graph) const;
 
-  Status AutofuseWithExtOptimize(ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs);
+  Status AfterPrecisionRefine(ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs);
   Status OptimizeStage1(ComputeGraphPtr &compute_graph);
   Status OptimizeStage2(ComputeGraphPtr &compute_graph);
   Status MemConflictProc(ComputeGraphPtr &compute_graph);
