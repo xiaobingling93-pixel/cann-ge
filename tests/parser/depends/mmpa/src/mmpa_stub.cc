@@ -225,7 +225,14 @@ VOID mmScandirFree(mmDirent **entryList, INT32 count)
 
 INT32 mmAccess2(const CHAR *pathName, INT32 mode)
 {
-  return 0;
+  if (pathName == NULL) {
+    return EN_INVALID_PARAM;
+  }
+  INT32 ret = access(pathName, mode);
+  if (ret != EN_OK) {
+    return EN_ERROR;
+  }
+  return EN_OK;
 }
 
 INT32 mmGetTimeOfDay(mmTimeval *timeVal, mmTimezone *timeZone)

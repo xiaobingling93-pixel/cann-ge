@@ -83,7 +83,6 @@ target_link_libraries(fmk_parser
         intf_pub
         air_headers
         json
-        -lstdc++fs
     PUBLIC
         static_mmpa
         -Wl,--no-as-needed

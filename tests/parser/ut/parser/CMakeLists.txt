@@ -53,6 +53,7 @@ target_compile_options(ut_parser PRIVATE
 
 target_compile_definitions(ut_parser PRIVATE
     google=ascend_private
+    CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
 )
 
 target_link_libraries(ut_parser

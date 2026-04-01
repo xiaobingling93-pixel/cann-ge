@@ -16,9 +16,7 @@
 #include "common/pre_checker.h"
 #include "proto/tensorflow/graph.pb.h"
 #include "proto/tensorflow/node_def.pb.h"
-#include <experimental/filesystem>
 
-namespace fs = std::experimental::filesystem;
 namespace ge {
 
 class TensorFlowCustomOpParser {
@@ -34,9 +32,9 @@ public:
   static Status LoadCustomOpsLibrary(const std::string &so_path);
   static Status BuildCustomOpStrings(
       const std::unordered_map<std::string, const domi::tensorflow::NodeDef *> &custom_nodes_map, std::string &all_reg_op_strings);
-  static Status WriteTextFile(const fs::path &file_path, const std::string &content);
-  static Status WriteWrapperCc(const fs::path &cc_path);
-  static Status DeleteTmpDirectoryContents(const fs::path &out_dir);
+  static Status WriteTextFile(const std::string &file_path, const std::string &content);
+  static Status WriteWrapperCc(const std::string &cc_path);
+  static Status DeleteTmpDirectoryContents(const std::string &out_dir);
   static Status ParseCustomOp(const std::unordered_map<std::string, const domi::tensorflow::NodeDef *> &custom_nodes_map);
 };
 }  // namespace ge

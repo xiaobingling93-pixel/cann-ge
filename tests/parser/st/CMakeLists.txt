@@ -46,6 +46,7 @@ target_compile_options(st_parser PRIVATE
 
 target_compile_definitions(st_parser PRIVATE
     google=ascend_private
+    CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
 )
 
 target_link_libraries(st_parser PRIVATE
@@ -62,7 +63,7 @@ target_link_libraries(st_parser PRIVATE
     graph
     graph_base
     parser_mmpa_stub
-    json -lstdc++fs
+    json
     -Wl,--whole-archive -Wl,--no-whole-archive register error_manager parser_mmpa_stub attr_util_stub
     error_manager parser_mmpa_stub attr_util_stub
     GTest::gtest GTest::gtest_main parser_slog_stub ascend_protobuf c_sec  -lrt -ldl
