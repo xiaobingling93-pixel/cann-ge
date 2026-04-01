@@ -86,7 +86,6 @@ target_include_directories(dvpp_engine_utest PRIVATE
 target_compile_definitions(dvpp_engine_utest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(dvpp_engine_utest PRIVATE

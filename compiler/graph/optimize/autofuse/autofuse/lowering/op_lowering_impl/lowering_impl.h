@@ -15,8 +15,10 @@
 #include <vector>
 
 #include "graph/node.h"
+#include "common/checker.h"
 #include "lowering/asc_lowerer/loop_api.h"
 #include "lowering/lowerings.h"
+#include "lowering/lowering_utils.h"
 
 namespace ge {
 
@@ -24,6 +26,29 @@ graphStatus Broadcast(const std::vector<loop::Index> &indices, loop::Index &broa
 graphStatus LowerPointwise(const NodePtr &node,
                            const std::function<loop::LoopVar(const std::vector<loop::LoopVar> &)> &kernel);
 graphStatus LowerReduction(const NodePtr &node, loop::ReduceType reduce_type);
+
+/**
+ * @brief 新增融合原因记录断言宏
+ * 功能：
+ * 1. 当断言失败时，先存储 node_name + 不能融合原因
+ * 2. 再调用原有GE_WARN_ASSERT执行断言逻辑
+ * 
+ * @param exp 断言表达式（同GE_WARN_ASSERT）
+ * @param node 节点指针（必须是ge::Node*类型，用于获取node_name）
+ * @param reason 不能融合原因（字符串常量/变量）
+ */
+#define LOWERING_WARN_RECORD_REASON(exp, node, fmt, ...)                                      \
+  do {                                                                                        \
+    if (!(exp)) {                                                                             \
+      std::string node_name = (node != nullptr) ? node->GetName() : "unknown_node";           \
+      char reason_buf[256] = {0};                                                             \
+      auto ret = snprintf_s(reason_buf, sizeof(reason_buf), sizeof(reason_buf) - 1U, fmt, ##__VA_ARGS__);\
+      GE_ASSERT_TRUE(ret >= 0, "snprintf_s failed, ret: %d", ret);                            \
+      std::string reason = reason_buf;                                                        \
+      GraphFusionReasonStore::CountNodeFuseFailReason(node_name, reason, GraphFusionReasonStore::FailReasonCategory::NODE_INFO_ERROR); \
+      GE_WARN_ASSERT(exp);                                                                    \
+    }                                                                                         \
+  } while (false)
 
 #define REGISTER_LOWERING(T)                           \
   static graphStatus Lowering##T(const NodePtr &node); \

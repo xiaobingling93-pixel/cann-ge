@@ -161,7 +161,6 @@ target_compile_definitions(hcce_ut_llt PRIVATE
     RUN_TEST
     google=ascend_private
     -DCCL_LLT
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(hccl_engine_utest PRIVATE ${src_path})
@@ -172,7 +171,6 @@ target_compile_definitions(hccl_engine_utest PRIVATE
     RUN_TEST
     google=ascend_private
     -DCCL_LLT
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(hccl_engine_utest PRIVATE

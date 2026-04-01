@@ -13,7 +13,6 @@
 #include <thread>
 #include "framework/common/types.h"
 #include "framework/common/debug/ge_log.h"
-#include "common/utils/bind_cpu_utils.h"
 #include "dflow/inc/data_flow/model/pne_model.h"
 #include "graph_metadef/common/ge_common/util.h"
 

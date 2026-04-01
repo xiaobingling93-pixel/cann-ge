@@ -15,7 +15,6 @@ target_compile_options(autofuse_test PRIVATE
 
 target_compile_definitions(autofuse_test PRIVATE
         google=ascend_private
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(autofuse_test PRIVATE
@@ -56,7 +55,6 @@ target_link_libraries(autofuse_test PRIVATE
         aihacb_autofusion_stub
         ge_runner
         gert
-        flow_graph
         metadef_headers
         ascendcl_stub
         GTest::gtest

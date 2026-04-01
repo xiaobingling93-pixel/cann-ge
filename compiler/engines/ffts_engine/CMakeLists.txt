@@ -51,10 +51,6 @@ target_compile_options(ffts PRIVATE
         -Dgoogle=ascend_private
         -Wno-deprecated-declarations)
 
-target_compile_definitions(ffts PRIVATE
-        $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
-        )
-
 target_link_libraries(ffts PRIVATE
         intf_pub
         mmpa_headers

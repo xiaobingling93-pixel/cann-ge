@@ -46,8 +46,6 @@ include_directories(${AIR_CODE_DIR}/base)
 include_directories(${AIR_CODE_DIR}/compiler)
 include_directories(${AIR_CODE_DIR}/runtime/v1)
 include_directories(${AIR_CODE_DIR}/api/session)
-include_directories(${AIR_CODE_DIR}/dflow/inc/data_flow)
-include_directories(${AIR_CODE_DIR}/dflow/compiler/session)
 include_directories(${AIR_CODE_DIR}/inc)
 include_directories(${AIR_CODE_DIR}/inc/graph_metadef)
 include_directories(${AIR_CODE_DIR}/inc/external)
@@ -440,7 +438,6 @@ set(MULTI_PARTS_TEST_FILES
     "common/op_unittest.cc"
     "common/op_factory_unittest.cc"
     "common/no_op_unittest.cc"
-    "common/endpoint_unittest.cc"
     "common/ge_deleted_op_unittest.cc"
     "common/ops_kernel_builder_manager_unittest.cc"
     "common/ops_kernel_manager_unittest.cc"
@@ -611,13 +608,10 @@ target_include_directories(ge_ut_common PRIVATE
     ${ASCEND_INSTALL_PATH}/include
     ${ASCGEN_DIR}/inc
     ${AIR_CODE_DIR}/inc/graph_metadef
-    "${CMAKE_BINARY_DIR}/proto/data_flow_base_proto"
-    "${CMAKE_BINARY_DIR}/proto/data_flow_base_proto/proto"
 )
 
 target_compile_definitions(ge_ut_common PRIVATE
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(ge_ut_common PRIVATE -g ${AIR_COV_COMPILE_OPTION}
@@ -637,7 +631,6 @@ target_link_libraries(ge_ut_common PRIVATE
     metadef_headers
     datagw_headers
     adump_headers
-    flow_graph
     c_sec
     ascend_protobuf
     json
@@ -646,7 +639,6 @@ target_link_libraries(ge_ut_common PRIVATE
     profiler_stub
     crypto_static
     ascendcl_stub
-    data_flow_base
     minizip_static
 )
 
@@ -696,7 +688,6 @@ target_link_libraries(ut_libge_multiparts_utest
     metadef_headers
     ascendcl_stub
     -Wl,-z,muldefs
-    flow_graph
     symengine
     unified_dlog
     graph
@@ -710,14 +701,12 @@ target_link_libraries(ut_libge_multiparts_utest
     ge_local_opskernel_builder
     ge_runner
     udf_compiler
-    dflow_runner
     ge_runner_v2
     engine
     json
     ascend_protobuf
     ge_graph_dsl
     ge_compiler
-    data_flow_base
     ascendcl_stub
     -Wl,--whole-archive
     atc_static gert gert_op_impl es_ge_test
@@ -886,7 +875,6 @@ target_include_directories(ut_libge_others_utest PRIVATE
 
 target_compile_definitions(ut_libge_others_utest PRIVATE
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(ut_libge_others_utest PRIVATE
@@ -900,12 +888,9 @@ target_link_libraries(ut_libge_others_utest
     ascendcl_stub
     ${AIR_COMMON_LINK_OPTION}
     ge_compiler
-    dflow_runner
     gert
     ge_runner
     ge_runner_v2
-    udf_compiler
-    cpu_compiler
     gRPC::grpc++
     gRPC::grpc
     -Wl,--whole-archive
@@ -1040,7 +1025,6 @@ target_compile_options(ut_libge_distinct_load_utest PRIVATE
 
 target_compile_definitions(ut_libge_distinct_load_utest PRIVATE
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_include_directories(ut_libge_distinct_load_utest PRIVATE
@@ -1066,7 +1050,6 @@ target_link_libraries(ut_libge_distinct_load_utest
     ascendcl_stub
     datagw_headers
     msprof_headers
-    flow_graph
     symengine
     gert
     ge_compiler
@@ -1177,7 +1160,6 @@ target_link_libraries(ut_jit_execution
         ge_compiler
         ge_runner
         ge_runner_v2
-        dflow_runner
         symengine
         aihacb_autofusion_stub
         gert

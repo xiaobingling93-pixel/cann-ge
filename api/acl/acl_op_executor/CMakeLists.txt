@@ -79,7 +79,6 @@ target_compile_definitions(acl_op_executor_impl PRIVATE
     FUNC_VISIBILITY
     google=ascend_private
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>    
 )
 
@@ -158,7 +157,6 @@ target_compile_definitions(acl_op_executor PRIVATE
     FUNC_VISIBILITY
     google=ascend_private
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
 )
 

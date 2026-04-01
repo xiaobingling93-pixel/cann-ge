@@ -59,7 +59,7 @@ function(do_backend_e2e_st_test)
     )
 
     add_test(NAME ${E2E_ST1_GENERATOR_EXE_NAME} COMMAND ${E2E_ST1_GENERATOR_EXE_NAME} --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/${E2E_ST1_GENERATOR_EXE_NAME}.xml)
-    set_tests_properties(${E2E_ST1_GENERATOR_EXE_NAME} PROPERTIES LABELS "st;codegen_e2e_st_test1;${E2E_ST1_GENERATOR_EXE_NAME}")
+    set_tests_properties(${E2E_ST1_GENERATOR_EXE_NAME} PROPERTIES LABELS "st;build_backend_test1;${E2E_ST1_GENERATOR_EXE_NAME}")
 
     add_executable(${E2E_ST2_EXE_KERNEL_EXE_NAME} ${KERNEL_SRC} ${ARG_TEST_SRC})
     target_include_directories(${E2E_ST2_EXE_KERNEL_EXE_NAME} PRIVATE ${ARG_WORKDIR})
@@ -68,7 +68,7 @@ function(do_backend_e2e_st_test)
     target_compile_options(${E2E_ST2_EXE_KERNEL_EXE_NAME} PRIVATE -DAUTO_FUSE_DEVICE=1 -DTILING_KEY_VAR=${ARG_TILING_KEY})
     #gtest_discover_tests(${E2E_ST2_EXE_KERNEL_EXE_NAME})
     add_test(NAME ${E2E_ST2_EXE_KERNEL_EXE_NAME} COMMAND ${E2E_ST2_EXE_KERNEL_EXE_NAME} --gtest_output=xml:${CMAKE_INSTALL_PREFIX}/report/st/${E2E_ST2_EXE_KERNEL_EXE_NAME}.xml)
-    set_tests_properties(${E2E_ST2_EXE_KERNEL_EXE_NAME} PROPERTIES LABELS "st;codegen_e2e_st_test2;${E2E_ST2_EXE_KERNEL_EXE_NAME}")
+    set_tests_properties(${E2E_ST2_EXE_KERNEL_EXE_NAME} PROPERTIES LABELS "st;build_backend_test2;${E2E_ST2_EXE_KERNEL_EXE_NAME}")
 endfunction()
 
 macro(backend_e2e_st_test)

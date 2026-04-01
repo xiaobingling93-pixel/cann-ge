@@ -100,7 +100,7 @@ class FlowModelCache {
   Status InitCacheFileInfo();
   Status InitCacheFileByIdx(const std::string &cache_path);
   Status SaveCacheIndexFile() const;
-  Status GetRealFileName(std::string &cache_file_name) const;
+  static Status GetRealFileName(std::string &file_name);
   void GenerateCacheFile();
   static std::string NormalizeDirPath(const std::string &dir_path);
   static Status CreateDir(const std::string &dir_path);

@@ -24,7 +24,6 @@ target_compile_options(ut_dvpp_runtime2_test PRIVATE
         )
 
 target_compile_definitions(ut_dvpp_runtime2_test PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         )
 

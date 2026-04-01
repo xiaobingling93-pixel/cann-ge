@@ -12,7 +12,6 @@
 #define COMMON_AUTO_MAPPING_UTIL_H_
 
 #include <vector>
-#include "graph/types.h"
 #include "framework/common/debug/ge_log.h"
 #include "proto/tensorflow/attr_value.pb.h"
 #include "proto/tensorflow/node_def.pb.h"

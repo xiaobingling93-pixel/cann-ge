@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifdef ONLY_COMPILE_OPEN_SRC
 #include "rts_stub.h"
 #include "graph/def_types.h"
 
@@ -78,4 +77,3 @@ rtError_t rtsRegisterCpuFunc(const rtBinHandle binHandle, const char_t * const f
   *funcHandle = ge::ValueToPtr(stub_func_addr);
   return RT_ERROR_NONE;
 }
-#endif

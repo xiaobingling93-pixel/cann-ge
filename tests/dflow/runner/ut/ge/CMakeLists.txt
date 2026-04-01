@@ -111,6 +111,9 @@ SET(DFLOW_SESSION_TEST_FILES
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_api_unittest.cc"
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_graph_manager_unittest.cc"
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_session_manager_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/ge_api_dflow_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/compiler/pne/process_node_engine_manager_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/base/model/endpoint_unittest.cc"
 )
 
 # helper ut
@@ -164,7 +167,6 @@ target_compile_options(ut_libge_helper_utest PRIVATE -g
 
 target_compile_definitions(ut_libge_helper_utest PRIVATE
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(ut_libge_helper_utest PRIVATE

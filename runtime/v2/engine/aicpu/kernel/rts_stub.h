@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include "runtime/kernel.h"
 
-#ifdef ONLY_COMPILE_OPEN_SRC
 typedef enum {
   RT_ENGINE_TYPE_AIC = 0,
   RT_ENGINE_TYPE_AIV
@@ -109,5 +108,4 @@ rtError_t rtsFuncGetByName(const rtBinHandle binHandle, const char_t *kernelName
 rtError_t rtsRegisterCpuFunc(const rtBinHandle binHandle, const char_t * const funcName,
                              const char_t * const kernelName, rtFuncHandle *funcHandle);
 
-#endif
 #endif // AIR_CXX_RUNTIME_V2_RTS_STUB_H_

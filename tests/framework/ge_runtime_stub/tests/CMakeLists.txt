@@ -16,10 +16,6 @@ target_include_directories(ge_runtime_stub_test
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AIR_CODE_DIR}/inc ${AIR_CODE_DIR}/inc/framework ${AIR_CODE_DIR}/inc/external
         )
 
-target_compile_definitions(ge_runtime_stub_test PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-        )
-
 target_compile_options(ge_runtime_stub_test PRIVATE
         -g
         )

@@ -60,7 +60,7 @@ function(ascir_generate depend_so_target bin_dir so_var h_var)
             final_paths=(\"\${non_ascend[@]}\" \"\${ascend[@]}\"); \
             lib_path_str=\$(IFS=:; echo \"\${final_paths[*]}\"); \
             echo \"Adjusted LD_LIBRARY_PATH: \${lib_path_str}:\$LD_LIBRARY_PATH\"; \
-            if [[ \${ENABLE_ASAN} == \"true\" ]]; then \
+            if [[ \"${ENABLE_ASAN}\" == \"true\" ]]; then \
                 USE_ASAN=\$(gcc -print-file-name=libasan.so); \
                 export LD_PRELOAD=\${USE_ASAN}; \
             fi; \

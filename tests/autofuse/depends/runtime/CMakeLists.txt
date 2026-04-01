@@ -11,9 +11,6 @@
 # Use different target name to avoid conflict with tests/depends/runtime
 add_library(autofuse_runtime_stub SHARED src/runtime_stub.cc)
 target_compile_options(autofuse_runtime_stub PRIVATE -g)
-target_compile_definitions(autofuse_runtime_stub PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
 target_include_directories(autofuse_runtime_stub PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_link_libraries(autofuse_runtime_stub
         PRIVATE

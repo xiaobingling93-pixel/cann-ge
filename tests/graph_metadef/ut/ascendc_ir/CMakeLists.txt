@@ -43,7 +43,6 @@ target_compile_options(ut_ascendc_ir PRIVATE
 )
 
 target_compile_definitions(ut_ascendc_ir PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
     FUNC_VISIBILITY
 )

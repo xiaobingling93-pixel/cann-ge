@@ -95,7 +95,6 @@ target_include_directories(aicpu_engine_common PRIVATE
 target_compile_definitions(aicpu_engine_common PRIVATE
     AICPU_PLUGIN
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(aicpu_engine_common PRIVATE

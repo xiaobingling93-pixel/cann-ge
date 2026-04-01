@@ -16,18 +16,14 @@
 #include "graph/ge_local_context.h"
 #include "graph/build/memory/var_mem_assign_util.h"
 #include "common/model/ge_root_model.h"
-#include "dflow/base/model/endpoint.h"
-#include "dflow/base/model/model_deploy_resource.h"
 #include "common/helper/model_parser_base.h"
 #include "framework/common/types.h"
-#include "dflow/compiler/pne/udf/udf_model.h"
-#include "dflow/inc/data_flow/model/flow_model_helper.h"
 #include "depends/mmpa/src/mmpa_stub.h"
 #include "framework/common/helper/om_file_helper.h"
-#include "dflow/base/model/flow_model_om_loader.h"
 #include "common/mem_conflict_share_graph.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "framework/common/helper/model_save_helper.h"
+#include "helper/model_helper.h"
 
 namespace ge {
 namespace {
@@ -508,47 +504,6 @@ TEST_F(ModelCacheTest, save_and_load_with_subgraph) {
   }
 }
 
-TEST_F(ModelCacheTest, fake_load_flow_model_failed) {
-  SetCacheDirOption("./ut_cache_dir");
-  SetGraphKeyOption("graph_key_flow_model_load_failed");
-  auto sub_graph = FakeComputeGraph("sub_graph");
-  auto root_graph = FakeGraphWithSubGraph("root_graph", sub_graph);
-  auto ge_root_model = BuildGeModel("flow_model1", root_graph);
-  GraphRebuildStateCtrl ctrl;
-  {
-    ModelCache model_cache;
-    auto ret = model_cache.Init(root_graph, &ctrl);
-    EXPECT_EQ(ret, SUCCESS);
-    ret = model_cache.TryCacheModel(ge_root_model);
-    EXPECT_EQ(ret, SUCCESS);
-  }
-  {
-    std::string cache_file_name = GetCacheFileName("./ut_cache_dir", "graph_key_flow_model_load_failed");
-    ModelData model;
-    // Load model from file, default 0 priority.
-    Status parse_ret = ModelParserBase::LoadFromFile(cache_file_name.c_str(), 0, model);
-    GE_MAKE_GUARD(model_guard, [&model]() {
-      if (model.model_data != nullptr) {
-        delete[] static_cast<char *>(model.model_data);
-        model.model_data = nullptr;
-      }
-    });
-    ASSERT_EQ(parse_ret, SUCCESS);
-    OmFileLoadHelper om_file_load_helper;
-    auto ret = om_file_load_helper.Init(model);
-    ASSERT_EQ(ret, SUCCESS);
-    auto &model_partitions = om_file_load_helper.GetModelPartitions(0);
-    uint8_t *data = const_cast<uint8_t *>(model_partitions[model_partitions.size() - 1].data);
-    // modify sub model invalid
-    data[0] = 0xFF;
-    data[1] = 0xFF;
-    FlowModelOmLoader loader;
-    FlowModelPtr flow_model_load;
-    Status load_ret = loader.LoadToFlowModel(model, flow_model_load);
-    EXPECT_NE(load_ret, SUCCESS);
-  }
-}
-
 TEST_F(ModelCacheTest, TransModelDataToComputeGraph) {
   auto data1 = OP_CFG(DATA)
         .InCnt(1)
@@ -587,8 +542,9 @@ TEST_F(ModelCacheTest, TransModelDataToComputeGraph) {
   ModelData model_data{};
   model_data.model_data = model_buffer_data.data.get();
   model_data.model_len = model_buffer_data.length;
-  ComputeGraphPtr test_compute_graph;
-  EXPECT_EQ(FlowModelOmLoader::TransModelDataToComputeGraph(model_data, test_compute_graph), ge::SUCCESS);
+  ModelHelper model_helper;
+  EXPECT_EQ(model_helper.LoadRootModel(model_data), ge::SUCCESS);
+  ComputeGraphPtr test_compute_graph = model_helper.GetGeRootModel()->GetRootGraph();
   EXPECT_NE(test_compute_graph, nullptr);
   EXPECT_EQ(test_compute_graph->GetName(), "graph");
 }
@@ -671,7 +627,7 @@ TEST_F(ModelCacheTest, save_and_load_flow_model_with_invalid_graph_key) {
 
 TEST_F(ModelCacheTest, save_and_load_flow_model_check_rang_id_and_priority) {
   SetCacheDirOption("./ut_cache_dir");
-  SetGraphKeyOption("graph_key_flow_model_with_udf1");
+  SetGraphKeyOption("graph_key_flow_model_1");
   auto graph = FakeComputeGraph("root_graph");
   auto ge_root_model = BuildGeModel("flow_model1", graph);
   GraphRebuildStateCtrl ctrl;
@@ -681,7 +637,7 @@ TEST_F(ModelCacheTest, save_and_load_flow_model_check_rang_id_and_priority) {
     EXPECT_EQ(ret, SUCCESS);
     ret = model_cache.TryCacheModel(ge_root_model);
     EXPECT_EQ(ret, SUCCESS);
-    auto check_ret = CheckCacheResult("./ut_cache_dir", "graph_key_flow_model_with_udf1", 1);
+    auto check_ret = CheckCacheResult("./ut_cache_dir", "graph_key_flow_model_1", 1);
     EXPECT_EQ(check_ret, true);
   }
   {

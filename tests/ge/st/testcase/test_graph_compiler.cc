@@ -25,7 +25,6 @@
 #include "graph/build/memory/block_type_list.h"
 #include "hybrid/node_executor/node_executor.h"
 #include "macro_utils/dt_public_unscope.h"
-#include "dflow/base/model/endpoint.h"
 
 #include "ge_graph_dsl/graph_dsl.h"
 #include "ge_graph_dsl/assert/graph_assert.h"

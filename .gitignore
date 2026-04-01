@@ -14,7 +14,6 @@
 /cov_ffts_ut
 /cov_ffts_st
 /build_gcov
-/.dev_env
 /tests/framework/eager_style_graph_builder/build
 
 # IDE

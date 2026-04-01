@@ -43,7 +43,6 @@ add_library(helper_runtime SHARED
 )
 
 target_compile_definitions(helper_runtime PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
 )
 
@@ -117,7 +116,6 @@ add_library(helper_runtime_no_grpc SHARED
         )
 
 target_compile_definitions(helper_runtime_no_grpc PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         google=ascend_private
         )
 

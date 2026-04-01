@@ -18,9 +18,6 @@ target_include_directories(hybrid_model_async_exec_test
         ${AIR_CODE_DIR}/tests/depends/op_stub
         )
 
-target_compile_definitions(hybrid_model_async_exec_test PRIVATE
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-        )
 target_compile_options(hybrid_model_async_exec_test PUBLIC -g
         -Wno-deprecated-declarations
         -Wall -Wfloat-equal -Werror
@@ -28,7 +25,6 @@ target_compile_options(hybrid_model_async_exec_test PUBLIC -g
         )
 target_link_libraries(hybrid_model_async_exec_test PUBLIC 
         intf_llt_pub
-        flow_graph
         -Wl,-z,muldefs
         -Wl,--whole-archive
         gert

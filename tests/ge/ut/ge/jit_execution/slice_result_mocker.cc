@@ -14,11 +14,11 @@
 #include "es_ge_test_ops.h"
 #include "common_setup.h"
 #include "graph/optimize/symbolic/infer_symbolic_shape/symbolic_shape_symbolizer.h"
-#include "dflow/compiler/model/flow_model_cache.h"
 #include "api/session/jit_execution/utils/guarded_execution_point_util.h"
+#include "common/helper/file_saver.h"
 #include "graph/optimize/symbolic/shape_env_guarder.h"
 #include "framework/common/helper/model_save_helper.h"
-#include "dflow/inc/data_flow/model/flow_model_helper.h"
+#include "graph/build/model_cache.h"
 #include "graph/utils/graph_utils_ex.h"
 #undef private
 #undef protected
@@ -169,7 +169,6 @@ void SliceResultMocker::GenOmFile(const std::string &cache_dir,
   GetThreadLocalContext().SetSessionOption({{"ge.graph_compiler_cache_dir", cache_dir + "/jit/"}});
   GetThreadLocalContext().SetGraphOption({{"ge.graph_key", graph_key}});
   GeRootModelPtr ge_root_model = BuildGeRootModel(graph->GetName(), graph);
-  ModelData model_data{};
   ModelBufferData model_buffer_data;
   bool is_unknown_shape = false;
   EXPECT_EQ(ge_root_model->CheckIsUnknownShape(is_unknown_shape), SUCCESS);
@@ -178,16 +177,9 @@ void SliceResultMocker::GenOmFile(const std::string &cache_dir,
   EXPECT_NE(model_save_helper, nullptr);
   model_save_helper->SetSaveMode(false);
   EXPECT_EQ(model_save_helper->SaveToOmRootModel(ge_root_model, "NoUse", model_buffer_data, is_unknown_shape), SUCCESS);
-  model_data.model_data = model_buffer_data.data.get();
-	model_data.model_len = model_buffer_data.length;
-  FlowModelPtr flow_model = MakeShared<ge::FlowModel>(graph);
-  EXPECT_EQ(flow_model->AddSubModel(FlowModelHelper::ToPneModel(model_data, graph), PNE_ID_NPU), SUCCESS);
-
-  {
-    FlowModelCache flow_model_cache;
-    EXPECT_EQ(flow_model_cache.Init(graph), SUCCESS);
-    EXPECT_EQ(flow_model_cache.TryCacheFlowModel(flow_model), SUCCESS);
-  }
+  EXPECT_EQ(
+      FileSaver::SaveToFile(cache_dir + "/jit/" + graph_key + ".om", model_buffer_data.data.get(), model_buffer_data.
+        length), SUCCESS);
 
   /* restore the options */
   GetThreadLocalContext().SetSessionOption(old_session_options);
@@ -232,7 +224,7 @@ void SliceResultMocker::CheckFileGenResult(const ExecutionOrder &order, const st
   const std::string &cache_dir) {
   const std::string user_graph_base_dir = cache_dir + "/jit/slicing_hierarchy/" + user_graph_key + "/";
   const std::string slice_res_path = user_graph_base_dir + "slicing_result.json";
-  EXPECT_EQ(FlowModelCache::CheckFileExist(slice_res_path), true);      // check slicing_result.json
+  EXPECT_EQ(ModelCache::CheckFileExist(slice_res_path), true);      // check slicing_result.json
 
   const auto num_eps = order.slice_graphs_.size();
   for (uint32_t ep_idx = 0; ep_idx < num_eps; ++ep_idx) {
@@ -240,10 +232,10 @@ void SliceResultMocker::CheckFileGenResult(const ExecutionOrder &order, const st
     const std::string gep_list_path = slice_graph_bas_dir + "gep_list.json";
     const std::string slice_graph_pb_path = slice_graph_bas_dir + "slice_graph.pb";
     const std::string rem_graph_pb_path = slice_graph_bas_dir + "rem_graph.pb";
-    EXPECT_EQ(FlowModelCache::CheckFileExist(gep_list_path), true);         // check gep_list.json
-    EXPECT_EQ(FlowModelCache::CheckFileExist(slice_graph_pb_path), true);   // check slice_graph.pb
+    EXPECT_EQ(ModelCache::CheckFileExist(gep_list_path), true);         // check gep_list.json
+    EXPECT_EQ(ModelCache::CheckFileExist(slice_graph_pb_path), true);   // check slice_graph.pb
     if (ep_idx != num_eps - 1) {
-      EXPECT_EQ(FlowModelCache::CheckFileExist(rem_graph_pb_path), true);   // check rem_graph.pb
+      EXPECT_EQ(ModelCache::CheckFileExist(rem_graph_pb_path), true);   // check rem_graph.pb
     }
   }
 }

@@ -122,5 +122,42 @@ graphStatus InferShape4Gather(gert::InferSymbolShapeContext *context) {
 
 IMPL_OP_INFER_SYMBOL_SHAPE_INNER(GatherV2).InferSymbolShape(InferShape4GatherV2);
 IMPL_OP_INFER_SYMBOL_SHAPE_INNER(Gather).InferSymbolShape(InferShape4Gather);
+
+/**
+ * GatherNd: 对于维度为r≥1的输入张量self，和维度q≥1的输入张量indices，将数据切片收集到输出张量out中
+ * out的shape为[indices_shape[0:q-1], self_shape[c:r]]
+ */
+graphStatus InferShape4GatherNd(gert::InferSymbolShapeContext *context) {
+  GE_ASSERT_NOTNULL(context);
+  const auto data_shape = context->GetInputSymbolShape(0);
+  GE_UNSUPPORTED_IF_NULL(data_shape);
+  const int64_t data_dim = data_shape->GetDimNum();
+
+  const auto indices_shape = context->GetInputSymbolShape(1);
+  GE_UNSUPPORTED_IF_NULL(indices_shape);
+  const int64_t indices_dim = indices_shape->GetDimNum();
+  GE_ASSERT_TRUE(indices_dim >= 1, "indices_dim must be >= 1, but got %lld", indices_dim);
+  
+  const auto k_symbol = indices_shape->GetDim(indices_dim - 1);
+  int64_t k_value = -1;
+  if (!k_symbol.GetConstValue<int64_t>(k_value)) {
+    GELOGW("Last indices is not const in node %s.", context->GetNodeName());
+    return UNSUPPORTED;
+  }
+  ASSERT_SYMBOL_GE(k_symbol, Symbol(0));
+  ASSERT_SYMBOL_LE(k_symbol, Symbol(data_dim));
+  
+  const auto out_shape = context->GetOutputSymbolShape(0);
+  GE_ASSERT_NOTNULL(out_shape);
+  for (int64_t i = 0; i < indices_dim - 1; ++i) {
+    out_shape->AppendDim(indices_shape->GetDim(i));
+  }
+  for (int64_t i = k_value; i < data_dim; ++i) {
+    out_shape->AppendDim(data_shape->GetDim(i));
+  }
+  
+  return GRAPH_SUCCESS;
+}
+IMPL_OP_INFER_SYMBOL_SHAPE_INNER(GatherNd).InferSymbolShape(InferShape4GatherNd);
 }  // namespace
 }  // namespace ge

@@ -50,7 +50,6 @@ target_compile_options(acl_cblas PRIVATE
 target_compile_definitions(acl_cblas PRIVATE
     $<IF:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>,OS_TYPE=WIN,OS_TYPE=0>
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     $<$<STREQUAL:${ENABLE_ACL_UT},ON>:ONLY_ENABLE_ACL_UT>
     _FORTIFY_SOURCE=2
 )

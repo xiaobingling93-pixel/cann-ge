@@ -38,10 +38,17 @@ std::string GenBinaryFindUBLimit_MultiVarSetup() {
 
   if (count == 0) return false;
 
-  // Use first variable's properties for bounds calculation
-  int64_t upper_bound = vars[0]->value;
-  if (lower_bound > upper_bound) {
-    OP_LOGW(OP_NAME, "MultiVarUBLimit: lower_bound > upper_bound, return false");
+  const int64_t align = vars[0]->align;
+  if (align <= 0) {
+    OP_LOGW(OP_NAME, "MultiVarUBLimit: invalid align %ld", align);
+    return false;
+  }
+  const int64_t raw_upper = vars[0]->value;
+  const int64_t aligned_lower = CeilDiv(lower_bound, align) * align;
+  const int64_t aligned_upper = (raw_upper / align) * align;
+  if (aligned_lower > aligned_upper) {
+    OP_LOGW(OP_NAME, "MultiVarUBLimit: aligned_lower > aligned_upper, lower:%ld, upper:%ld, align:%ld",
+            aligned_lower, aligned_upper, align);
     return false;
   }
 
@@ -51,13 +58,13 @@ std::string GenBinaryFindUBLimit_MultiVarSetup() {
     old_values[i] = vars[i]->value;
   }
 
-  // Check if upper_bound satisfies constraint when all variables are set to it
+  // Check if aligned_upper satisfies constraint when all variables are set to it
   for (size_t i = 0; i < count; ++i) {
-    vars[i]->SetValue(upper_bound);
+    vars[i]->SetValue(aligned_upper);
   }
   bool all_satisfied = SatisfyCons(ConstraintType::LOCAL_BUFFER);
   if (all_satisfied) {
-    result = upper_bound;
+    result = aligned_upper;
     return true;
   }
 )";
@@ -65,25 +72,26 @@ std::string GenBinaryFindUBLimit_MultiVarSetup() {
 
 std::string GenBinaryFindUBLimit_SearchLoop() {
   return R"(
-  // Binary search for maximum value that satisfies UB constraint for all variables
-  int64_t left = lower_bound;
-  int64_t right = upper_bound - vars[0]->align;
-  result = lower_bound;
+  // Binary search on align-grid for maximum value satisfying UB constraint
+  int64_t left_idx = aligned_lower / align;
+  int64_t right_idx = aligned_upper / align;
+  result = aligned_lower;
 
-  while (left <= right) {
-    int64_t mid = left + (right - left) / 2;
+  while (left_idx <= right_idx) {
+    int64_t mid_idx = left_idx + (right_idx - left_idx) / 2;
+    int64_t candidate = mid_idx * align;
 
-    // Set all variables to mid and check constraint
+    // Set all variables to candidate and check constraint
     for (size_t i = 0; i < count; ++i) {
-      vars[i]->SetValue(mid);
+      vars[i]->SetValue(candidate);
     }
     bool mid_satisfied = SatisfyCons(ConstraintType::LOCAL_BUFFER);
 
     if (mid_satisfied) {
-      result = mid;
-      left = mid + vars[0]->align;
+      result = candidate;
+      left_idx = mid_idx + 1;
     } else {
-      right = mid - vars[0]->align;
+      right_idx = mid_idx - 1;
     }
   }
 )";
@@ -129,6 +137,19 @@ std::string GenBinaryFindUpperBoundSatisfiedUBLimit() {
 
 std::string GenBinaryFindUBThr_MultiVarSetup() {
   return R"(
+  const int64_t align = vars[0]->align;
+  if (align <= 0) {
+    OP_LOGW(OP_NAME, "MultiVarUBThr: invalid align %ld", align);
+    return false;
+  }
+  const int64_t aligned_lower = CeilDiv(lower_bound, align) * align;
+  const int64_t aligned_upper = (upper_bound / align) * align;
+  if (aligned_lower > aligned_upper) {
+    OP_LOGW(OP_NAME, "MultiVarUBThr: aligned_lower > aligned_upper, lower:%ld, upper:%ld, align:%ld",
+            aligned_lower, aligned_upper, align);
+    return false;
+  }
+
   // Save original values
   std::vector<int64_t> old_values(count);
   for (size_t i = 0; i < count; ++i) {
@@ -139,9 +160,9 @@ std::string GenBinaryFindUBThr_MultiVarSetup() {
 
 std::string GenBinaryFindUBThr_CheckLowerBound() {
   return R"(
-  // Check if lower_bound satisfies conditions for all variables
+  // Check if aligned lower_bound satisfies conditions for all variables
   for (size_t i = 0; i < count; ++i) {
-    vars[i]->SetValue(lower_bound);
+    vars[i]->SetValue(aligned_lower);
   }
   bool bound_ok = true;
   for (size_t i = 0; i < count; ++i) {
@@ -154,7 +175,7 @@ std::string GenBinaryFindUBThr_CheckLowerBound() {
   if (bound_ok && IsSatisfyCons(vars[0], vars[0]->value, ConstraintType::LOCAL_BUFFER, input_.ub_threshold)) {
     bound_ok = false;
   }
-  result = lower_bound;
+  result = aligned_lower;
   if (bound_ok) {
     return true;
   }
@@ -163,15 +184,16 @@ std::string GenBinaryFindUBThr_CheckLowerBound() {
 
 std::string GenBinaryFindUBThr_SearchLoop() {
   return R"(
-  // Binary search for minimum value that satisfies conditions for all variables
-  int64_t left = lower_bound + vars[0]->align;
-  int64_t right = upper_bound;
-  result = upper_bound;
-  while (left <= right) {
-    int64_t mid = left + (right - left) / 2;
-    // Set all variables to mid and check conditions
+  // Binary search on align-grid for minimum value that satisfies conditions for all variables
+  int64_t left_idx = aligned_lower / align;
+  int64_t right_idx = aligned_upper / align;
+  result = aligned_upper;
+  while (left_idx <= right_idx) {
+    int64_t mid_idx = left_idx + (right_idx - left_idx) / 2;
+    int64_t candidate = mid_idx * align;
+    // Set all variables to candidate and check conditions
     for (size_t i = 0; i < count; ++i) {
-      vars[i]->SetValue(mid);
+      vars[i]->SetValue(candidate);
     }
     bool mid_satisfied = true;
     for (size_t i = 0; i < count; ++i) {
@@ -181,14 +203,14 @@ std::string GenBinaryFindUBThr_SearchLoop() {
       }
     }
     // Check if UB usage is ABOVE threshold
-    if (mid_satisfied && IsSatisfyCons(vars[0], mid, ConstraintType::LOCAL_BUFFER, input_.ub_threshold)) {
+    if (mid_satisfied && IsSatisfyCons(vars[0], candidate, ConstraintType::LOCAL_BUFFER, input_.ub_threshold)) {
       mid_satisfied = false;
     }
     if (mid_satisfied) {
-      result = mid;
-      right = mid - vars[0]->align;
+      result = candidate;
+      right_idx = mid_idx - 1;
     } else {
-      left = mid + vars[0]->align;
+      left_idx = mid_idx + 1;
     }
   }
 )";
@@ -524,8 +546,7 @@ std::string GenAlignToUpperBound() {
   return R"(
 // Helper function to align value to upper bound
 inline int64_t AlignToUpperBound(int64_t value, int64_t align) {
-  int64_t res = value / align;
-  return (res * align == value) ? res : (res + 1);
+  return CeilDiv(value, align) * align;
 }
 )";
 }
@@ -795,7 +816,6 @@ std::string GenProcessMCAxisNaive_FindUBThreshold() {
   int64_t lower_bound_satisfied_ub_threshold = var->align;
   // If no solution satisfies UB utilization, no further processing needed
   if (BinaryFindLowerBoundSatisfiedUBThresholdCond(var, var_idx, var->align, lower_bound_satisfied_ub_threshold)) {
-    lower_bound_satisfied_ub_threshold = AlignToUpperBound(lower_bound_satisfied_ub_threshold, var->align);
     OP_LOGD(OP_NAME, "Found lower_bound_satisfied_ub_threshold:%ld, upper:%ld, lower:%ld, i:%u, input: %s",
             lower_bound_satisfied_ub_threshold, upper_bound_satisfied_ub_threshold, var->align, var_idx,
             input_.DebugString().c_str());
@@ -860,7 +880,12 @@ std::string GenProcessMCAxisNaive() {
 std::string GenProcessSingleAxisNaive_Initialize() {
   return R"(
   auto upper_bound = var->upper_bound(var->upper_bound_vars);
-  int64_t boundary = AlignToUpperBound(upper_bound, var->align);
+  int64_t boundary = (upper_bound / var->align) * var->align;
+  if (boundary < var->align) {
+    OP_LOGW(OP_NAME, "Invalid aligned upper bound:%ld, raw upper:%ld, align:%ld, i:%u, input: %s.",
+            boundary, upper_bound, var->align, var_idx, input_.DebugString().c_str());
+    return false;
+  }
   var->SetValue(boundary);
 
   int64_t upper_bound_satisfied_ub = -1L;
@@ -870,7 +895,6 @@ std::string GenProcessSingleAxisNaive_Initialize() {
     return false;
   }
 
-  upper_bound_satisfied_ub = AlignToUpperBound(upper_bound_satisfied_ub, var->align);
   OP_LOGD(OP_NAME, "Found upper_bound_satisfied_ub:%ld, upper_bound:%ld, lower_bound:%ld, i:%u, input: %s",
           upper_bound_satisfied_ub, boundary, var->align, var_idx, input_.DebugString().c_str());
   var->SetValue(upper_bound_satisfied_ub);

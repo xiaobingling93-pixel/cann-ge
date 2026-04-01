@@ -17,7 +17,6 @@
 #include "dflow/base/exec_runtime/execution_runtime.h"
 #include "framework/common/debug/log.h"
 #include "framework/common/ge_inner_error_codes.h"
-#include "common/utils/bind_cpu_utils.h"
 #include "common/utils/rts_api_utils.h"
 #include "graph/utils/tensor_utils.h"
 #include "common/util/mem_utils.h"
@@ -148,9 +147,6 @@ void HeterogeneousExchangeService::ProcessF2NFEvent(const uint32_t queue_id) {
 }
 
 void HeterogeneousExchangeService::WaitEvents(const int32_t device_id) {
-  // host device_id is 0, bind cpu 0
-  // device each device has 8 cpu, bind 0/8 cpu when device_id is 0/1
-  BindCpuUtils::BindCore(device_id * 8);
   uint64_t mask = (1ULL << static_cast<uint32_t>(RT_EVENT_QUEUE_EMPTY_TO_NOT_EMPTY)) |
                   (1ULL << static_cast<uint32_t>(RT_EVENT_QUEUE_FULL_TO_NOT_FULL));
   auto result = RtsApiUtils::EschedSubscribeEvent(device_id, kEventGroupId, 0, mask);

@@ -10,9 +10,6 @@
 
 add_library(ascendcl_stub SHARED src/ascendcl_stub.cc)
 target_compile_options(ascendcl_stub PRIVATE -g)
-target_compile_definitions(ascendcl_stub PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
 target_include_directories(ascendcl_stub PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${AIR_CODE_DIR}/inc/graph_metadef

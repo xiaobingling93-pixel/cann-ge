@@ -39,6 +39,9 @@ constexpr size_t kAttrEllipsisMaskIndex = 2UL;
 constexpr size_t kAttrNewAxisMaskIndex = 3UL;
 constexpr size_t kAttrShrinkAxisMaskIndex = 4UL;
 
+constexpr size_t kAxesV2InputIndex = 3UL;
+constexpr size_t kStridesV2InputIndex = 4UL;
+
 struct StridedSliceAttr {
   int64_t begin_mask{0};
   int64_t end_mask{0};
@@ -365,7 +368,8 @@ graphStatus GetValueFromInputConstData(const gert::InferSymbolShapeContext *cont
   return SUCCESS;
 }
 
-Status GetStridedSliceIndexInput(const gert::InferSymbolShapeContext *context, StrdedSliceIndexInputs &index_input) {
+Status GetStridedSliceIndexInput(const gert::InferSymbolShapeContext *context, StrdedSliceIndexInputs &index_input,
+                                 size_t stride_index, bool is_stride_optional = false) {
   auto ret = GetValueFromInputConstData(context, kStartInputIndex, index_input.start_indexes);
   if (ret != SUCCESS) {
     return ret;
@@ -374,7 +378,109 @@ Status GetStridedSliceIndexInput(const gert::InferSymbolShapeContext *context, S
   if (ret != SUCCESS) {
     return ret;
   }
-  ret = GetValueFromInputConstData(context, kStridesInputIndex, index_input.strides_indexes);
+  return (is_stride_optional && context->GetInputSymbolTensor(stride_index) == nullptr) ?
+    SUCCESS : GetValueFromInputConstData(context, stride_index, index_input.strides_indexes);
+}
+
+Status ConstructAxis(const gert::InferSymbolShapeContext *context, int64_t input_dim_num, std::vector<int64_t> &axes) {
+  const auto axes_tensor = context->GetInputSymbolTensor(kAxesV2InputIndex);
+  if (axes_tensor == nullptr) {
+    GELOGI("Set axes to default for node %s.", context->GetNodeName());
+    return SUCCESS;
+  }
+
+  const auto symbols = axes_tensor->GetSymbolicValue();
+  GE_UNSUPPORTED_IF_NULL(symbols);
+  for (const auto &symbol : *symbols) {
+    int64_t value = 0;
+    if (!symbol.GetConstValue(value)) {
+      GELOGI("Axis value for node %s is not const.", context->GetNodeName());
+      return UNSUPPORTED;
+    }
+    GE_ASSERT_TRUE(value < input_dim_num && value >= -input_dim_num, "Invalid axis value %lld for node %s.",
+                   value, context->GetNodeName());
+    axes.push_back(value >= 0 ? value : value + input_dim_num);
+    GELOGD("Get const value %lld and add new axes value %lld for node %s.", value, axes.back(), context->GetNodeName());
+  }
+  return SUCCESS;
+}
+
+Status ConstructBeginList(const gert::InferSymbolShapeContext *context, const std::vector<ge::Expression> &x_dims,
+                          const std::vector<int64_t> &axes, std::vector<Expression> &start_indexes) {
+  start_indexes.resize(x_dims.size(), Symbol(0));
+  std::vector<Expression> begin_values;
+  graphStatus ret = GetValueFromInputConstData(context, kStartInputIndex, begin_values);
+  if (ret != SUCCESS) {
+    GELOGI("Begin list is not const for node %s, error code %u.", context->GetNodeName(), static_cast<uint32_t>(ret));
+    return ret;
+  }
+  for (size_t i = 0UL; i < axes.size() && i < x_dims.size(); ++i) {
+    start_indexes[axes[i]] = begin_values[i];
+    GELOGD("Index %zu axe %lld begin %s", i, axes[i], begin_values[i].Serialize().get());
+  }
+
+  return SUCCESS;
+}
+
+Status ConstructEndList(const gert::InferSymbolShapeContext *context, const std::vector<ge::Expression> &x_dims,
+                        const std::vector<int64_t> &axes, std::vector<Expression> &end_indexes) {
+  for (size_t i = 0UL; i < x_dims.size(); i++) {
+    end_indexes.push_back(x_dims[i]);
+  }
+  std::vector<Expression> end_values;
+  graphStatus ret = GetValueFromInputConstData(context, kEndInputIndex, end_values);
+  if (ret != SUCCESS) {
+    GELOGI("End list is not const for node %s, error code %u.", context->GetNodeName(), static_cast<uint32_t>(ret));
+    return ret;
+  }
+  for (size_t i = 0UL; i < axes.size() && i < x_dims.size(); i++) {
+    end_indexes[axes[i]] = end_values[i];
+    GELOGD("Index %zu axe %lld end %s", i, axes[i], end_values[i].Serialize().get());
+  }
+
+  return SUCCESS;
+}
+
+Status ConstructStrideList(const gert::InferSymbolShapeContext *context, const std::vector<ge::Expression> &x_dims,
+                           const std::vector<int64_t> &axes, std::vector<Expression> &strides_indexes) {
+  strides_indexes.resize(x_dims.size(), Symbol(1));
+  const auto stride_tensor = context->GetInputSymbolTensor(kStridesV2InputIndex);
+  if (stride_tensor == nullptr) {
+    GELOGD("Apply default stride for node %s.", context->GetNodeName());
+    return SUCCESS;
+  }
+
+  std::vector<Expression> stride_values;
+  if (GetValueFromInputConstData(context, kStridesV2InputIndex, stride_values) != SUCCESS) {
+    GELOGW("Failed to get const stride values for node %s.", context->GetNodeName());
+    return UNSUPPORTED;
+  }
+  for (size_t i = 0UL; i < axes.size() && i < x_dims.size(); i++) {
+    strides_indexes[axes[i]] = stride_values[i];
+    GELOGD("Index %zu axe %lld stride %s", i, axes[i], strides_indexes[i].Serialize().get());
+  }
+
+  return SUCCESS;
+}
+
+Status GetStridedSliceV2IndexInput(const gert::InferSymbolShapeContext *context, StrdedSliceIndexInputs &index_input) {
+  const auto x_shape = context->GetInputSymbolShape(kXInputIndex);
+  GE_ASSERT_NOTNULL(x_shape);
+  const std::vector<ge::Expression> x_dims = x_shape->GetDims();
+  std::vector<int64_t> axes{};
+  Status ret = ConstructAxis(context, x_dims.size(), axes);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+  ret = ConstructBeginList(context, x_dims, axes, index_input.start_indexes);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+  ret = ConstructEndList(context, x_dims, axes, index_input.end_indexes);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+  ret = ConstructStrideList(context, x_dims, axes, index_input.strides_indexes);
   if (ret != SUCCESS) {
     return ret;
   }
@@ -446,20 +552,21 @@ graphStatus InferShape4StridedSlice(gert::InferSymbolShapeContext *context) {
   if (strcmp(context->GetNodeType(), "StridedSliceD") == 0) {
     retinput = GetStridedSliceDIndexInput(context, index_input);
     retattr = GetStridedSliceDMaskAttr(context, strided_slice_attr);
-  } else if (strcmp(context->GetNodeType(), "StridedSlice") == 0) {
-    retinput = GetStridedSliceIndexInput(context, index_input);
+  } else if (strcmp(context->GetNodeType(), "StridedSliceV2") == 0) {
+    retinput = GetStridedSliceV2IndexInput(context, index_input);
     retattr = GetStridedSliceMaskAttr(context, strided_slice_attr);
   } else {
-    GELOGW("Node type: %s is not StridedSliceD or StridedSlice.", context->GetNodeType());
+    retinput = GetStridedSliceIndexInput(context, index_input, kStridesInputIndex);
+    retattr = GetStridedSliceMaskAttr(context, strided_slice_attr);
   }
   if (retattr != SUCCESS || retinput != SUCCESS) {
     const auto ret = (retattr != SUCCESS) ? retattr : retinput;
     return ret;
   }
   std::vector<Expression> input_x_dims;
-  const auto shape = context->GetInputSymbolShape(kXInputIndex);
-  GE_UNSUPPORTED_IF_NULL(shape);
-  for (const auto &s : shape->GetDims()) {
+  const auto x_shape = context->GetInputSymbolShape(kXInputIndex);
+  GE_UNSUPPORTED_IF_NULL(x_shape);
+  for (const auto &s : x_shape->GetDims()) {
     input_x_dims.push_back(s);
   }
   HandleMaskConflict(strided_slice_attr);
@@ -482,5 +589,80 @@ graphStatus InferShape4StridedSlice(gert::InferSymbolShapeContext *context) {
 
 IMPL_OP_INFER_SYMBOL_SHAPE_INNER(StridedSliceD).InferSymbolShape(InferShape4StridedSlice);
 IMPL_OP_INFER_SYMBOL_SHAPE_INNER(StridedSlice).InferSymbolShape(InferShape4StridedSlice);
+IMPL_OP_INFER_SYMBOL_SHAPE_INNER(StridedSliceV2).InferSymbolShape(InferShape4StridedSlice);
+
+Expression CalculateBeginValue(const Expression &begin_input, const Expression &cur_axis_input_size,
+                               const Expression &step_value) {
+  int64_t step_const = 0;
+  const auto clip_upper = (step_value.GetConstValue(step_const) && step_const < 0) ?
+    cur_axis_input_size - Symbol(1) : cur_axis_input_size;
+  Expression normalized_begin = (EXPECT_SYMBOL_LT(begin_input, kSymbolZero)) ?
+      (begin_input + cur_axis_input_size) : begin_input;
+  return (EXPECT_SYMBOL_LT(normalized_begin, kSymbolZero)) ? kSymbolZero :
+      (EXPECT_SYMBOL_LT(clip_upper, normalized_begin)) ? clip_upper : normalized_begin;
+}
+
+Expression CalculateEndValue(const Expression &end_input, const Expression &cur_axis_input_size,
+                             const Expression &step_value) {
+  int64_t step_const = 0;
+  const auto clip_lower = (step_value.GetConstValue(step_const) && step_const < 0) ? Symbol(-1) : kSymbolZero;
+  Expression normalized_end = (EXPECT_SYMBOL_LT(end_input, kSymbolZero)) ?
+      (end_input + cur_axis_input_size) : end_input;
+  return (EXPECT_SYMBOL_LT(normalized_end, clip_lower)) ? clip_lower :
+      (EXPECT_SYMBOL_LT(cur_axis_input_size, normalized_end)) ? cur_axis_input_size : normalized_end;
+}
+
+void CalculateOutputDimsForV3(const std::vector<int64_t> &axes, const std::vector<Expression> &input_x_dims,
+                              const StrdedSliceIndexInputs &index_input, std::vector<Expression> &output_dims) {
+  for (size_t i = 0UL; i < axes.size(); ++i) {
+    const int64_t axis_value = axes[i];
+    const Expression step_value = i < index_input.strides_indexes.size() ? index_input.strides_indexes[i] : Symbol(1);
+    const Expression begin_value =
+        i < index_input.start_indexes.size() ?
+        CalculateBeginValue(index_input.start_indexes[i], input_x_dims[axis_value], step_value) : Symbol(0);
+    const Expression end_value =
+        i < index_input.end_indexes.size() ?
+        CalculateEndValue(index_input.end_indexes[i], input_x_dims[axis_value], step_value) : input_x_dims[axis_value];
+    Expression cur_out_size = sym::Ceiling((end_value - begin_value) / step_value);
+    cur_out_size = (EXPECT_SYMBOL_LT(cur_out_size, kSymbolZero)) ? kSymbolZero : cur_out_size;
+    GELOGD("Axe index %zu, begin symbol %s, end symbol %s, step symbol %s, outdim symbol %s", i,
+           begin_value.Serialize().get(), end_value.Serialize().get(),
+           step_value.Serialize().get(), cur_out_size.Serialize().get());
+    output_dims[axis_value] = cur_out_size;
+  }
+}
+
+Status InferShape4StridedSliceV3(gert::InferSymbolShapeContext *context) {
+  GE_ASSERT_NOTNULL(context);
+  const auto shape_output = context->GetOutputSymbolShape(kOutputIndex);
+  GE_ASSERT_NOTNULL(shape_output);
+  std::vector<Expression> input_x_dims;
+  const auto x_shape = context->GetInputSymbolShape(kXInputIndex);
+  GE_UNSUPPORTED_IF_NULL(x_shape);
+  for (const auto &s : x_shape->GetDims()) {
+    input_x_dims.push_back(s);
+  }
+
+  StrdedSliceIndexInputs index_input;
+  Status ret = GetStridedSliceIndexInput(context, index_input, kStridesV2InputIndex, true);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+
+  std::vector<int64_t> axes;
+  ret = ConstructAxis(context, input_x_dims.size(), axes);
+  if (ret != SUCCESS) {
+    return ret;
+  }
+  if (axes.empty()) {
+    axes.resize(input_x_dims.size());
+    std::iota(axes.begin(), axes.end(), 0);
+  }
+  shape_output->MutableDims() = input_x_dims;
+  CalculateOutputDimsForV3(axes, input_x_dims, index_input, shape_output->MutableDims());
+  return SUCCESS;
+}
+
+IMPL_OP_INFER_SYMBOL_SHAPE_INNER(StridedSliceV3).InferSymbolShape(InferShape4StridedSliceV3);
 }  // namespace
 }  // namespace ge

@@ -192,7 +192,6 @@ target_compile_definitions(ge_common PRIVATE
     OS_CENTOS
     google=ascend_private
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
 )
 
@@ -265,7 +264,6 @@ target_compile_definitions(ge_common_base PRIVATE
     OS_CENTOS
     google=ascend_private
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(ge_common_base PRIVATE ${AIR_COMMON_DYNAMIC_COMPILE_OPTION})
@@ -345,7 +343,6 @@ target_compile_definitions(ge_common_static PRIVATE
     $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
     LOG_CPP
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(ge_common_static PRIVATE
@@ -400,7 +397,6 @@ target_compile_definitions(ge_common PRIVATE
     google=ascend_private
     LOG_CPP
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(ge_common PRIVATE ${AIR_COMMON_DYNAMIC_COMPILE_OPTION})
@@ -465,7 +461,6 @@ target_compile_definitions(ge_common_base PRIVATE
     google=ascend_private
     LOG_CPP
     FUNC_VISIBILITY
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_compile_options(ge_common_base PRIVATE ${AIR_COMMON_DYNAMIC_COMPILE_OPTION})

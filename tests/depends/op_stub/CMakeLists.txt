@@ -24,7 +24,6 @@ target_compile_definitions(gert_op_impl PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         )
 target_link_libraries(gert_op_impl
         PRIVATE
@@ -61,7 +60,6 @@ target_compile_definitions(gert_op_impl2 PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         )
 target_link_libraries(gert_op_impl2
         PRIVATE
@@ -91,7 +89,6 @@ target_compile_definitions(autofuse_stub PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 target_link_libraries(autofuse_stub
         PRIVATE
@@ -112,7 +109,6 @@ target_compile_definitions(slice_autofuse_stub PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
 )
 target_link_libraries(slice_autofuse_stub
         PRIVATE
@@ -140,7 +136,6 @@ target_compile_definitions(gert_op_impl_static PRIVATE
         PROTOBUF_INLINE_NOT_IN_HEADERS=0
         google=ascend_private
         $<$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>:SECUREC_USING_STD_SECURE_LIB=0 NOMINMAX>
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         )
 target_link_libraries(gert_op_impl_static
         PRIVATE

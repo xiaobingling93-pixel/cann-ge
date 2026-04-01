@@ -15,6 +15,7 @@
 #include "ascendc_ir_core/ascendc_ir.h"
 
 namespace optimize {
+constexpr auto kAttrNameNoReuseOutputIndices = "_no_reuse_output_indices";
 constexpr int64_t kDbBufNum = 2;
 // 将内存按照大小分为3个档位
 enum class MemorySizeLevel : int32_t { kScalar = 0, kMedium, kLargest };

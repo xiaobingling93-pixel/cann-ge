@@ -38,7 +38,6 @@ add_executable(helper_runtime_test
 )
 
 target_compile_definitions(helper_runtime_test PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
 )
 

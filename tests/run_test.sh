@@ -74,6 +74,7 @@ usage() {
   echo "        =executor_c       Build executor_c st"
   echo "        =autofuse_framework         Build autofuse_framework st"
   echo "        =autofuse_ascendc_api       Build autofuse_ascendc_api st"
+  echo "        =autofuse_e2e       Build autofuse_e2e st"
   echo "    -h, --help     Print usage"
   echo "    -c, --cov      Build ut/st with coverage tag"
   echo "                   Please ensure that the environment has correctly installed lcov, gcov, and genhtml."
@@ -132,6 +133,7 @@ checkopts() {
   ENABLE_GE_AUTOFUSE="off"
   ENABLE_GE_AUTOFUSE_FRAMEWORK="off"
   ENABLE_GE_AUTOFUSE_ASCENDC_API="off"
+  ENABLE_GE_AUTOFUSE_E2E="off"
   ENABLE_ACL_UT="off"
 
   ENABLE_GE_BENCHMARK="off"
@@ -386,6 +388,10 @@ checkopts() {
             ;;
           "autofuse_ascendc_api")
             ENABLE_GE_AUTOFUSE_ASCENDC_API="on"
+            shift 2
+            ;;
+          "autofuse_e2e")
+            ENABLE_GE_AUTOFUSE_E2E="on"
             shift 2
             ;;
           *)
@@ -811,6 +817,14 @@ main() {
     # autofuse_ascendc_api st
     if [ "X$ENABLE_ST" = "Xon" ]; then
       bash scripts/test/run_autofuse_test.sh -s -m ascendc_api -j $THREAD_NUM $VERBOSE $COVERAGE
+    fi
+  fi
+
+  # module autofuse_e2e
+  if [ "X$ENABLE_GE_AUTOFUSE_E2E" == "Xon" ]; then
+    # autofuse_e2e st
+    if [ "X$ENABLE_ST" = "Xon" ]; then
+      bash scripts/test/run_autofuse_test.sh -s -m e2e -j $THREAD_NUM $VERBOSE $COVERAGE
     fi
   fi
 

@@ -36,7 +36,6 @@ target_compile_options(ut_graph PRIVATE
 )
 
 target_compile_definitions(ut_graph PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     google=ascend_private
     FUNC_VISIBILITY
 )

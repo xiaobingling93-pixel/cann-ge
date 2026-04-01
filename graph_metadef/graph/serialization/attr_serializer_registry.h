@@ -15,7 +15,6 @@
 #include <mutex>
 #include <map>
 
-#include "graph/type_utils.h"
 #include "attr_serializer.h"
 
 #define REG_GEIR_SERIALIZER(serializer_name, cls, obj_type, bin_type)                              \

@@ -12,6 +12,9 @@
 #define AUTOFUSE_LOWERING_LOWERING_UTILS_H_
 #include <vector>
 #include <set>
+#include <string>
+#include <unordered_map>
+#include <utility>
 #include "graph/node.h"
 #include "graph/utils/op_desc_utils.h"
 #include "asc_lowerer/asc_overrides.h"
@@ -59,6 +62,55 @@ class LoweringUtils {
   static graphStatus CheckSpecialFuseType(loop::KernelBox &kernel_box, std::shared_ptr<ge::loop::AscOverrides> &asc_graph);
 
   static graphStatus SetStreamLabelForOpDesc(loop::KernelBox &kernel_box, OpDescPtr &asc_desc);
+};
+
+class GraphFusionReasonStore {
+  public:
+    enum class FailReasonCategory {
+      NODE_INFO_ERROR = 0,
+      BACKEND_NOT_SUPPORTED = 1,
+      TEMPORARILY_NOT_SUPPORTED = 2
+    };
+
+    static void StartProcessGraph(const std::string& graph_name);
+
+    static void AddCurrentGraphNode(const std::string& node_name, const std::string& node_type);
+
+    static void CountNodeFuseFailReason(const std::string& node_name, const std::string& reason, FailReasonCategory category);
+
+    static void ShowGraphFusionFailReasons(const std::string& graph_name);
+
+    static void ClearGraphData(const std::string& graph_name);
+
+  private:
+    struct NodeInfo {
+      std::string node_type;
+      int32_t insert_order;
+    };
+
+    struct FailReasonInfo {
+      std::string reason;
+      FailReasonCategory category;
+    };
+
+    struct Storage {
+      std::string current_graph_;
+      std::vector<std::string> graph_process_order_;
+      std::unordered_map<std::string, std::unordered_map<std::string, NodeInfo>> graph_node_info_;
+      std::unordered_map<std::string, FailReasonInfo> node_fusion_reason_;
+      std::atomic<int32_t> global_node_order_{0};
+      std::mutex mutex_;
+    };
+    static Storage& GetGlobalStorage();
+
+    static const char* GetCategoryName(FailReasonCategory category) {
+      switch (category) {
+        case FailReasonCategory::NODE_INFO_ERROR: return "Node Info Incorrect";
+        case FailReasonCategory::BACKEND_NOT_SUPPORTED: return "Backend Not Support";
+        case FailReasonCategory::TEMPORARILY_NOT_SUPPORTED: return "Temporary Skip Lowering";
+        default: return "Unknown Reason";
+      }
+    }
 };
 } // namespace ge
 

@@ -21,6 +21,7 @@
 #include "optimize/schedule_utils.h"
 #include "optimize/task_generator/concat_group_partitioner.h"
 #include "optimize/task_generator/concat_score_function_generator.h"
+#include "optimize/task_generator/concat_inputs_unification_pass.h"
 #include "platform/platform_factory.h"
 #include "util/mem_utils.h"
 
@@ -102,6 +103,10 @@ Status ConcatFusionCaseGenerator::Generate(ascir::HintGraph &graph,
   // 如果是动态shape, 添加small tail模板，运行时通过score func选择
   if (NeedDynSmallTailTemplate(concat_node)) {
     GE_ASSERT_SUCCESS(AddTemplateForSmallTail(graph, graphs));
+  }
+
+  if (!support_small_tail_) {
+    GE_ASSERT_SUCCESS(ConcatInputUnificationPass::Run(graphs));
   }
 
   // 多模板, 为ub concat模板提供打分函数

@@ -1,13 +1,14 @@
 /**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of 
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, 
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include "asc_graph_builder.h"
 #include "gtest/gtest.h"
 #include "ascendc_ir.h"
 #include "ascir_ops_utils.h"
@@ -15,9 +16,9 @@
 #include "platform_context.h"
 #include "task_generator/concat_schedule_case_generator.h"
 #include "task_generator/concat_group_partitioner.h"
-#include "task_generator/concat_score_function_generator.h"
 #include "platform/platform_factory.h"
 #include "runtime_stub.h"
+#include "task_generator/concat_score_function_generator.h"
 
 namespace schedule {
 using namespace optimize;
@@ -259,5 +260,30 @@ TEST_F(ConcatScheduleCaseGeneratorV2Test, ConcatFirstDim_InsertAxis) {
     last_end = group.end;
     ++index;
   }
+}
+
+TEST_F(ConcatScheduleCaseGeneratorV2Test, OptimizeSameShapeConcat) {
+  auto dtype = ge::DT_INT16;
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol(7);
+  auto s2 = s1 + s1;
+  auto graph = ge::testing::AscGraphBuilder("test_graph")
+                   .Loops({s0, s2})
+                   .Data("data0", 0, dtype)
+                   .Load("load0", "data0", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                   .Data("data1", 1, dtype)
+                   .Load("load1", "data1", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                   .Relu("relu0", "load1")
+                   .Concat("concat", {"load0", "relu0"})
+                   .Store("store", "concat")
+                   .Output("out", "store")
+                   .Build();
+  auto concat_node = graph.FindNode("concat");
+  std::vector<std::string> score_functions;
+  std::vector<::ascir::ImplGraph> graphs;
+  optimize::ConcatFusionCaseGenerator generator;
+  EXPECT_EQ(generator.Generate(graph, graphs, score_functions), SUCCESS);
+  EXPECT_EQ(graphs.size(), 2);
+  EXPECT_TRUE(graphs[0].FindNode("ub_cpy_load0") != nullptr);
 }
 }  // namespace schedule

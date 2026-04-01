@@ -14,33 +14,6 @@ project(CANN-GRAPH-ENGINE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BASE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-# 存在`.dev_env`文件说明是蓝区开发环境，并且调用了`prepare_dev_env.sh`完成了开发环境准备
-# 除了设置好`.dev_env`中有的环境变量外，还会设置其他几个蓝区开发的必要变量
-if(EXISTS "${CMAKE_SOURCE_DIR}/.dev_env")
-    set(ENABLE_OPEN_SRC True)
-    set(ENABLE_GE_UT ON)
-    set(ENABLE_GE_ST ON)
-    set(ENABLE_TEST True)
-    # Read the file into a list of lines
-    file(STRINGS "${CMAKE_SOURCE_DIR}/.dev_env" DEV_ENV_LINES)
-
-    # Process each line
-    foreach(line IN LISTS DEV_ENV_LINES)
-        string(STRIP "${line}" line)
-        if(line MATCHES "^([^=]+)=(.*)$")
-            set(var_name "${CMAKE_MATCH_1}")
-            set(var_value "${CMAKE_MATCH_2}")
-            # Remove any leading/trailing whitespace
-            string(STRIP "${var_name}" var_name)
-            string(STRIP "${var_value}" var_value)
-            # Set the variable
-            set(${var_name} ${var_value})
-        endif()
-    endforeach()
- 
-    set(ASCEND_INSTALL_PATH ${ASCEND_INSTALL_PATH}/latest)
-endif()
-
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})

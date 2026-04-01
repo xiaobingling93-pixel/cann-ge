@@ -18,7 +18,6 @@
 
 namespace ge {
 namespace {
-#ifdef ONLY_COMPILE_OPEN_SRC
 const std::vector<std::string> kBasicBuilderLibs = {
     "libge_local_opskernel_builder.so",
     "libhost_cpu_opskernel_builder.so",
@@ -27,16 +26,6 @@ const std::vector<std::string> kBasicBuilderLibs = {
     "libaicpu_tf_builder.so",
     "libdvpp_engine.so"
 };
-#else
-const std::vector<std::string> kBasicBuilderLibs = {
-    "libge_local_opskernel_builder.so",
-    "libhost_cpu_opskernel_builder.so",
-    "librts_engine.so",
-    "libaicpu_ascend_engine.so",
-    "libaicpu_tf_engine.so",
-    "libdvpp_engine.so"
-};
-#endif
 
 const std::vector<std::string> kHcclBuilderLibs = {
     "libhcom_opskernel_builder.so",

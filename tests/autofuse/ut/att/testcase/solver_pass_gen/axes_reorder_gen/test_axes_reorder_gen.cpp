@@ -743,3 +743,13 @@ TEST_F(TestAxesReorderSolverGen, GenSolverFuncImpl_DisableGroupParallel_EnableTr
   // 验证生成的代码中 multicore_ub_tradeoff 为 "true"
   EXPECT_TRUE(actual.find("solver.Run(true, ") != std::string::npos);
 }
+
+TEST_F(TestAxesReorderSolverGen, GenGetBlockDimStatic_ShouldClampToOneWhenCoreNumExprIsZero) {
+  AxesReorderSolverGen solver("case_test", "TilingData");
+
+  Expr corenum_cons = CreateExpr(0);
+  std::string actual = solver.GenGetBlockDimStatic(corenum_cons);
+
+  EXPECT_TRUE(actual.find("return 0;") == std::string::npos) << actual;
+  EXPECT_TRUE(actual.find("return std::max(1, static_cast<int32_t>(0));") != std::string::npos) << actual;
+}

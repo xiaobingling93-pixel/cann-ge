@@ -86,7 +86,6 @@ target_compile_options(ut_ge_executor_c_utest PRIVATE
 target_compile_definitions(ut_ge_executor_c_utest PRIVATE
     _GLIBCXX_USE_CXX11_ABI=0
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     RUN_TEST
     $<IF:$<STREQUAL:${TARGET_SYSTEM_NAME},LiteOS>,NANO_OS_TYPE=1,NANO_OS_TYPE=0>
     UT_DATA_DIR="${AIR_CODE_DIR}/tests/test_c/ut/testcase/"
@@ -158,7 +157,6 @@ target_compile_options(ut_ge_executor_c_liteos_utest PRIVATE
 target_compile_definitions(ut_ge_executor_c_liteos_utest PRIVATE
     _GLIBCXX_USE_CXX11_ABI=0
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     RUN_TEST
     $<IF:$<STREQUAL:${TARGET_SYSTEM_NAME},LiteOS>,NANO_OS_TYPE=1,NANO_OS_TYPE=0>
     UT_DATA_DIR="${AIR_CODE_DIR}/tests/test_c/ut/testcase/"
@@ -220,7 +218,6 @@ target_compile_options(ut_dbg_liteos_static_utest PRIVATE
 target_compile_definitions(ut_dbg_liteos_static_utest PRIVATE
     _GLIBCXX_USE_CXX11_ABI=0
     google=ascend_private
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
     RUN_TEST
     $<IF:$<STREQUAL:${TARGET_SYSTEM_NAME},LiteOS>,NANO_OS_TYPE=1,NANO_OS_TYPE=0>
 )

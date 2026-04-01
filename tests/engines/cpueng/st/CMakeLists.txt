@@ -219,7 +219,6 @@ target_include_directories(tf_engine_stest PRIVATE
 target_compile_definitions(tf_engine_stest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_options(tf_engine_stest PRIVATE
@@ -285,7 +284,6 @@ target_include_directories(cpu_engine_stest PRIVATE
 target_compile_definitions(cpu_engine_stest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
@@ -361,7 +359,6 @@ target_include_directories(host_engine_stest PRIVATE
 target_compile_definitions(host_engine_stest PRIVATE
     RUN_TEST
     google=ascend_private
-    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
 )
 
 target_link_libraries(host_engine_stest PRIVATE

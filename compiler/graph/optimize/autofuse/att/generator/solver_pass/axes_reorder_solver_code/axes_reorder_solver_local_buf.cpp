@@ -42,7 +42,6 @@ std::string GenMcRelatedNaiveTiling() {
       int64_t lower_bound_satisfied_ub_threshold = var->align;
       // 若未找到满足UB利用率的解，则不需要进一步处理
       if (BinaryFindLowerBoundSatisfiedUBThresholdCond(var, i, var->align, lower_bound_satisfied_ub_threshold)) {
-        lower_bound_satisfied_ub_threshold = CeilDiv(lower_bound_satisfied_ub_threshold, var->align) * var->align;
         OP_LOGD(OP_NAME, "Found lower_bound_satisfied_ub_threshold:%ld, upper:%ld, lower:%ld, i:%u, input: %s",
                 lower_bound_satisfied_ub_threshold, upper_bound_satisfied_ub_threshold, var->align, i,
                 input_.DebugString().c_str());
@@ -83,7 +82,12 @@ std::string GenNaiveLocalBufTilingImpl() {
   for (uint32_t i = 0u; i < num_vars; ++i) {
     auto &var = vars[i];
     auto upper_bound = var->upper_bound(var->upper_bound_vars);
-    int64_t boundary = CeilDiv(upper_bound, var->align) * var->align;
+    int64_t boundary = (upper_bound / var->align) * var->align;
+    if (boundary < var->align) {
+      OP_LOGW(OP_NAME, "Invalid aligned upper bound:%ld, raw upper:%ld, align:%ld, i:%u, input: %s.",
+              boundary, upper_bound, var->align, i, input_.DebugString().c_str());
+      return false;
+    }
     var->SetValue(boundary);
     int64_t upper_bound_satisfied_ub = -1L;
     if (!BinaryFindUpperBoundSatisfiedUBLimit(var, var->align, upper_bound_satisfied_ub)) {
@@ -91,7 +95,6 @@ std::string GenNaiveLocalBufTilingImpl() {
               upper_bound, var->align, i, input_.DebugString().c_str());
       return false;
     }
-    upper_bound_satisfied_ub = CeilDiv(upper_bound_satisfied_ub, var->align) * var->align;
     OP_LOGD(OP_NAME, "Found upper_bound_satisfied_ub:%ld, upper_bound:%ld, lower_bound:%ld, i:%u, input: %s",
             upper_bound_satisfied_ub, boundary, var->align, i, input_.DebugString().c_str());
     var->SetValue(upper_bound_satisfied_ub);
@@ -194,7 +197,7 @@ bool AxesReorderSolver::BinaryLocalBufTilingCore(const std::vector<bool> &solved
     }
     auto &var = input_.local_buffer_vars[i];
     auto upper_bound = var->upper_bound(var->upper_bound_vars);
-    int64_t boundary = CeilDiv(upper_bound, var->align) * var->align;
+    int64_t boundary = (upper_bound / var->align) * var->align;
     int64_t init_val = var->value;
     var->SetValue(boundary);
     if (!SatisfyCons(var, ConstraintType::LOCAL_BUFFER)) {

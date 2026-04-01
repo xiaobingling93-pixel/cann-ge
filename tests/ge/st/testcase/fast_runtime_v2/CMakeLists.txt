@@ -32,7 +32,6 @@ target_compile_options(st_fast_runtime2_test PRIVATE -g -O0
         )
 target_compile_definitions(st_fast_runtime2_test PRIVATE
         google=ascend_private
-        $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
         CMAKE_BINARY_DIR=\"${CMAKE_BINARY_DIR}\"
         )
 

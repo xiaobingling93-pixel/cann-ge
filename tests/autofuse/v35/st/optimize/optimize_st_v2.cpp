@@ -4736,5 +4736,30 @@ TEST_F(OptimizerStV2, MatmulAndLoadBrcAndAbsBrcAdd) {
     }
   }
 }
+
+TEST_F(OptimizerStV2, ConcatSameShape_MixTQueAndTBuf) {
+  auto dtype = ge::DT_INT16;
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol(7);
+  auto s2 = s1 + s1;
+  auto graph = ge::testing::AscGraphBuilder("test_graph")
+                   .Loops({s0, s2})
+                   .Data("data0", 0, dtype)
+                   .Load("load0", "data0", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                   .Data("data1", 1, dtype)
+                   .Load("load1", "data1", {s0, s1}, {s1, ge::sym::kSymbolOne})
+                   .Relu("relu0", "load1")
+                   .Concat("concat", {"load0", "relu0"})
+                   .Store("store", "concat")
+                   .Output("out", "store")
+                   .Build();
+  auto concat_node = graph.FindNode("concat");
+  ::optimize::Optimizer optimizer(::optimize::OptimizerOptions{});
+  std::vector<::ascir::ScheduledResult> schedule_results;
+  ::ascir::FusedScheduledResult fused_schedule_result;
+  fused_schedule_result.node_idx_to_scheduled_results.push_back(schedule_results);
+  EXPECT_EQ(optimizer.Optimize(graph, fused_schedule_result), 0);
+}
+
 }  // namespace optimize
 }  // namespace

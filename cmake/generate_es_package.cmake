@@ -276,6 +276,10 @@ execute_gen_esb() {
         else
             ENV_PREFIX=\"ASCEND_OPP_PATH=\${OPP_PATH}\"
         fi
+        if [[ \"${ENABLE_ASAN}\" == \"true\" ]]; then
+            USE_ASAN=\$(gcc -print-file-name=libasan.so)
+            ENV_PREFIX=\"\${ENV_PREFIX} LD_PRELOAD=\${USE_ASAN}\"
+        fi
         log_debug \"Command: \$ENV_PREFIX \\\"\${GEN_ESB_EXE}\\\" --output_dir=\\\"\${OUTPUT_DIR}\\\" --module_name=\\\"\${MODULE_NAME}\\\" --exclude_ops=\\\"\${EXCLUDE_OPS}\\\" \${EXTRACT_HISTORY_FLAG} \${RELEASE_VERSION_FLAG} \${HISTORY_REGISTRY_ARG} \${RELEASE_DATE_ARG} \${BRANCH_NAME_ARG}\"
 
         # Execute gen_esb directly (without env -i, with pipefail enabled)

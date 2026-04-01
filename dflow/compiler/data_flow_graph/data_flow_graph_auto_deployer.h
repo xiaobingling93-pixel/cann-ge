@@ -28,7 +28,7 @@ class DataFlowGraphAutoDeployer {
     std::map<std::string, std::pair<uint32_t, uint32_t>> &device_id_to_mem_cfg,
     bool &dynamic_schedule_enable,
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> &invoke_deploy_map,
-    const std::string &deploy_info_path);
+    const std::string &deploy_info_str);
   static Status GetDeployLogicDeviceForInvoke(
     std::map<std::string, std::pair<std::string, std::string>> &deploy_logic_device_map,
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> &invoke_deploy_map,

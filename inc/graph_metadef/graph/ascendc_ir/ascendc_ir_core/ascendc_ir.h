@@ -15,7 +15,6 @@
 #include "graph/symbolizer/symbolic.h"
 #include "graph/node.h"
 #include "graph/anchor.h"
-#include "graph_metadef/graph/debug/ge_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/operator.h"
 #include "graph/utils/type_utils.h"

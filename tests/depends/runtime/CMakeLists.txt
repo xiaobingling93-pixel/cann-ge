@@ -10,9 +10,6 @@
 
 add_library(runtime_stub SHARED src/runtime_stub.cc)
 target_compile_options(runtime_stub PRIVATE -g)
-target_compile_definitions(runtime_stub PRIVATE
-    $<$<STREQUAL:${ENABLE_OPEN_SRC},True>:ONLY_COMPILE_OPEN_SRC>
-)
 target_include_directories(runtime_stub PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_link_libraries(runtime_stub
     PRIVATE

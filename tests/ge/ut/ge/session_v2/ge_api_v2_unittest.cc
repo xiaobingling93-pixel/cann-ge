@@ -17,7 +17,6 @@
 #include "ge/ge_api_error_codes.h"
 #include "stub/gert_runtime_stub.h"
 #include "macro_utils/dt_public_scope.h"
-#include "dflow/base/exec_runtime/execution_runtime.h"
 #include "common/plugin/ge_make_unique_util.h"
 #include "proto/ge_ir.pb.h"
 #include "ge/ge_api_v2.h"

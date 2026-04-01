@@ -23,7 +23,6 @@
 #include "graph/load/model_manager/model_manager.h"
 #include "macro_utils/dt_public_unscope.h"
 
-#include "dflow/base/model/flow_model_om_saver.h"
 #include "runtime/base.h"
 #include "utils/taskdef_builder.h"
 #include "ge_graph_dsl/assert/graph_assert.h"
@@ -35,7 +34,6 @@
 #include "array_ops.h"
 #include "common/env_path.h"
 #include "common/share_graph.h"
-#include "dflow/inc/data_flow/model/graph_model.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "operator_reg.h"
 #include "graph/custom_op_factory.h"

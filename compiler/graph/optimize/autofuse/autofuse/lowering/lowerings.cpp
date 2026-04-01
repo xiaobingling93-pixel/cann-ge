@@ -270,14 +270,15 @@ void RealizeUnusedBuffers(loop::KernelBox &kernel_box) {
 bool IsNodeShouldLowering(const NodePtr &node) {
   std::string super_kernel_scope;
   if (AttrUtils::GetStr(node->GetOpDesc(), "_super_kernel_scope", super_kernel_scope)) {
-    GELOGI("Skip lowering node %s, because it is in super kernel scope %s", node->GetName().c_str(),
-           super_kernel_scope.c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "it is in super kernel scope" + super_kernel_scope,
+                                                    GraphFusionReasonStore::FailReasonCategory::NODE_INFO_ERROR);
     return false;
   }
   bool disable_autofuse_scope;
   if ((AttrUtils::GetBool(node->GetOpDesc(), "_disable_autofuse_scope", disable_autofuse_scope))
       && disable_autofuse_scope) {
-    GELOGI("Skip lowering node %s, because it is in disable autofuse scope", node->GetName().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "it is in disable autofuse scope",
+                                                    GraphFusionReasonStore::FailReasonCategory::NODE_INFO_ERROR);
     return false;
   }
 
@@ -285,13 +286,14 @@ bool IsNodeShouldLowering(const NodePtr &node) {
   const auto &skip_node_names = AutoFuseConfig::LoweringConfig().skip_node_names;
   
   if (!skip_node_types.empty() && skip_node_types.find(node->GetType()) != skip_node_types.end()) {
-    GELOGI("Skip lowering node %s, because node type %s is in skip list", 
-             node->GetName().c_str(), node->GetType().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), node->GetType() + " is in skip list",
+                                                    GraphFusionReasonStore::FailReasonCategory::TEMPORARILY_NOT_SUPPORTED);
     return false;
   }
   
   if (!skip_node_names.empty() && skip_node_names.find(node->GetName()) != skip_node_names.end()) {
-    GELOGI("Skip lowering node %s, because node name is in skip list", node->GetName().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), node->GetName() + " is in skip list",
+                                                    GraphFusionReasonStore::FailReasonCategory::TEMPORARILY_NOT_SUPPORTED);
     return false;
   }
 
@@ -305,11 +307,13 @@ bool IsNodeShouldLowering(const NodePtr &node) {
   });
   // 空 -> 非空 不lowering
   if (is_indata_empty && !is_outdata_empty) {
-    GELOGI("Skip lowering node %s, because it is in empty tensor to nonempty tensor", node->GetName().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "it is in empty tensor to nonempty tensor",
+                                                    GraphFusionReasonStore::FailReasonCategory::NODE_INFO_ERROR);
     return false;
   }
   if ((node->GetType() != NETOUTPUT) && !CheckIrSpec(node->GetOpDesc())) {
-    GELOGI("Skip lowering node %s, because failed to check IR compatibility.", node->GetName().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "failed to check IR compatibility",
+                                                    GraphFusionReasonStore::FailReasonCategory::NODE_INFO_ERROR);
     return false;
   }
   return true;
@@ -529,7 +533,10 @@ graphStatus LoweringManager::LowerImpl(const NodePtr &node) {
   auto op_type = node->GetType();
   auto iter = lowerings_.find(op_type);
   if (iter == lowerings_.end()) {
-    GELOGI("Skip lowering node %s, because No lowering registered for op %s", node->GetName().c_str(), op_type.c_str());
+    if (!OpTypeUtils::IsConstNode(node->GetType()) && !OpTypeUtils::IsDataNode(node->GetType())) {
+      GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), op_type + "No lowering registered",
+                                                      GraphFusionReasonStore::FailReasonCategory::TEMPORARILY_NOT_SUPPORTED);
+    }
     return FallbackLowering(node);
   }
   return iter->second(node);
@@ -538,11 +545,13 @@ graphStatus LoweringManager::LowerImpl(const NodePtr &node) {
 graphStatus LoweringManager::LoweringGraph(const ComputeGraphPtr &graph, const LoweringConfig &config) {
   GE_ASSERT_NOTNULL(graph);
   GELOGI("Start lowering graph %s", graph->GetName().c_str());
+  GraphFusionReasonStore::StartProcessGraph(graph->GetName());
   for (auto &node : graph->GetAllNodes()) {
     GE_ASSERT_NOTNULL(node);
     GE_ASSERT_NOTNULL(node->GetOpDesc());
+    GraphFusionReasonStore::AddCurrentGraphNode(node->GetName(), node->GetType());
     if (!IsNodeShouldLowering(node) || Lowering(node) != GRAPH_SUCCESS) {
-      GELOGI("Fallback lowering for node %s, type %s, as: This node should not lowering, "
+      GELOGD("Fallback lowering for node %s, type %s, as: This node should not lowering, "
              "or not register lowering func, or unable to imply lowering",
              node->GetName().c_str(), node->GetType().c_str());
       (void)FallbackLowering(node);
@@ -557,15 +566,15 @@ graphStatus LoweringManager::PostPrecessAfterLoweringNode(const NodePtr &node, c
   std::vector<loop::KernelBox> kernel_boxes = GetNodeKernelBoxes(node);
   // Fallback just like realize all output kernel box persistent if any kernel box is invalid
   if (IsAnyKernelBoxIsExtern(kernel_boxes)) {
-    GELOGI("Fallback lowering for node %s, type %s as has external kernel box", node->GetName().c_str(),
-           node->GetType().c_str());
-    FallbackLowering(node);  // Run origin ascend ir kernel
+    GELOGI("Fallback lowering for node %s, type %s as has external kernel box",
+           node->GetName().c_str(), node->GetType().c_str());
+    FallbackLowering(node);
     return GRAPH_SUCCESS;
   }
 
   if (!IsAllKernelBoxIsSupport(kernel_boxes)) {
-    GELOGI("Fallback lowering for node %s, type %s as has dtype unsupported kernel box", node->GetName().c_str(),
-           node->GetType().c_str());
+    GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "Fallback lowering, has dtype unsupported kernel box",
+                                                    GraphFusionReasonStore::FailReasonCategory::BACKEND_NOT_SUPPORTED);
     FallbackLowering(node);
     return GRAPH_SUCCESS;
   }
@@ -577,13 +586,18 @@ graphStatus LoweringManager::PostPrecessAfterLoweringNode(const NodePtr &node, c
     if (RealizeInputsAndLowering(node) != GRAPH_SUCCESS) {
       GELOGI("Fallback lowering for node %s, type %s as lowered failed after realize inputs", node->GetName().c_str(),
              node->GetType().c_str());
+      GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "lowered failed after realize inputs, "
+                                                      "maybe kernel box is oversize, or this node has "
+                                                      "different core num scope with after nodes",
+                                                      GraphFusionReasonStore::FailReasonCategory::TEMPORARILY_NOT_SUPPORTED);
       (void)FallbackLowering(node);
       return GRAPH_SUCCESS;
     }
     kernel_boxes = GetNodeKernelBoxes(node);
     if (LoweringUtils::IsAnyKernelBoxOversize(kernel_boxes, config)) {
-      GELOGI("Fallback lowering for node %s, type %s as kernel box oversize after realize inputs",
-             node->GetName().c_str(), node->GetType().c_str());
+      GraphFusionReasonStore::CountNodeFuseFailReason(node->GetName(), "Fallbacl lowering, lowered failed after realize inputs, "
+                                                      "as kernel box still oversize after origin kernel box is oversize",
+                                                      GraphFusionReasonStore::FailReasonCategory::TEMPORARILY_NOT_SUPPORTED);
       (void)FallbackLowering(node);
       return GRAPH_SUCCESS;
     }
