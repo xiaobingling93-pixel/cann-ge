@@ -329,13 +329,11 @@ endif()
 
 ##############################################################
 set(STUB_HEADER_LIST
-    ${GE_METADEF_INC_DIR}/external/graph/ascend_string.h
     ${GE_METADEF_INC_DIR}/external/graph/attr_value.h
     ${GE_METADEF_INC_DIR}/external/graph/gnode.h
     ${GE_METADEF_INC_DIR}/external/graph/graph.h
     ${GE_METADEF_INC_DIR}/external/graph/inference_context.h
     ${GE_METADEF_INC_DIR}/external/graph/operator_factory.h
-    ${GE_METADEF_INC_DIR}/external/graph/types.h
     ${GE_METADEF_INC_DIR}/external/hcom/hcom_topo_info.h
     ${GE_METADEF_INC_DIR}/graph/custom_op_factory.h
     ${GE_METADEF_INC_DIR}/graph/utils/op_desc_utils.h
@@ -352,15 +350,35 @@ set(STUB_HEADER_LIST
     ${GE_METADEF_INC_DIR}/common/screen_printer.h
 )
 
+if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
+    list(APPEND STUB_HEADER_LIST
+        ${ASCEND_INSTALL_PATH}/include/graph/ascend_string.h
+        ${ASCEND_INSTALL_PATH}/include/graph/types.h
+    )
+else ()
+    list(APPEND STUB_HEADER_LIST
+        ${METADEF_DIR}/inc/external/graph/ascend_string.h
+        ${METADEF_DIR}/inc/external/graph/types.h
+    )
+endif ()
+
 # 当前开放的sample样例中仅链接libgraph桩包，考虑兼容性，将libgraph_base里的内容也打到libgraph桩包内。
 # ascend031下会同时使用libgraph桩包和libgraph_base编译和执行样例，而这些符号会影响对libgraph_base的链接，
 # 故目前先做隔离，在ascend031下不将这些打到libgraph桩包内。
 if (NOT "${PRODUCT}" STREQUAL "ascend031")
     list(APPEND STUB_HEADER_LIST
         ${GE_METADEF_INC_DIR}/external/graph/operator.h
-        ${GE_METADEF_INC_DIR}/external/graph/tensor.h
         ${GE_METADEF_INC_DIR}/graph/ge_tensor.h
     )
+    if (BUILD_OPEN_PROJECT OR ENABLE_OPEN_SRC)
+        list(APPEND STUB_HEADER_LIST
+            ${ASCEND_INSTALL_PATH}/include/graph/tensor.h
+        )
+    else ()
+        list(APPEND STUB_HEADER_LIST
+            ${METADEF_DIR}/inc/external/graph/tensor.h
+        )
+    endif ()
 endif ()
 
 list(TRANSFORM STUB_HEADER_LIST

@@ -16,10 +16,10 @@
 #include <string>
 #include <vector>
 
-#include "./ge_error_codes.h"
-#include "ascend_string.h"
-#include "tensor.h"
-#include "types.h"
+#include "graph/ge_error_codes.h"
+#include "graph/ascend_string.h"
+#include "graph/tensor.h"
+#include "graph/types.h"
 
 using std::make_shared;
 using std::map;

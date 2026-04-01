@@ -65,28 +65,6 @@ target_include_directories(metadef_headers INTERFACE
 )
 
 message(STATUS "inc graph_metadef")
-set(SRC_GRAPH_DIR ${ASCEND_INSTALL_PATH}/include/graph)
-
-if (EXISTS "${ASCEND_INSTALL_PATH}/include/graph")
-    set(SRC_GRAPH_DIR ${ASCEND_INSTALL_PATH}/include/graph)
-else ()
-    set(SRC_GRAPH_DIR ${METADEF_DIR}/inc/external/graph)
-endif()
-
-message(STATUS "copy head files from ${SRC_GRAPH_DIR} to ${GE_METADEF_INC_DIR}/external/graph")
-
-# 兼容以./方式包含其他头文件，如#include "./operator.h"
-file(GLOB METADEF_HEAD_FILES "${SRC_GRAPH_DIR}/*.h")
-
-# 安装包下是软连接，需要转换为真实路径
-foreach(head_file IN LISTS METADEF_HEAD_FILES)
-    get_filename_component(ABS_PATH_NAME ${head_file} REALPATH)
-    get_filename_component(file_name ${ABS_PATH_NAME} NAME)
-    if (NOT EXISTS "${GE_METADEF_INC_DIR}/external/graph/${file_name}")
-        file(COPY ${ABS_PATH_NAME} DESTINATION ${GE_METADEF_INC_DIR}/external/graph)
-    endif()
-endforeach()
-
 get_target_property(INCLUDE_PATHS metadef_headers INTERFACE_INCLUDE_DIRECTORIES)
 foreach(line IN LISTS INCLUDE_PATHS)
     message(STATUS "metadef_headers ${line}")

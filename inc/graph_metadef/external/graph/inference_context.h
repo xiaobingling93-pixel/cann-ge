@@ -16,11 +16,11 @@
 #include <vector>
 #include <set>
 
-#include "tensor.h"
-#include "types.h"
-#include "ascend_string.h"
-#include "resource_context.h"
-#include "ge_error_codes.h"
+#include "graph/tensor.h"
+#include "graph/types.h"
+#include "graph/ascend_string.h"
+#include "graph/resource_context.h"
+#include "graph/ge_error_codes.h"
 
 namespace ge {
 class ShapeAndTypeImpl;

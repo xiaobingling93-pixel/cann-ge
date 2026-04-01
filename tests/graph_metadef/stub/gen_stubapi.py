@@ -1093,6 +1093,14 @@ def collect_header_files(inc_file):
             break
     else:
         logging.error('please check inc_dirs')
+
+    pattern = r'Ascend/cann[0-9\.\-]{0,10}/include/(.*)$'
+    match = re.search(pattern, inc_file)
+    if match:
+        captured_path = match.group(1)
+        include_str = '#include "{}"\n'.format(captured_path)
+        shared_includes_content.append(include_str)
+
     shared_includes_content.append('#include <iostream>\n')
 
     need_any_value_headers = ['op_impl_registry_base.h',

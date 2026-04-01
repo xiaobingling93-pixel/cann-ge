@@ -15,7 +15,7 @@
 #include <cstdint>
 #include <memory>
 #include "graph/ge_error_codes.h"
-#include "ascend_string.h"
+#include "graph/ascend_string.h"
 
 namespace ge {
 enum class ArgDescType {

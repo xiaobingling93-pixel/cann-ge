@@ -401,6 +401,7 @@ target_include_directories(npu_executor_static PUBLIC
         ${AIR_CODE_DIR}/inc/graph_metadef
         ${NPU_EXECUTOR_INC_LIST}
         ${METADEF_DIR}/pkg_inc
+        ${ASCEND_INSTALL_PATH}/include
         )
 
 target_link_libraries(npu_executor_static PRIVATE

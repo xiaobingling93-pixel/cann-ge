@@ -26,3 +26,6 @@ deps
 cmake-build-debugindocker/
 .DS_Store
 __pycache__
+
+# Log files
+*.log

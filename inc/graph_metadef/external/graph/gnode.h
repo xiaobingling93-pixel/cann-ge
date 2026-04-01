@@ -14,10 +14,10 @@
 #include <vector>
 #include <cstdint>
 
-#include "./ge_error_codes.h"
-#include "./types.h"
-#include "./tensor.h"
-#include "./ascend_string.h"
+#include "graph/ge_error_codes.h"
+#include "graph/types.h"
+#include "graph/tensor.h"
+#include "graph/ascend_string.h"
 
 namespace ge {
 class AttrValue;

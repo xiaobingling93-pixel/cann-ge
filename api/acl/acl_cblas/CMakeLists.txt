@@ -32,6 +32,7 @@ target_include_directories(acl_cblas PRIVATE
     ${ASCEND_INSTALL_PATH}/include/prof
 
     ${ASCEND_INSTALL_PATH}/include/acl
+    ${ASCEND_INSTALL_PATH}/include
     ${ASCEND_INSTALL_PATH}/pkg_inc/runtime
 
     ${TOP_DIR}/air/inc/external
