@@ -23,7 +23,6 @@
 #include "common/profiling/profiling_manager.h"
 #include "common/profiling/command_handle.h"
 #include "common/profiling/profiling_properties.h"
-#include "dflow/base/exec_runtime/execution_runtime.h"
 #include "depends/mmpa/src/mmpa_stub.h"
 #include "graph/ge_context.h"
 #include "depends/runtime/src/runtime_stub.h"
@@ -39,6 +38,7 @@
 #include "register/kernel_registry.h"
 #include "graph/utils/tensor_adapter.h"
 #include "api/aclgrph/option_utils.h"
+#include "ge/ge_api_v2.h"
 #include "graph_metadef/depends/checker/tensor_check_utils.h"
 
 using namespace std;
@@ -49,111 +49,14 @@ bool EnableSliceSchedule() { // 桩函数
   return ((ge::GetAutofuseFlagValue(kAutoFuseEnableOption) == "true") &&
           (ge::GetAutofuseFlagValue(kSliceScheduleOption) == "true"));;
 }
-namespace{
-class MockExchangeService : public ExchangeService {
- public:
-  Status CreateQueue(const int32_t device_id,
-                     const string &name,
-                     const MemQueueAttr &mem_queue_attr,
-                     uint32_t &queue_id) override {
-    return 0;
-  }
-  Status DestroyQueue(const int32_t device_id, const uint32_t queue_id) override {
-    return 0;
-  }
-  Status Enqueue(const int32_t device_id,
-                 const uint32_t queue_id,
-                 const void *const data,
-                 const size_t size,
-                 const ControlInfo &control_info) override {
-    return 0;
-  }
-  Status Enqueue(int32_t device_id, uint32_t queue_id, size_t size, rtMbufPtr_t m_buf,
-                 const ControlInfo &control_info) override {
-    return 0;
-  }
-  Status Enqueue(const int32_t device_id,
-                 const uint32_t queue_id,
-                 const size_t size,
-                 const FillFunc &fill_func,
-                 const ControlInfo &control_info) override {
-    return 0;
-  }
-  Status Enqueue(const int32_t device_id, const uint32_t queue_id, const std::vector<BuffInfo> &buffs,
-                 const ControlInfo &control_info) override {
-    return 0;
-  }
-
-  Status EnqueueMbuf(int32_t device_id, uint32_t queue_id, rtMbufPtr_t m_buf, int32_t timeout) override {
-    return 0;
-  }
-
-  Status Dequeue(const int32_t device_id,
-                 const uint32_t queue_id,
-                 void *const data,
-                 const size_t size,
-                 ControlInfo &control_info) override {
-    return 0;
-  }
-  Status DequeueMbufTensor(const int32_t device_id, const uint32_t queue_id, std::shared_ptr<AlignedPtr> &aligned_ptr,
-                           const size_t size, ControlInfo &control_info) override {
-    return 0;
-  }
-  Status DequeueTensor(const int32_t device_id,
-                       const uint32_t queue_id,
-                       GeTensor &tensor,
-                       ControlInfo &control_info) override {
-    return 0;
-  }
-  Status DequeueMbuf(int32_t device_id, uint32_t queue_id, rtMbufPtr_t *m_buf, int32_t timeout) override {
-    return 0;
-  }
-  void ResetQueueInfo(const int32_t device_id, const uint32_t queue_id) override {
-    return;
-  }
-};
-
-class MockModelDeployer : public ModelDeployer {
- public:
-  Status DeployModel(const FlowModelPtr &flow_model,
-                     DeployResult &deploy_result) override {
-    return SUCCESS;
-  }
-  Status Undeploy(uint32_t model_id) override {
-    return SUCCESS;
-  }
-};
-
-class MockExecutionRuntime : public ExecutionRuntime {
- public:
-  Status Initialize(const map<std::string, std::string> &options) override {
-    return SUCCESS;
-  }
-  Status Finalize() override {
-    return SUCCESS;
-  }
-  ModelDeployer &GetModelDeployer() override {
-    return model_deployer_;
-  }
-  ExchangeService &GetExchangeService() override {
-    return exchange_service_;
-  }
-
- private:
-  MockModelDeployer model_deployer_;
-  MockExchangeService exchange_service_;
-};
-}
 
 class OnlineInferTest : public testing::Test {
  protected:
   void SetUp() {
     GeExecutor::Initialize({});
-    ExecutionRuntime::instance_ = ge::MakeShared<MockExecutionRuntime>();
   }
   void TearDown() {
     GeExecutor::FinalizeEx();
-    ExecutionRuntime::instance_ = nullptr;
   }
 };
 
@@ -936,14 +839,12 @@ static Graph CreateDynamicDimsGraphWithMoreData() {
 
 Status OnlineInferDynCompile(const Graph &graph, const uint32_t graph_id,
                              const map<AscendString, AscendString> &options) {
-  Session session(options);
+  GeSession session(options);
   auto ret = session.AddGraph(graph_id, graph, options);
   EXPECT_EQ(ret, SUCCESS);
 
-  // build input tensor
-  std::vector<InputTensorInfo> inputs;
   // build_graph through session
-  ret = session.BuildGraph(graph_id, inputs);
+  ret = session.CompileGraph(graph_id);
   return ret;
 }
 
@@ -1400,13 +1301,11 @@ TEST_F(OnlineInferTest, online_infer_dynamic_dims_graph_helper) {
   // new session & add graph
   map<AscendString, AscendString> options = {
       {"ge.inputShape", "data0:-1;data1:-1"}, {"ge.dynamicDims", "1,1;10,10;20,20"}, {"ge.dynamicNodeType", "1"}};
-  Session session(options);
+  GeSession session(options);
   auto ret = session.AddGraph(10, graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  // build input tensor
-  std::vector<InputTensorInfo> inputs;
   // build_graph through session
-  ret = session.BuildGraph(10, inputs);
+  ret = session.CompileGraph(10);
   EXPECT_EQ(ret, SUCCESS);
   // check result
   CHECK_GRAPH(PreRunAfterOptimize1) {
@@ -1478,13 +1377,11 @@ TEST_F(OnlineInferTest, online_infer_dynamic_dims_graph_with_running_format) {
   // new session & add graph
   map<AscendString, AscendString> options = {
       {"ge.inputShape", "data0:-1;data1:-1"}, {"ge.dynamicDims", "1,1;10,10;20,20"}, {"ge.dynamicNodeType", "1"}};
-  Session session(options);
+  GeSession session(options);
   auto ret = session.AddGraph(10, graph, options);
   EXPECT_EQ(ret, SUCCESS);
-  // build input tensor
-  std::vector<InputTensorInfo> inputs;
   // build_graph through session
-  ret = session.BuildGraph(10, inputs);
+  ret = session.CompileGraph(10);
   // check result
   CHECK_GRAPH(PreRunAfterOptimize1) {
     EXPECT_EQ(graph->GetAllSubgraphs().size(), 4);
@@ -1739,7 +1636,7 @@ TEST_F(OnlineInferTest, GraphMultiDimsWithMiddleDynamicShape_ReportError) {
   // new session & add graph
   map<AscendString, AscendString> options = {
       {"ge.inputShape", "data0:-1"}, {"ge.dynamicDims", "1;10;20"}};
-  EXPECT_EQ(OnlineInferDynCompile(graph, 1, options), FAILED);
+  EXPECT_NE(OnlineInferDynCompile(graph, 1, options), SUCCESS);
 
   unsetenv("RESOURCE_CONFIG_PATH");
   ge_env.Reset();

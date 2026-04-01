@@ -42,7 +42,6 @@
 #include "utils/synchronizer.h"
 #include "common/global_variables/diagnose_switch.h"
 #include "hcom/hcom_topo_info.h"
-#include "dflow/inc/data_flow/model/graph_model.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/custom_op_factory.h"
 #include "graph/custom_op.h"

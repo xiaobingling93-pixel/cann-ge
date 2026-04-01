@@ -16,7 +16,6 @@
 #include "graph/ge_context.h"
 #include "graph/load/model_manager/model_manager.h"
 #include "hybrid/common/npu_memory_allocator.h"
-#include "dflow/compiler/pne/process_node_engine_manager.h"
 #include "register/op_tiling_registry.h"
 #include "api/gelib/gelib.h"
 
@@ -31,7 +30,6 @@
 #include "depends/runtime/src/runtime_stub.h"
 #include "depends/mmpa/src/mmpa_stub.h"
 
-#include "dflow/compiler/pne/npu/npu_process_node_engine.h"
 #include "api/atc/main_impl.h"
 
 #include "graph/utils/tensor_utils.h"

@@ -32,7 +32,6 @@
 #include "graph/load/model_manager/model_manager.h"
 #include "macro_utils/dt_public_unscope.h"
 #include "graph_metadef/depends/checker/tensor_check_utils.h"
-#include "dflow/base/model/flow_model_om_saver.h"
 #include "runtime/base.h"
 #include "utils/taskdef_builder.h"
 #include "ge_graph_dsl/assert/graph_assert.h"

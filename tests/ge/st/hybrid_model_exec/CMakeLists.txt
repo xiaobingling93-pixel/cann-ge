@@ -25,7 +25,6 @@ target_compile_options(hybrid_model_async_exec_test PUBLIC -g
         )
 target_link_libraries(hybrid_model_async_exec_test PUBLIC 
         intf_llt_pub
-        flow_graph
         -Wl,-z,muldefs
         -Wl,--whole-archive
         gert

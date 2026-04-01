@@ -139,12 +139,10 @@ target_link_libraries(graph_engine_test
     -Wl,-z,muldefs
     ge_compiler
     ge_runner
-    dflow_runner
     ge_runner_v2
     ge_common_base
     gert
     cpu_compiler
-    data_flow_base
     aihacb_autofusion_stub
     ge_local_opskernel_builder
     symengine
@@ -154,7 +152,7 @@ target_link_libraries(graph_engine_test
     atc_static
     ge_running_env
     ge_runtime_stub
-    -Wl,--no-whole-archive gert_op_impl flow_graph
+    -Wl,--no-whole-archive gert_op_impl
     es_ge_test ge_graph_dsl st_stubs GTest::gtest GTest::gmock GTest::gmock_main
     -ldl
 )
@@ -227,7 +225,6 @@ target_link_libraries(graph_engine_compile_test
         -Wl,-z,muldefs
         ge_compiler
         ge_runner
-        dflow_runner
         ge_runner_v2
         gert
         cpu_compiler
@@ -236,7 +233,6 @@ target_link_libraries(graph_engine_compile_test
         slice
         -Wl,--whole-archive
         ascendcl_stub
-        flow_graph
         -Wl,--no-whole-archive es_ge_test ge_runtime_stub 
         gert_op_impl ge_running_env ge_graph_dsl st_stubs ge_runtime_stub GTest::gtest GTest::gmock GTest::gmock_main
         -ldl

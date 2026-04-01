@@ -16,7 +16,6 @@
 #include "graph/ge_context.h"
 #include "ge_running_env/fake_ops_kernel_builder.h"
 #include "hybrid/common/npu_memory_allocator.h"
-#include "dflow/compiler/pne/process_node_engine_manager.h"
 #include "register/op_tiling_registry.h"
 #include "stub/gert_runtime_stub.h"
 #include "api/gelib/gelib.h"
@@ -34,7 +33,6 @@
 #include "utils/taskdef_builder.h"
 #include "utils/graph_factory.h"
 #include "ge_graph_dsl/assert/check_utils.h"
-#include "dflow/compiler/pne/npu/npu_process_node_engine.h"
 
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/graph_utils.h"

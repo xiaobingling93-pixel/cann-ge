@@ -25,7 +25,6 @@
 #include "engines/manager/opskernel_manager/ops_kernel_manager.h"
 #include "hybrid/common/npu_memory_allocator.h"
 #include "graph/bin_cache/node_compile_cache_module.h"
-#include "dflow/compiler/pne/process_node_engine_manager.h"
 #include "register/op_tiling_registry.h"
 #include "lowering/graph_converter.h"
 #include "runtime/model_v2_executor.h"
@@ -57,8 +56,6 @@
 #include "ge_graph_dsl/assert/graph_assert.h"
 #include "graph/ge_context.h"
 #include "graph/bin_cache/op_binary_cache.h"
-#include "dflow/compiler/pne/npu/npu_process_node_engine.h"
-#include "dflow/compiler/pne/cpu/cpu_process_node_engine.h"
 
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -1896,11 +1893,6 @@ TEST_F(DynamicGraphTest, TestControlOp_While) {
 }
 
 TEST_F(DynamicGraphTest, TestHostCpu) {
-  auto cpu_engine = std::make_shared<CPUProcessNodeEngine>();
-  EXPECT_NE(cpu_engine, nullptr);
-  ProcessNodeEngineManager::GetInstance().init_flag_ = false;
-  auto fn = []()->::ge::ProcessNodeEngine * { return new (std::nothrow) ge::CPUProcessNodeEngine(); };
-  EXPECT_EQ(ProcessNodeEngineManager::GetInstance().RegisterEngine("HOST_CPU", cpu_engine, fn), SUCCESS);
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
   MockForGenerateTask("DNN_VM_HOST_CPU_OP_STORE", GenerateTaskForHostCpu);
   GeTensorDesc tensor_desc(GeShape{});
@@ -1962,11 +1954,6 @@ TEST_F(DynamicGraphTest, TestHostCpu) {
 }
 
 TEST_F(DynamicGraphTest, TestDtResourceHostCpu) {
-  auto cpu_engine = std::make_shared<CPUProcessNodeEngine>();
-  EXPECT_NE(cpu_engine, nullptr);
-  ProcessNodeEngineManager::GetInstance().init_flag_ = false;
-  auto fn = []()->::ge::ProcessNodeEngine * { return new (std::nothrow) ge::CPUProcessNodeEngine(); };
-  EXPECT_EQ(ProcessNodeEngineManager::GetInstance().RegisterEngine("HOST_CPU", cpu_engine, fn), SUCCESS);
   MmpaStub::GetInstance().SetImpl(std::make_shared<MockMmpa>());
   MockForGenerateTask("DNN_VM_HOST_CPU_OP_STORE", GenerateTaskForHostCpu);
   GeTensorDesc tensor_desc(GeShape{});

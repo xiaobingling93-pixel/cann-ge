@@ -55,7 +55,6 @@ target_link_libraries(autofuse_test PRIVATE
         aihacb_autofusion_stub
         ge_runner
         gert
-        flow_graph
         metadef_headers
         ascendcl_stub
         GTest::gtest

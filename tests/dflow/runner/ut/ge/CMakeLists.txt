@@ -111,6 +111,9 @@ SET(DFLOW_SESSION_TEST_FILES
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_api_unittest.cc"
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_graph_manager_unittest.cc"
     "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/dflow_session_manager_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/session/ge_api_dflow_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/compiler/pne/process_node_engine_manager_unittest.cc"
+    "${CMAKE_SOURCE_DIR}/tests/dflow/runner/ut/dflow/base/model/endpoint_unittest.cc"
 )
 
 # helper ut
