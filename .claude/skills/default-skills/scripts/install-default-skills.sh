@@ -10,5 +10,5 @@ DEFAULT_SKILLS=("gitcode-pr" "gitcode-issue")
 
 echo "将要安装的技能: ${DEFAULT_SKILLS[*]}"
 
-# 执行安装命令
-npx skills add https://gitcode.com/cann-agent/skills.git -y -g -s ${DEFAULT_SKILLS[*]}
+# 执行安装命令（安装到 OpenCode）
+npx skills add https://gitcode.com/cann-agent/skills.git -y -a claude-code -s ${DEFAULT_SKILLS[*]}
