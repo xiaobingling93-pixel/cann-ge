@@ -27,6 +27,7 @@
 #include "framework/runtime/mem_allocator.h"
 #include "common/checker.h"
 #include "ge/ge_allocator.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 constexpr int64_t kOverflowSize = 512;
@@ -43,7 +44,7 @@ class InternalAllocator : public Allocator {
  private:
   std::vector<std::unique_ptr<MemBlock>> memory_list_{};
   size_t max_memory_size_{0UL};
-  rtStream_t stream_{nullptr};
+  aclrtStream stream_{nullptr};
 };
 
 class StreamResource {
@@ -55,8 +56,8 @@ class StreamResource {
   StreamResource(StreamResource &&) = delete;
   StreamResource &operator=(const StreamResource &) = delete;
   StreamResource &operator=(StreamResource &&) = delete;
-  rtStream_t GetStream() const;
-  void SetStream(const rtStream_t stream);
+  aclrtStream GetStream() const;
+  void SetStream(const aclrtStream stream);
 
   Status Init();
   SingleOp *GetOperator(const uint64_t key);
@@ -107,7 +108,7 @@ class StreamResource {
   std::unique_ptr<ThreadPool> thread_pool_;
   std::unique_ptr<hybrid::CallbackManager> callback_manager_;
   ObjectPool<GeTensor> tensor_pool_;
-  rtStream_t stream_ = nullptr;
+  aclrtStream stream_ = nullptr;
   std::mutex mu_;
   std::mutex stream_mu_;
   void *device_buffer_ = nullptr;

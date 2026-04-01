@@ -136,7 +136,7 @@ void ModelExecutor::RemoveGraphNode(const GraphId graph_id) {
 /// @return Status result of function
 ///
 Status ModelExecutor::LoadGraph(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                                const rtStream_t stream) {
+                                const aclrtStream stream) {
   GE_CHECK_NOTNULL(graph_node);
   GE_CHECK_NOTNULL(ge_root_model);
   return ModelLoad(ge_root_model, graph_node, stream);
@@ -179,7 +179,7 @@ Status ModelExecutor::UnloadPneModel(const uint32_t model_id, const uint64_t ses
   const auto model = ModelManager::GetInstance().GetModel(model_id);
   if ((model != nullptr) && (model->GetAsyncMode())) {
     GELOGI("Unload model, async mode, start to synchronize stream before unload model, modelId[%u]", model_id);
-    (void)rtStreamSynchronize(model->GetModelExecuteStream());
+    (void)aclrtSynchronizeStream(model->GetModelExecuteStream());
     GELOGI("Unload model, async mode, synchronize stream finished.");
   }
   if (ModelManager::GetInstance().DestroyAicpuKernel(session_id, model_id, 0U) != SUCCESS) {
@@ -306,7 +306,7 @@ Status ModelExecutor::RunGraph(const GraphNodePtr &graph_node, const GraphId gra
 /// @return Status result of function
 ///
 Status ModelExecutor::RunGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id,
-                                         rtStream_t const stream, const std::vector<GeTensor> &inputs,
+                                         aclrtStream const stream, const std::vector<GeTensor> &inputs,
                                          std::vector<GeTensor> &outputs) {
   const auto ge_root_model = graph_node->GetGeRootModel();
   GE_CHECK_NOTNULL(ge_root_model);
@@ -321,7 +321,7 @@ Status ModelExecutor::RunGraphWithStream(const GraphNodePtr &graph_node, const G
 }
 
 Status ModelExecutor::ExecuteGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id,
-                                         rtStream_t const stream, const std::vector<gert::Tensor> &inputs,
+                                         aclrtStream const stream, const std::vector<gert::Tensor> &inputs,
                                          std::vector<gert::Tensor> &outputs) {
   auto ge_root_model = graph_node->GetGeRootModel();
   GE_CHECK_NOTNULL(ge_root_model);
@@ -364,7 +364,7 @@ Status ModelExecutor::UpdateFeatureMemoryBase(const GraphNodePtr &graph_node, co
  */
 Status ModelExecutor::MallocFixedFeatureMemoryIfNeed(const GraphNodePtr &graph_node,
                                                      const GeRootModelPtr &ge_root_model,
-                                                     const rtStream_t stream) const {
+                                                     const aclrtStream stream) const {
   if (!ge_root_model->IsNeedMallocFixedFeatureMem()) {
     return SUCCESS;
   }
@@ -400,7 +400,7 @@ Status ModelExecutor::MallocFixedFeatureMemoryIfNeed(const GraphNodePtr &graph_n
 }
 
 Status ModelExecutor::MallocByDiffAllocator(const uint64_t session_id,
-                                            const rtStream_t stream,
+                                            const aclrtStream stream,
                                             const FeatureMemoryPtr &fixed_feature_mem,
                                             const rtMemType_t rt_mem_type,
                                             const GeRootModelPtr &ge_root_model) {
@@ -481,7 +481,7 @@ Status ModelExecutor::FreeFixedFeatureMemoryIfNeed(const GeRootModelPtr &ge_root
 }
 
 Status ModelExecutor::ModelLoad(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                                const rtStream_t stream) {
+                                const aclrtStream stream) {
   uint32_t model_id = INVALID_MODEL_ID;
   GE_CHECK_NOTNULL(ge_root_model);
   const auto root_graph = ge_root_model->GetRootGraph();
@@ -600,7 +600,7 @@ bool ModelExecutor::ReleaseModel(const GeRootModelPtr &ge_root_model, const Grap
            graph_id, model_id, davinci_model->GetAllStreamNum(), davinci_model->GetEventList().size());
 
     if (davinci_model->GetAsyncMode()) {
-      (void)rtStreamSynchronize(davinci_model->GetModelExecuteStream());
+      (void)aclrtSynchronizeStream(davinci_model->GetModelExecuteStream());
       GELOGI("Unload model, async mode, synchronize stream finished.");
     }
 
@@ -845,7 +845,7 @@ Status ModelExecutor::CheckAndReleaseStream(const GeRootModelPtr &ge_root_model,
 
   uint32_t free_stream_num = 0U;
   GE_CHK_RT_RET(aclrtSetDevice(static_cast<int32_t>(GetContext().DeviceId())));
-  GE_CHK_RT_RET(rtGetAvailStreamNum(RT_NORMAL_STREAM, &free_stream_num));
+  GE_CHK_RT_RET(aclrtGetStreamAvailableNum(&free_stream_num));
 
   if (required_stream_num <= free_stream_num) {
     GELOGI("Graph id[%u] no need to unload other models, required stream num[%u], free stream num[%u]",
@@ -873,7 +873,7 @@ Status ModelExecutor::CheckAndReleaseStream(const GeRootModelPtr &ge_root_model,
     it.second->SetLoadCount(it.second->GetLoadRecord());
     it.second->SetLoadRecord(kNeverLoaded);
 
-    GE_CHK_RT_RET(rtGetAvailStreamNum(RT_NORMAL_STREAM, &free_stream_num));
+    GE_CHK_RT_RET(aclrtGetStreamAvailableNum(&free_stream_num));
     if (required_stream_num <= free_stream_num) {
       GE_CHK_RT_RET(aclrtResetDevice(static_cast<int32_t>(GetContext().DeviceId())));
       return SUCCESS;

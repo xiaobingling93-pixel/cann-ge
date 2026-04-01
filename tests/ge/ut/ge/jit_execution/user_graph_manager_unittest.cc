@@ -49,6 +49,7 @@ class UserGraphsManagerlUT : public testing::Test {
     CommonSetupUtil::CommonSetup();
     gert_stub_.GetKernelStub().StubTiling();
     RuntimeStub::Install(nullptr); // gert的rts stub不能在多线程环境下工作，因此使用默认rts stub
+    AclRuntimeStub::Install(nullptr);
     RuntimeStub::SetInstance(std::make_shared<RuntimeMock>());
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistry();
     std::map<std::string, std::string> options = {{ge::SOC_VERSION, "Ascend310"}};
@@ -65,6 +66,7 @@ class UserGraphsManagerlUT : public testing::Test {
     CommonSetupUtil::CommonTearDown();
     gert_stub_.Clear();
     RuntimeStub::Reset();
+    AclRuntimeStub::Reset();
     ge::PlatformContext::GetInstance().Reset();
     if (!env.empty()) {
       setenv("LD_PRELOAD", env.c_str(), 1);

@@ -65,7 +65,7 @@ struct CachingMemAllocator : public ge::Allocator, public MemSynchronizer {
   static std::vector<CachingMemAllocator *> all_caching_mem_allocators_;
   ge::Status Synchronize() const override;
   void Recycle() override;
-  void SetStream(const rtStream_t stream) {
+  void SetStream(const aclrtStream stream) {
     stream_ = stream;
   }
 
@@ -88,7 +88,7 @@ struct CachingMemAllocator : public ge::Allocator, public MemSynchronizer {
   RtsFirstLevelPool rts_mem_allocator_;
   SpanAllocatorImp span_allocator_;
   std::unique_ptr<MemoryPool> memory_pool_;
-  rtStream_t stream_ = nullptr;
+  aclrtStream stream_ = nullptr;
 };
 }  // namespace memory
 }  // namespace gert

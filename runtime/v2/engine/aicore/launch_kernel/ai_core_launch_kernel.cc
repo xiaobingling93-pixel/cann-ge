@@ -79,7 +79,7 @@ std::string PrintStreamIdAndTaskId(const KernelContext *context) {
   std::stringstream ss;
   uint32_t stream_id = 0U;
   uint32_t flip_task_id = 0U;
-  if ((rtsGetThreadLastTaskId(&flip_task_id) == RT_ERROR_NONE) && (rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id)) == RT_ERROR_NONE)) {
+  if ((rtsGetThreadLastTaskId(&flip_task_id) == RT_ERROR_NONE) && (aclrtStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id)) == ACL_SUCCESS)) {
     const uint32_t task_id = flip_task_id & 0xFFFF; // lower 16bits
     const uint32_t flip_num = flip_task_id >> 16U;   // high 16bits
     ss << "stream_id=" << stream_id << ", task_id=" << task_id << ", flip_num=" << flip_num

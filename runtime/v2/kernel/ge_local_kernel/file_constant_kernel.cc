@@ -51,7 +51,7 @@ struct FileConstantInfo {
 };
 
 ge::graphStatus CopyWeightFromFileAsync(const void *const curr_dev_ptr, const FileConstantInfo &file_constant_info,
-                                        size_t &left_size, rtStream_t stream) {
+                                        size_t &left_size, aclrtStream stream) {
   ge::graphStatus ret = ge::GRAPH_SUCCESS;
   GE_ASSERT_TRUE(left_size >= file_constant_info.file_length);
   const std::string real_path = ge::RealPath(file_constant_info.file_path.c_str());
@@ -199,7 +199,7 @@ ge::graphStatus FileConstantKernel(KernelContext *context) {
 
     // 离线场景分配权重内存并异步加载
     GE_ASSERT_GRAPH_SUCCESS(AllocHbmMemForFileConstant(left_size, context));
-    auto rt_stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(FileConstantKernelInputIdx::kStreamIdx));
+    auto rt_stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(FileConstantKernelInputIdx::kStreamIdx));
     GE_ASSERT_NOTNULL(rt_stream);
     auto tensor_data =
         context->GetOutputPointer<GertTensorData>(static_cast<size_t>(FileConstantKernelOutputIdx::kOutAddrIdx));

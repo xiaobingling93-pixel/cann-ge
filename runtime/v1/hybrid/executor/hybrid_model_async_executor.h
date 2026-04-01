@@ -29,30 +29,30 @@ namespace hybrid {
 class HybridModelAsyncExecutor {
  public:
   struct DefaultStreamGuarder {
-    rtStream_t default_stream = nullptr;
+    aclrtStream default_stream = nullptr;
     uint32_t stream_ref_count = 0U;
     std::mutex mu;
   };
   explicit HybridModelAsyncExecutor(HybridModel *const model);
   ~HybridModelAsyncExecutor();
 
-  Status Init(const rtStream_t stream = nullptr);
+  Status Init(const aclrtStream stream = nullptr);
 
   // dflow
   Status Execute(const std::vector<DataBuffer> &inputs,
                  const std::vector<GeTensorDesc> &input_desc,
                  std::vector<DataBuffer> &outputs,
                  std::vector<GeTensorDesc> &output_desc,
-                 rtStream_t stream = nullptr);
+                 aclrtStream stream = nullptr);
 
   Status Execute(const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs);
 
   Status ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                 rtStream_t stream = nullptr);
+                 aclrtStream stream = nullptr);
   
   Status ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                std::vector<gert::Tensor> &outputs,
-                                               rtStream_t stream = nullptr);
+                                               aclrtStream stream = nullptr);
 
   Status Start(const std::shared_ptr<ModelListener> &listener);
 
@@ -94,7 +94,7 @@ class HybridModelAsyncExecutor {
   std::unique_ptr<HybridModelExecutor> executor_;
   std::future<Status> future_;
 
-  rtStream_t stream_ = nullptr;
+  aclrtStream stream_ = nullptr;
   bool owner_stream_ = false;
   std::shared_ptr<ModelListener> listener_;
   std::vector<TensorValue> output_cache_;

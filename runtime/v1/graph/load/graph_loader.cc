@@ -35,7 +35,7 @@ Status GraphLoader::UnloadModel(const uint32_t model_id) {
 Status GraphLoader::LoadModelOnline(uint32_t &model_id, const GeRootModelPtr &ge_root_model,
                                     const GraphNodePtr &graph_node, const uint32_t device_id,
                                     const error_message::ErrorManagerContext &error_context,
-                                    const rtStream_t stream) {
+                                    const aclrtStream stream) {
   error_message::SetErrMgrContext(error_context);
   GELOGI("Load model online begin.");
   if (ge_root_model == nullptr) {
@@ -182,7 +182,7 @@ Status GraphLoader::LoadModelWithQueueParam(uint32_t &model_id, const ModelData 
 /// @param [out] output_data  model output data
 /// @param [out] output_desc  description of model output data
 ///
-Status GraphLoader::ExecuteModel(const uint32_t model_id, rtStream_t const stream, const bool async_mode,
+Status GraphLoader::ExecuteModel(const uint32_t model_id, aclrtStream const stream, const bool async_mode,
                                  const InputData &input_data, const std::vector<GeTensorDesc> &input_desc,
                                  OutputData &output_data, std::vector<GeTensorDesc> &output_desc) {
   const auto ret = ModelManager::GetInstance().ExecuteModel(model_id, stream, async_mode,

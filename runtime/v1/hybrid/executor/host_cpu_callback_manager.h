@@ -19,7 +19,7 @@ class HostCpuCallbackManager : public CallbackManager {
  public:
   Status Init() override;
   Status Destroy() override;
-  Status RegisterCallbackFunc(const rtStream_t stream, const std::function<void()> &callback) override;
+  Status RegisterCallbackFunc(const aclrtStream stream, const std::function<void()> &callback) override;
 };
 }  // namespace hybrid
 }  // namespace ge

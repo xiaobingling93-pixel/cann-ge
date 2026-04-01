@@ -13,6 +13,8 @@
 #include "framework/common/debug/ge_log.h"
 #include "framework/common/debug/log.h"
 #include "graph/ge_context.h"
+#include "acl/acl_rt.h"
+#include "runtime/context.h"
 
 namespace ge {
 namespace {

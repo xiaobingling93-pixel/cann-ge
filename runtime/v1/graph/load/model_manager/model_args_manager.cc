@@ -692,7 +692,7 @@ void ModelArgsManager::InitForUpdate() {
   }
 }
 
-Status ModelArgsManager::TaskArgsVa2PaAssociatedWithModelIO(rtStream_t const stm) const {
+Status ModelArgsManager::TaskArgsVa2PaAssociatedWithModelIO(aclrtStream const stm) const {
   auto &model_update_data = update_policies_to_model_data_[kUpdateModelIo];
   GE_ASSERT_NOTNULL(model_update_data, "Failed to exe model args va 2 pa, policy %s does not exist",
                     GetUpdatePolicyStr(kUpdateModelIo));
@@ -759,7 +759,7 @@ void ModelArgsManager::GenModelArgsAaddrAfterDistributed() {
   return;
 }
 
-Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
+Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(aclrtStream const stm) {
   uint32_t active_mem_base_addr_size = davinci_model_->GetLogicalMemAllocation().size();
   uint32_t active_mem_base_addr_len_align32b = AlignUp(active_mem_base_addr_size * sizeof(uint64_t), kAlign32B);
   active_mem_base_addr_len_align32b = active_mem_base_addr_len_align32b + host_input_size_;
@@ -771,7 +771,7 @@ Status ModelArgsManager::PrintKernelLaunchArgsDfxInfo(rtStream_t const stm) {
             i, active_mem_base_addr[i]);
   }
 
-  GE_CHK_RT_RET(rtStreamSynchronize(stm));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stm));
   std::vector<uint64_t> model_args_device_addrs(model_args_len_[0] / sizeof(uint64_t), 0);
   (void)rtMemcpy(model_args_device_addrs.data(), model_args_len_[0], ValueToPtr(model_args_[0].model_args_device_addr),
                   model_args_len_[0], RT_MEMCPY_DEVICE_TO_HOST);
@@ -868,7 +868,7 @@ Status ModelArgsManager::ReportKernelLaunchOpProfilingData(const uint64_t begin_
   return ge::SUCCESS;
 }
 
- Status ModelArgsManager::UpdateForExecute(uint32_t &up, rtStream_t const stm, const uint32_t model_execute_stage) {
+ Status ModelArgsManager::UpdateForExecute(uint32_t &up, aclrtStream const stm, const uint32_t model_execute_stage) {
   GetStageTimeInfo(kStageCalcUpdatePolicyBegin);
   uint64_t active_mem_base_addr_len = davinci_model_->GetLogicalMemAllocation().size() * sizeof(uint64_t);
   uint64_t *active_mem_base_addr = GetActivateMemBaseAddrs();
@@ -1000,7 +1000,7 @@ Status ModelArgsManager::ReportKernelLaunchOpProfilingData(const uint64_t begin_
     bool l0_prof_enable = gert::GlobalProfilingWrapper::GetInstance()->IsEnabled(gert::ProfilingType::kTaskTime);
     uint64_t kernel_launch_prof_begin_time = 0;
     GE_IF_BOOL_EXEC(l0_prof_enable, kernel_launch_prof_begin_time = MsprofSysCycleTime());
-    GE_IF_BOOL_EXEC(dfx_info_.get_model_args_device_table_flag, GE_CHK_RT_RET(rtStreamSynchronize(stm)));
+    GE_IF_BOOL_EXEC(dfx_info_.get_model_args_device_table_flag, GE_CHK_RT_RET(aclrtSynchronizeStream(stm)));
 
     LaunchKernelParam launch_kernel_param;
     launch_kernel_param.stream = stm;

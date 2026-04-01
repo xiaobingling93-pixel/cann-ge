@@ -13,9 +13,10 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include "runtime/base.h"
+#include "acl/acl_rt.h"
 #include "common/checker.h"
 #include "model_v2_executor.h"
+
 namespace gert {
 // do not expose the Builder class definition to external api
 class ModelV2ExecutorBuilder;
@@ -27,7 +28,7 @@ class VISIBILITY_EXPORT StreamExecutor {
   StreamExecutor(StreamExecutor &&) = delete;
   StreamExecutor &operator=(StreamExecutor &&) = delete;
   ~StreamExecutor();
-  ModelV2Executor *GetOrCreateLoaded(rtStream_t stream, const ModelExecuteArg &arg) {
+  ModelV2Executor *GetOrCreateLoaded(aclrtStream stream, const ModelExecuteArg &arg) {
     const std::lock_guard<std::recursive_mutex> lock(mutex_);
     const auto &iter = streams_to_executor_.find(stream);
     if (iter != streams_to_executor_.cend()) {
@@ -35,15 +36,15 @@ class VISIBILITY_EXPORT StreamExecutor {
     }
     return CreateAndLoad(stream, arg);
   }
-  ge::graphStatus Erase(rtStream_t stream);
+  ge::graphStatus Erase(aclrtStream stream);
 
  private:
-  ModelV2Executor *CreateAndLoad(rtStream_t stream, const ModelExecuteArg &arg);
+  ModelV2Executor *CreateAndLoad(aclrtStream stream, const ModelExecuteArg &arg);
 
  private:
   std::recursive_mutex mutex_;
   ModelV2ExecutorBuilder *builder_;
-  std::map<rtStream_t, std::unique_ptr<ModelV2Executor>> streams_to_executor_;
+  std::map<aclrtStream, std::unique_ptr<ModelV2Executor>> streams_to_executor_;
 };
 }  // namespace gert
 #endif  // AIR_CXX_STREAM_EXECUTOR_H

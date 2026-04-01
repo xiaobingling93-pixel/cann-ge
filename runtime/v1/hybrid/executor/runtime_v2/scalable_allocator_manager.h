@@ -23,9 +23,9 @@ class ScalableAllocatorManager {
     const std::unique_lock<std::mutex> lk(allocators_lock_);
     allocators_.clear();
   }
-  gert::Allocators *GetAllocator(const std::string &graph_name, const rtStream_t stream);
+  gert::Allocators *GetAllocator(const std::string &graph_name, const aclrtStream stream);
  private:
-  std::map<rtStream_t, std::shared_ptr<gert::Allocators>> allocators_;
+  std::map<aclrtStream, std::shared_ptr<gert::Allocators>> allocators_;
   std::mutex allocators_lock_;
 };
 } // namespace ge

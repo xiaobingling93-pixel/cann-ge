@@ -20,6 +20,7 @@
 #include "graph/utils/object_pool.h"
 #include "graph/ge_tensor.h"
 #include "runtime/base.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 constexpr uint64_t kFuzzDeviceBufferSize = 1U * 1024U * 1024U;
@@ -29,7 +30,7 @@ class DynamicSingleOpImpl;
 class StreamResource;
 class SingleOp {
  public:
-  SingleOp(StreamResource *const stream_resource, std::mutex *const stream_mutex, rtStream_t const stream);
+  SingleOp(StreamResource *const stream_resource, std::mutex *const stream_mutex, aclrtStream const stream);
   ~SingleOp();
 
   Status ExecuteAsync(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs);
@@ -44,7 +45,7 @@ class SingleOp {
 class DynamicSingleOp {
  public:
   DynamicSingleOp(ObjectPool<GeTensor> *const tensor_pool, const uintptr_t resource_id,
-                  std::mutex *const stream_mutex, rtStream_t const stream);
+                  std::mutex *const stream_mutex, aclrtStream const stream);
   ~DynamicSingleOp();
 
   Status ExecuteAsync(const std::vector<GeTensorDesc> &input_desc,

@@ -42,7 +42,7 @@ Status EndGraphTaskInfo::Distribute() {
   }
 
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-  GE_CHK_RT_RET(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_CHK_RT_RET(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
   davinci_model_->SetEndGraphId(task_id_, stream_id_);
 
   is_support_redistribute_ = true;

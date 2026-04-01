@@ -20,7 +20,7 @@ constexpr std::array<const char *, static_cast<size_t>(ArgsPlacement::kEnd) + 1U
     "host_svm",  // kArgsPlacementHostSvm
     "unknown"};
 }
-Status TaskInfo::SetStream(const uint32_t stream_id, const std::vector<rtStream_t> &stream_list) {
+Status TaskInfo::SetStream(const uint32_t stream_id, const std::vector<aclrtStream> &stream_list) {
   if (stream_list.size() == 1U) {
     stream_ = stream_list[0U];
   } else if (stream_list.size() > stream_id) {

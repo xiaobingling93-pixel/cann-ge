@@ -422,6 +422,7 @@ do {                                                                            
 
 extern std::string g_runtime_stub_mock;
 extern std::string g_runtime_stub_mock_v2;
+extern int32_t g_free_stream_num;
 #define RTS_STUB_RETURN_EXTERN(FUNC, TYPE) extern std::vector<TYPE> g_Stub_##FUNC##_RETURN;
 #define RTS_STUB_OUTBOUND_EXTERN(FUNC, TYPE, NAME) extern std::vector<TYPE> g_Stub_##FUNC##_OUT_##NAME;
 

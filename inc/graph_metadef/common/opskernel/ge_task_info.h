@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "acl/acl_rt.h"
 #include "runtime/rt.h"
 #include "graph/op_desc.h"
 
@@ -47,7 +48,7 @@ struct GETaskKernelHcclInfo {
   int64_t rootId;
   uint64_t workSpaceMemSize;
   std::vector<int64_t> dims;
-  std::vector<rtStream_t> hcclStreamList;
+  std::vector<aclrtStream> hcclStreamList;
   std::vector<HcclDumpInfo> hccl_dump_info;
   std::vector<void *> global_workspace_addr;
   uint32_t hcclQosCfg;

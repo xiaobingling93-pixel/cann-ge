@@ -20,7 +20,7 @@
 namespace ge {
 class SingleOpImpl {
  public:
-  SingleOpImpl(StreamResource *const stream_res, std::mutex *const stream_mutex, rtStream_t const stream);
+  SingleOpImpl(StreamResource *const stream_res, std::mutex *const stream_mutex, aclrtStream const stream);
   ~SingleOpImpl() = default;
 
   Status ExecuteAsync(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs);
@@ -45,7 +45,7 @@ class SingleOpImpl {
   friend class SingleOpModel;
   StreamResource *stream_resource_;
   std::mutex *stream_mutex_;
-  rtStream_t stream_;
+  aclrtStream stream_;
   std::vector<const void *> input_addr_list_;
   std::vector<size_t> input_sizes_;
   std::vector<const void *> output_addr_list_;
@@ -64,7 +64,7 @@ class SingleOpImpl {
 class DynamicSingleOpImpl {
  public:
   DynamicSingleOpImpl(ObjectPool<GeTensor> *const tensor_pool, const uintptr_t resource_id,
-                      std::mutex *const stream_mutex, rtStream_t const stream);
+                      std::mutex *const stream_mutex, aclrtStream const stream);
   ~DynamicSingleOpImpl() = default;
 
   Status ExecuteAsync(const std::vector <GeTensorDesc> &input_desc,
@@ -104,7 +104,7 @@ class DynamicSingleOpImpl {
   int64_t profiling_node_type_index_ = -1;
   uintptr_t resource_id_;
   std::mutex *stream_mutex_;
-  rtStream_t stream_;
+  aclrtStream stream_;
   size_t num_inputs_ = 0U;
   size_t num_outputs_ = 0U;
   ComputeGraphPtr compute_graph_;

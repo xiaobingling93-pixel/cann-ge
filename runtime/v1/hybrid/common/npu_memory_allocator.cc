@@ -31,8 +31,8 @@ const std::string kAllocFailLog =
 }  // namespace
 
 NpuMemoryAllocator::DeviceidAllocatorMap NpuMemoryAllocator::default_allocators_;
-std::map<rtStream_t, std::unique_ptr<NpuMemoryAllocator::DeviceidAllocatorMap>> NpuMemoryAllocator::allocators_;
-std::set<rtStream_t> NpuMemoryAllocator::streams_;
+std::map<aclrtStream, std::unique_ptr<NpuMemoryAllocator::DeviceidAllocatorMap>> NpuMemoryAllocator::allocators_;
+std::set<aclrtStream> NpuMemoryAllocator::streams_;
 std::mutex NpuMemoryAllocator::mu_;
 
 AllocationAttr::AllocationAttr(const int32_t padding, void *const try_reuse_addr,
@@ -117,7 +117,7 @@ NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator() {
   return default_allocators_[static_cast<size_t>(device_id)].get();
 }
 
-NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const rtStream_t stream) {
+NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const aclrtStream stream) {
   int32_t device_id = 0;
   const auto rt_result = aclrtGetDevice(&device_id);
   if (rt_result != ACL_SUCCESS) {
@@ -130,7 +130,7 @@ NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const rtStream_t stream) {
   return GetAllocator(static_cast<uint32_t>(device_id), stream);
 }
 
-NpuMemoryAllocator::NpuMemoryAllocator(const uint32_t device_id, const rtStream_t stream)
+NpuMemoryAllocator::NpuMemoryAllocator(const uint32_t device_id, const aclrtStream stream)
     : device_id_(device_id), stream_(stream) {}
 
 Status NpuMemoryAllocator::TryFreeCachingMem() const {
@@ -281,9 +281,9 @@ void NpuMemoryAllocator::Deallocate(void *const data, const MemStorageType mem_s
   }
 }
 
-NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const uint32_t device_id, const rtStream_t stream) {
+NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const uint32_t device_id, const aclrtStream stream) {
   const std::lock_guard<std::mutex> lk(mu_);
-  const std::map<rtStream_t, std::unique_ptr<NpuMemoryAllocator::DeviceidAllocatorMap>>::const_iterator map_it =
+  const std::map<aclrtStream, std::unique_ptr<NpuMemoryAllocator::DeviceidAllocatorMap>>::const_iterator map_it =
       allocators_.find(stream);
   if (map_it == allocators_.cend()) {
     auto allocator_map = MakeUnique<DeviceidAllocatorMap>();
@@ -314,7 +314,7 @@ NpuMemoryAllocator *NpuMemoryAllocator::GetAllocator(const uint32_t device_id, c
   return allocator_map[device_id].get();
 }
 
-void NpuMemoryAllocator::ClearStream(const rtStream_t stream) {
+void NpuMemoryAllocator::ClearStream(const aclrtStream stream) {
   const std::lock_guard<std::mutex> lk(mu_);
   GELOGI("Clear stream: %p in NpuMemoryAllocator", stream);
   if (allocators_.find(stream) != allocators_.cend()) {

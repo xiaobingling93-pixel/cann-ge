@@ -19,7 +19,7 @@ Status HostCpuCallbackManager::Init() {
 Status HostCpuCallbackManager::Destroy() {
   return SUCCESS;
 }
-Status HostCpuCallbackManager::RegisterCallbackFunc(const rtStream_t stream, const std::function<void()> &callback) {
+Status HostCpuCallbackManager::RegisterCallbackFunc(const aclrtStream stream, const std::function<void()> &callback) {
   (void) stream;
   GELOGD("callback start");
   callback();

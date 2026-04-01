@@ -16,20 +16,20 @@
 
 #include "common/checker.h"
 #include "common/util/mem_utils.h"
-#include "runtime/base.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 struct RtStreamStatus;
 using RtStreamStatusPtr = std::shared_ptr<RtStreamStatus>;
 
 struct RtStreamStatus {
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   int32_t rt_stream_id;
   std::set<uint32_t> rt_model_id;  // can not reuse streams of its own model
   uint32_t task_num = 0U;
   bool is_valid = true;
 
-  static RtStreamStatusPtr Create(rtStream_t &stream, const int32_t rt_stream_id, const uint32_t rt_model_id,
+  static RtStreamStatusPtr Create(aclrtStream &stream, const int32_t rt_stream_id, const uint32_t rt_model_id,
                                   const uint32_t task_num = 0U) {
     RtStreamStatusPtr stream_status = std::make_shared<RtStreamStatus>();
     GE_ASSERT_NOTNULL(stream_status);
@@ -55,9 +55,9 @@ struct StreamCompareKey {
 class ReusableStreamAllocator {
  public:
   static ReusableStreamAllocator *Create();
-  Status GetOrCreateRtStream(rtStream_t &stream, const uint32_t rt_model_id, const int32_t priority,
+  Status GetOrCreateRtStream(aclrtStream &stream, const uint32_t rt_model_id, const int32_t priority,
                              const uint32_t stream_flag, const uint32_t task_num = 0U);
-  Status DestroyStream(rtStream_t &stream, const bool is_force_destroy = false);
+  Status DestroyStream(aclrtStream &stream, const bool is_force_destroy = false);
 
  private:
   ReusableStreamAllocator() = default;
@@ -66,12 +66,12 @@ class ReusableStreamAllocator {
   ReusableStreamAllocator operator=(const ReusableStreamAllocator &) = delete;
   ReusableStreamAllocator operator=(ReusableStreamAllocator &&) = delete;
 
-  RtStreamStatusPtr CreateNewStream(rtStream_t &stream, const uint32_t rt_model_id, const int32_t priority,
+  RtStreamStatusPtr CreateNewStream(aclrtStream &stream, const uint32_t rt_model_id, const int32_t priority,
                                     const uint32_t stream_flag, const uint32_t task_num = 0U) const;
   // <<priority, stream_flag>, std::set<RtStreamStatus>>
   std::map<std::pair<int32_t, uint32_t>, std::set<RtStreamStatusPtr, StreamCompareKey>> rt_stream_list_{};
   // to get stream_status easier
-  std::map<rtStream_t, RtStreamStatusPtr> stream_ref_;
+  std::map<aclrtStream, RtStreamStatusPtr> stream_ref_;
   std::mutex mutex_;
 };
 }  // namespace ge

@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <iomanip>
 #include "runtime/rt.h"
+#include "acl/acl_rt.h"
 #include "graph/ge_error_codes.h"
 #include "graph/def_types.h"
 #include "register/kernel_registry.h"
@@ -122,7 +123,7 @@ ge::graphStatus DsaCoreUpdateSqeArg(KernelContext *context) {
   FE_ASSERT_NOTNULL(input1_value_string);
   auto input2_value_string = context->GetInputValue<char *>(static_cast<size_t>(DsaInfo::kInput2ValueStr));
   FE_ASSERT_NOTNULL(input2_value_string);
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(DsaInfo::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(DsaInfo::kStream));
   FE_ASSERT_NOTNULL(stream);
 
   std::vector<gert::GertTensorData *> input_tensor_datas;

@@ -592,7 +592,7 @@ Status TaskContext::SaveProfilingTaskDescInfo(const std::string &task_type, cons
   if (DumpManager::GetInstance().IsDumpExceptionOpen() || ProfilingManager::Instance().ProfilingModelLoadOn() ||
       ProfilingProperties::Instance().ProfilingSubscribeOn()) {
     GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-    GE_CHK_RT_RET(rtsStreamGetId(GetStream(), reinterpret_cast<int32_t*>(&stream_id_)));
+    GE_CHK_RT_RET(aclrtStreamGetId(GetStream(), reinterpret_cast<int32_t*>(&stream_id_)));
     GELOGD("Get Node[%s] task id: %u, stream id: %u.", GetNodeName(), task_id_, stream_id_);
   }
   if (ProfilingManager::Instance().ProfilingModelLoadOn() || ProfilingManager::Instance().ProfilingSubscribeOn()) {

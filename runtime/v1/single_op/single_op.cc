@@ -73,7 +73,7 @@ Status CalInputsHostMemSize(const std::vector<DataBuffer> &inputs,
   return SUCCESS;
 }
 
-Status UpdateInputsBufferAddr(const StreamResource *const stream_resource, const rtStream_t stream,
+Status UpdateInputsBufferAddr(const StreamResource *const stream_resource, const aclrtStream stream,
                               const std::vector<std::pair<size_t, uint64_t>> &inputs_size,
                               std::vector<DataBuffer> &update_buffers) {
   RT2_PROFILING_SCOPE_CONST(gert::profiling::kUnknownName, gert::profiling::kStaticSingleOpCopyH2D);
@@ -215,7 +215,7 @@ bool CheckHostMemInputOpt(const std::vector<DataBuffer> &input_buffers,
 }
 }  // namespace
 
-SingleOp::SingleOp(StreamResource *const stream_resource, std::mutex *const stream_mutex, const rtStream_t stream) {
+SingleOp::SingleOp(StreamResource *const stream_resource, std::mutex *const stream_mutex, const aclrtStream stream) {
   impl_ = new (std::nothrow) SingleOpImpl(stream_resource, stream_mutex, stream);
 }
 
@@ -234,7 +234,7 @@ int64_t SingleOp::GetProfilingNodeIndex() const noexcept {
 }
 
 DynamicSingleOp::DynamicSingleOp(ObjectPool<GeTensor> *const tensor_pool, const uintptr_t resource_id,
-                                 std::mutex *const stream_mutex, rtStream_t const stream) {
+                                 std::mutex *const stream_mutex, aclrtStream const stream) {
   impl_ = new (std::nothrow) DynamicSingleOpImpl(tensor_pool, resource_id, stream_mutex, stream);
 }
 
@@ -255,7 +255,7 @@ int64_t DynamicSingleOp::GetProfilingNodeIndex() const noexcept {
   return impl_->GetProfilingNodeIndex();
 }
 
-SingleOpImpl::SingleOpImpl(StreamResource *const stream_res, std::mutex *const stream_mutex, rtStream_t const stream)
+SingleOpImpl::SingleOpImpl(StreamResource *const stream_res, std::mutex *const stream_mutex, aclrtStream const stream)
     : stream_resource_(stream_res), stream_mutex_(stream_mutex), stream_(stream) {}
 
 Status SingleOpImpl::ValidateArgs(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs) {
@@ -444,7 +444,7 @@ Status SingleOpImpl::MallocOnExecute() {
 }
 
 DynamicSingleOpImpl::DynamicSingleOpImpl(ObjectPool<GeTensor> *const tensor_pool, const uintptr_t resource_id,
-                                         std::mutex *const stream_mutex, rtStream_t const stream)
+                                         std::mutex *const stream_mutex, aclrtStream const stream)
     : tensor_pool_(tensor_pool), resource_id_(resource_id), stream_mutex_(stream_mutex), stream_(stream) {}
 
 Status DynamicSingleOpImpl::ValidateParams(const std::vector<GeTensorDesc> &input_desc,

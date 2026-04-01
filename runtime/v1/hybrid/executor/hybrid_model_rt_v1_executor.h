@@ -21,7 +21,7 @@ namespace ge {
 namespace hybrid {
 class HybridModelRtV1Executor : public HybridModelExecutor {
  public:
-  HybridModelRtV1Executor(HybridModel *const model, const uint32_t device_id, const rtStream_t stream,
+  HybridModelRtV1Executor(HybridModel *const model, const uint32_t device_id, const aclrtStream stream,
                           ThreadPool *const thread_pool = nullptr);
 
   ~HybridModelRtV1Executor() override {

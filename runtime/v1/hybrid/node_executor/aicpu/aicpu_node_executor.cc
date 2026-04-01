@@ -427,7 +427,7 @@ Status AicpuNodeTaskBase::CheckOverflow(TaskContext &context) const {
     if (rt_ret == ACL_ERROR_RT_OVER_FLOW) {
       context.SetOverFlow(true);
       (void)rtsGetThreadLastTaskId(context.MutableTaskId());
-      (void)rtsStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
+      (void)aclrtStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
       GELOGW("TaskBase Dynamic shape op %s is over flow", context.GetNodeName());
       return SUCCESS;
     }
@@ -1361,7 +1361,7 @@ Status AicpuNodeTask::CheckOverflow(TaskContext &context) const {
     if (rt_ret == ACL_ERROR_RT_OVER_FLOW) {
       context.SetOverFlow(true);
       (void)rtsGetThreadLastTaskId(context.MutableTaskId());
-      (void)rtsStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
+      (void)aclrtStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
       GELOGW("Dynamic shape op %s is over flow", context.GetNodeName());
       return SUCCESS;
     }

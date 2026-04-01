@@ -249,6 +249,7 @@ RETURN_STATEMENTS = {
     'NpuMemoryAllocator*': '    return nullptr;',
     'MemBlock*': '    return nullptr;',
     'rtStream_t': '    return nullptr;',
+    'aclrtStream': '    return nullptr;',
     'SingleOp*': '    return nullptr;',
     'DynamicSingleOp*': '    return nullptr;',
     'StreamResource*': '    return nullptr;',

@@ -146,7 +146,7 @@ std::unique_ptr<JitExecutor> JitExecutor::Create(GraphManager &graph_manager, Us
   jit.get()->device_id_ = static_cast<int32_t>(GetContext().DeviceId());
   GE_ASSERT_RT_OK(aclrtSetDevice(jit.get()->device_id_));
   GELOGI("Set device, device id:%u.", GetContext().DeviceId());
-  GE_ASSERT_RT_OK(rtStreamCreate(&(jit.get()->stream_), 0));
+  GE_ASSERT_RT_OK(aclrtCreateStream(&(jit.get()->stream_)));
   GE_ASSERT_RT_OK(aclrtSetStreamFailureMode(jit.get()->stream_, ACL_STOP_ON_FAILURE));
   // prepare allocator
   auto device_allocator = gert::AllocatorFactory::Create("usergraph", gert::kOnDeviceHbm);
@@ -175,7 +175,7 @@ Status JitExecutor::Finalize() {
   GE_ASSERT_SUCCESS(graph_manager_.UnregisterExternalAllocator(stream_));
   device_allocator_ = nullptr;
   external_allocator_ = nullptr;
-  GE_ASSERT_RT_OK(rtStreamDestroy(stream_));
+  GE_ASSERT_RT_OK(aclrtDestroyStream(stream_));
   GE_ASSERT_RT_OK(aclrtResetDevice(device_id_));
   return SUCCESS;
 }
@@ -207,7 +207,7 @@ Status JitExecutor::CompileGraph(UserGraphExecution &task, uint64_t session_id) 
 Status JitExecutor::LoadGraph(UserGraphExecution &task) {
   ExecutionPoint *ep;
   GE_ASSERT_RT_OK(aclrtSetDevice(device_id_));
-  rtStream_t const stream = (task.stream == nullptr) ? stream_ : task.stream;
+  aclrtStream const stream = (task.stream == nullptr) ? stream_ : task.stream;
   std::vector<GeTensor> ge_tensors;
   GE_ASSERT_SUCCESS(TensorTransUtils::GertTensors2GeTensors(*task.external_rt_inputs, ge_tensors));
   GE_ASSERT_SUCCESS(order_.FirstPoint(ge_tensors, ep));
@@ -270,7 +270,7 @@ Status JitExecutor::RunWithCallback(UserGraphExecution &&task) {
       GE_ASSERT_SUCCESS(CopyHostInputToDeviceAfterSlice(inputs, input_mem_block, device_allocator_));
     }
   }
-  JIT_ASSERT_RT_OK(rtStreamSynchronize(stream_), task);
+  JIT_ASSERT_RT_OK(aclrtSynchronizeStream(stream_), task);
   GE_CHECK_NOTNULL(task.callback);
   std::vector<gert::Tensor> host_tensors;
   GE_ASSERT_SUCCESS(TensorTransUtils::TransGertTensorsToHost(*outputs, host_tensors));

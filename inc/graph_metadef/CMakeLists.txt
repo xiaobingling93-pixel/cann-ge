@@ -14,6 +14,7 @@ if (NOT DEFINED GE_METADEF_INC_DIR)
     set(GE_METADEF_DIR ${TOP_DIR}/air/graph_metadef)
     set(GE_METADEF_INC_DIR ${TOP_DIR}/air/inc/graph_metadef)
     set(AIR_CODE_DIR ${TOP_DIR}/air)
+    set(RUNTIME_CODE_DIR ${TOP_DIR}/runtime)
 else ()
     add_library(metadef_headers INTERFACE)
 endif ()
@@ -49,6 +50,7 @@ target_include_directories(metadef_headers INTERFACE
     $<BUILD_INTERFACE:${GE_METADEF_INC_DIR}/external/op_common>
     $<BUILD_INTERFACE:${GE_METADEF_INC_DIR}/graph/utils>
     $<BUILD_INTERFACE:${GE_METADEF_INC_DIR}/register>
+    $<BUILD_INTERFACE:${RUNTIME_CODE_DIR}/include/external>
 
     # --------------------start------------------------
     $<BUILD_INTERFACE:${GE_METADEF_DIR}>

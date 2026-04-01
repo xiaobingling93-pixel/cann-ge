@@ -137,7 +137,7 @@ ge::Status CachingMemAllocator::Finalize(bool no_log) {
 }
 
 ge::Status CachingMemAllocator::Synchronize() const {
-  // call rtStreamSynchronize
+  // call aclrtSynchronizeStream
   GE_ASSERT_SUCCESS(DoRtStreamSyncWithTimeout(stream_));
   return ge::SUCCESS;
 }

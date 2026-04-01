@@ -12,6 +12,7 @@
 
 #include "framework/runtime/stream_allocator.h"
 #include "depends/runtime/src/runtime_stub.h"
+#include "depends/ascendcl/src/ascendcl_stub.h"
 #include "framework/common/ge_inner_error_codes.h"
 
 namespace gert {
@@ -64,7 +65,7 @@ TEST_F(StreamAllocatorUT, AcquireStreams_FirstOneIsReserved) {
 
 TEST_F(StreamAllocatorUT, AcquireStreams_Fail_NoEnoughStreamResource) {
   uint32_t system_stream_cap = 0;
-  ASSERT_EQ(rtGetAvailStreamNum(RT_NORMAL_STREAM, &system_stream_cap), RT_ERROR_NONE);
+  ASSERT_EQ(aclrtGetStreamAvailableNum(&system_stream_cap), RT_ERROR_NONE);
   StreamAllocator sa;
   EXPECT_EQ(sa.AcquireStreams(system_stream_cap + 8U), nullptr);
 }

@@ -178,7 +178,7 @@ TEST_F(ModelConverterUT, ConvertWithRollBackSingleStreamForStreamNotEnough) {
   unsetenv("MOCK_AVAIL_STREAM_NUM");
 }
 TEST_F(ModelConverterUT, ConvertWithRollBackSingleStreamForRtsInterfaceReturnFail) {
-  // invalid stream num, rtGetAvailStreamNum will return fail
+  // invalid stream num, aclrtGetStreamAvailableNum will return fail
   setenv("MOCK_AVAIL_STREAM_NUM", "a", 0);
   gert::CreateVersionInfo();
   int64_t stream_num = 1;

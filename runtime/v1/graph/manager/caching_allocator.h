@@ -19,6 +19,7 @@
 #include "graph/manager/block_memory.h"
 #include "graph/manager/graph_mem_allocator.h"
 #include "runtime/mem.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 constexpr size_t kRoundBlockSize = 512U;         // all block sizes are rounded to at least 512 bytes
@@ -87,7 +88,7 @@ class CachingAllocator {
   /// @ingroup ge_graph
   /// @brief try to free memory after stream synchronize
   /// @return void
-  Status FreeBlocksAfterSynchronize(rtStream_t const stream);
+  Status FreeBlocksAfterSynchronize(aclrtStream const stream);
 
   /// @ingroup ge_graph
   /// @brief Set whether the allocator is binding to a stream

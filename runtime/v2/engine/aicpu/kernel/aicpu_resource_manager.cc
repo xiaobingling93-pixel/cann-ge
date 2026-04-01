@@ -128,7 +128,7 @@ std::function<AicpuHostProcFunc(std::string)> AicpuResourceManager::GetAicpuHost
 ge::graphStatus AicpuResourceManager::CheckOrCreateHandle(const std::string &op_name, const rtStream_t stream,
                                                           const GertTensorData *handle_data) {
   if (handles_.find(op_name) == handles_.end()) {
-    GE_ASSERT_RT_OK(rtStreamSynchronize(stream));
+    GE_ASSERT_RT_OK(aclrtSynchronizeStream(stream));
     uint64_t handle = 0;
     GE_ASSERT_RT_OK(rtMemcpy(&handle, sizeof(uint64_t), handle_data->GetAddr(), sizeof(uint64_t),
                              RT_MEMCPY_DEVICE_TO_HOST));

@@ -79,14 +79,14 @@ class ModelManager {
   /// @return Status run result
   /// @author @
   Status LoadModelOnline(uint32_t &model_id, const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                         const uint32_t device_id, const rtStream_t stream = nullptr);
+                         const uint32_t device_id, const aclrtStream stream = nullptr);
 
   Status DoLoadHybridModelOnline(const uint32_t model_id,
                                  const ModelData &model,
                                  const uint32_t device_id,
                                  const GeRootModelPtr &ge_root_model,
                                  const std::shared_ptr<ModelListener> &listener,
-                                 const rtStream_t stream = nullptr);
+                                 const aclrtStream stream = nullptr);
 
   /// @ingroup ge
   /// @brief ACL case, Load task list with queue.
@@ -147,7 +147,7 @@ class ModelManager {
   /// @param [in] input_desc  description of model input data
   /// @param [out] output_data  model output data
   /// @param [out] output_desc  description of model output data
-  Status ExecuteModel(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+  Status ExecuteModel(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                       const InputData &input_data, const std::vector<GeTensorDesc> &input_desc,
                       OutputData &output_data, std::vector<GeTensorDesc> &output_desc,
                       const std::vector<GeTensor> &input_tensor, const std::vector<GeTensor> &output_tensor);
@@ -159,23 +159,23 @@ class ModelManager {
   /// @param [in] async_mode  is asynchronize mode.
   /// @param [in] inputs  model inputs
   /// @param [in] outputs  model outputs
-  Status ExecuteModel(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+  Status ExecuteModel(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                       const std::vector<GeTensor> &input_tensor, std::vector<GeTensor> &output_tensor);
 
-  Status ExecuteModelAsync(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+  Status ExecuteModelAsync(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                            const std::vector<GeTensor> &input_tensor,
                            std::vector<GeTensor> &output_tensor);
 
   Status ExecuteModelWithStreamAsync(const uint32_t model_id, const GraphNodePtr &graph_node,
                                      const std::vector<gert::Tensor> &input_tensor,
-                                     std::vector<gert::Tensor> &output_tensor, const rtStream_t stream);
-  Status ExecuteModelWithStream(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+                                     std::vector<gert::Tensor> &output_tensor, const aclrtStream stream);
+  Status ExecuteModelWithStream(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                                   const std::vector<gert::Tensor> &input_tensor,
                                   std::vector<gert::Tensor> &output_tensor);
 
   Status ExecuteModelWithStreamAsync(const uint32_t model_id, const GraphNodePtr &graph_node,
                                      const std::vector<GeTensor> &input_tensor, std::vector<GeTensor> &output_tensor,
-                                     const rtStream_t stream = nullptr);
+                                     const aclrtStream stream = nullptr);
 
   Status SyncExecuteHybridModel(const uint32_t model_id, const std::vector<gert::Tensor> &inputs,
                                 std::vector<gert::Tensor> &outputs);
@@ -395,7 +395,7 @@ class ModelManager {
                               OutputData &output_data);
 
   Status ExternalAllocatorMalloc(const GraphId graph_id, const uint32_t model_id, const GraphNodePtr &graph_node,
-                                 const rtStream_t stream);
+                                 const aclrtStream stream);
   const std::map<std::string, AICPUKernelHolder> CollectWorkingBuiltinAicpuSo(const std::string &kernel_name,
                                                                               const uint32_t device_id);
   Status LoadBuiltinAicpuSo(const KernelBinPtr &aicpu_kernel, const uint32_t device_id, const std::string &so_name);

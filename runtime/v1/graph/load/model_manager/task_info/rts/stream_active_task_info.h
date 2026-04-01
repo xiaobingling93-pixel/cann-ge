@@ -28,7 +28,7 @@ class StreamActiveTaskInfo : public TaskInfo {
   Status Distribute() override;
 
  private:
-  rtStream_t active_stream_{nullptr};
+  aclrtStream active_stream_{nullptr};
   uint32_t active_stream_id_{0U};
   uint32_t op_index_{0U};
   OpDescPtr op_desc_{nullptr};

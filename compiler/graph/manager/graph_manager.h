@@ -105,10 +105,10 @@ class GraphManager {
   /// @param [in] inputs input data
   /// @param [out] outputs output data
   /// @return Status result of function
-  Status RunGraphWithStreamAsync(const GraphId &graph_id, const rtStream_t stream, uint64_t session_id,
+  Status RunGraphWithStreamAsync(const GraphId &graph_id, const aclrtStream stream, uint64_t session_id,
                                  const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs);
 
-  Status ExecuteGraphWithStreamAsync(const GraphId &graph_id, const rtStream_t stream,
+  Status ExecuteGraphWithStreamAsync(const GraphId &graph_id, const aclrtStream stream,
                                      const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs);
 
   /// @ingroup ge_graph
@@ -124,10 +124,10 @@ class GraphManager {
                                GeRootModelPtr &ge_root_model, uint64_t session_id = 0, bool async = false);
 
   Status InnerLoadGraph(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                        const rtStream_t stream = nullptr) const;
+                        const aclrtStream stream = nullptr) const;
 
   Status LoadGraph(const uint32_t graph_id, const std::map<AscendString, AscendString> &options,
-      const rtStream_t stream);
+      const aclrtStream stream);
 
   Status BuildGraphForUnregisteredOp(const GraphId &graph_id, const std::vector<GeTensor> &inputs,
                                      GeRootModelPtr &ge_root_model, uint64_t session_id);
@@ -242,7 +242,7 @@ class GraphManager {
   void UpdateLocalOmgContext(GraphId graph_id);
   Status StartForRunGraph(const GraphNodePtr &graph_node, const std::vector<GeTensor> &inputs,
                           GeRootModelPtr &ge_root_model, uint64_t session_id = INVALID_SESSION_ID,
-                          const rtStream_t stream = nullptr);
+                          const aclrtStream stream = nullptr);
   Status TranFrameOp(const GraphNodePtr &graph_node);
   Status RegisterExternalAllocator(const void *const stream, AllocatorPtr allocator) const;
   Status UnregisterExternalAllocator(const void * const stream) const;
@@ -300,7 +300,7 @@ class GraphManager {
   Status Build(const GraphNodePtr &graph_node, ComputeGraphPtr &compute_graph,
                GeRootModelPtr &ge_root_model, uint64_t session_id);
 
-  Status InnerRunGraphWithStream(const GraphNodePtr &graph_node, const GraphId &graph_id, rtStream_t stream,
+  Status InnerRunGraphWithStream(const GraphNodePtr &graph_node, const GraphId &graph_id, aclrtStream stream,
                                  const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs);
 
   Status ParseOptions(const std::map<std::string, std::string> &options);

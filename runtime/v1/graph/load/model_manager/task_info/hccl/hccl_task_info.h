@@ -87,7 +87,7 @@ class HcclTaskInfo : public TaskInfo {
   uint32_t logic_stream_id_{0U};
   DumpOp input_hccl_dump_;
   DumpOp output_hccl_dump_;
-  std::vector<rtStream_t> hccl_stream_list_;
+  std::vector<aclrtStream> hccl_stream_list_;
   OpsKernelInfoStore *ops_kernel_store_{nullptr};
   void *private_def_{nullptr};
   uint32_t private_def_len_{0U};

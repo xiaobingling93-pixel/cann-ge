@@ -43,7 +43,7 @@
 #include "register/core_num_utils.h"
 
 namespace ge {
-void CopyGeOutputsMemToUserOutputs(const rtStream_t stream, const std::vector<GeTensor> &ge_outputs,
+void CopyGeOutputsMemToUserOutputs(const aclrtStream stream, const std::vector<GeTensor> &ge_outputs,
                                    std::vector<Tensor> &outputs) {
   // if alloc output memory by external allocator, should copy to user.
   AllocatorPtr external_allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -425,7 +425,7 @@ Status InnerSession::RunGraph(uint32_t graph_id, const std::vector<gert::Tensor>
   }
 }
 
-Status InnerSession::ExecuteGraphWithStreamAsync(uint32_t graph_id, const rtStream_t stream,
+Status InnerSession::ExecuteGraphWithStreamAsync(uint32_t graph_id, const aclrtStream stream,
                                                  const std::vector<gert::Tensor> &inputs,
                                                  std::vector<gert::Tensor> &outputs) {
   if (logLevel_ <= DLOG_INFO) {
@@ -451,7 +451,7 @@ Status InnerSession::ExecuteGraphWithStreamAsync(uint32_t graph_id, const rtStre
   return SUCCESS;
 }
 
-Status InnerSession::RunGraphWithStreamAsync(uint32_t graph_id, rtStream_t stream,
+Status InnerSession::RunGraphWithStreamAsync(uint32_t graph_id, aclrtStream stream,
                                              const std::vector<Tensor> &inputs, std::vector<Tensor> &outputs) {
   if (logLevel_ <= DLOG_INFO) {
     GELOGI("Run graph with stream begin, session id = %lu, graph id = %u,"

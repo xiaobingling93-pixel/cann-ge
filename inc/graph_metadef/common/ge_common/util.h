@@ -23,6 +23,7 @@
 #include "common/ge_common/scope_guard.h"
 #include "common/ge_common/string_util.h"
 #include "common/ge_common/ge_inner_error_codes.h"
+#include "acl/acl_rt.h"
 
 using AddrGetter = std::function<const void*(size_t)>;
 
@@ -55,6 +56,13 @@ using AddrGetter = std::function<const void*(size_t)>;
   GE_MAKE_GUARD(var, [&]() {           \
     if ((var) != nullptr) {            \
       GE_CHK_RT(rtStreamDestroy(var)); \
+    }                                  \
+  })
+
+#define GE_MAKE_GUARD_ACLRTSTREAM(var) \
+  GE_MAKE_GUARD(var, [&]() {           \
+    if ((var) != nullptr) {            \
+      GE_CHK_RT(aclrtDestroyStream(var)); \
     }                                  \
   })
 

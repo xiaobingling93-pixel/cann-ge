@@ -18,6 +18,7 @@
 #include "graph/utils/tensor_utils.h"
 #include "exe_graph/runtime/storage_shape.h"
 #include "graph/node.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -69,7 +70,7 @@ REGISTER_KERNEL(UpdatePrefetchTaskInfo).RunFunc(UpdatePrefetchTaskInfo);
 ge::graphStatus LaunchCmoTask(KernelContext *const context) {
   auto cmo_args = context->GetInputPointer<rtCmoTaskInfo_t>(0UL);
   GE_ASSERT_NOTNULL(cmo_args);
-  auto stream = context->GetInputValue<rtStream_t>(1UL);
+  auto stream = context->GetInputValue<aclrtStream>(1UL);
   GE_ASSERT_RT_OK(ge::rtCmoTaskLaunch(cmo_args, stream, 0U));
   return ge::GRAPH_SUCCESS;
 }
@@ -78,7 +79,7 @@ static std::vector<std::string> LaunchCmoTracer(const KernelContext *context) {
   std::stringstream ss;
   auto cmo_args = context->GetInputPointer<rtCmoTaskInfo_t>(0UL);
   GE_ASSERT_NOTNULL(cmo_args);
-  auto stream = context->GetInputValue<rtStream_t>(1UL);
+  auto stream = context->GetInputValue<aclrtStream>(1UL);
   ss << "Launch cmo task with inner_len:" << cmo_args->lengthInner << ", src:" << cmo_args->sourceAddr
      << " on stream:" << stream;
   return {ss.str()};

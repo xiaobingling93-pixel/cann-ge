@@ -16,7 +16,7 @@
 
 namespace gert {
 namespace memory {
-L2MemPool::L2MemPool(ge::Allocator *allocator, rtStream_t stream, TypedContinuousVector<L2MemPool *> *all_l2_mem_pool)
+L2MemPool::L2MemPool(ge::Allocator *allocator, aclrtStream stream, TypedContinuousVector<L2MemPool *> *all_l2_mem_pool)
     : first_level_pool_(allocator, stream, all_l2_mem_pool),
       memory_pool_(new ScalableAllocator(span_allocator_, first_level_pool_, ScalableConfig())),
       stream_(stream) {
@@ -59,11 +59,11 @@ ge::Status L2MemPool::Finalize(bool no_log) {
   return memory_pool_->Finalize(no_log);
 }
 
-rtStream_t L2MemPool::GetStream() {
+aclrtStream L2MemPool::GetStream() {
   return stream_;
 }
 
-void L2MemPool::SetStream(rtStream_t stream) {
+void L2MemPool::SetStream(aclrtStream stream) {
   stream_ = stream;
   first_level_pool_.SetStream(stream);
 }

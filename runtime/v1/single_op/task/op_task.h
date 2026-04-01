@@ -78,8 +78,8 @@ class OpTask {
         task_id_(0U),
         stream_id_(0U) {};
   virtual ~OpTask() noexcept = default;
-  virtual Status LaunchKernel(rtStream_t const stream) = 0;
-  virtual Status PostProcess(rtStream_t const stream);
+  virtual Status LaunchKernel(aclrtStream const stream) = 0;
+  virtual Status PostProcess(aclrtStream const stream);
   virtual Status PreProcess(uint64_t &launch_begin_time) {
     launch_begin_time = MsprofSysCycleTime();
     return ge::SUCCESS;
@@ -101,7 +101,7 @@ class OpTask {
   virtual Status UpdateRunInfo();
   virtual Status UpdateArgTable(const SingleOpModelParam &param);
   void SetModelArgs(const std::string &model_name, const uint32_t model_id);
-  Status GetTaskIdAndStreamId(rtStream_t const stream);
+  Status GetTaskIdAndStreamId(aclrtStream const stream);
   Status ReportProfilingData(const uint64_t begin_time) const;
   Status ReportProfAdditionalInfo(const uint64_t end_time, const uint64_t op_name_hash, const int32_t tid) const;
   virtual Status ReportProfExtendInfo(const uint64_t end_time, const uint64_t op_name_hash, const int32_t tid) const {
@@ -115,13 +115,13 @@ class OpTask {
     op_desc_ = op_desc;
   }
   const OpDescPtr &GetOpdesc() const {return op_desc_;}
-  Status OpenDump(rtStream_t const stream);
+  Status OpenDump(aclrtStream const stream);
   virtual void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) = 0;
   virtual Status LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                               const std::vector<DataBuffer> &input_buffers,
                               std::vector<GeTensorDesc> &output_desc,
                               std::vector<DataBuffer> &output_buffers,
-                              rtStream_t const stream);
+                              aclrtStream const stream);
   virtual const std::string &GetTaskType() const;
   bool NeedReportAtomicTask() const { return clear_atomic_ && (atomic_task_ != nullptr); }
   AtomicAddrCleanOpTask *GetAtomicTask() const { return atomic_task_.get(); }
@@ -192,12 +192,12 @@ class TbeOpTask : public OpTask {
   TbeOpTask() = default;
   explicit TbeOpTask(const NodePtr &node) : OpTask(node) {}
   ~TbeOpTask() noexcept override;
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   Status LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                       const std::vector<DataBuffer> &input_buffers,
                       std::vector<GeTensorDesc> &output_desc,
                       std::vector<DataBuffer> &output_buffers,
-                      rtStream_t const stream) override;
+                      aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
   void SetStubFunc(const std::string &name, const void *const stub_func);
   void SetKernelArgs(std::unique_ptr<uint8_t[]> &&args, const size_t arg_size,
@@ -249,7 +249,7 @@ class TbeOpTask : public OpTask {
   Status ReportProfExtendInfo(const uint64_t end_time, const uint64_t op_name_hash, const int32_t tid) const override;
   void ResetDumperResource() override;
  protected:
-  virtual Status DoLaunchKernel(rtStream_t const stream);
+  virtual Status DoLaunchKernel(aclrtStream const stream);
 
  private:
   NodePtr node_;
@@ -271,12 +271,12 @@ class TbeOpTask : public OpTask {
   friend class MixL2TaskBuilder;
   friend class MixL2OpTask;
   Status UpdateArgsItem(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs);
-  Status DoLaunchKernelWithArgsEx(rtStream_t const stream);
+  Status DoLaunchKernelWithArgsEx(aclrtStream const stream);
   Status CheckAndExecuteAtomic(const std::vector<GeTensorDesc> &input_desc,
                                const std::vector<DataBuffer> &input_buffers,
                                std::vector<GeTensorDesc> &output_desc,
                                std::vector<DataBuffer> &output_buffers,
-                               rtStream_t const stream);
+                               aclrtStream const stream);
   virtual Status UpdateNodeByShape(const std::vector<GeTensorDesc> &input_desc,
                                    const std::vector<GeTensorDesc> &output_desc) const;
   virtual Status UpdateTilingArgs();
@@ -342,21 +342,21 @@ class AiCpuBaseTask : public OpTask {
 
   Status UpdateExtInfo(const std::vector<GeTensorDesc> &input_desc,
                        const std::vector<GeTensorDesc> &output_desc,
-                       rtStream_t const stream);
+                       aclrtStream const stream);
   Status UpdateOutputShape(std::vector<GeTensorDesc> &output_desc);
   Status UpdateShapeToOutputDesc(const GeShape &shape_new, GeTensorDesc &output_desc) const;
   Status UpdateShapeAndDataByResultSummary(std::vector<GeTensorDesc> &output_desc,
                                            std::vector<DataBuffer> &outputs,
-                                           rtStream_t const stream);
+                                           aclrtStream const stream);
   Status ReadResultSummaryAndPrepareMemory();
 
   Status PrepareCopyInputs(const std::vector<DataBuffer> &outputs);
 
   Status UpdateShapeByHbmBuffer(std::vector<GeTensorDesc> &output_desc);
 
-  virtual Status CopyDataToHbm(std::vector<DataBuffer> &outputs, rtStream_t stream) = 0;
+  virtual Status CopyDataToHbm(std::vector<DataBuffer> &outputs, aclrtStream stream) = 0;
   // for blocking aicpu op
-  Status DistributeWaitTaskForAicpuBlockingOp(rtStream_t const stream);
+  Status DistributeWaitTaskForAicpuBlockingOp(aclrtStream const stream);
   Status UpdateEventIdForBlockingAicpuOp();
   Status CheckDeviceSupportBlockingAicpuOpProcess(bool &is_support) const;
 
@@ -397,14 +397,14 @@ class AiCpuTask : public AiCpuBaseTask {
   AiCpuTask() = default;
   ~AiCpuTask() noexcept override;
 
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
 
   Status LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                       const std::vector<DataBuffer> &input_buffers,
                       std::vector<GeTensorDesc> &output_desc,
                       std::vector<DataBuffer> &output_buffers,
-                      rtStream_t const stream) override;
+                      aclrtStream const stream) override;
   Status SetMemCopyTask(const domi::KernelExDef &kernel_def);
   Status UpdateHostMemInputArgs(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs) override;
   bool IsSupportHostMemInputOptimize() const override { return true; }
@@ -417,7 +417,7 @@ class AiCpuTask : public AiCpuBaseTask {
  private:
   // for copy task.
   Status InitForSummaryAndCopy();
-  Status CopyDataToHbm(std::vector<DataBuffer> &outputs, rtStream_t const stream) override;
+  Status CopyDataToHbm(std::vector<DataBuffer> &outputs, aclrtStream const stream) override;
 
   friend class AiCpuTaskBuilder;
   void *workspace_addr_ = nullptr;
@@ -450,12 +450,12 @@ class AiCpuCCTask : public AiCpuBaseTask {
   AiCpuCCTask(const AiCpuCCTask &) = delete;
   AiCpuCCTask &operator=(const AiCpuCCTask &)& = delete;
   Status SetMemCopyTask(const domi::KernelDef &kernel_def);
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   Status LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                       const std::vector<DataBuffer> &input_buffers,
                       std::vector<GeTensorDesc> &output_desc,
                       std::vector<DataBuffer> &output_buffers,
-                      rtStream_t const stream) override;
+                      aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
   void SetKernelArgs(std::unique_ptr<uint8_t[]> args, const size_t arg_size);
   void SetSoName(const std::string &so_name);
@@ -466,7 +466,7 @@ class AiCpuCCTask : public AiCpuBaseTask {
   Status UpdateHostMemInputArgs(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs) override;
  private:
   Status InitForSummaryAndCopy();
-  Status CopyDataToHbm(std::vector<DataBuffer> &outputs, rtStream_t const stream) override;
+  Status CopyDataToHbm(std::vector<DataBuffer> &outputs, aclrtStream const stream) override;
   void GetHostArgsAndSize(uintptr_t &args, size_t &arg_size) override{
     args = reinterpret_cast<uintptr_t>(args_ex_.args);
     arg_size = args_ex_.argsSize;
@@ -498,7 +498,7 @@ class AiCpuCCTask : public AiCpuBaseTask {
 
 class MemcpyAsyncTask : public OpTask {
  public:
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
 
  private:
@@ -517,10 +517,10 @@ class MixL2OpTask : public TbeOpTask {
  public:
   explicit MixL2OpTask(const NodePtr &node) : TbeOpTask(node) {}
   ~MixL2OpTask() noexcept override;
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   Status LaunchKernel(const std::vector<GeTensorDesc> &input_desc, const std::vector<DataBuffer> &input_buffers,
                       std::vector<GeTensorDesc> &output_desc, std::vector<DataBuffer> &output_buffers,
-                      rtStream_t const stream) override;
+                      aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
   Status UpdateHostMemInputArgs(const std::vector<DataBuffer> &inputs, const std::vector<DataBuffer> &outputs) override;
 
@@ -540,7 +540,7 @@ class MixL2OpTask : public TbeOpTask {
   void SaveForL0ExceptionDump() override {};
   Status PreProcess(uint64_t &launch_begin_time) override;
  protected:
-  Status DoLaunchKernel(rtStream_t const stream) override;
+  Status DoLaunchKernel(aclrtStream const stream) override;
 
  private:
   friend class MixL2TaskBuilder;
@@ -567,7 +567,7 @@ class MixL2OpTask : public TbeOpTask {
 class NpuGetFloatStatusTask : public OpTask {
  public:
   ~NpuGetFloatStatusTask() noexcept override;
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
  private:
   friend class SingleOpModel;
@@ -582,7 +582,7 @@ class NpuGetFloatStatusTask : public OpTask {
 
 class NpuClearFloatStatusTask : public OpTask {
  public:
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override {
     arg_base = nullptr;
     arg_count = 0UL;
@@ -597,7 +597,7 @@ class NpuClearFloatStatusTask : public OpTask {
 class NpuGetFloatDebugStatusTask : public OpTask {
  public:
   ~NpuGetFloatDebugStatusTask() noexcept override;
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
  private:
   friend class SingleOpModel;
@@ -612,7 +612,7 @@ class NpuGetFloatDebugStatusTask : public OpTask {
 
 class NpuClearFloatDebugStatusTask : public OpTask {
  public:
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override {
     arg_base = nullptr;
     arg_count = 0UL;
@@ -626,13 +626,13 @@ class NpuClearFloatDebugStatusTask : public OpTask {
 
 class DsaTask : public OpTask {
  public:
-  Status LaunchKernel(rtStream_t const stream) override;
+  Status LaunchKernel(aclrtStream const stream) override;
   void GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) override;
   const std::string &GetTaskType() const override { return kTaskTypeDsa; }
  private:
   friend class DsaTaskBuilder;
 
-  Status UpdateDsaSqe(rtStream_t const stream);
+  Status UpdateDsaSqe(aclrtStream const stream);
   std::vector<void *> io_addr_;
   rtStarsDsaSqe_t dsa_sqe_;
   size_t input_size_{0UL};

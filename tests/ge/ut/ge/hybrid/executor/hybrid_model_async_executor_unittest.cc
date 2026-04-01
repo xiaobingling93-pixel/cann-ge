@@ -334,7 +334,7 @@ TEST_F(UtestHybridModelAsyncExecutor, Test_multiStream_execute_by_runGraph_with_
     rtStream_t stream = (void *)0x01;
     EXPECT_EQ(executor.Init(stream), SUCCESS);
     EXPECT_NE(executor.executor_, nullptr);
-    ASSERT_EQ(runtime_stub.GetRtsRuntimeStub().GetAllRtStreams().size(), 0);  // require 0 sub stream when load
+    ASSERT_EQ(runtime_stub.GetAclRuntimeStub().GetAllRtStreams().size(), 0);  // require 0 sub stream when load
 
     std::vector<GeTensor> inputs;
     const std::vector<uint8_t> tensor_data{1, 212, 32, 32};
@@ -350,7 +350,7 @@ TEST_F(UtestHybridModelAsyncExecutor, Test_multiStream_execute_by_runGraph_with_
     std::vector<gert::Tensor> gert_outputs_pro;
     ASSERT_EQ(executor.Execute(gert_inputs_pro, gert_outputs_pro), SUCCESS);
     EXPECT_EQ(executor.Init(stream), SUCCESS);
-    auto all_rt_streams = runtime_stub.GetRtsRuntimeStub().GetAllRtStreams();
+    auto all_rt_streams = runtime_stub.GetAclRuntimeStub().GetAllRtStreams();
     ASSERT_EQ(all_rt_streams.size(), 0); // execute on 1 streams, use external stream, no need create streams
     ASSERT_EQ(executor.ExecuteWithStreamAsync(inputs, outputs, stream), SUCCESS);
   }
@@ -432,7 +432,7 @@ TEST_F(UtestHybridModelAsyncExecutor, Test_execute_by_loadModelWithQueue_with_rt
   inputs.emplace_back(buffer);
   runtime_stub.Clear();
   ASSERT_EQ(executor.Execute(inputs, input_desc, outputs, output_desc), SUCCESS);
-  ASSERT_TRUE(runtime_stub.GetRtsRuntimeStub().GetRtMemcpyRecords().empty());
+  ASSERT_TRUE(runtime_stub.GetAclRuntimeStub().GetRtMemcpyRecords().empty());
   unsetenv("ENABLE_RUNTIME_V2");
 }
 

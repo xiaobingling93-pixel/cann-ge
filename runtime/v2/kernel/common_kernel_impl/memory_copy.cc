@@ -133,7 +133,7 @@ size_t CalcStringSize(const uint8_t *addr, const int64_t &shape_size) {
   }
   return string_size;
 };
-graphStatus CalcStringTensorSize(const gert::GertTensorData *const tensor_data, rtStream_t stream,
+graphStatus CalcStringTensorSize(const gert::GertTensorData *const tensor_data, aclrtStream stream,
                                  const StorageShape *storage_shape, ge::DataType datatype, uint64_t &tensor_size) {
   if (datatype != ge::DT_STRING) {
     GELOGE(ge::GRAPH_FAILED, "[Calc][String] data_type[%d] is not DT_STRING", datatype);
@@ -181,7 +181,7 @@ graphStatus CalcStringTensorSize(const gert::GertTensorData *const tensor_data, 
 
 // context only for KERNEL_TRACE_ALLOC_MEM
 ge::graphStatus CopyTensorDataToD(const StorageTensorDesc &tensor_desc, GertAllocator *gert_allocator,
-                                  rtStream_t stream, gert::GertTensorData *out_tensor_data,
+                                  aclrtStream stream, gert::GertTensorData *out_tensor_data,
                                   KernelContext *const context) {
   size_t alloc_size;
   GE_ASSERT_TRUE(CalcSize(tensor_desc.tensor_size, alloc_size));
@@ -235,7 +235,7 @@ ge::graphStatus GetStorageTensorDescByIndex(const KernelContext *const context, 
 }
 
 ge::graphStatus CopyH2D(KernelContext *context) {
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(MakeSureTensorAtDeviceInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(MakeSureTensorAtDeviceInputs::kStream));
   auto gert_allocator =
       context->MutableInputPointer<GertAllocator>(static_cast<size_t>(MakeSureTensorAtDeviceInputs::kAllocator));
   GE_ASSERT_NOTNULL(gert_allocator);
@@ -255,7 +255,7 @@ ge::graphStatus CopyH2D(KernelContext *context) {
 }
 
 ge::graphStatus MakeSureTensorAtHost(KernelContext *context) {
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(MakeSureTensorAtHostInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(MakeSureTensorAtHostInputs::kStream));
   auto copy_num = context->GetOutputNum();
   GE_ASSERT_EQ(static_cast<size_t>(MakeSureTensorAtHostInputs::kAddrAndLengthStart) + (copy_num * 2U),
                context->GetInputNum());
@@ -308,7 +308,7 @@ bool IsNeedMallocWhenMakeSureAtDevice(const TensorPlacement src_placement, const
 }
 
 ge::graphStatus MakeSureTensorAtDevice(KernelContext *context) {
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(MakeSureTensorAtDeviceInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(MakeSureTensorAtDeviceInputs::kStream));
   auto gert_allocator = context->MutableInputPointer<GertAllocator>(
       static_cast<size_t>(MakeSureTensorAtDeviceInputs::kAllocator));
   GE_ASSERT_NOTNULL(gert_allocator);
@@ -391,7 +391,7 @@ ge::graphStatus CopyD2D(KernelContext *context) {
   auto dst_tensor_data =
       context->GetInputValue<gert::GertTensorData *>(static_cast<size_t>(MemoryCopyD2DInputs::kDstAddress));
   auto tensor_size = context->GetInputValue<size_t>(static_cast<size_t>(MemoryCopyD2DInputs::kTensorSize));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(MemoryCopyInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(MemoryCopyInputs::kStream));
   if (src_tensor_data == nullptr || dst_tensor_data == nullptr) {
     return ge::GRAPH_FAILED;
   }
@@ -425,7 +425,7 @@ static auto g_copy_type = TableDriven2<kTensorPlacementEnd, kTensorPlacementEnd,
     .Add(kOnDeviceP2p, kOnDeviceP2p, RT_MEMCPY_DEVICE_TO_DEVICE);
 
 ge::graphStatus TensorToOut(const StorageShape &shape, GertTensorData &tensor_data,
-                            const BuildTensorAttr *tensor_attr, rtStream_t stream, Tensor &out_tensor) {
+                            const BuildTensorAttr *tensor_attr, aclrtStream stream, Tensor &out_tensor) {
   // 外部没有分配内存，share out
   auto dst_address = out_tensor.GetAddr();
   if (dst_address == nullptr) {
@@ -520,7 +520,7 @@ ge::graphStatus EnsureTensorAtOutMemory(KernelContext *context) {
 
   return TensorToOut(*shape, *gtd, tensor_attr,
                      // stream 为空指针的时候，代表默认流，因此stream不需要校验空指针
-                     context->GetInputValue<rtStream_t>(static_cast<size_t>(EnsureTensorAtOutMemoryInputs::kStream)),
+                     context->GetInputValue<aclrtStream>(static_cast<size_t>(EnsureTensorAtOutMemoryInputs::kStream)),
                      *out_tensor);
 }
 REGISTER_KERNEL(EnsureTensorAtOutMemory)
@@ -533,7 +533,7 @@ graphStatus CalcStringTensorSize(KernelContext *context) {
       context->GetInputPointer<StorageShape>(static_cast<size_t>(CalcStringTensorSizeInputs::kSrcShape));
   auto tensor_data =
       context->GetInputValue<gert::GertTensorData *>(static_cast<size_t>(CalcStringTensorSizeInputs::kSrcAddress));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(CalcStringTensorSizeInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(CalcStringTensorSizeInputs::kStream));
   auto string_tensor_size_ptr = context->GetOutputPointer<uint64_t>(0);
   GE_ASSERT_NOTNULL(storage_shape);
   GE_ASSERT_NOTNULL(tensor_data);
@@ -549,7 +549,7 @@ ge::graphStatus SinkWeightData(KernelContext *context) {
   auto src_info = context->GetInputPointer<GertTensorData>(static_cast<size_t>(SinkWeightDataInputs::kWeightData));
   auto dest_mem_info =
       context->GetInputPointer<gert::GertTensorData>(static_cast<size_t>(SinkWeightDataInputs::kDeviceBaseAddr));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(SinkWeightDataInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(SinkWeightDataInputs::kStream));
   GE_ASSERT_NOTNULL(src_info);
   GE_ASSERT_NOTNULL(dest_mem_info);
 

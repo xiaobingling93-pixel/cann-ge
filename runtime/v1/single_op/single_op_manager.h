@@ -38,16 +38,16 @@ class SingleOpManager {
 
   Status DeleteDynamicSingleOp(const uint64_t op_id);
 
-  StreamResource *GetResource(const uintptr_t resource_id, rtStream_t const stream);
+  StreamResource *GetResource(const uintptr_t resource_id, aclrtStream const stream);
 
   Status ReleaseResource(const void *const stream);
 
   void RegisterTilingFunc();
 
-  Status SetAllocator(rtStream_t const stream, Allocator *const allocator);
+  Status SetAllocator(aclrtStream const stream, Allocator *const allocator);
 
  private:
-  static Status GetResourceId(rtStream_t const stream, uintptr_t &resource_id);
+  static Status GetResourceId(aclrtStream const stream, uintptr_t &resource_id);
   std::recursive_mutex mutex_;
   bool tiling_func_registered_ = false;
   std::unordered_map<uintptr_t, std::unique_ptr<StreamResource>> stream_resources_;

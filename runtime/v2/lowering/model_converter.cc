@@ -423,8 +423,8 @@ bool NeedRollBackToSingleStream(int64_t total_stream_num, int64_t reusable_strea
     return false;
   }
   uint32_t free_stream_num = 0U;
-  auto ret = rtGetAvailStreamNum(RT_NORMAL_STREAM, &free_stream_num);
-  if (ret != RT_ERROR_NONE) {
+  auto ret = aclrtGetStreamAvailableNum(&free_stream_num);
+  if (ret != ACL_SUCCESS) {
     GELOGW("Fail to get available stream num on device. Better to roll back to single stream.");
     return true;
   }

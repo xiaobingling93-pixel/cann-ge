@@ -34,7 +34,7 @@ class MultiStreamL2Allocator : public GertAllocator {
                          TypedContinuousVector<L2MemPool *> *all_l2_mem_pool);
   explicit MultiStreamL2Allocator(
       ge::Allocator *allocator, TensorPlacement placement = kOnDeviceHbm, int64_t stream_id = 0,
-      rtStream_t stream = nullptr,
+      aclrtStream stream = nullptr,
       TypedContinuousVector<memory::MultiStreamL2Allocator *> *stream_ids_to_allocator = nullptr,
       TypedContinuousVector<L2MemPool *> *all_l2_mem_pool = nullptr);
   ~MultiStreamL2Allocator() override;
@@ -54,7 +54,7 @@ class MultiStreamL2Allocator : public GertAllocator {
 
   ge::graphStatus BirthRecycle(MultiStreamMemBlock *block);
   std::list<MultiStreamMemBlock *> GetAndClearBorrowBlocks(int64_t dst_stream_id);
-  void SetRtsStream(rtStream_t stream) {
+  void SetRtsStream(aclrtStream stream) {
     stream_ = stream;
     own_allocator_->SetStream(stream);
   }
@@ -99,7 +99,7 @@ class MultiStreamL2Allocator : public GertAllocator {
   MultiStreamMemBlockPool ms_block_pool_;
   BorrowAllocator borrow_allocator_;
   TiGtdAllocator ti_allocator_;
-  rtStream_t stream_;
+  aclrtStream stream_;
 };
 }  // namespace memory
 }  // namespace gert

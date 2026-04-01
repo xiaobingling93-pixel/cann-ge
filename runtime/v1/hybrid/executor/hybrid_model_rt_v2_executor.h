@@ -111,7 +111,7 @@ class GraphVarVisitor : public gert::RtVarManager {
 };
 class HybridModelRtV2Executor : public HybridModelExecutor {
  public:
-  explicit HybridModelRtV2Executor(HybridModel *const model, uint32_t device_id, const rtStream_t stream);
+  explicit HybridModelRtV2Executor(HybridModel *const model, uint32_t device_id, const aclrtStream stream);
   ~HybridModelRtV2Executor() override {
     if (executor_ != nullptr) {
       (void)executor_->Unload();
@@ -127,9 +127,9 @@ class HybridModelRtV2Executor : public HybridModelExecutor {
                             std::shared_ptr<ModelListener> listener) override;
   Status Init(CallbackManager *const callback_manager = nullptr) override;
   Status ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                const rtStream_t stream = nullptr) override;
+                                const aclrtStream stream = nullptr) override;
   Status ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
-                                std::vector<gert::Tensor> &outputs, const rtStream_t stream) override;
+                                std::vector<gert::Tensor> &outputs, const aclrtStream stream) override;
   Status Execute(const InputData &input_data, ExecuteArgs &args);
   Status Execute(ExecuteArgs &args) override;
   Status Execute(const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs,
@@ -153,9 +153,9 @@ class HybridModelRtV2Executor : public HybridModelExecutor {
   Status PostProcResult(std::vector<GeTensor> &outputs) const;
   Status InitCtx();
   Status CheckInputIsOnDevice();
-  Status AllocatorRecycle(const rtStream_t stream) const;
-  Status RecycleOutputs(std::vector<gert::Tensor> &outputs, const rtStream_t stream) const;
-  Status TryUpdateStreamCoreLimits(const rtStream_t stream);
+  Status AllocatorRecycle(const aclrtStream stream) const;
+  Status RecycleOutputs(std::vector<gert::Tensor> &outputs, const aclrtStream stream) const;
+  Status TryUpdateStreamCoreLimits(const aclrtStream stream);
 
   class RunCtx {
     friend class HybridModelRtV2Executor;

@@ -15,7 +15,7 @@ StreamExecutor::StreamExecutor(ModelV2ExecutorBuilder *builder) : builder_(build
 StreamExecutor::~StreamExecutor() {
   delete builder_;
 }
-ge::graphStatus StreamExecutor::Erase(rtStream_t stream) {
+ge::graphStatus StreamExecutor::Erase(aclrtStream stream) {
   const std::lock_guard<std::recursive_mutex> lock(mutex_);
   auto iter = streams_to_executor_.find(stream);
   if (iter != streams_to_executor_.end()) {
@@ -26,7 +26,7 @@ ge::graphStatus StreamExecutor::Erase(rtStream_t stream) {
   }
   return ge::GRAPH_SUCCESS;
 }
-ModelV2Executor *StreamExecutor::CreateAndLoad(rtStream_t stream, const ModelExecuteArg &arg) {
+ModelV2Executor *StreamExecutor::CreateAndLoad(aclrtStream stream, const ModelExecuteArg &arg) {
   GE_ASSERT_NOTNULL(builder_);
   GELOGD("Create a new executor for stream %p", stream);
   auto executor = builder_->Build();

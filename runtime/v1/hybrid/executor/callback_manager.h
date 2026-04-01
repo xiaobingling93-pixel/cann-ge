@@ -14,7 +14,7 @@
 #include <functional>
 #include "common/plugin/ge_make_unique_util.h"
 #include "ge/ge_api_error_codes.h"
-#include "runtime/stream.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -29,7 +29,7 @@ class CallbackManager {
 
   virtual Status Destroy() = 0;
 
-  virtual Status RegisterCallbackFunc(const rtStream_t stream, const std::function<void()> &callback) = 0;
+  virtual Status RegisterCallbackFunc(const aclrtStream stream, const std::function<void()> &callback) = 0;
 };
 }  // namespace hybrid
 }  // namespace ge

@@ -61,7 +61,7 @@ Status TensorValue2GeTensor(ge::hybrid::TensorValue &&tensor_value, const ConstG
 }
 namespace hybrid {
 HybridModelRtV1Executor::HybridModelRtV1Executor(HybridModel *const model, const uint32_t device_id,
-                                                 const rtStream_t stream, ThreadPool *const thread_pool)
+                                                 const aclrtStream stream, ThreadPool *const thread_pool)
     : HybridModelExecutor(model, device_id, stream),
       executor_(model_->GetRootGraphItem(), &context_, false, thread_pool),
       data_dumper_(nullptr) {}

@@ -34,7 +34,7 @@ Status ArgsFormatUtils::GetHcomHiddenInputs(const OpDescPtr &op_desc, const Davi
   GE_ASSERT_NOTNULL(op_desc);
   shared_ptr<std::vector<void *>> rt_resource_list = MakeShared<std::vector<void *>>();
   GE_CHECK_NOTNULL(rt_resource_list);
-  const std::vector<rtStream_t> &stream_list = davinci_model.GetStreamList();
+  const std::vector<aclrtStream> &stream_list = davinci_model.GetStreamList();
   const auto stream_ids = op_desc->GetAttachedStreamIds();
   if (!stream_ids.empty()) {
     GE_ASSERT_TRUE(stream_ids.size() == 1U, "Currently only support one attached stream id but got %zu, node %s",

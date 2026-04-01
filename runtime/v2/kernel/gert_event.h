@@ -18,7 +18,7 @@ namespace gert {
 // may delete later
 struct GertStream {
   int64_t logic_id;
-  rtStream_t stream;
+  aclrtStream stream;
 };
 
 struct EventInfo {

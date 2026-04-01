@@ -739,14 +739,14 @@ Status DavinciModel::UpdateStaticModelArgsByFm() {
     ConstructActiveMemBaseAddrs();
     // 此时已经确定了执行时是否走算子化刷新，使用正确的device地址来 更新对应io的device地址
     GE_ASSERT_SUCCESS(InitCopyHostInputInfos());
-    rtStream_t stream = nullptr;
-    GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
-    GE_MAKE_GUARD_RTSTREAM(stream);
+    aclrtStream stream = nullptr;
+    GE_CHK_RT_RET(aclrtCreateStream(&stream));
+    GE_MAKE_GUARD_ACLRTSTREAM(stream);
     // 加载阶段同老流程走全量model args h2d拷贝
     GE_ASSERT_SUCCESS(args_manager_.UpdateForExecute(ret_up, stream, kModelLoadStage));
     args_manager_.InitDfxStatsticsEnd();
     args_manager_.PrintDfxStatistics(kModelLoadStage);
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GELOGI("Sync stream successfully, model_id: %u", model_id_);
   } else if ((!feature_base_refreshable_) || (host_input_size_ > 0U)) {
     GELOGI("Update static model args, model_id: %u", model_id_);
@@ -766,7 +766,7 @@ Status DavinciModel::CreateHcclGroupOrderedEvent() {
   int32_t device_id = -1;
   GE_CHK_RT_RET(aclrtGetDevice(&device_id));
   for (const auto &group_id : hccl_group_id_set_) {
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
     if (HcomTopoInfo::Instance().GetGroupOrderedStream(device_id, group_id.c_str(), stream) != GRAPH_SUCCESS) {
       GELOGW("Cannot get hccl group order stream by deviceid:%d, group id:%s", device_id, group_id.c_str());
     } else {
@@ -883,11 +883,11 @@ Status DavinciModel::RecoverModel() {
     // 从流清理
     if (main_follow_stream_mapping_.find(pair.first) != main_follow_stream_mapping_.end()) {
       for (auto &follow_stream : main_follow_stream_mapping_[pair.first]) {
-        GE_CHK_RT_RET(rtStreamTaskClean(follow_stream));
+        GE_CHK_RT_RET(aclrtPersistentTaskClean(follow_stream));
       }
     }
 
-    GE_CHK_RT_RET(rtStreamTaskClean(ge::ValueToPtr(pair.first)));
+    GE_CHK_RT_RET(aclrtPersistentTaskClean(ge::ValueToPtr(pair.first)));
     for (auto &task_index : pair.second) {
       const auto &task_info = task_list_.at(static_cast<size_t>(task_index));
       GE_ASSERT_NOTNULL(task_info);
@@ -1454,7 +1454,7 @@ Status DavinciModel::InitRuntimeResource() {
       stream_flags |= RT_STREAM_OVERFLOW;
     }
 
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
     uint32_t task_num = 0U;
     // some graphs may have no task such as variable graph
     if (stream_task_num_.find(i) != stream_task_num_.end()) {
@@ -3162,7 +3162,7 @@ void* DavinciModel::GetMemEventIdAddr(const uint32_t mem_event_id) {
 /// @param [in] stream_id: Logical stream id.
 /// @param [out] stream: rt stream.
 /// @return Status
-Status DavinciModel::GetOpStream(const OpDescPtr &op_desc, const size_t stream_id, rtStream_t &stream) {
+Status DavinciModel::GetOpStream(const OpDescPtr &op_desc, const size_t stream_id, aclrtStream &stream) {
   if (stream_list_.size() == 1U) {
     stream = stream_list_[0U];
   } else if (stream_list_.size() > stream_id) {
@@ -3206,7 +3206,7 @@ Status DavinciModel::InitLabelSet(const OpDescPtr &op_desc) {
     return INTERNAL_ERROR;
   }
 
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   const size_t stream_id = static_cast<size_t>(op_desc->GetStreamId());
   GE_CHK_STATUS_RET_NOLOG(GetOpStream(op_desc, stream_id, stream));
 
@@ -6085,7 +6085,7 @@ uint32_t DavinciModel::GetThreadId(const domi::FftsPlusCtxDef &ctx_def) const {
   return tid;
 }
 
-Status DavinciModel::SetStreamLockOrUnlocK(rtStream_t stm, const bool is_lock) const {
+Status DavinciModel::SetStreamLockOrUnlocK(aclrtStream stm, const bool is_lock) const {
   if (stream_list_.size() != 1UL) { // only single physical stream can set lock or unlock currently
     return SUCCESS;
   }
@@ -7536,7 +7536,7 @@ Status DavinciModel::InitCase(const OpDescPtr &op_desc) {
 /// @param [in] stream   user input model stream.
 /// @return Status
 ///
-Status DavinciModel::InitModelStream(rtStream_t const stream) {
+Status DavinciModel::InitModelStream(aclrtStream const stream) {
   const ExecuteMode curr_mode = is_async_mode_ ? ExecuteMode::ASYNCHRONIZATION : ExecuteMode::SYNCHRONIZATION;
   GE_CHK_BOOL_RET_STATUS((curr_mode == last_execute_mode_) || (last_execute_mode_ == ExecuteMode::INITIALIZATION),
                          INTERNAL_ERROR, "[Check][Param] NnExecute not support mix execute.");
@@ -7609,7 +7609,7 @@ Status DavinciModel::CheckRtStreamSynchronize(rtError_t rt_ret) {
   return SUCCESS;
 }
 
-Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode,
+Status DavinciModel::NnExecute(aclrtStream const stream, const bool async_mode,
                                const std::vector<gert::Tensor> &input_tensor,
                                std::vector<gert::Tensor> &output_tensor) {
   InitModelExecuteProf();
@@ -7714,7 +7714,7 @@ Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode,
 /// @param [in] input_data  model input data.
 /// @param [out] output_data  model output data.
 ///
-Status DavinciModel::NnExecute(rtStream_t const stream, const bool async_mode, const InputData &input_data,
+Status DavinciModel::NnExecute(aclrtStream const stream, const bool async_mode, const InputData &input_data,
                                OutputData &output_data, const std::vector<GeTensor> &input_tensor,
                                const std::vector<GeTensor> &output_tensor) {
   InitModelExecuteProf();
@@ -8173,17 +8173,17 @@ uint32_t DavinciModel::GetFlowctrlIndex(const uint32_t op_index) {
   return (flowctrl_op_index_internal_map_[op_index]) - 1U;
 }
 
-void DavinciModel::PushHcclStream(rtStream_t const hccl_stream) {
+void DavinciModel::PushHcclStream(aclrtStream const hccl_stream) {
   const std::lock_guard<std::mutex> lk(all_hccl_stream_list_mutex_);
   all_hccl_stream_list_.push_back(hccl_stream);
 }
 
-void DavinciModel::SetHcclTaskStream(rtStream_t const hccl_stream) {
+void DavinciModel::SetHcclTaskStream(aclrtStream const hccl_stream) {
   const std::lock_guard<std::mutex> lk(hccl_task_stream_set_mutex_);
   (void) hccl_task_stream_set_.insert(ge::PtrToValue(hccl_stream));
 }
 
-void DavinciModel::SaveHcclFollowStream(const int64_t main_stream_id, rtStream_t stream) {
+void DavinciModel::SaveHcclFollowStream(const int64_t main_stream_id, aclrtStream stream) {
   const std::lock_guard<std::mutex> lk(capacity_of_stream_mutex_);
   main_follow_stream_mapping_[main_stream_id].emplace_back(stream);
 }
@@ -8276,7 +8276,7 @@ Status DavinciModel::GetTotalMemSizeExcludeZeroCopy(int64_t &total_useful_size) 
   return SUCCESS;
 }
 
-Status DavinciModel::GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtStream_t const stream,
+Status DavinciModel::GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, aclrtStream const stream,
                                                   uint32_t &event_id) {
   GELOGI("Get event id for aicpu blocking op:%s", op_desc->GetName().c_str());
   const auto it = stream_2_event_.find(stream);
@@ -8298,7 +8298,7 @@ Status DavinciModel::GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtSt
   return SUCCESS;
 }
 
-Status DavinciModel::GetEventByStream(rtStream_t const stream, aclrtEvent &rt_event) {
+Status DavinciModel::GetEventByStream(aclrtStream const stream, aclrtEvent &rt_event) {
   const auto it = stream_2_event_.find(stream);
   if (it == stream_2_event_.end()) {
     REPORT_INNER_ERR_MSG("E19999", "Get event failed");
@@ -8327,7 +8327,7 @@ Status DavinciModel::AllocateQueueResource(const Node &node, const OpDescPtr &op
 }
 
 Status DavinciModel::AllocateDvppChlResource(const OpDescPtr &op_desc) {
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   const size_t stream_id = static_cast<size_t>(op_desc->GetStreamId());
   GE_CHK_STATUS_RET_NOLOG(GetOpStream(op_desc, stream_id, stream));
   int32_t rt_stream_id = kInvalidStream;
@@ -8339,7 +8339,7 @@ Status DavinciModel::AllocateDvppChlResource(const OpDescPtr &op_desc) {
 }
 
 Status DavinciModel::AllocateVdecChlResource(const OpDescPtr &op_desc) {
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   const size_t stream_id = static_cast<size_t>(op_desc->GetStreamId());
   GE_CHK_STATUS_RET_NOLOG(GetOpStream(op_desc, stream_id, stream));
   int32_t rt_stream_id = kInvalidStream;
@@ -9026,14 +9026,14 @@ Status DavinciModel::LaunchFromPlatformSo(const std::string &platform_so_path) {
     const std::string &addr_key = it.first;
     auto cust_platform_infos_addr = it.second.first;
     GELOGI("Launch custom platform infos: addr_key[%s], addr[%p].", addr_key.c_str(), cust_platform_infos_addr);
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
     const std::function<void()> callback = [&stream]() {
       if (stream != nullptr) {
-        GE_CHK_RT(rtStreamDestroy(stream));
+        GE_CHK_RT(aclrtDestroyStream(stream));
       }
     };
     GE_MAKE_GUARD(release, callback);
-    GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
+    GE_CHK_RT_RET(aclrtCreateStream(&stream));
     LaunchKernelParam launch_param;
     launch_param.block_dim = 1U;
     launch_param.stream = stream;
@@ -9050,7 +9050,7 @@ Status DavinciModel::LaunchFromPlatformSo(const std::string &platform_so_path) {
     GELOGI("Launch custom platform infos: so_path[%s], kernel_name[%s], stream[%" PRIu64 "].",
            platform_so_path.c_str(), kAicpuCustLoadPlatformInfo.c_str(), PtrToValue(stream));
     cust_platform_infos_addr_[addr_key] = cust_platform_infos_addr;
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GELOGI("Succeed to launch custom platform infos task.");
   }
   cust_platform_infos_addr_to_launch_.clear();
@@ -9068,14 +9068,14 @@ Status DavinciModel::LaunchFromOpMasterSo() {
     const std::string &addr_key = it.first;
     auto cust_platform_infos_addr = it.second.first;
     GELOGI("Launch custom platform infos: addr_key[%s], addr[%p].", addr_key.c_str(), cust_platform_infos_addr);
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
     const std::function<void()> callback = [&stream]() {
       if (stream != nullptr) {
-        GE_CHK_RT(rtStreamDestroy(stream));
+        GE_CHK_RT(aclrtDestroyStream(stream));
       }
     };
     GE_MAKE_GUARD(release, callback);
-    GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
+    GE_CHK_RT_RET(aclrtCreateStream(&stream));
     LoadCustPlatformInfosArgs load_args = {};
     load_args.args = PtrToValue(cust_platform_infos_addr) + it.second.second;
     load_args.args_size = static_cast<uint64_t>(sizeof(PlatformInfosLaunchArgs));
@@ -9090,7 +9090,7 @@ Status DavinciModel::LaunchFromOpMasterSo() {
     cust_platform_infos_addr_[addr_key] = cust_platform_infos_addr;
     GELOGI("Launch custom platform infos: kernel_name[%s], stream[%" PRIu64 "].",
         kAicpuCustLoadPlatformInfo.c_str(), PtrToValue(stream));
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GELOGI("Succeed to launch custom platform infos task.");
   }
   cust_platform_infos_addr_to_launch_.clear();
@@ -9172,7 +9172,7 @@ std::string DavinciModel::GetWeightsMemId() const {
   return to_string(runtime_param_.session_id) + "_" + to_string(GetGraphId()) + "_" + runtime_param_.graph_name;
 }
 
-Status DavinciModel::LaunchEventForHcclGroupOrderedStream(rtStream_t const stream) {
+Status DavinciModel::LaunchEventForHcclGroupOrderedStream(aclrtStream const stream) {
   if (!is_async_mode_) {
     GELOGI("model[%u] is sync execute.", model_id_);
     return SUCCESS;

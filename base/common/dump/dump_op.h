@@ -16,8 +16,8 @@
 #include "graph/op_desc.h"
 #include "common/dump/dump_properties.h"
 #include "proto/op_mapping.pb.h"
-#include "runtime/stream.h"
 #include "runtime/mem.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 struct RealAddressAndSize {
@@ -44,7 +44,7 @@ class DumpOp {
 
   void SetDumpInfo(const DumpProperties &dump_properties, const OpDescPtr &op_desc,
                    const std::vector<uintptr_t> &input_addrs, const std::vector<uintptr_t> &output_addrs,
-                   rtStream_t const stream);
+                   aclrtStream const stream);
   Status LaunchDumpOp(const bool is_single_op_dump, bool need_device_args = false);
   void SetLoopAddr(const uintptr_t global_step, const uintptr_t loop_per_iter, const uintptr_t loop_cond);
   void SetDynamicModelInfo(const std::string &dynamic_model_name, const std::string &dynamic_om_name,
@@ -91,7 +91,7 @@ class DumpOp {
   void *proto_size_dev_mem_ = nullptr;
   void *dev_mem_unload_{nullptr};
   toolkit::aicpu::dump::OpMappingInfo op_mapping_info_;
-  rtStream_t stream_;
+  aclrtStream stream_;
   uintptr_t global_step_ = 0U;
   uintptr_t loop_per_iter_ = 0U;
   uintptr_t loop_cond_ = 0U;

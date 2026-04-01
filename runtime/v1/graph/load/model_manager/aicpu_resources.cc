@@ -149,9 +149,9 @@ Status AiCpuResources::BuildCreateVdecChannelTask(const int32_t rt_stream_id,
 Status AiCpuResources::ExecuteKernel(const char_t *const so_name,
                                      const std::string &kernel_name,
                                      const std::vector<uint8_t> &task_args) {
-  rtStream_t stream = nullptr;
-  GE_CHK_RT_RET(rtStreamCreate(&stream, kDefaultPriority));
-  GE_MAKE_GUARD_RTSTREAM(stream);
+  aclrtStream stream = nullptr;
+  GE_CHK_RT_RET(aclrtCreateStream(&stream));
+  GE_MAKE_GUARD_ACLRTSTREAM(stream);
   rtArgsEx_t args_info = {};
   args_info.args = const_cast<void *>(static_cast<const void *>(task_args.data()));
   args_info.argsSize = static_cast<uint32_t>(task_args.size());
@@ -159,7 +159,7 @@ Status AiCpuResources::ExecuteKernel(const char_t *const so_name,
   GE_CHK_RT_RET(rtCpuKernelLaunchWithFlag(so_name,
       kernel_name.c_str(), kKernelBlockDim, &args_info, nullptr, stream, RT_KERNEL_DEFAULT));
   GELOGD("Launch kernel successfully, kernel name = %s", kernel_name.c_str());
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   GELOGD("Sync stream successfully, kernel name = %s", kernel_name.c_str());
   return SUCCESS;
 }

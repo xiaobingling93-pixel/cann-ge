@@ -117,7 +117,7 @@ Status GraphExecutor::ExecuteGraphAsync(const GeRootModelPtr &ge_root_model, con
   return SUCCESS;
 }
 
-Status GraphExecutor::ExecuteGraphWithStream(rtStream_t const stream, const GraphNodePtr &graph_node,
+Status GraphExecutor::ExecuteGraphWithStream(aclrtStream const stream, const GraphNodePtr &graph_node,
                                              const GeRootModelPtr &ge_root_model,
                                              const std::vector<gert::Tensor> &input_tensor,
                                              std::vector<gert::Tensor> &output_tensor) const {
@@ -132,7 +132,7 @@ Status GraphExecutor::ExecuteGraphWithStream(rtStream_t const stream, const Grap
   return SUCCESS;
 }
 
-Status GraphExecutor::ExecuteGraphWithStream(rtStream_t const stream, const GraphNodePtr &graph_node,
+Status GraphExecutor::ExecuteGraphWithStream(aclrtStream const stream, const GraphNodePtr &graph_node,
                                              const GeRootModelPtr &ge_root_model,
                                              const std::vector<GeTensor> &input_tensor,
                                              std::vector<GeTensor> &output_tensor) const {

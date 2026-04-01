@@ -128,7 +128,7 @@ Status EnsureModelVarMemoryMalloced(const GeRootModelPtr &model, const std::shar
   return SUCCESS;
 }
 
-ge::Status DoRtStreamSyncWithTimeout(rtStream_t stream) {
+ge::Status DoRtStreamSyncWithTimeout(aclrtStream stream) {
   auto timeout = ge::GetContext().StreamSyncTimeout();
   auto rt_ret = rtStreamSynchronizeWithTimeout(stream, timeout);
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
@@ -624,7 +624,7 @@ Status GraphVarVisitor::GetVarShapeAndMemory(const std::string &id, gert::Storag
   return SUCCESS;
 }
 
-HybridModelRtV2Executor::HybridModelRtV2Executor(HybridModel *const model, uint32_t device_id, const rtStream_t stream)
+HybridModelRtV2Executor::HybridModelRtV2Executor(HybridModel *const model, uint32_t device_id, const aclrtStream stream)
     : HybridModelExecutor(model, device_id, stream), num_inputs_(0U), num_outputs_(0U) {
 }
 
@@ -911,14 +911,14 @@ Status HybridModelRtV2Executor::HandleResult(const Status exec_ret,
  * rt_outputs_保存gert::Tensor裸指针，指向outputs中的对象。outputs.clear()会触发内存释放，
  * 因此rt_outputs_中变成了无效指针，在为外部StepDoneV2中会赋值为null。
  */
-Status HybridModelRtV2Executor::RecycleOutputs(std::vector<gert::Tensor> &outputs, const rtStream_t stream) const {
+Status HybridModelRtV2Executor::RecycleOutputs(std::vector<gert::Tensor> &outputs, const aclrtStream stream) const {
   GELOGI("recycle outputs. graph %s, stream: %p", name_.c_str(), stream);
   outputs.clear();
   GE_ASSERT_SUCCESS(AllocatorRecycle(stream_));
   return SUCCESS;
 }
 
-Status HybridModelRtV2Executor::AllocatorRecycle(const rtStream_t stream) const {
+Status HybridModelRtV2Executor::AllocatorRecycle(const aclrtStream stream) const {
   const auto allocators = const_cast<ScalableAllocatorManager *>(&allocator_manager_)->GetAllocator("", stream);
   if (allocators != nullptr) {
     auto *allocator =
@@ -1024,7 +1024,7 @@ static Status InputTensorValidate(const std::vector<gert::Tensor> &inputs, size_
   return SUCCESS;
 }
 
-Status HybridModelRtV2Executor::TryUpdateStreamCoreLimits(const rtStream_t stream) {
+Status HybridModelRtV2Executor::TryUpdateStreamCoreLimits(const aclrtStream stream) {
   bool update_stream_core_num = false;
   int32_t aicore_num = -1;
   int32_t vectorcore_num = -1;
@@ -1054,7 +1054,7 @@ Status HybridModelRtV2Executor::TryUpdateStreamCoreLimits(const rtStream_t strea
 }
 
 Status HybridModelRtV2Executor::ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
-                                                       std::vector<gert::Tensor> &outputs, const rtStream_t stream) {
+                                                       std::vector<gert::Tensor> &outputs, const aclrtStream stream) {
   logLevel_ = dlog_getlevel(GE_MODULE_NAME, nullptr);
   if (logLevel_ <= DLOG_INFO) {
     GELOGI("Start execute ExecuteWithStreamAsync with rtv2 executor of graph %s", name_.c_str());
@@ -1113,7 +1113,7 @@ Status HybridModelRtV2Executor::ExecuteWithStreamAsync(const std::vector<gert::T
 }
 
 Status HybridModelRtV2Executor::ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs,
-                                                       std::vector<GeTensor> &outputs, const rtStream_t stream) {
+                                                       std::vector<GeTensor> &outputs, const aclrtStream stream) {
   logLevel_ = dlog_getlevel(GE_MODULE_NAME, nullptr);
   if (logLevel_ <= DLOG_INFO) {
     GELOGI("Start execute ExecuteWithStreamAsync with rtv2 executor of graph %s", name_.c_str());

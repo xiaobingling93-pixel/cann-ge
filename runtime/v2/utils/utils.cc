@@ -25,15 +25,15 @@
 
 namespace gert {
 namespace {
-ge::Status GetStreamByIndex(const Node *node, rtStream_t &stream, size_t index) {
+ge::Status GetStreamByIndex(const Node *node, aclrtStream &stream, size_t index) {
   auto kernel_context = reinterpret_cast<const KernelContext *>(&node->context);
   GE_ASSERT_NOTNULL(kernel_context);
-  stream = kernel_context->GetInputValue<rtStream_t>(index);
+  stream = kernel_context->GetInputValue<aclrtStream>(index);
   return ge::SUCCESS;
 }
 }  // namespace
 
-ge::Status DoRtStreamSyncWithTimeout(rtStream_t stream) {
+ge::Status DoRtStreamSyncWithTimeout(aclrtStream stream) {
   auto timeout = ge::GetContext().StreamSyncTimeout();
   auto rt_ret = rtStreamSynchronizeWithTimeout(stream, timeout);
   if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {
@@ -50,7 +50,7 @@ ge::Status DoRtStreamSyncWithTimeout(rtStream_t stream) {
   return ge::SUCCESS;
 }
 
-ge::Status GetKernelStream(const Node *node, rtStream_t &stream) {
+ge::Status GetKernelStream(const Node *node, aclrtStream &stream) {
   if (node == nullptr) {
     return ge::SUCCESS;
   }

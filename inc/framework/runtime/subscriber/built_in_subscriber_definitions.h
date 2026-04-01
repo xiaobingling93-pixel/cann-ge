@@ -18,7 +18,7 @@
 #include "exe_graph/runtime/kernel_run_context.h"
 #include "graph/anchor.h"
 #include "framework/common/profiling_definitions.h"
-#include "runtime/base.h"
+#include "acl/acl_rt.h"
 #include "graph/fast_graph/execute_graph.h"
 
 namespace ge {
@@ -85,7 +85,7 @@ struct SubscriberExtendInfo {
                        const ge::ComputeGraphPtr &out_root_graph, const ge::ModelData &out_model_data,
                        const std::shared_ptr<ge::GeRootModel> &out_root_model,
                        const SymbolsToValue &out_symbols_to_value, const uint32_t out_model_id,
-                       const std::string &out_model_name, const rtStream_t out_stream,
+                       const std::string &out_model_name, const aclrtStream out_stream,
                        const std::unordered_map<std::string, TraceAttr> &out_node_names_to_attrs)
       : executor(out_executor),
         exe_graph(out_exe_graph),
@@ -112,7 +112,7 @@ struct SubscriberExtendInfo {
   SymbolsToValue symbols_to_value;
   uint32_t model_id;
   std::string model_name;
-  rtStream_t stream;
+  aclrtStream stream;
   std::unordered_map<std::string, TraceAttr> node_names_to_attrs;
 };
 
