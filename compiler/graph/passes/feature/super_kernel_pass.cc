@@ -52,6 +52,14 @@ namespace {
     (void)AttrUtils::GetBool(op_desc, "_hccl", is_hccl_support_sk);
     return is_hccl_support_sk;
   }
+  bool IsIgnoreType(const NodePtr node) {
+    return (IsSendRcvNode(node) ||
+           (node->GetType() == ge::DATA) ||
+           (node->GetType() == ge::VARIABLE) ||
+           (node->GetType() == ge::CONSTANT) ||
+           (node->GetType() == ge::CONSTANTOP) ||
+           (node->GetType() == ge::CONSTPLACEHOLDER));
+  }
 }
 
 Status SuperKernelPass::Run(ge::ComputeGraphPtr graph) {
@@ -75,6 +83,12 @@ Status SuperKernelPass::Run(ge::ComputeGraphPtr graph) {
     size_t cur_pos = ori_stream_ordered_nodes_[stream_id].size() - 1;
     if (IsSendRcvNode(node)) {
       send_rcv_nodes.emplace_back(node);
+    }
+    if (IsIgnoreType(node)) {
+      // 此处对于data,cost这类非计算节点，上层可能直接with scope会带入sk属性，对于这种节点内部直接忽略。
+      // 所以此处直接删除_super_kernel_scope，避免对后续逻辑产生干扰。
+      op_desc->DelAttr(super_scope_key);
+      continue;
     }
     std::string super_scope_name;
     (void)AttrUtils::GetStr(op_desc, super_scope_key, super_scope_name);
@@ -263,13 +277,7 @@ Status SuperKernelPass::SelectFusionScope() {
         GE_ASSERT_TRUE(it_ordered != ori_stream_ordered_nodes_.end());
         auto cur_node = it_ordered->second.at(i);
         GE_ASSERT_NOTNULL(cur_node);
-        bool ignore_node_type = (IsSendRcvNode(cur_node) ||
-                                 (cur_node->GetType() == ge::DATA) ||
-                                 (cur_node->GetType() == ge::VARIABLE) ||
-                                 (cur_node->GetType() == ge::CONSTANT) ||
-                                 (cur_node->GetType() == ge::CONSTANTOP) ||
-                                 (cur_node->GetType() == ge::CONSTPLACEHOLDER));
-        if (ignore_node_type) {
+        if (IsIgnoreType(cur_node)) {
           continue;
         }
         std::string super_scope_name;
