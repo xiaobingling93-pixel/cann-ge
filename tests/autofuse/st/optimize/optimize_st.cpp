@@ -4433,25 +4433,25 @@ TEST_F(OptimizerSt, EliminateSizeVar) {
 
   EXPECT_EQ(
     fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[0].impl_graphs[0].GetAllSizeVar().size(),
-    3UL);
-  EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[1].impl_graphs[0].GetAllSizeVar().size(),
     4UL);
   EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[2].impl_graphs[0].GetAllSizeVar().size(),
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[1].impl_graphs[0].GetAllSizeVar().size(),
     5UL);
   EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[3].impl_graphs[0].GetAllSizeVar().size(),
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[2].impl_graphs[0].GetAllSizeVar().size(),
     6UL);
   EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[4].impl_graphs[0].GetAllSizeVar().size(),
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[3].impl_graphs[0].GetAllSizeVar().size(),
     7UL);
   EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[5].impl_graphs[0].GetAllSizeVar().size(),
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[4].impl_graphs[0].GetAllSizeVar().size(),
     8UL);
   EXPECT_EQ(
-    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[6].impl_graphs[0].GetAllSizeVar().size(),
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[5].impl_graphs[0].GetAllSizeVar().size(),
     9UL);
+  EXPECT_EQ(
+    fused_scheduled_result.node_idx_to_scheduled_results[0][0].schedule_groups[6].impl_graphs[0].GetAllSizeVar().size(),
+    10UL);
 }
 
 TEST_F(OptimizerSt, SliceSliceConcatD) {
