@@ -2167,6 +2167,52 @@ class TestSizeExprArithmetic():
         assert debug_str
 
 
+    @staticmethod
+    def test_subtraction_basic():
+        """Test basic subtraction between SizeExpr"""
+        s0 = ascir.SizeExpr(10)
+        s1 = ascir.SizeExpr(3)
+        result = s0 - s1
+        assert result == 7
+
+    @staticmethod
+    def test_subtraction_with_int():
+        """Test subtraction with integer operand"""
+        s0 = ascir.SizeExpr(100)
+        result = s0 - 42
+        assert result == 58
+
+    @staticmethod
+    def test_subtraction_to_zero():
+        """Test subtraction resulting in zero"""
+        s0 = ascir.SizeExpr(50)
+        s1 = ascir.SizeExpr(50)
+        result = s0 - s1
+        assert result == 0
+
+    @staticmethod
+    def test_negate_basic():
+        """Test unary negation of SizeExpr"""
+        s0 = ascir.SizeExpr(42)
+        result = -s0
+        assert result == -42
+
+    @staticmethod
+    def test_negate_zero():
+        """Test unary negation of zero"""
+        s0 = ascir.SizeExpr(0)
+        result = -s0
+        assert result == 0
+
+    @staticmethod
+    def test_negate_combined_with_add():
+        """Test negation combined with addition"""
+        s0 = ascir.SizeExpr(10)
+        s1 = ascir.SizeExpr(3)
+        result = s0 + (-s1)
+        assert result == 7
+
+
 class TestSizeExprEdgeCases():
     """Test SizeExpr edge cases and boundary conditions"""
 

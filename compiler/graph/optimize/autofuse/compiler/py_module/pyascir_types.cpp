@@ -356,6 +356,20 @@ PyObject *SizeExpr::Mul(PyObject *self, PyObject *args) {
   return FromSizeExpr(left * right);
 }
 
+PyObject *SizeExpr::Sub(PyObject *self, PyObject *args) {
+  ge::Expression left = SizeExpr::AsSizeExpr(self);
+  PY_ASSERT_TRUE(left.IsValid(), "left operand of sub is not a valid SizeExpr");
+  ge::Expression right = SizeExpr::AsSizeExpr(args);
+  PY_ASSERT_TRUE(right.IsValid(), "right operand of sub is not a valid SizeExpr");
+  return FromSizeExpr(left - right);
+}
+
+PyObject *SizeExpr::Negate(PyObject *self) {
+  ge::Expression expr = SizeExpr::AsSizeExpr(self);
+  PY_ASSERT_TRUE(expr.IsValid(), "operand of negate is not a valid SizeExpr");
+  return FromSizeExpr(ge::sym::Neg(expr));
+}
+
 PyObject *SizeExpr::Pow(PyObject *self, PyObject *args, PyObject *modulo) {
   (void)modulo;
   ge::Expression left = SizeExpr::AsSizeExpr(self);
@@ -1099,6 +1113,8 @@ void pyascir_types_type_init() {
   pyascir_graph_types_type_init();
   // SizeExpr::NumberMethods
   SizeExpr::NumberMethods.nb_add = SizeExpr::Add;
+  SizeExpr::NumberMethods.nb_subtract = SizeExpr::Sub;
+  SizeExpr::NumberMethods.nb_negative = SizeExpr::Negate;
   SizeExpr::NumberMethods.nb_multiply = SizeExpr::Mul;
   SizeExpr::NumberMethods.nb_power = SizeExpr::Pow;
   SizeExpr::NumberMethods.nb_true_divide = SizeExpr::Div;

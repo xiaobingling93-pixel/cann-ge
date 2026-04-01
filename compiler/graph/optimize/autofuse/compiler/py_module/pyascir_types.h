@@ -42,6 +42,8 @@ class SizeExpr {
   static PyObject *Add(PyObject *self, PyObject *args);
   static PyObject *Mul(PyObject *self, PyObject *args);
   static PyObject *Div(PyObject *self, PyObject *args);
+  static PyObject *Sub(PyObject *self, PyObject *args);
+  static PyObject *Negate(PyObject *self);
   static PyObject *Pow(PyObject *self, PyObject *args, PyObject *modulo);
   static PyObject *Remainder(PyObject *self, PyObject *args);
   static PyObject *FloorDiv(PyObject *self, PyObject *args);
