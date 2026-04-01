@@ -55,6 +55,8 @@
     "enabled": false,
     "autoAllowBashIfSandboxed": false
   },
+  "includeCoAuthoredBy": false,
+  "gitAttribution": false,
   "hooks": {
     "SessionStart": [
       {
