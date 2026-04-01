@@ -45,7 +45,7 @@
 #include "graph/passes/memory_conflict/atomic_addr_clean_pass.h"
 #include "graph/passes/control_flow_and_stream/attach_stream_label_pass.h"
 #include "graph/passes/feature/attached_resource_pass.h"
-#include "graph/passes/feature/inner_tensor_move_delete_pass.h"
+#include "graph/passes/feature/inner_identity_delete_pass.h"
 #include "graph/passes/format_optimize/cast_remove_pass.h"
 #include "graph/passes/standard_optimize/common_subexpression_elimination_pass.h"
 #include "graph/passes/feature/compile_nodes_pass.h"
@@ -3402,8 +3402,8 @@ Status GraphManager::OptimizeStage2(ge::ComputeGraphPtr &compute_graph) {
   GELOGD("Start optimize after merge sub graph.");
 
   PassManager after_merge_passes;
-  GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::InnerTensorMoveDeletePass",
-                                               new (std::nothrow) InnerTensorMoveDeletePass));
+  GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::InnerIdentityDeletePass",
+                                               new (std::nothrow) InnerIdentityDeletePass));
   GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::AfterMergePasses::LinkGenMaskNodesPass",
                                                new (std::nothrow)
                                                    LinkGenMaskNodesPass(options_.stream_max_parallel_num)));

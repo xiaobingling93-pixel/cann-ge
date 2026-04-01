@@ -64,7 +64,7 @@
 #include "graph/passes/standard_optimize/remove_unsupported_op/stop_gradient_pass.h"
 #include "graph/passes/control_flow_and_stream/switch_dead_branch_elimination.h"
 #include "graph/passes/standard_optimize/unused_const_pass.h"
-#include "graph/passes/feature/inner_tensor_move_add_pass.h"
+#include "graph/passes/feature/inner_identity_add_pass.h"
 #include "graph/passes/variable_optimize/var_is_initialized_op_pass.h"
 #include "graph/passes/variable_optimize/variable_prepare_op_pass.h"
 #include "graph/passes/shape_optimize/mark_force_unknown_for_cond_pass.h"
@@ -2610,8 +2610,8 @@ Status GraphPrepare::ProcessNetOutput() const {
     graph_passes_before_infershape.AddPass("ProcessNetOutput::NetOutputPass", new (std::nothrow) NetOutputPass);
     graph_passes_before_infershape.AddPass("ProcessNetOutput::DataPass",
                                            new (std::nothrow) DataPass);  // Add NetOutput first.
-    graph_passes_before_infershape.AddPass("ProcessNetOutput::InnerTensorMoveAddPass",
-                                           new(std::nothrow) InnerTensorMoveAddPass);
+    graph_passes_before_infershape.AddPass("ProcessNetOutput::InnerIdentityAddPass",
+                                           new(std::nothrow) InnerIdentityAddPass);
   } catch (std::bad_alloc &) {
     REPORT_INNER_ERR_MSG("E19999", "bad memory allocation occur when add Pass");
     GELOGE(INTERNAL_ERROR, "[Add][Pass] failed, bad memory allocation occurs.");
