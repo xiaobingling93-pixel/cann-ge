@@ -919,6 +919,8 @@ graphStatus Impl::SetInputs(std::vector<ge::GeTensor> &inputs, const std::vector
     desc.SetDataType(data_type);
     ge::GeTensor input_tensor;
     input_tensor.SetTensorDesc(desc);
+    GE_ASSERT_TRUE(static_cast<size_t>(id_index) < inputs.size(),
+      "id_index %ld should be smaller than inputs size %zu", id_index, inputs.size());
     inputs[id_index] = input_tensor;
   }
   GELOGD("CreateInputsForIRBuild, inputs size: %zu", inputs.size());
