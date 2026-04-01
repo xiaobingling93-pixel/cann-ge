@@ -543,6 +543,7 @@ if [[ "X$ENABLE_GE_ST" = "Xon" ]] || [[ "X$ENABLE_RT2_ST" = "Xon" ]] || [[ "X$EN
         echo -e "\033[31m${RUN_TEST_CASE}\033[0m"
         exit 1;
       fi
+      rm -rf ${BUILD_PATH}/compiler/plugin/opskernel
       COV_DIRS+=("${BUILD_PATH}/graph_metadef")
       COV_DIRS+=("${BUILD_PATH}/compiler")
       COV_DIRS+=("${BUILD_PATH}/runtime/v1")

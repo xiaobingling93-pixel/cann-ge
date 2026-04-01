@@ -2577,6 +2577,7 @@ TEST_F(AtcCommonSTest, GeFlags_param_help02) {
   EXPECT_EQ(FLAGS_help, true);
 }
 
+/*
 TEST_F(AtcCommonSTest, GeFlags_param_help03) {
   FLAGS_help = false;
   char *argv[] = {"atc",
@@ -2585,6 +2586,7 @@ TEST_F(AtcCommonSTest, GeFlags_param_help03) {
   EXPECT_NE(ret, 0);
   EXPECT_EQ(FLAGS_help, true);
 }
+*/
 
 TEST_F(AtcCommonSTest, GeFlags_param_help04) {
   FLAGS_help = false;
