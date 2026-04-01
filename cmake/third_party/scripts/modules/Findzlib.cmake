@@ -37,6 +37,15 @@ find_library(MINIZIP_LIBRARY
     NO_CMAKE_FIND_ROOT_PATH)
 
 include(FindPackageHandleStandardArgs)
+
+string(CONCAT ZLIB_FAIL_MESSAGE
+    "Could not find ${CMAKE_FIND_PACKAGE_NAME}.\n"
+    "Please try the following step:\n"
+    "  1. Check zlib.h, libz.a, minizip/zip.h, libminizip.a in your zip path: ${CMAKE_THIRD_PARTY_LIB_DIR}/zlib\n"
+    "  2. Update your zlib library: bash scripts/update_3rd_lib.sh --module=zlib --path=your/third_party/path\n"
+    "     For example: bash scripts/update_3rd_lib.sh --module=zlib --path=output/third_party\n"
+)
+
 find_package_handle_standard_args(zlib
     FOUND_VAR
         zlib_FOUND
@@ -45,6 +54,7 @@ find_package_handle_standard_args(zlib
         ZLIB_LIBRARY
         MINIZIP_INCLUDE
         MINIZIP_LIBRARY
+    FAIL_MESSAGE ${ZLIB_FAIL_MESSAGE}
 )
 
 if(zlib_FOUND)
