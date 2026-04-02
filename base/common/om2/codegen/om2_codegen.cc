@@ -57,7 +57,7 @@ Om2Codegen::~Om2Codegen() {
 }
 
 void Om2Codegen::CleanOm2WorkDir() const {
-  if (!is_code_compiled_ || mmAccess2(ws_dir_.c_str(), M_F_OK) != EN_OK) {
+  if (mmAccess2(ws_dir_.c_str(), M_F_OK) != EN_OK) {
     return;
   }
 
@@ -72,7 +72,6 @@ void Om2Codegen::CleanOm2WorkDir() const {
 }
 
 Status Om2Codegen::Om2CodegenAndCompile(const ge::GeModelPtr &ge_model, vector<std::string> &output_file_paths) {
-  is_code_compiled_ = false;
   ProgramGenerator generator;
   GE_ASSERT_SUCCESS(generator.Init(ge_model));
   GE_ASSERT_SUCCESS(Om2Utils::CreateOm2WorkspaceDir(ws_dir_));
@@ -100,7 +99,6 @@ Status Om2Codegen::Om2CodegenAndCompile(const ge::GeModelPtr &ge_model, vector<s
 
   const std::string so_file_path = runtime_ws_dir + "lib" + ge_model->GetName() + "_om2.so";
   GE_ASSERT_SUCCESS(Om2Utils::CompileGeneratedCppToSo(cpp_file_paths, so_file_path, false));
-  is_code_compiled_ = true;
   GELOGI("[OM2] Model %s has finished generating source code files and compiling to the shared library.",
          ge_model->GetName().c_str());
   GE_ASSERT_TRUE(mmAccess2(so_file_path.c_str(), M_F_OK) == EN_OK);
