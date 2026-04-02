@@ -10,7 +10,6 @@
 
 #include "single_op/task/op_task.h"
 #include <chrono>
-#include <thread>
 
 #include "aicpu_task_struct.h"
 #include "common/dump/dump_manager.h"
@@ -26,11 +25,9 @@
 #include "runtime/subscriber/global_profiler.h"
 #include "common/checker.h"
 #include "common/dump/kernel_tracing_utils.h"
-#include "adump_pub.h"
 #include "runtime/kernel.h"
 #include "common/dump/dump_utils.h"
 #include "common/error_tracking/error_tracking.h"
-#include "runtime/rts/rts_stream.h"
 #include "runtime/rts/rts_kernel.h"
 
 namespace ge {
