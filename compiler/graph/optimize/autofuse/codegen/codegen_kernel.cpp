@@ -2416,11 +2416,11 @@ static bool IsNodeSplitB(const ascir::NodeView &node, const Tiler &tiler, std::s
     GE_ASSERT_NOTNULL(in_node, "Input of node %s[%s] is null", node->GetTypePtr(), node->GetNamePtr());
     GE_ASSERT_NOTNULL(std::dynamic_pointer_cast<ge::AscNode>(in_node));
     const auto &prev_node = std::dynamic_pointer_cast<ge::AscNode>(in_node);
-    if (!IsOps<Scalar>(prev_node) && !IsNodeSplitB(prev_node, tiler, enable_cache_with_condition, is_ar, true)) {
+    if (!IsNodeSplitB(prev_node, tiler, enable_cache_with_condition, is_ar, true)) {
       return false;
     }
   }
-  return !enable_cache_with_condition.empty();
+  return true;
 }
 
 static bool IsValidCacheCondition(const ge::ExecuteCondition &exec_condition) {
