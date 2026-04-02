@@ -156,6 +156,19 @@ def test_replace_host_files_allows_missing_optional_headers(tmpdir, asc_codegen_
     assert not host_build_dir.join("autofuse_tiling_func_common.h").check()
 
 
+
+def test_replace_host_files_skips_same_file_copy_when_source_is_host_dir(tmpdir, asc_codegen_compile_module):
+    replace_root = tmpdir.mkdir("replace_root")
+    host_build_dir = replace_root.ensure("host", dir=True)
+    host_build_dir.join("demo_graph_tiling_func_0.cpp").write("same cpp")
+    host_build_dir.join("autofuse_tiling_data.h").write("same header")
+
+    asc_codegen_compile_module.replace_host_files(str(replace_root), str(host_build_dir), "demo_graph")
+
+    assert host_build_dir.join("demo_graph_tiling_func_0.cpp").read() == "same cpp"
+    assert host_build_dir.join("autofuse_tiling_data.h").read() == "same header"
+
+
 def test_replace_host_files_copies_autofuse_cube_tiling_data_when_present(tmpdir, asc_codegen_compile_module):
     replace_root = tmpdir.mkdir("replace_root")
     source_dir = replace_root.mkdir("nested")
