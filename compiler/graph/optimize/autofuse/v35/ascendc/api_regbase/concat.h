@@ -469,7 +469,7 @@ __aicore__ inline void ConcatExtendByGather(T *dst_addr, T *src_addrs[INPUT_NUM]
 
 template <typename T, size_t INPUT_NUM, bool CHECK_SHAPE = false>
 __aicore__ inline bool CanUseGather(const ConcatTiling<INPUT_NUM> &tiling) {
-  if (tiling.num_dst_cols * sizeof(T) > 128) {
+  if (tiling.num_dst_cols * sizeof(T) > 256) {
     return false;
   }
   if constexpr (CHECK_SHAPE) {

@@ -409,9 +409,7 @@ TEST_F(ConcatRegApiCallUTest, Unaligned_B8) {
   std::string result;
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   EXPECT_EQ(result,
-            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 3))/(1),\n  .num_srcs_cols = {((3 * t->s2_1))/(1), 48, },\n};\nint8_t *concat_src_addrs[] { (int8_t *)local_0.GetPhyAddr(), (int8_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<int8_t, 2, true>((int8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
-
-
+            "const concat::ConcatTiling<2> concat_tiling {\n  .num_rows = static_cast<uint32_t>(t->s0),\n  .num_dst_cols = (((16 + t->s2_1) * 3))/(1),\n  .num_srcs_cols = {((3 * t->s2_1))/(1), 48, },\n};\nuint8_t *concat_src_addrs[] { (uint8_t *)local_0.GetPhyAddr(), (uint8_t *)local_2.GetPhyAddr(), };\nconcat::ConcatExtendDyn<uint8_t, 2, true>((uint8_t *)local_3.GetPhyAddr(), concat_src_addrs, tmp_buf_0, concat_tiling);\n");
 }
 
 TEST_F(ConcatRegApiCallUTest, Unaligned_B8ToB16) {
@@ -655,5 +653,39 @@ TEST_F(ConcatRegApiCallUTest, OneAxis) {
   EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
   std::cout << result << std::endl;
   EXPECT_TRUE(result.find("concat::ConcatOneAxis") != std::string::npos);
+}
+
+TEST_F(ConcatRegApiCallUTest, ConcatByGather) {
+  codegen::Tiler tiler;
+  codegen::TPipe tpipe("tpipe", tiler);
+
+  ge::AscGraph graph("test_graph");
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar(1);
+  auto s2_1 = graph.CreateSizeVar(63);
+  auto s2_2 = graph.CreateSizeVar(63);
+  auto s3 = graph.CreateSizeVar(1);
+
+  BuildConcatGraph({s0, s1, s2_1, s2_2, s3}, graph, tpipe, tiler);
+
+  auto load = graph.FindNode("load");
+  auto load2 = graph.FindNode("load2");
+  auto concat = graph.FindNode("concat");
+  concat->attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}};
+
+  codegen::ConcatRegApiCall call("Concat");
+  EXPECT_EQ(call.Init(concat), 0);
+  call.is_input_tbuf_contiguous = true;
+  codegen::ApiTensor x1;
+  codegen::ApiTensor x2;
+  x1.id = load->outputs[0].attr.mem.tensor_id;
+  x2.id = load2->outputs[0].attr.mem.tensor_id;
+  call.inputs.push_back(&x1);
+  call.inputs.push_back(&x2);
+
+  std::string result;
+  EXPECT_EQ(call.Generate(tpipe, vector<ge::AxisId>{}, result), SUCCESS);
+  std::cout << result;
+  EXPECT_TRUE(result.find("concat::ConcatExtendByGather") != std::string::npos);
 }
 }  // namespace codegen

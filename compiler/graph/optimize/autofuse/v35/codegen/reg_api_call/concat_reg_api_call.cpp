@@ -121,7 +121,7 @@ ge::Status ConcatRegApiCall::GenerateDefault(const vector<std::reference_wrapper
   } else {
     DefineConcatTiling(tiling, t_pipe.tiler, ss);
   }
-
+  NormalizeDtype(dtype_name);
   GenSrcAddrs(inputs, dtype_name, ss);
   if (tiling.can_use_gather) {
     GELOGD("use ConcatExtendDyn");
@@ -158,10 +158,7 @@ ge::Status ConcatRegApiCall::GenerateForGather(const vector<std::reference_wrapp
   } else {
     DefineConcatTilingGather(tiling, t_pipe.tiler, ss);
   }
-  if (dtype_name == "int8_t") {
-    // pack不支持int8_t类型，转为uint8_t进行计算
-    dtype_name = "uint8_t";
-  }
+  NormalizeDtype(dtype_name);
   GenSrcAddrs(inputs, dtype_name, ss);
   ss << "concat::ConcatExtendByGather<" << dtype_name << ", " << inputs.size() << ">("
      << "(" << dtype_name << " *)" << y << ".GetPhyAddr()"
@@ -237,7 +234,7 @@ ge::Status ConcatRegApiCall::CanUseGather(ConcatTiling &tiling) const {
   if (tiling.dst_col_size_expr.IsConstExpr()) {
     uint32_t dst_col_size = 0;
     GE_ASSERT_TRUE(tiling.dst_col_size_expr.GetConstValue(dst_col_size));
-    constexpr uint32_t kMaxDstSize = 128U;
+    constexpr uint32_t kMaxDstSize = 256U;
     if (dst_col_size * tiling.data_type_size > kMaxDstSize) {
       GELOGD("dst col size = %u, over %u, can not use Gather", tiling.dst_col_size * tiling.data_type_size,
              kMaxDstSize);
@@ -256,6 +253,13 @@ bool ConcatRegApiCall::IsTile() const {
   const bool is_tile = (src_anchors.size() == 1UL);
   GELOGI("is tile by concat case = %d", static_cast<int32_t>(is_tile));
   return is_tile;
+}
+
+void ConcatRegApiCall::NormalizeDtype(std::string &dtype_name) {
+  if (dtype_name == "int8_t") {
+    // pack不支持int8_t类型，转为uint8_t进行计算
+    dtype_name = "uint8_t";
+  }
 }
 
 std::string ConcatRegApiCall::GetTilingDataType(const ConcatTiling &tiling) {

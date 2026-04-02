@@ -209,7 +209,7 @@ TEST_F(TestBackendConcatE2e, ConcatNotAllAligned_B8) {
     const auto &kernel = RemoveSubDirInclude(result.kernel);
     std::string expected = "const concat::ConcatTiling<2> concat_tiling {\n";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
-    expected = "concat::ConcatExtendDyn<int8_t, 2>((int8_t *)";
+    expected = "concat::ConcatExtendDyn<uint8_t, 2>((uint8_t *)";
     EXPECT_TRUE(kernel.find(expected) != std::string::npos);
   }
   catch (...) {
