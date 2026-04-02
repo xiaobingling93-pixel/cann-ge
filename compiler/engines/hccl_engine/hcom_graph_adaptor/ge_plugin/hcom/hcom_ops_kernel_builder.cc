@@ -421,7 +421,7 @@ HcclResult HcomOpsKernelBuilder::SetSuperKernelScopeAttr(ge::Node &node) {
   std::string sGroup;
   u32 rankSize = 0;
   u64 count = 0;
-  void *counts = nullptr;
+  std::vector<int64_t> counts;
   HcclDataType dataType = HCCL_DATA_TYPE_RESERVED;
   HcclReduceOp reduction = HcclReduceOp::HCCL_REDUCE_SUM;
   u32 aivCoreLimit = 0;
@@ -430,7 +430,8 @@ HcclResult HcomOpsKernelBuilder::SetSuperKernelScopeAttr(ge::Node &node) {
   // 用于判断是否走 Aiv 的参数准备
   CHK_RET(PrepareSelectAivParam(node, sCollectiveType, hcomComm, sGroup, rankSize,
           count, counts, dataType, opType, reduction, aivCoreLimit));
-  CHK_RET(HcomSelectAlg(hcomComm, sGroup.c_str(), count, counts, dataType, reduction, opType, aivCoreLimit, ifAiv,
+  void *countsPtr = counts.data();
+  CHK_RET(HcomSelectAlg(hcomComm, sGroup.c_str(), count, countsPtr, dataType, reduction, opType, aivCoreLimit, ifAiv,
                           algName)); 
   
   if (!ifAiv) {
@@ -442,7 +443,7 @@ HcclResult HcomOpsKernelBuilder::SetSuperKernelScopeAttr(ge::Node &node) {
   // 步骤3：设置superkernel二进制属性并计算block维度
   std::string funcName;
   CHK_RET(SetAivSuperKernelBinaryAttrs(opDescPtr, opType, dataType, algName, funcName));
-  CHK_RET(SetSuperKernelBlockDim(opDescPtr, sGroup, opType, count, counts, dataType, aivCoreLimit, algName, rankSize));
+  CHK_RET(SetSuperKernelBlockDim(opDescPtr, sGroup, opType, count, countsPtr, dataType, aivCoreLimit, algName, rankSize));
   HCCL_INFO("[HcomOpsKernelBuilder][SetSuperKernelScopeAttr] Support SPK Optype[%s] funcName[%s]",
               sCollectiveType.c_str(), funcName.c_str());
   return HCCL_SUCCESS;
@@ -639,25 +640,26 @@ ge::Status HcomOpsKernelBuilder::GenerateTask([[maybe_unused]] const ge::Node &n
   return ge::SUCCESS;
 }
 
-HcclResult HcomOpsKernelBuilder::GetCountsFromOpDesc(const ge::Node &node, void *&counts, HcclCMDType opType) {
+// 获取算子的counts，为后续选择算法和设置核数做准备
+HcclResult HcomOpsKernelBuilder::GetCountsFromOpDesc(const ge::Node &node, std::vector<int64_t> &counts, HcclCMDType opType) {
   if (opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
     std::vector<int64_t> sendCounts;
-    std::vector<int64_t> recvCounts;
     std::vector<int64_t> recvDispls;
-    HcomOpUtils::GetAllGatherVCountsDispl(const_cast<ge::Node &>(node), sendCounts, recvCounts, recvDispls);
-    counts = recvCounts.data();
-    if (counts == nullptr) {
-      HCCL_ERROR("[TaskDefSetNumBlocks], counts is nullptr");
+    // allgatherV的counts代表recvCount，因为算子是收集操作，是recv从所有ranks
+    HcomOpUtils::GetAllGatherVCountsDispl(const_cast<ge::Node &>(node), sendCounts, counts, recvDispls);
+    // 不能通过是否为空来判断是否成功获取到数据量，因为根据vector标准库的定义，
+    // 就算vector没有元素，其指针可能为空也可能不为空，需要根据recvCounts的size来判断是否成功获取到数据量
+    if (counts.empty()) {
+      HCCL_ERROR("[TaskDefSetNumBlocks][GetCountsFromOpDesc], counts is empty");
       return HCCL_E_PTR;
     }
   } else if (opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
-    std::vector<int64_t> sendCounts;
     std::vector<int64_t> sendDispls;
     std::vector<int64_t> recvCount;
-    HcomOpUtils::GetReduceScatterVCountsDispl(const_cast<ge::Node &>(node), sendCounts, sendDispls, recvCount);
-    counts = sendCounts.data();
-    if (counts == nullptr) {
-      HCCL_ERROR("[TaskDefSetNumBlocks], counts is nullptr");
+    // reducescatterV的counts代表sendCount，因为算子是散射操作，是send给所有ranks
+    HcomOpUtils::GetReduceScatterVCountsDispl(const_cast<ge::Node &>(node), counts, sendDispls, recvCount);
+    if (counts.empty()) {
+      HCCL_ERROR("[TaskDefSetNumBlocks][GetCountsFromOpDesc], counts is empty");
       return HCCL_E_PTR;
     }
   }
@@ -695,8 +697,11 @@ HcclResult HcomOpsKernelBuilder::TaskDefSetNumBlocks(const ge::Node &node, domi:
       HCCL_ERROR("[Get][TaskDefSetNumBlocks]op[%s]: get data type failed. ret[%d]", sCollectiveType.c_str(), ret), ret);
 
   CHK_RET(GetCommFromOpDesc(opDescPtr, comm, group));
-
-  ret = GetCountFromOpDesc(opDescPtr, sCollectiveType, dataType, count);
+  // 获取rankSize，用于计算数据量
+  u32 rankSize = 0;
+  CHK_RET(HcomGetRankSize(group.c_str(), &rankSize));
+  // 计算数据量，后续根据数据量选择算法并设置核数
+  ret = HcomOpUtils::GetAccuracyCountFromOpDesc(opDescPtr, sCollectiveType, dataType, count, rankSize);
   CHK_PRT_RET(ret != HCCL_SUCCESS,
               HCCL_ERROR("[Get][TaskDefSetNumBlocks]op[%s]: get count failed. ret[%d]", sCollectiveType.c_str(), ret),
               ret);
@@ -705,10 +710,11 @@ HcclResult HcomOpsKernelBuilder::TaskDefSetNumBlocks(const ge::Node &node, domi:
     CHK_RET(HcomOpUtils::GetReduction(opDescPtr, reduction));
   }
 
-  void *counts = nullptr;
+  std::vector<int64_t> counts;
   CHK_RET(GetCountsFromOpDesc(node, counts, opType));
 
-  CHK_RET(HcomSelectAlg(comm, group.c_str(), count, counts, dataType, reduction, opType, aivCoreLimit, ifAiv, algName));
+  void *countsPtr = counts.data();
+  CHK_RET(HcomSelectAlg(comm, group.c_str(), count, countsPtr, dataType, reduction, opType, aivCoreLimit, ifAiv, algName));
 
   // 非AIV算法不设置核数
   if (!ifAiv) {
@@ -717,7 +723,7 @@ HcclResult HcomOpsKernelBuilder::TaskDefSetNumBlocks(const ge::Node &node, domi:
   }
 
   u32 numBlocks = 0;
-  CHK_RET(HcomCalcAivCoreNum(group.c_str(), opType, count, counts, dataType, aivCoreLimit, algName, &numBlocks));
+  CHK_RET(HcomCalcAivCoreNum(group.c_str(), opType, count, countsPtr, dataType, aivCoreLimit, algName, &numBlocks));
 
   domi::KernelHcclDef *kernelDefHccl = taskDef.mutable_kernel_hccl();
   CHK_PRT_RET((kernelDefHccl == nullptr),
@@ -842,7 +848,7 @@ HcclResult HcomOpsKernelBuilder::HcomCalcOpRunningParam(ge::Node &node) {
 // PrepareSelectAivParam函数，返回多个计算参数用于判断是否支持AIV展开模式
 HcclResult HcomOpsKernelBuilder::PrepareSelectAivParam(ge::Node &node, const std::string& sCollectiveType,
                                                 int64_t &hcomComm, std::string &sGroup, u32 &rankSize,
-                                                u64 &count, void *&counts, HcclDataType &dataType, HcclCMDType &opType,
+                                                u64 &count, std::vector<int64_t> &counts, HcclDataType &dataType, HcclCMDType &opType,
                                                 HcclReduceOp &reduction, u32 &aivCoreLimit) {
   auto const opDescPtr = node.GetOpDesc();
   // 获取通信域标识符
@@ -882,8 +888,8 @@ HcclResult HcomOpsKernelBuilder::PrepareSelectAivParam(ge::Node &node, const std
   // 获取 counts
   CHK_RET(GetCountsFromOpDesc(node, counts, opType));
 
-  HCCL_INFO("[%s] hcomComm[%d], group[%s], count[%u], counts[%p], dataType[%u], reduction[%u], opType[%u]",
-            __func__, hcomComm, sGroup.c_str(), count, counts, dataType, reduction, opType);
+  HCCL_INFO("[%s] hcomComm[%d], group[%s], count[%u], counts[%zu], dataType[%u], reduction[%u], opType[%u]",
+            __func__, hcomComm, sGroup.c_str(), count, counts.size(), dataType, reduction, opType);
   return HCCL_SUCCESS;
 }
 
@@ -894,7 +900,7 @@ HcclResult HcomOpsKernelBuilder::JudgeIsAivMode(ge::Node &node, const std::strin
   std::string sGroup;
   u32 rankSize = 0;
   u64 count = 0;
-  void *counts = nullptr;
+  std::vector<int64_t> counts;
   HcclDataType dataType = HCCL_DATA_TYPE_RESERVED;
   HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID;
   HcclReduceOp reduction = HcclReduceOp::HCCL_REDUCE_SUM;
@@ -907,7 +913,8 @@ HcclResult HcomOpsKernelBuilder::JudgeIsAivMode(ge::Node &node, const std::strin
   // 判断是否走 Aiv
   DevType devType = HcomGetDeviceType();
   if (devType != DevType::DEV_TYPE_950) {
-    CHK_RET(HcomSelectAlg(hcomComm, sGroup.c_str(), count, counts, dataType, reduction, opType, aivCoreLimit, ifAiv,
+    void *countsPtr = counts.data();
+    CHK_RET(HcomSelectAlg(hcomComm, sGroup.c_str(), count, countsPtr, dataType, reduction, opType, aivCoreLimit, ifAiv,
                           algName));
   } else {
     // 950按照原先流程，如果是 SuperKernel 那就肯定是 Aiv 模式了

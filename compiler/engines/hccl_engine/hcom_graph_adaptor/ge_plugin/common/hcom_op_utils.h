@@ -71,6 +71,8 @@ constexpr u32 TASK_MAX_NUM_DEV_TYPE_V80 = 2042;
 constexpr u32 TASK_MAX_NUM_DEV_TYPE_V71 = 4061;
 constexpr u32 ALLTOALLV_INPUT_VEC_SIZE = 4;
 constexpr u32 V_INPUT_VEC_SIZE = 3;
+// 所有需要对齐的算子都需要对齐到512字节边界
+constexpr u32 ALIGNED_SIZE = 512;
 
 class HcomOpUtils {
  public:
@@ -120,11 +122,10 @@ class HcomOpUtils {
   static HcclResult GetAivCoreLimit(const ge::OpDescPtr &op, const std::string &sCollectiveType, u32 &aivCoreLimit);
   static HcclResult GetAccuracyCountFromOpDesc(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                                     HcclDataType dataType, u64 &count, u32 rankSize);
-  static HcclResult CalcAllReduceCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
+  static HcclResult CalcCountForAlignedOp(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                           u32 dataTypeSize, u64 &count);
   static HcclResult CalcCommonCount(const ge::OpDescPtr &op, const std::string &sCollectiveType,
-                                        u32 dataTypeSize, u32 rankSize, u64 &count); 
-  static HcclResult CalcBroadcastCount(const ge::OpDescPtr &op, u32 dataTypeSize, u64 &count);                                         
+                                        u32 dataTypeSize, u32 rankSize, u64 &count);                                       
   static HcclResult GetCountFromOpDescSuperkernel(const ge::OpDescPtr &op, const std::string &sCollectiveType,
                                                   HcclDataType dataType, u64 &count, u32 rankSize);
 #ifndef HCOM_EXECUTOR

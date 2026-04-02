@@ -676,6 +676,7 @@ HcclResult HcomGraphOptimizer::HcomGetAccuracyCountFromOpDesc(const ge::OpDescPt
   // broadcast等搬运算子在图优化阶段没有input，只有output，无法通过getsize方式获取到数据量，需要用memoutput的方式获取
   if (sCollectiveType == HCCL_KERNEL_OP_TYPE_ALLREDUCE || sCollectiveType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
     CHK_RET(GetMemOutPutForCountCalc(op, sCollectiveType, dataTypeSize, count));
+    return HCCL_SUCCESS;
   }
   // 其他算子通用处理
   CHK_RET(HcomOpUtils::CalcCommonCount(op, sCollectiveType, dataTypeSize, rankSize, count));
@@ -707,9 +708,6 @@ HcclResult HcomGraphOptimizer::MemOutputForOpDesc(const ge::OpDescPtr &op, const
 
   // 根据 规则重新计算内存大小
   CHK_RET(CalcHCCLOutputMemSize(sCollectiveType, memSize));
-
-  // 将内存大小重新传给上层
-  ge::TensorUtils::SetSize(outputTensor, memSize);
 
   // 更新output Tensor
   if (op->UpdateOutputDesc(i, outputTensor) != ge::GRAPH_SUCCESS) {
@@ -848,8 +846,11 @@ HcclResult HcomGraphOptimizer::GetCommFromOpDesc(const ge::OpDescPtr &op, int64_
 HcclResult HcomGraphOptimizer::SetOpOutputMemSize(ge::Node &node, const std::string &sCollectiveType) {
   ge::OpDescPtr op = node.GetOpDesc();
   for (u32 i = 0; i < op->GetOutputsSize(); i++) {
+    ge::GeTensorDesc outputTensor = op->GetOutputDesc(i);
     int64_t memSize = 0;
     CHK_RET(MemOutputForOpDesc(op, sCollectiveType, i, memSize));
+    // 将内存大小重新传给上层
+    ge::TensorUtils::SetSize(outputTensor, memSize);
     HCCL_INFO("In set output MemSize, sCollectiveType[%s], opMemSize[%lld]", sCollectiveType.c_str(), memSize);
   }
   return HCCL_SUCCESS;
