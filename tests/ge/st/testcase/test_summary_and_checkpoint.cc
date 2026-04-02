@@ -99,6 +99,9 @@ Graph BuildVariableGraph() {
     CHAIN(NODE(var1)->EDGE(0, 0)->NODE(trans2)->NODE(relu2)->NODE("output"));
     CHAIN(NODE(data1)->NODE(relu3)->NODE(trans3)->NODE(var_ref)->NODE("output"));
     CHAIN(NODE(relu3)->NODE(summary));
+    ADD_OUTPUT(relu1, 0);
+    ADD_OUTPUT(relu2, 0);
+    ADD_OUTPUT(var_ref, 0);
   };
   return ToGeGraph(g1);
 }
@@ -202,7 +205,8 @@ TEST_F(SummaryAndCheckPointTest, test_optimize_summary_graph) {
     ASSERT_EQ(summary, nullptr); // summary has been deleted
     auto netoutput = graph->FindNode("output");
     ASSERT_NE(netoutput, nullptr);
-    ASSERT_EQ(netoutput->GetInDataNodes().size(), 3); // add relu3 as input of netoutput
+    ASSERT_EQ(netoutput->GetInDataNodes().size(), 4); // add relu3 as input of netoutput
+    ASSERT_EQ(netoutput->GetInDataNodes().at(3)->GetName(), "relu3");
   };
   EXPECT_EQ(called_count, 1);
 }
@@ -250,7 +254,8 @@ TEST_F(SummaryAndCheckPointTest, test_optimize_summary_graph_gesession) {
     ASSERT_EQ(summary, nullptr); // summary has been deleted
     auto netoutput = graph->FindNode("output");
     ASSERT_NE(netoutput, nullptr);
-    ASSERT_EQ(netoutput->GetInDataNodes().size(), 3); // add relu3 as input of netoutput
+    ASSERT_EQ(netoutput->GetInDataNodes().size(), 4); // add relu3 as input of netoutput
+    ASSERT_EQ(netoutput->GetInDataNodes().at(3)->GetName(), "relu3");
   };
   EXPECT_EQ(called_count, 1);
 }

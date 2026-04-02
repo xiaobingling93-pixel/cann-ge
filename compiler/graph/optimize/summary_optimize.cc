@@ -92,6 +92,7 @@ Status GraphOptimize::HandleSummaryOp(const ComputeGraphPtr &compute_graph) {
     out_nodes_info.emplace_back(std::pair<NodePtr, int32_t>(front_nodes[i], out_index[i]));
   }
   compute_graph->AppendGraphOutNodesInfo(out_nodes_info);
+  GE_IF_BOOL_EXEC(front_nodes.size() != 0U, GE_ASSERT_SUCCESS(compute_graph->CreateOrUpdateNetoutput(true)););
 
   // delete summary node
   for (auto &node_ptr : del_nodes) {
