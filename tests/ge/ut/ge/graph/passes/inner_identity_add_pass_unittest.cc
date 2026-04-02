@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 #include "ge_graph_dsl/graph_dsl.h"
-#include "graph/passes/feature/inner_tensor_move_add_pass.h"
+#include "graph/passes/feature/inner_identity_add_pass.h"
 #include "depends/op_stub/op_proto/inc/elewise_calculation_ops.h"
 
 using namespace ge;
@@ -153,7 +153,7 @@ ComputeGraphPtr BuildReluMultiOutputToAssignGraph3() {
   return ToComputeGraph(g1);
 }
 }
-class UtestGraphPassesInnerTensorMoveAddPass : public testing::Test {
+class UtestGraphPassesInnerIdentityAddPass : public testing::Test {
 protected:
   void SetUp() {}
   void TearDown() {}
@@ -172,21 +172,21 @@ protected:
  *
  * relu单输出单引用
  */
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_1) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, add_identity_success_1) {
   auto graph = BuildReluOnlyOutputToAssignGraph();
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
-  auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-  ASSERT_NE(tensor_move, nullptr);
-  bool is_inner_tensor_move = false;
-  EXPECT_EQ(AttrUtils::GetBool(tensor_move->GetOpDesc(), "_inner_tensor_move", is_inner_tensor_move), true);
-  EXPECT_EQ(is_inner_tensor_move, true);
+  auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+  ASSERT_NE(identity, nullptr);
+  bool is_inner_identity = false;
+  EXPECT_EQ(AttrUtils::GetBool(identity->GetOpDesc(), "_inner_identity", is_inner_identity), true);
+  EXPECT_EQ(is_inner_identity, true);
   auto relu = graph->FindNode("relu");
   ASSERT_NE(relu, nullptr);
-  EXPECT_EQ(relu->GetOutDataNodes().at(0)->GetName(), tensor_move->GetName());
+  EXPECT_EQ(relu->GetOutDataNodes().at(0)->GetName(), identity->GetName());
   auto assign = graph->FindNode("assign");
   ASSERT_NE(assign, nullptr);
-  EXPECT_EQ(assign->GetInDataNodes().at(0), tensor_move);
+  EXPECT_EQ(assign->GetInDataNodes().at(0), identity);
 }
 
 /**
@@ -204,23 +204,23 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_1) {
  *
  * relu单输出多引用，且relu的另一个输出节点依赖ref算子
  */
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_2) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, add_identity_success_2) {
   auto graph = BuildReluMultiOutputToAssignGraph1();
   graph->TopologicalSorting();
   auto relu = graph->FindNode("relu");
   ASSERT_NE(relu, nullptr);
   ASSERT_EQ(relu->GetOutDataNodesSize(), 2U);
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
-  auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-  ASSERT_NE(tensor_move, nullptr);
-  EXPECT_EQ(relu->GetOutDataNodes().at(0), tensor_move);
+  auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+  ASSERT_NE(identity, nullptr);
+  EXPECT_EQ(relu->GetOutDataNodes().at(0), identity);
   auto assign = graph->FindNode("assign");
   ASSERT_NE(assign, nullptr);
-  EXPECT_EQ(assign->GetInDataNodes().at(0), tensor_move);
+  EXPECT_EQ(assign->GetInDataNodes().at(0), identity);
   auto add = graph->FindNode("add");
   ASSERT_NE(add, nullptr);
-  EXPECT_EQ(add->GetInDataNodes().at(0), tensor_move);
+  EXPECT_EQ(add->GetInDataNodes().at(0), identity);
 }
 
 /*
@@ -234,29 +234,29 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_2) {
  *                   \    /              \    |
  *                     add                 add
  **/
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_3) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, add_identity_success_3) {
   auto graph = BuildReluMultiOutputToAssignGraph2();
   graph->TopologicalSorting();
   auto relu1 = graph->FindNode("relu1");
   ASSERT_NE(relu1, nullptr);
   ASSERT_EQ(relu1->GetOutDataNodesSize(), 3U);
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
   ASSERT_EQ(relu1->GetOutDataNodesSize(), 2U);
-  auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-  ASSERT_NE(tensor_move, nullptr);
-  EXPECT_EQ(relu1->GetOutDataNodes().at(0), tensor_move);
+  auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+  ASSERT_NE(identity, nullptr);
+  EXPECT_EQ(relu1->GetOutDataNodes().at(0), identity);
   auto assign = graph->FindNode("assign");
   ASSERT_NE(assign, nullptr);
-  EXPECT_EQ(assign->GetInDataNodes().at(0), tensor_move);
+  EXPECT_EQ(assign->GetInDataNodes().at(0), identity);
   auto add = graph->FindNode("add");
   ASSERT_NE(add, nullptr);
-  EXPECT_EQ(add->GetInDataNodes().at(1), tensor_move);
+  EXPECT_EQ(add->GetInDataNodes().at(1), identity);
 }
 
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_op_add_tensor_move_succ) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, multi_ref_op_add_identity_succ) {
   auto graph = BuildMultiRefOpGraph();
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
   auto test_op = graph->FindNode("test_op");
   ASSERT_NE(test_op, nullptr);
@@ -264,8 +264,8 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_op_add_tensor_move_succ
   auto input_2 = test_op->GetInDataNodes().at(1);
   ASSERT_NE(input_1, nullptr);
   ASSERT_NE(input_2, nullptr);
-  EXPECT_EQ(input_1->GetType(), TENSORMOVE);
-  EXPECT_EQ(input_2->GetType(), TENSORMOVE);
+  EXPECT_EQ(input_1->GetType(), IDENTITY);
+  EXPECT_EQ(input_2->GetType(), IDENTITY);
   EXPECT_NE(input_1->GetName(), input_2->GetName());
 }
 
@@ -278,52 +278,52 @@ TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_op_add_tensor_move_succ
  *                                      \     |
  *                                        assign2
  **/
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, add_tensormove_success_4) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, add_identity_success_4) {
   auto graph = BuildReluMultiOutputToAssignGraph3();
   graph->TopologicalSorting();
   auto relu = graph->FindNode("relu");
   ASSERT_NE(relu, nullptr);
   ASSERT_EQ(relu->GetOutDataNodesSize(), 2U);
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
   ASSERT_EQ(relu->GetOutDataNodesSize(), 1U);
-  auto tensormove1 = relu->GetOutDataNodes().at(0);
-  ASSERT_EQ(tensormove1->GetType(), TENSORMOVE);
-  ASSERT_EQ(tensormove1->GetOutDataNodes().at(0)->GetName(), "assign1");
+  auto identity1 = relu->GetOutDataNodes().at(0);
+  ASSERT_EQ(identity1->GetType(), IDENTITY);
+  ASSERT_EQ(identity1->GetOutDataNodes().at(0)->GetName(), "assign1");
   auto assign2 = graph->FindNode("assign2");
   ASSERT_NE(assign2, nullptr);
-  auto tensormove2 = assign2->GetInDataNodes().at(0);
-  ASSERT_EQ(tensormove1->GetOutDataNodes().at(1), tensormove2);
+  auto identity2 = assign2->GetInDataNodes().at(0);
+  ASSERT_EQ(identity1->GetOutDataNodes().at(1), identity2);
 }
 
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, not_add_tensormove) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, not_add_identity) {
   auto graph = BuildTensormoveOnlyOutputToAssignGraph();
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
-  size_t inner_tensor_move_count = 0;
+  size_t inner_identity_count = 0;
   for (const auto &node : graph->GetDirectNode()) {
-    if (node->GetType() == TENSORMOVE) {
-      bool is_inner_tensor_move = false;
-      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_tensor_move", is_inner_tensor_move) && is_inner_tensor_move) {
-        inner_tensor_move_count++;
+    if (node->GetType() == IDENTITY) {
+      bool is_inner_identity = false;
+      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_identity", is_inner_identity) && is_inner_identity) {
+        inner_identity_count++;
       }
     }
   }
-  ASSERT_EQ(inner_tensor_move_count, 0U);
+  ASSERT_EQ(inner_identity_count, 0U);
 }
 
-TEST_F(UtestGraphPassesInnerTensorMoveAddPass, multi_ref_fromvar_not_add_tensormove) {
+TEST_F(UtestGraphPassesInnerIdentityAddPass, multi_ref_fromvar_not_add_identity) {
   auto graph = BuildMultiRefFromVarGraph();
-  InnerTensorMoveAddPass pass;
+  InnerIdentityAddPass pass;
   ASSERT_EQ(pass.Run(graph), SUCCESS);
-  size_t inner_tensor_move_count = 0;
+  size_t inner_identity_count = 0;
   for (const auto &node : graph->GetDirectNode()) {
-    if (node->GetType() == TENSORMOVE) {
-      bool is_inner_tensor_move = false;
-      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_tensor_move", is_inner_tensor_move) && is_inner_tensor_move) {
-        inner_tensor_move_count++;
+    if (node->GetType() == IDENTITY) {
+      bool is_inner_identity = false;
+      if (AttrUtils::GetBool(node->GetOpDesc(), "_inner_identity", is_inner_identity) && is_inner_identity) {
+        inner_identity_count++;
       }
     }
   }
-  ASSERT_EQ(inner_tensor_move_count, 0U);
+  ASSERT_EQ(inner_identity_count, 0U);
 }

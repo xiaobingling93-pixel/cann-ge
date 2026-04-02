@@ -38,6 +38,7 @@ class UserGraphControlUT : public testing::Test {
     CommonSetupUtil::CommonSetup();
     gert_stub_.GetKernelStub().StubTiling();
     RuntimeStub::Install(nullptr); // gert的rts stub不能在多线程环境下工作，因此使用默认rts stub
+    AclRuntimeStub::Install(nullptr);
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistry();
     std::map<std::string, std::string> options = {{ge::SOC_VERSION, "Ascend310"}};
     GetThreadLocalContext().SetGlobalOption(options);

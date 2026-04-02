@@ -30,7 +30,7 @@
 #include "dflow/inc/data_flow/model/graph_model.h"
 #include "acl/acl_mdl.h"
 #include "acl/acl_rt.h"
-#include "external/graph/types.h"
+#include "graph/types.h"
 #include "dflow/base/model/flow_model_om_loader.h"
 #include "graph/utils/op_type_utils.h"
 #include "common/df_chk.h"

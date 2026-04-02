@@ -407,10 +407,10 @@ void CachingAllocator::TryFreeBlocks() {
   PrintStatics(GeLogLevel::kEvent);
 }
 
-Status CachingAllocator::FreeBlocksAfterSynchronize(rtStream_t const stream) {
+Status CachingAllocator::FreeBlocksAfterSynchronize(aclrtStream const stream) {
   GELOGW("Stream synchronize and try free blocks! stream: %p.", stream);
   const std::lock_guard<std::recursive_mutex> lock(mutex_);
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   (void)FreeCachedBlocks();
   PrintStatics(GeLogLevel::kEvent);
   return SUCCESS;

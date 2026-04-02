@@ -42,7 +42,7 @@ class StreamSwitchTaskInfo : public TaskInfo {
   void *input_ptr_{nullptr};
   rtCondition_t cond_{RT_EQUAL};
   void *value_ptr_{nullptr};
-  rtStream_t true_stream_{nullptr};
+  aclrtStream true_stream_{nullptr};
   uint32_t true_stream_id_{0U};
   rtSwitchDataType_t data_type_{RT_SWITCH_INT32};
   uint32_t op_index_{0U};

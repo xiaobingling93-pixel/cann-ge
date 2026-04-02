@@ -1470,7 +1470,9 @@ TEST_F(DavinciModelTest, davinci_model_execute_with_input_align_attrs) {
 
 TEST_F(DavinciModelTest, davinci_model_execute_datadump_on_watcher_model_success) {
   auto dump_checker_stub = std::make_shared<ge::DumpCheckRuntimeStub>();
+  auto dump_checker_acl_stub = std::make_shared<ge::DumpCheckAclRuntimeStub>();
   ge::RuntimeStub::SetInstance(dump_checker_stub);
+  ge::AclRuntimeStub::SetInstance(dump_checker_acl_stub);
   auto &model_mgr = ModelManager::GetInstance();
   model_mgr.model_map_.clear();
   ModelExecutor model_executor;
@@ -1501,6 +1503,7 @@ TEST_F(DavinciModelTest, davinci_model_execute_datadump_on_watcher_model_success
   DumpManager::GetInstance().RemoveDumpProperties(10086);
   GetThreadLocalContext().SetGraphOption({});
   ge::RuntimeStub::Reset();
+  ge::AclRuntimeStub::Reset();
 }
 
 TEST_F(DavinciModelTest, davinci_model_execute_dumpok) {
@@ -3609,7 +3612,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_stream_resource_su
   (void)BuildGraphNode(graph_id_2, graph_node_2, flow_root_model_2, ge_model_2);
 
   uint32_t stream_num_dev_avail;
-  (void)rtGetAvailStreamNum(RT_NORMAL_STREAM, &stream_num_dev_avail);
+  (void)aclrtGetStreamAvailableNum(&stream_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_2, ATTR_MODEL_STREAM_NUM, stream_num_dev_avail + 32));
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_2, graph_node_2), SUCCESS);
   EXPECT_EQ(model_mgr.model_map_.size(), 1);
@@ -3656,7 +3659,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_stream_resource_fa
   (void)BuildGraphNode(graph_id_2, graph_node_2, flow_root_model_2, ge_model_2);
 
   uint32_t stream_num_dev_avail;
-  (void)rtGetAvailStreamNum(RT_NORMAL_STREAM, &stream_num_dev_avail);
+  (void)aclrtGetStreamAvailableNum(&stream_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_2, ATTR_MODEL_STREAM_NUM, stream_num_dev_avail + 33));
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_2, graph_node_2), FAILED);
   EXPECT_EQ(model_mgr.model_map_.size(), 0);
@@ -3817,7 +3820,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_multi_model_stream
   (void)BuildGraphNode(graph_id_3, graph_node_3, flow_root_model_3, ge_model_3);
 
   uint32_t stream_num_dev_avail;
-  (void)rtGetAvailStreamNum(RT_NORMAL_STREAM, &stream_num_dev_avail);
+  (void)aclrtGetStreamAvailableNum(&stream_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_3, ATTR_MODEL_STREAM_NUM, stream_num_dev_avail + 32 + 32));
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_3, graph_node_3), SUCCESS);
   EXPECT_EQ(model_mgr.model_map_.size(), 1);
@@ -3866,7 +3869,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_model_stream_resou
   (void)BuildGraphNode(graph_id_2, graph_node_2, flow_root_model_2, ge_model_2);
 
   uint32_t stream_num_dev_avail;
-  (void)rtGetAvailStreamNum(RT_NORMAL_STREAM, &stream_num_dev_avail);
+  (void)aclrtGetStreamAvailableNum(&stream_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_2, ATTR_MODEL_STREAM_NUM, stream_num_dev_avail + 32));
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_2, graph_node_2), SUCCESS);
   EXPECT_EQ(model_mgr.model_map_.size(), 1);
@@ -3934,7 +3937,7 @@ TEST_F(DavinciModelTest, davinci_model_load_check_and_release_model_stream_resou
   (void)BuildGraphNode(graph_id_2, graph_node_2, flow_root_model_2, ge_model_2);
 
   uint32_t stream_num_dev_avail;
-  (void)rtGetAvailStreamNum(RT_NORMAL_STREAM, &stream_num_dev_avail);
+  (void)aclrtGetStreamAvailableNum(&stream_num_dev_avail);
   EXPECT_TRUE(AttrUtils::SetInt(ge_model_2, ATTR_MODEL_STREAM_NUM, stream_num_dev_avail + 32));
   EXPECT_EQ(model_executor.LoadGraph(flow_root_model_2, graph_node_2), FAILED);
   EXPECT_EQ(model_mgr.model_map_.size(), 1);

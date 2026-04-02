@@ -194,7 +194,7 @@ class ModelArgsManager {
   Status Init(domi::ModelTaskDef &model_task_def, std::vector<TaskInfoPtr> *task_list_ptr);
   const std::vector<ModelArgs> &GetModelArgs() const;
   const FixedAddrBulk &GetFixedAddrBulk() const;
-  Status UpdateForExecute(uint32_t &up, const rtStream_t stm = nullptr, const uint32_t model_execute_stage = 1);  // todo 删掉默认值
+  Status UpdateForExecute(uint32_t &up, const aclrtStream stm = nullptr, const uint32_t model_execute_stage = 1);  // todo 删掉默认值
   void GenModelArgsAaddrAfterDistributed();
   Status ReportKernelLaunchOpProfilingData(const uint64_t begin_time) const;
   Status OnTaskDistributed(const size_t task_index, const TaskInfo *task_info);
@@ -291,7 +291,7 @@ class ModelArgsManager {
   Status AllocFixedAddrs(const TaskNodeMap &task_node_map,
                          const TaskArgsRefreshTypeClassifier::FixedAddrs &fixed_addrs);
   Status GenAddrRefreshIndexAndOffset(const uint64_t &offset_num);
-  Status PrintKernelLaunchArgsDfxInfo(rtStream_t const stm);
+  Status PrintKernelLaunchArgsDfxInfo(aclrtStream const stm);
 
   Status GenKernelLaunchArgs(uint64_t &offset_num);
   Status ParseModelTaskDef(domi::ModelTaskDef &model_task_def, std::vector<TaskRunParam> &task_indexes_to_run_param,
@@ -310,7 +310,7 @@ class ModelArgsManager {
   void DebugLogTaskUpdatePolicies(const TaskNodeMap &task_node_map,
                                   const TriggerPolicies &upis, size_t task_index) const;
   Status ValidateTaskRunParam(const std::vector<TaskArgsDesc> &args_descs) const;
-  Status TaskArgsVa2PaAssociatedWithModelIO(rtStream_t const stm) const;
+  Status TaskArgsVa2PaAssociatedWithModelIO(aclrtStream const stm) const;
   void GetStageTimeInfo(ModelArgsManagerStage stage);
   void UpdateHostArgs(uint64_t* active_mem_base_addr);
 

@@ -655,7 +655,7 @@ TEST_F(ExecutorUnitTest, LoadExecutorFromModelDataWithExternalStreamAllocator) {
 
   GertRuntimeStub rts_stub;
   {
-    ASSERT_EQ(rts_stub.GetRtsRuntimeStub().GetAllRtStreams().size(), 0);
+    ASSERT_EQ(rts_stub.GetAclRuntimeStub().GetAllRtStreams().size(), 0);
     // load model v2 executor
     auto model_data = ModelDataFaker().GeRootModel(ge_root_model).BuildUnknownShape();
     ge::graphStatus error_code;

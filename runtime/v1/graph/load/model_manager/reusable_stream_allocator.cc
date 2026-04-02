@@ -32,19 +32,19 @@ ReusableStreamAllocator *ReusableStreamAllocator::Create() {
   return reusable_stream_allocator;
 }
 
-RtStreamStatusPtr ReusableStreamAllocator::CreateNewStream(rtStream_t &stream, const uint32_t rt_model_id,
+RtStreamStatusPtr ReusableStreamAllocator::CreateNewStream(aclrtStream &stream, const uint32_t rt_model_id,
                                                            const int32_t priority, const uint32_t stream_flag,
                                                            const uint32_t task_num) const {
   GE_ASSERT_RT_OK(rtStreamCreateWithFlags(&stream, priority, stream_flag));
   int32_t rt_stream_id = kInvalidStream;
-  GE_ASSERT_RT_OK(rtGetStreamId(stream, &rt_stream_id));
+  GE_ASSERT_RT_OK(aclrtStreamGetId(stream, &rt_stream_id));
   GELOGI("Create new stream: %p, rt stream id: %d, rt model id: %u, priority: %d, stream flag: %u, task num: %u.",
          stream, rt_stream_id, rt_model_id, priority, stream_flag, task_num);
   const auto stream_status = RtStreamStatus::Create(stream, rt_stream_id, rt_model_id, task_num);
   return stream_status;
 }
 
-Status ReusableStreamAllocator::GetOrCreateRtStream(rtStream_t &stream, const uint32_t rt_model_id,
+Status ReusableStreamAllocator::GetOrCreateRtStream(aclrtStream &stream, const uint32_t rt_model_id,
                                                     const int32_t priority, const uint32_t stream_flag,
                                                     const uint32_t task_num) {
   const std::lock_guard<std::mutex> lock(mutex_);
@@ -54,7 +54,7 @@ Status ReusableStreamAllocator::GetOrCreateRtStream(rtStream_t &stream, const ui
   rt_stream_list_[std::make_pair(priority, stream_flag)].emplace(std::move(stream_status));
   return SUCCESS;
 }
-Status ReusableStreamAllocator::DestroyStream(rtStream_t &stream, const bool is_force_destroy) {
+Status ReusableStreamAllocator::DestroyStream(aclrtStream &stream, const bool is_force_destroy) {
   const std::lock_guard<std::mutex> lock(mutex_);
   GE_ASSERT_NOTNULL(stream);
   const auto iter = stream_ref_.find(stream);
@@ -67,9 +67,9 @@ Status ReusableStreamAllocator::DestroyStream(rtStream_t &stream, const bool is_
   }
 
   if (is_force_destroy) {
-    GE_ASSERT_RT_OK(rtStreamDestroyForce(stream));
+    GE_ASSERT_RT_OK(aclrtDestroyStreamForce(stream));
   } else {
-    GE_ASSERT_RT_OK(rtStreamDestroy(stream));
+    GE_ASSERT_RT_OK(aclrtDestroyStream(stream));
   }
   stream_status->is_valid = false;
   GELOGD("Succ to destroy stream: %p, id: %d, is_force_destroy: %d.", stream, stream_status->rt_stream_id,

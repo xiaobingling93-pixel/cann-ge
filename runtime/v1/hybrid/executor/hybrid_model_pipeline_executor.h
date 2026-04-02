@@ -101,13 +101,13 @@ class StageExecutor {
   GraphExecutionContext context_;
   StageExecutor *next_executor_ = nullptr;
 
-  rtStream_t stream_ = nullptr;
-  rtStream_t hccl_stream_ = nullptr;
+  aclrtStream stream_ = nullptr;
+  aclrtStream hccl_stream_ = nullptr;
 };
 
 class HybridModelPipelineExecutor : public HybridModelExecutor {
  public:
-  HybridModelPipelineExecutor(HybridModel *const model, const uint32_t device_id, const rtStream_t stream);
+  HybridModelPipelineExecutor(HybridModel *const model, const uint32_t device_id, const aclrtStream stream);
 
   ~HybridModelPipelineExecutor() override;
 

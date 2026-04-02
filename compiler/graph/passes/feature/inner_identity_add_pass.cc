@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "inner_tensor_move_add_pass.h"
+#include "inner_identity_add_pass.h"
 #include <stack>
 #include "node_utils.h"
 #include "graph/utils/op_desc_utils.h"
@@ -20,14 +20,14 @@
 
 namespace ge {
 namespace {
-const std::string kInnerTensorMoveAttr = "_inner_tensor_move";
+const std::string kInnerIdentityAttr = "_inner_identity";
 // 这些算子需要被后续的ref算子修改输出
 bool IsChangedByRefNode(const NodePtr &node) {
   const auto &type = NodeUtils::GetNodeType(node);
   return (type == REFSWITCH) || (type == REFMERGE) || (type == READVARIABLEOP);
 }
 
-bool IsNoNeedInsertTensorMove(const OutDataAnchorPtr &anchor) {
+bool IsNoNeedInsertIdentity(const OutDataAnchorPtr &anchor) {
   std::stack<OutDataAnchorPtr> out_data_anchor_stack;
   out_data_anchor_stack.push(anchor);
   NodePtr input_node = anchor->GetOwnerNode();
@@ -59,7 +59,7 @@ bool IsNoNeedInsertTensorMove(const OutDataAnchorPtr &anchor) {
   return OpTypeUtils::IsVarLikeNode(input_node->GetType()) || IsChangedByRefNode(input_node);
 }
 }
-Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
+Status InnerIdentityAddPass::Run(ComputeGraphPtr graph) {
   GE_ASSERT_NOTNULL(graph);
   if (connectivity_ == nullptr) {
     connectivity_ = ComGraphMakeUnique<ConnectionMatrix>(graph);
@@ -93,13 +93,13 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
 
       auto ref_input_node = peer_out_data_anchor->GetOwnerNode();
       if ((ref_input_node->GetType() == TENSORMOVE) && (peer_out_data_anchor->GetPeerInDataNodesSize() == 1U)) {
-        GELOGD("ref node %s input is TensorMove %s, this Tensormove has only one output, skip insert inner Tensormove",
+        GELOGD("ref node %s input is TensorMove %s, this Tensormove has only one output, skip insert inner identity",
                node->GetNamePtr(), ref_input_node->GetNamePtr());
         continue;
       }
 
-      if (IsNoNeedInsertTensorMove(peer_out_data_anchor)) {
-        GELOGD("ref node %s input is %s, skip insert inner Tensormove", node->GetNamePtr(), ref_input_node->GetNamePtr());
+      if (IsNoNeedInsertIdentity(peer_out_data_anchor)) {
+        GELOGD("ref node %s input is %s, skip insert inner identity", node->GetNamePtr(), ref_input_node->GetNamePtr());
         continue;
       }
 
@@ -113,16 +113,16 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
           target_in_data_anchors.emplace_back(peer_in_data_anchor);
         }
       }
-      // 创建TensorMove并断边、重新连边
-      auto tensor_move = AddTensorMove(node->GetOwnerComputeGraph(), peer_out_data_anchor, in_data_anchor);
-      GE_ASSERT_NOTNULL(tensor_move);
-      // ref_input_node多引用断边重新从TensorMove连边过去
+      // 创建Identity并断边、重新连边
+      auto identity = AddIdentity(node->GetOwnerComputeGraph(), peer_out_data_anchor, in_data_anchor);
+      GE_ASSERT_NOTNULL(identity);
+      // ref_input_node多引用断边重新从Identity连边过去
       for (const auto &peer_in_data_anchor : target_in_data_anchors) {
         GE_ASSERT_SUCCESS(GraphUtils::RemoveEdge(peer_out_data_anchor, peer_in_data_anchor),
                             "RemoveEdge from %s to %s failed", ref_input_node->GetNamePtr(),
                             peer_in_data_anchor->GetOwnerNode()->GetNamePtr());
-        GE_ASSERT_SUCCESS(GraphUtils::AddEdge(tensor_move->GetOutDataAnchor(0), peer_in_data_anchor));
-        GELOGD("Add edge from %s to %s", tensor_move->GetNamePtr(),
+        GE_ASSERT_SUCCESS(GraphUtils::AddEdge(identity->GetOutDataAnchor(0), peer_in_data_anchor));
+        GELOGD("Add edge from %s to %s", identity->GetNamePtr(),
                peer_in_data_anchor->GetOwnerNode()->GetNamePtr());
       }
     }
@@ -130,25 +130,27 @@ Status InnerTensorMoveAddPass::Run(ComputeGraphPtr graph) {
   return SUCCESS;
 }
 
-NodePtr InnerTensorMoveAddPass::AddTensorMove(const ComputeGraphPtr &graph, const OutDataAnchorPtr &src_anchor,
+NodePtr InnerIdentityAddPass::AddIdentity(const ComputeGraphPtr &graph, const OutDataAnchorPtr &src_anchor,
                                          const InDataAnchorPtr &dst_anchor) {
-  static size_t tensor_move_count = 0;
-  std::string name = "inner_tensormove_" + std::to_string(tensor_move_count++);
-  const auto tensor_move_op = OperatorFactory::CreateOperator(name.c_str(), TENSORMOVE);
-  tensor_move_op.BreakConnect();
-  const auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(tensor_move_op);
+  static size_t identity_count = 0;
+  std::string name = "inner_identity_" + std::to_string(identity_count++);
+  const auto identity_op = OperatorFactory::CreateOperator(name.c_str(), IDENTITY);
+  identity_op.BreakConnect();
+  const auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(identity_op);
   GE_ASSERT_NOTNULL(op_desc);
-  GE_ASSERT_TRUE(AttrUtils::SetBool(op_desc, kInnerTensorMoveAttr, true));
-  auto tensor_move_node = graph->AddNode(op_desc);
-  GE_ASSERT_NOTNULL(tensor_move_node);
-  GE_ASSERT_SUCCESS(GraphUtils::InsertNodeAfter(src_anchor, {dst_anchor}, tensor_move_node, 0, 0),
-                    "Insert node %s between %s and %s failed", tensor_move_node->GetNamePtr(),
+  GE_ASSERT_TRUE(AttrUtils::SetBool(op_desc, kInnerIdentityAttr, true));
+  GE_ASSERT_TRUE(AttrUtils::SetBool(op_desc, ATTR_NAME_CANNOT_BE_DELETED, true));
+  GE_ASSERT_TRUE(AttrUtils::SetBool(op_desc, ATTR_NO_NEED_CONSTANT_FOLDING, true));
+  auto identity_node = graph->AddNode(op_desc);
+  GE_ASSERT_NOTNULL(identity_node);
+  GE_ASSERT_SUCCESS(GraphUtils::InsertNodeAfter(src_anchor, {dst_anchor}, identity_node, 0, 0),
+                    "Insert node %s between %s and %s failed", identity_node->GetNamePtr(),
                     src_anchor->GetOwnerNode()->GetNamePtr(), dst_anchor->GetOwnerNode()->GetNamePtr());
-  connectivity_->Update(graph, {tensor_move_node});
-  GELOGI("Add tensor_move_node %s between src_node %s and dst_node %s", tensor_move_node->GetName().c_str(),
+  connectivity_->Update(graph, {identity_node});
+  GELOGI("Add identity_node %s between src_node %s and dst_node %s", identity_node->GetName().c_str(),
          src_anchor->GetOwnerNode()->GetName().c_str(), dst_anchor->GetOwnerNode()->GetName().c_str());
-  return tensor_move_node;
+  return identity_node;
 }
 
-REG_PASS_OPTION("InnerTensorMoveAddPass").LEVELS(OoLevel::kO0);
+REG_PASS_OPTION("InnerIdentityAddPass").LEVELS(OoLevel::kO0);
 }  // namespace ge

@@ -54,7 +54,7 @@ ge::graphStatus CreateCopyFlowLaunchTensorData(const FastNode *node, KernelConte
 }
 
 ge::graphStatus CopyTensorToDevice(KernelContext *context, const size_t copy_index) {
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(CopyFlowLaunchInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(CopyFlowLaunchInputs::kStream));
   auto gert_allocator =
       context->MutableInputPointer<GertAllocator>(
           static_cast<size_t>(CopyFlowLaunchInputs::kAllocator));

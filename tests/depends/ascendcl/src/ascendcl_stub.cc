@@ -14,6 +14,7 @@
 #include <iostream>
 #include "ascendcl_stub.h"
 #include "mmpa/mmpa_api.h"
+#include "runtime_stub.h"
 
 extern std::string g_acl_stub_mock;
 extern std::string g_acl_stub_mock_v2;
@@ -21,7 +22,6 @@ std::string g_acl_stub_mock = "";
 std::string g_acl_stub_mock_v2 = "";
 static char g_soc_version[50] = {0};
 
-static int32_t g_free_stream_num = 2048;
 static int32_t g_free_event_num = 2048;
 static int32_t g_cnt_rtStreamSynchronize_over_flow = 0;
 static int32_t g_cnt_rtStreamSynchronize_fail = 0;
@@ -437,7 +437,7 @@ aclError AclRuntimeStub::aclrtCreateStream(aclrtStream *stream) {
     return ACL_ERROR_RT_INTERNAL_ERROR;
   }
   g_free_stream_num--;
-  *stream = new uint32_t;
+  *stream = new std::unique_ptr<uint32_t>(std::make_unique<uint32_t>());
   return ACL_SUCCESS;
 }
 
@@ -446,13 +446,13 @@ aclError AclRuntimeStub::aclrtCreateStreamWithConfig(aclrtStream *stream, uint32
     return ACL_ERROR_RT_INTERNAL_ERROR;
   }
   g_free_stream_num--;
-  *stream = new uint32_t;
+  *stream = new std::unique_ptr<uint32_t>(std::make_unique<uint32_t>());
   return ACL_SUCCESS;
 }
 
 aclError AclRuntimeStub::aclrtDestroyStream(aclrtStream stream) {
   if (stream != nullptr) {
-    delete (uint32_t *)stream;
+    delete static_cast<std::unique_ptr<uint32_t>*>(stream);
   }
   g_free_stream_num++;
   return ACL_SUCCESS;
@@ -460,7 +460,7 @@ aclError AclRuntimeStub::aclrtDestroyStream(aclrtStream stream) {
 
 aclError AclRuntimeStub::aclrtDestroyStreamForce(aclrtStream stream) {
   if (stream != nullptr) {
-    delete (uint32_t *)stream;
+    delete static_cast<std::unique_ptr<uint32_t>*>(stream);
   }
   g_free_stream_num++;
   return ACL_SUCCESS;

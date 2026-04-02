@@ -26,6 +26,7 @@
 #include "framework/common/ge_types.h"
 #include "exe_graph/runtime/gert_tensor_data.h"
 #include "graph_metadef/common/ge_common/util.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -40,7 +41,7 @@ enum class CopyInputs {
 } // namespace
 ge::graphStatus PrepareCopyInputs(KernelContext *context) {
   auto output_num = context->GetInputValue<size_t>(static_cast<size_t>(CopyInputs::kOutputNum));
-  auto stream = context->GetInputValue<rtStream_t>(context->GetInputNum() - 1);
+  auto stream = context->GetInputValue<aclrtStream>(context->GetInputNum() - 1);
   std::vector<uint64_t> copy_input_release_flag;
   std::vector<uint64_t> copy_input_data_size;
   std::vector<uint64_t> copy_input_src;

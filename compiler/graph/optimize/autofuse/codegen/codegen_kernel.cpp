@@ -4789,6 +4789,14 @@ class AutoFusionVector {
             "int64_t shapeN, int64_t shapeM, int64_t curAlignN, int64_t stageSize) {";
   result << std::endl;
   result << "int64_t batch_num = offset / shapeN / shapeM;" << std::endl;
+  result << "int64_t load_block_len = curAlignN;" << std::endl;
+  result << "int64_t load_src_stride = shapeN - curAlignN;" << std::endl;
+  result << "int64_t load_dst_stride = 0;" << std::endl;
+  result << "if (shapeN < curAlignN) {" << std::endl;
+  result << "load_block_len = curAivN;" << std::endl;
+  result << "load_src_stride = 0;" << std::endl;
+  result << "load_dst_stride = curAlignN - shapeN;" << std::endl;
+  result << "}" << std::endl;
   GE_CHK_STATUS_RET(this->root_loop.Generate(this->tiler, this->tpipe, tmp, ComputeStage::kCVFuseStage1),
                     "Codegen root loop Generate failed");
   result << tmp;
@@ -4798,6 +4806,14 @@ class AutoFusionVector {
             "int64_t shapeN, int64_t shapeM, int64_t curAlignN, int64_t stageSize) {";
   result << std::endl;
   result << "int64_t batch_num = offset / shapeN / shapeM;" << std::endl;
+  result << "int64_t load_block_len = curAlignN;" << std::endl;
+  result << "int64_t load_src_stride = shapeN - curAlignN;" << std::endl;
+  result << "int64_t load_dst_stride = 0;" << std::endl;
+  result << "if (shapeN < curAlignN) {" << std::endl;
+  result << "load_block_len = curAivN;" << std::endl;
+  result << "load_src_stride = 0;" << std::endl;
+  result << "load_dst_stride = curAlignN - shapeN;" << std::endl;
+  result << "}" << std::endl;
   GE_CHK_STATUS_RET(this->root_loop.Generate(this->tiler, this->tpipe, tmp, ComputeStage::kCVFuseStage2),
                     "Codegen root loop Generate failed");
   result << tmp;

@@ -55,14 +55,14 @@ Status CompileContext::Compile(uint32_t graph_id, const ComputeGraphPtr &graph, 
   return SUCCESS;
 }
 
-Status CompileContext::Load(uint32_t graph_id, const rtStream_t stream) const {
+Status CompileContext::Load(uint32_t graph_id, const aclrtStream stream) const {
   GE_ASSERT_SUCCESS(graph_manager_.LoadGraph(graph_id, {}, stream));
   GELOGI("[Session: ][AddGraph] success to load slice_graph_id: %ld", graph_id);
   return SUCCESS;
 }
 
 Status CompileContext::Load(uint32_t graph_id, const std::map<AscendString, AscendString> &options,
-                            const rtStream_t stream) {
+                            const aclrtStream stream) {
   GE_ASSERT_SUCCESS(graph_manager_.LoadGraph(graph_id, options, stream));
   GELOGI("[Session: ][LoadGraph] success to load slice_graph_id: %ld", graph_id);
   return SUCCESS;

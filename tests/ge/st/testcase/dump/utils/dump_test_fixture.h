@@ -79,7 +79,9 @@ public:
 protected:
   void SetUp() override {
     auto dump_checker_stub = std::make_shared<DumpCheckRuntimeStub>();
+    auto dump_checker_stub_acl = std::make_shared<DumpCheckAclRuntimeStub>();
     RuntimeStub::SetInstance(dump_checker_stub);
+    AclRuntimeStub::SetInstance(dump_checker_stub_acl);
     checker_ = &dump_checker_stub->GetDumpChecker();
 
     // Reset at each iteration for the convenience of ModelId checking.
@@ -89,6 +91,7 @@ protected:
   void TearDown() override {
     OpsKernelBuilderRegistry::GetInstance().Unregister("AIcoreEngine");
     RuntimeStub::Reset();
+    AclRuntimeStub::Reset();
   }
   DumpChecker *checker_;
 };

@@ -35,7 +35,7 @@ const std::string KCpuTaskCheckInputTensorDesc = "checkInputTensorDesc";
 }  // namespace
 
 namespace ge {
-CpuTaskInfo::CpuTaskInfo(rtStream_t const stream) : TaskInfo() {
+CpuTaskInfo::CpuTaskInfo(aclrtStream const stream) : TaskInfo() {
   stream_ = stream;
 }
 
@@ -405,7 +405,7 @@ Status CpuTaskModelEnqueue::Distribute() {
 /// @param [in] stream: stream to be active.
 /// @return: 0 for success / others for failed
 ///
-Status CpuTaskActiveEntry::Init(rtStream_t const stream) {
+Status CpuTaskActiveEntry::Init(aclrtStream const stream) {
   if (stream == nullptr) {
     REPORT_INNER_ERR_MSG("E19999", "Param stream is nullptr, check invalid");
     GELOGE(FAILED, "[Check][Param] Task active stream not valid");
@@ -423,7 +423,7 @@ Status CpuTaskActiveEntry::Distribute() {
     return FAILED;
   }
 
-  GE_CHK_RT_RET(rtStreamActive(active_stream_, stream_));
+  GE_CHK_RT_RET(aclrtActiveStream(active_stream_, stream_));
 
   GELOGI("Cpu kernel launch active entry task success.");
   return SUCCESS;

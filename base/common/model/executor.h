@@ -17,6 +17,7 @@
 #include "exe_graph/runtime/tensor.h"
 #include "base/err_msg.h"
 #include "base/err_mgr.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 struct RunArgs {
@@ -44,7 +45,7 @@ class Executor {
    * @return Status result of function
    */
   virtual Status LoadGraph(const GeRootModelPtr &root_model, const GraphNodePtr &graph_node,
-                           const rtStream_t stream = nullptr) = 0;
+                           const aclrtStream stream = nullptr) = 0;
 
   /**
    * @ingroup ge
@@ -85,11 +86,11 @@ class Executor {
    * @param [out] outputs: output data of the graph running
    * @return Status result of function
    */
-  virtual Status RunGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id, const rtStream_t stream,
+  virtual Status RunGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id, const aclrtStream stream,
                                     const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs) = 0;
   
   virtual Status ExecuteGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id,
-                                         rtStream_t const stream, const std::vector<gert::Tensor> &inputs,
+                                         aclrtStream const stream, const std::vector<gert::Tensor> &inputs,
                                          std::vector<gert::Tensor> &outputs) = 0;
 
   /**

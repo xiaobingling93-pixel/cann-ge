@@ -36,19 +36,19 @@ class OpdebugRegister {
   Status RegisterDebugForModel(rtModel_t const model_handle, const uint32_t op_debug_mode, DataDumper &data_dumper);
   void UnregisterDebugForModel(rtModel_t const model_handle);
 
-  Status RegisterDebugForStream(rtStream_t const stream, const uint32_t op_debug_mode, DataDumper &data_dumper);
-  void UnregisterDebugForStream(rtStream_t const stream);
+  Status RegisterDebugForStream(aclrtStream const stream, const uint32_t op_debug_mode, DataDumper &data_dumper);
+  void UnregisterDebugForStream(aclrtStream const stream);
 
  private:
   Status MallocMemForOpdebug();
-  static Status CreateOpDebugTaskByStream(rtStream_t const stream, const uint32_t op_debug_mode);
+  static Status CreateOpDebugTaskByStream(aclrtStream const stream, const uint32_t op_debug_mode);
   Status MallocP2PDebugMem(const void * const op_debug_addr);
 
   void *op_debug_addr_ = nullptr;
   void *p2p_debug_addr_ = nullptr;
   static std::mutex mu_;
-  static std::map<rtStream_t, std::unique_ptr<OpDebugTask>> op_debug_tasks_;
-  static std::map<rtStream_t, uint32_t> stream_ref_count_;
+  static std::map<aclrtStream, std::unique_ptr<OpDebugTask>> op_debug_tasks_;
+  static std::map<aclrtStream, uint32_t> stream_ref_count_;
 };
 }  // namespace ge
 #endif  // GE_COMMON_DUMP_OPDEBUG_REGISTER_H_

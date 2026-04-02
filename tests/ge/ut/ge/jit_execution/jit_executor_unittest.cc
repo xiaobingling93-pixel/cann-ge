@@ -53,16 +53,16 @@ class JitExecutorUT : public testing::Test {
     }
 
     CommonSetupUtil::CommonSetup();
-    auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+    auto &rts_stub = gert_stub_.GetAclRuntimeStub();
     gert_stub_.GetKernelStub().StubTiling();
-    RuntimeStub::Install(&rts_stub);
+    AclRuntimeStub::Install(&rts_stub);
     gert::SpaceRegistryFaker::CreateDefaultSpaceRegistryImpl2();
   }
   void TearDown() override {
     CommonSetupUtil::CommonTearDown();
-    auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+    auto &rts_stub = gert_stub_.GetAclRuntimeStub();
     rts_stub.Clear();
-    RuntimeStub::UnInstall(&rts_stub);
+    AclRuntimeStub::UnInstall(&rts_stub);
     if (!env.empty()) {
       setenv("LD_PRELOAD", env.c_str(), 1);
     }
@@ -72,7 +72,7 @@ class JitExecutorUT : public testing::Test {
 };
 
 TEST_F(JitExecutorUT, CreateJitExecutor_Success) {
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   ModelExecutor model_executor;
   model_executor.Initialize({}, 0);
   GraphManager graph_manager;
@@ -107,13 +107,13 @@ TEST_F(JitExecutorUT, CreateJitExecutor_Success) {
 
 // to stub rts return fail when create stream
 TEST_F(JitExecutorUT, CreateJitExecutor_Failed) {
-  class MockBrokenRTS : public gert::RuntimeStubImpl {
-    rtError_t rtStreamCreate(rtStream_t *stream, int32_t priority) {
+  class MockBrokenRTS : public gert::AclRuntimeStubImpl {
+    aclError aclrtCreateStream(aclrtStream *stream) {
       return -1;
     }
   };
   auto mock_runtime = std::make_shared<MockBrokenRTS>();
-  RuntimeStub::Install(mock_runtime.get());
+  AclRuntimeStub::Install(mock_runtime.get());
 
   ModelExecutor model_executor;
   model_executor.Initialize({}, 0);
@@ -164,7 +164,7 @@ TEST_F(JitExecutorUT, Run_DynamicShape_NoSlice_Success) {
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -328,7 +328,7 @@ TEST_F(JitExecutorUT, Run_StaticShape_NoSlice_Success) {
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -389,7 +389,7 @@ TEST_F(JitExecutorUT, run_success_when_input_graph_contain_one_reshape_node) {
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -485,7 +485,7 @@ TEST_F(JitExecutorUT, run_success_when_input_graph_contain_one_reshape_node_with
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1);  // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -544,7 +544,7 @@ TEST_F(JitExecutorUT, run_success_when_input_graph_contain_one_reshape_two_relu_
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -604,7 +604,7 @@ TEST_F(JitExecutorUT, run_success_when_input_graph_contain_two_reshape_node) {
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -659,7 +659,7 @@ TEST_F(JitExecutorUT, run_success_when_input_graph_contain_two_reshape_one_const
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);
@@ -769,7 +769,7 @@ TEST_F(JitExecutorUT, guard_hit_success_and_miss_success_when_input_graph_contai
   auto jit_executor = JitExecutor::Create(graph_manager, task_queue, order, compile_context, cmc, tmp_mutex);
   EXPECT_NE(jit_executor, nullptr);
   // 校验本次创建jit executor申请了1个stream，注册了1个device allocator
-  auto &rts_stub = gert_stub_.GetRtsRuntimeStub();
+  auto &rts_stub = gert_stub_.GetAclRuntimeStub();
   EXPECT_EQ(rts_stub.GetAllRtStreams().size(), 1); // required 1 stream
   auto stream = rts_stub.GetAllRtStreams().at(0);
   auto allocator = ExternalAllocatorManager::GetExternalAllocator(stream);

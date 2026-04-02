@@ -64,7 +64,6 @@
 #include "common/op_registration_tbe.h"
 #include "graph/custom_op_factory.h"
 #include "graph/opsproto_manager.h"
-#include <experimental/filesystem>
 #include "common/types_map.h"
 
 using ge::OpParserFactory;
@@ -97,7 +96,6 @@ using ge::parser::ThreadPool;
 using ge::parser::fp16_t;
 using ge::parser::ModelSaver;
 
-namespace fs = std::experimental::filesystem;
 namespace ge {
 graphStatus aclgrphParseTensorFlow(const char *model_file, ge::Graph &graph) {
   PARSER_TIMESTAMP_START(aclgrphParseTensorFlow);

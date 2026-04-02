@@ -23,7 +23,7 @@ class HybridModelExecutor {
   struct CtrlArgs {
     bool is_eos = false;
     int32_t num_loops = 10;
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
   };
 
   struct ExecuteArgs {
@@ -34,7 +34,7 @@ class HybridModelExecutor {
     CtrlArgs ctrl_args;
   };
 
-  explicit HybridModelExecutor(HybridModel *const model, uint32_t device_id, rtStream_t stream)
+  explicit HybridModelExecutor(HybridModel *const model, uint32_t device_id, aclrtStream stream)
     : model_(model),
       device_id_(device_id),
       stream_(stream) {};
@@ -43,10 +43,10 @@ class HybridModelExecutor {
   // interface is called by sess.RunGraphWithStream with dynamic model, will return output tensor to usr
   // only support rt2 executor due to dynamic model is execute by rt2 defult, other executor will report error
   virtual Status ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                        const rtStream_t stream = nullptr);
+                                        const aclrtStream stream = nullptr);
   virtual Status ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                        std::vector<gert::Tensor> &outputs,
-                                                       const rtStream_t stream = nullptr);
+                                                       const aclrtStream stream = nullptr);
   // interface is called by sess.RunGraphWithStream and LoadModelWithQ
   virtual Status Execute(ExecuteArgs &args) = 0;
   // interface is called by sess.RunGraph
@@ -88,7 +88,7 @@ class HybridModelExecutor {
 
   HybridModel *model_ = nullptr;
   uint32_t device_id_;
-  rtStream_t stream_;
+  aclrtStream stream_;
   std::map<uint32_t, int64_t> index_to_tensor_size_;
   std::map<uint32_t, GeTensorDescPtr> index_to_tensor_desc_;
   std::vector<bool> is_input_dynamic_;

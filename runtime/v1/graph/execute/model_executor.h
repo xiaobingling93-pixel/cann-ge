@@ -37,7 +37,7 @@ class ModelExecutor : public Executor {
   /// @param [in] GraphNode: node of graph.
   /// @return Status result of function
   Status LoadGraph(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                   const rtStream_t stream = nullptr) override;
+                   const aclrtStream stream = nullptr) override;
 
   /// @ingroup ge
   /// @brief Unload mode for graph.
@@ -69,11 +69,11 @@ class ModelExecutor : public Executor {
   /// @param [in] inputs: input data for the graph running.
   /// @param [out] outputs: output data of the graph running
   /// @return Status result of function
-  Status RunGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id, rtStream_t const stream,
+  Status RunGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id, aclrtStream const stream,
                             const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs) override;
   
    Status ExecuteGraphWithStream(const GraphNodePtr &graph_node, const GraphId graph_id,
-                                         rtStream_t const stream, const std::vector<gert::Tensor> &inputs,
+                                         aclrtStream const stream, const std::vector<gert::Tensor> &inputs,
                                          std::vector<gert::Tensor> &outputs) override;
 
   /**
@@ -106,11 +106,11 @@ class ModelExecutor : public Executor {
   void AddGraphNode(const GraphId graph_id, const GraphNodePtr &graph_node);
   void RemoveGraphNode(const GraphId graph_id);
 
-  Status ModelLoad(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node, const rtStream_t stream = nullptr);
+  Status ModelLoad(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node, const aclrtStream stream = nullptr);
   Status MallocFixedFeatureMemoryIfNeed(const GraphNodePtr &graph_node, const GeRootModelPtr &ge_root_model,
-                                        const rtStream_t stream) const;
+                                        const aclrtStream stream) const;
   static Status MallocByDiffAllocator(const uint64_t session_id,
-                                      const rtStream_t stream,
+                                      const aclrtStream stream,
                                       const FeatureMemoryPtr &fixed_feature_mem,
                                       const rtMemType_t rt_mem_type,
                                       const GeRootModelPtr &ge_root_model);

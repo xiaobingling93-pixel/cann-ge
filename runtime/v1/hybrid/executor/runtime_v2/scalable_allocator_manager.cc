@@ -15,7 +15,7 @@
 #include "common/model/external_allocator_manager.h"
 
 namespace ge {
-gert::Allocators *ScalableAllocatorManager::GetAllocator(const std::string &graph_name, const rtStream_t stream) {
+gert::Allocators *ScalableAllocatorManager::GetAllocator(const std::string &graph_name, const aclrtStream stream) {
   const std::unique_lock<std::mutex> lk(allocators_lock_);
   const auto iter = allocators_.find(stream);
   if (iter != allocators_.end()) {

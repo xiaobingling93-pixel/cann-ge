@@ -19,7 +19,7 @@ constexpr char_t const *kTilingContextAddrs = "_tiling_context_addr";
 constexpr char_t const *kTilingSinkTaskInfo = "_tiling_sink_task_info";
 struct TilingSinkTaskInfo {
   void *ffts_task_handle{nullptr};
-  rtStream_t stream{nullptr};
+  aclrtStream stream{nullptr};
   uint32_t task_id{0U};
 };
 

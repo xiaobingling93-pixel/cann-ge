@@ -24,6 +24,7 @@
 #include "runtime/rt_dfx.h"
 #include "runtime/rts/rts_stream.h"
 #include "runtime/rts/rts_kernel.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 class DavinciModel;
@@ -496,7 +497,7 @@ class TaskInfo {
  protected:
   TaskInfo(const TaskInfo &) = default;
   TaskInfo &operator=(const TaskInfo &) & = default;
-  Status SetStream(const uint32_t stream_id, const std::vector<rtStream_t> &stream_list);
+  Status SetStream(const uint32_t stream_id, const std::vector<aclrtStream> &stream_list);
   static void SetTaskTag(const char_t *const op_name);
 
   void *stream_{nullptr};
@@ -513,7 +514,7 @@ class TaskProfGuarder {
   ~TaskProfGuarder() noexcept {
     auto &prof_api = task_info_->MutableProfApi();
     prof_api.end_time = MsprofSysCycleTime();
-    (void)rtsStreamGetId(reinterpret_cast<rtStream_t>(task_info_->GetTaskStream()), reinterpret_cast<int32_t*>(&prof_api.stream_id));
+    (void)aclrtStreamGetId(reinterpret_cast<aclrtStream>(task_info_->GetTaskStream()), reinterpret_cast<int32_t*>(&prof_api.stream_id));
   }
 
  private:

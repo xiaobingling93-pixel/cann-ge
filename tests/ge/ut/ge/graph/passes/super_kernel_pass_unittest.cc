@@ -202,6 +202,45 @@ TEST_F(SuperKernelPassTest, super_kernel_verify_abort) {
   EXPECT_NE(ret, SUCCESS);
 }
 
+TEST_F(SuperKernelPassTest, super_kernel_not_fusion_data) {
+  DEF_GRAPH(g1) {
+    const auto BatchMatMul1 = OP_CFG(BATCHMATMUL).Attr("supportSuperKernel", 1).Attr("_super_kernel_scope", "scope1");
+    const auto Dequantize1 = OP_CFG(DEQUANTIZE).Attr("supportSuperKernel", 1).Attr("_super_kernel_scope", "scope1");
+    const auto cast1= OP_CFG(CAST).Attr("supportSuperKernel", 1).Attr("_super_kernel_scope", "scope1");
+    CHAIN(NODE("data1", DATA)->EDGE(0, 0)->NODE("BatchMatMul1", BatchMatMul1)->EDGE(0, 0)->
+        EDGE(0, 0)->NODE("Dequantize1", Dequantize1)->EDGE(0, 0)->
+        NODE("cast1", cast1)->EDGE(0, 0)->NODE("net_output", NETOUTPUT));
+  };
+  auto compute_graph = ToComputeGraph(g1);
+  compute_graph->TopologicalSorting();
+  auto data1 = compute_graph->FindNode("data1");
+  data1->GetOpDesc()->SetStreamId(-1);
+  AttrUtils::SetStr(data1->GetOpDesc(), "_super_kernel_scope", "scope1");
+  auto BatchMatMul1 = compute_graph->FindNode("BatchMatMul1");
+  auto Dequantize1 = compute_graph->FindNode("Dequantize1");
+  auto cast1 = compute_graph->FindNode("cast1");
+  BatchMatMul1->GetOpDesc()->SetStreamId(1);
+  Dequantize1->GetOpDesc()->SetStreamId(1);
+  cast1->GetOpDesc()->SetStreamId(1);
+
+  SuperKernelPass super_kernel_pass;
+  AttrUtils::SetStr(data1->GetOpDesc(), ATTR_NAME_SUPER_KERNEL_OPTIONS, "a_opt=xx:strict-scope-check=abort");
+  AttrUtils::SetStr(BatchMatMul1->GetOpDesc(), ATTR_NAME_SUPER_KERNEL_OPTIONS, "a_opt=xx:strict-scope-check=abort");
+  AttrUtils::SetStr(Dequantize1->GetOpDesc(), ATTR_NAME_SUPER_KERNEL_OPTIONS, "a_opt=xx:strict-scope-check=abort");
+  AttrUtils::SetStr(cast1->GetOpDesc(), ATTR_NAME_SUPER_KERNEL_OPTIONS, "a_opt=xx:strict-scope-check=abort");
+  auto ret = super_kernel_pass.Run(compute_graph);
+  EXPECT_EQ(ret, SUCCESS);
+  NodePtr sk_node = nullptr;
+  for (auto &node : compute_graph->GetDirectNode()) {
+    if (node->GetType() == "SuperKernel") {
+      sk_node = node;
+    }
+  }
+  EXPECT_NE(sk_node, nullptr);
+  EXPECT_EQ(sk_node->GetOpDesc()->GetStreamId(), 1);
+  EXPECT_FALSE(data1->GetOpDesc()->HasAttr("_super_kernel_scope"));
+}
+
 TEST_F(SuperKernelPassTest, super_kernel_verify_bypass) {
   DEF_GRAPH(g1) {
     const auto BatchMatMul1 = OP_CFG(BATCHMATMUL).Attr("supportSuperKernel", 1).Attr("_super_kernel_scope", "scope1");

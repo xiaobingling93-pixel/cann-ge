@@ -428,6 +428,7 @@ const std::unordered_set<std::string> kOm2UnsuppotedFlag = {
     "save_original_model",
     "compress_weight_conf",
     "enable_compress_weight",
+    "enable_attr_compression",
 };
 
 namespace ge {

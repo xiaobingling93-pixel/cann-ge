@@ -56,7 +56,7 @@ class HybridDavinciModel::Impl {
                  const std::vector<GeTensorDesc> &input_desc,
                  std::vector<DataBuffer> &outputs,
                  std::vector<GeTensorDesc> &output_desc,
-                 const rtStream_t stream) {
+                 const aclrtStream stream) {
     const auto main_stream = use_default_stream_ ? nullptr : stream;
     return executor_.Execute(inputs, input_desc, outputs, output_desc, main_stream);
   }
@@ -67,12 +67,12 @@ class HybridDavinciModel::Impl {
 
   Status ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                std::vector<gert::Tensor> &outputs,
-                                               const rtStream_t stream) {
+                                               const aclrtStream stream) {
     return executor_.ExecuteWithStreamAsync(inputs, outputs, stream);
   }
 
   Status ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                const rtStream_t stream) {
+                                const aclrtStream stream) {
     return executor_.ExecuteWithStreamAsync(inputs, outputs, stream);
   }
 
@@ -106,7 +106,7 @@ class HybridDavinciModel::Impl {
     model_.SetOmName(model_name);
   }
 
-  void SetLoadStream(const rtStream_t stream) {
+  void SetLoadStream(const aclrtStream stream) {
     load_stream_ = stream;
   }
 
@@ -184,7 +184,7 @@ class HybridDavinciModel::Impl {
   std::shared_ptr<ModelListener> listener_;
   HybridModel model_;
   HybridModelAsyncExecutor executor_;
-  rtStream_t load_stream_ = nullptr;
+  aclrtStream load_stream_ = nullptr;
   bool use_default_stream_ = false;
 };
 
@@ -213,7 +213,7 @@ Status HybridDavinciModel::Execute(const std::vector<DataBuffer> &inputs,
                                    const std::vector<GeTensorDesc> &input_desc,
                                    std::vector<DataBuffer> &outputs,
                                    std::vector<GeTensorDesc> &output_desc,
-                                   const rtStream_t stream) {
+                                   const aclrtStream stream) {
   GE_CHECK_NOTNULL(impl_);
   return impl_->Execute(inputs, input_desc, outputs, output_desc, stream);
 }
@@ -224,14 +224,14 @@ Status HybridDavinciModel::Execute(const std::vector<gert::Tensor> &inputs, std:
 }
 
 Status HybridDavinciModel::ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                                  const rtStream_t stream) {
+                                                  const aclrtStream stream) {
   GE_CHECK_NOTNULL(impl_);
   return impl_->ExecuteWithStreamAsync(inputs, outputs, stream);
 }
 
 Status HybridDavinciModel::ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                   std::vector<gert::Tensor> &outputs,
-                                                  const rtStream_t stream) {
+                                                  const aclrtStream stream) {
   GE_CHECK_NOTNULL(impl_);
   return impl_->ExecuteWithStreamAsync(inputs, outputs, stream);
 }
@@ -281,7 +281,7 @@ void HybridDavinciModel::SetFileConstantWeightDir(const std::string &file_consta
   }
 }
 
-void HybridDavinciModel::SetLoadStream(const rtStream_t stream) {
+void HybridDavinciModel::SetLoadStream(const aclrtStream stream) {
   if (impl_ != nullptr) {
     impl_->SetLoadStream(stream);
   }

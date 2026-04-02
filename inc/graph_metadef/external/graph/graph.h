@@ -16,8 +16,8 @@
 #include <utility>
 #include <vector>
 
-#include "./operator.h"
-#include "./gnode.h"
+#include "graph/operator.h"
+#include "graph/gnode.h"
 
 namespace ge {
 class Graph;

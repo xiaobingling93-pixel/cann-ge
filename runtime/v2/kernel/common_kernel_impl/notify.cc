@@ -14,7 +14,6 @@
 #include "core/debug/kernel_tracing.h"
 #include "common/checker.h"
 
-
 namespace gert {
 /**
  * Get rts notify from logic notify id.
@@ -26,7 +25,7 @@ namespace gert {
  */
 ge::graphStatus CreateNotifies(KernelContext *context) {
   const auto logic_notifies_to_rts_notifies =
-      context->GetInputPointer<TypedContinuousVector<rtNotify_t>>(EnToIdx(SplitRtNotifiesInput::kNotifies));
+      context->GetInputPointer<TypedContinuousVector<aclrtNotify>>(EnToIdx(SplitRtNotifiesInput::kNotifies));
   const auto notify_num = context->GetInputPointer<int64_t>(EnToIdx(SplitRtNotifiesInput::kNotifyNum));
   GE_ASSERT_NOTNULL(notify_num);
   if (SECUREC_UNLIKELY((logic_notifies_to_rts_notifies == nullptr))) {
@@ -40,7 +39,7 @@ ge::graphStatus CreateNotifies(KernelContext *context) {
   }
 
   for (size_t i = 0U; i < static_cast<size_t>(*notify_num); ++i) {
-    auto rts_notify = context->GetOutputPointer<rtNotify_t>(i);
+    auto rts_notify = context->GetOutputPointer<aclrtNotify>(i);
     if (SECUREC_UNLIKELY(rts_notify == nullptr)) {
       return ge::GRAPH_FAILED;
     }

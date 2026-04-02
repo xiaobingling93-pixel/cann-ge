@@ -11,6 +11,7 @@
 #include <cstddef>
 #include "runtime/kernel.h"
 #include "runtime/rt.h"
+#include "acl/acl_rt.h"
 #include "graph/ge_error_codes.h"
 #include "graph/def_types.h"
 #include "register/kernel_registry.h"
@@ -32,7 +33,7 @@ enum class StarsLaunchCommon { kAddress, kLen, kStream };
 std::vector<std::string> PrintStarsLaunchArgs(const KernelContext *context) {
   auto address = context->GetInputValue<void *>(static_cast<size_t>(StarsLaunchCommon::kAddress));
   auto len = context->GetInputValue<uint32_t>(static_cast<size_t>(StarsLaunchCommon::kLen));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(StarsLaunchCommon::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(StarsLaunchCommon::kStream));
 
   std::stringstream ss;
   ss << "Stars launch function arguments: "
@@ -43,7 +44,7 @@ std::vector<std::string> PrintStarsLaunchArgs(const KernelContext *context) {
 ge::graphStatus StarsTaskLaunchKernel(KernelContext *context) {
   auto address = context->GetInputValue<void *>(static_cast<size_t>(StarsLaunchCommon::kAddress));
   auto len = context->GetInputValue<uint32_t>(static_cast<size_t>(StarsLaunchCommon::kLen));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(StarsLaunchCommon::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(StarsLaunchCommon::kStream));
 
   FE_ASSERT_NOTNULL(address);
   FE_ASSERT_NOTNULL(stream);

@@ -93,7 +93,7 @@ ge::graphStatus ModelV2Executor::Load(const ModelExecuteArg &arg) {
 }
 
 ge::graphStatus ModelV2Executor::OccupyStreamResource(const ModelExecuteArg &arg,
-                                                      TypedContinuousVector<rtStream_t> *&streams,
+                                                      TypedContinuousVector<aclrtStream> *&streams,
                                                       TypedContinuousVector<aclrtEvent> *&events,
                                                       TypedContinuousVector<aclrtNotify> *&notifies) {
   StreamAllocator *stream_allocator;
@@ -135,7 +135,7 @@ ge::graphStatus ModelV2Executor::OccupyStreamResource(const ModelExecuteArg &arg
 
 ge::graphStatus ModelV2Executor::SpecifyArgsInputs(const ModelExecuteArg &arg, size_t input_num,
                                                    ExeGraphExecutor &graph_executor) {
-  TypedContinuousVector<rtStream_t> *streams = nullptr;
+  TypedContinuousVector<aclrtStream> *streams = nullptr;
   TypedContinuousVector<aclrtEvent> *events = nullptr;
   TypedContinuousVector<aclrtNotify> *notifies = nullptr;
   GE_RETURN_IF_ERROR(OccupyStreamResource(arg, streams, events, notifies));
@@ -202,7 +202,7 @@ ge::graphStatus ModelV2Executor::UnLoad() {
     return ge::PARAM_INVALID;
   }
   if (default_stream_ != nullptr) {
-    (void)rtStreamDestroy(default_stream_);
+    (void)aclrtDestroyStream(default_stream_);
     default_stream_ = nullptr;
   }
   auto ret = graphs_[kMainExeGraph].UnLoad();

@@ -12,7 +12,7 @@
 #define GE_GRAPH_LOAD_NEW_MODEL_MANAGER_CPU_QUEUE_SCHEDULE_H_
 
 #include <cstdint>
-
+#include "acl/acl_rt.h"
 #include "framework/common/ge_types.h"
 #include "graph/load/model_manager/task_info/task_info.h"
 #include "graph/load/model_manager/zero_copy_offset.h"
@@ -128,7 +128,7 @@ struct GroupInfo {
 ///
 class CpuTaskInfo : public TaskInfo {
  public:
-  explicit CpuTaskInfo(rtStream_t const stream);
+  explicit CpuTaskInfo(aclrtStream const stream);
   ~CpuTaskInfo() override;
 
   Status Init(const domi::TaskDef &task_def, DavinciModel *const davinci_model,
@@ -157,7 +157,7 @@ class CpuTaskInfo : public TaskInfo {
 ///
 class CpuTaskModelDequeue : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelDequeue(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelDequeue(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelDequeue() override = default;
 
   Status Init(const uint32_t queue_id, uintptr_t &in_mbuf);
@@ -174,7 +174,7 @@ class CpuTaskModelDequeue : public CpuTaskInfo {
 ///
 class CpuTaskModelBatchDequeue : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelBatchDequeue(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelBatchDequeue(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelBatchDequeue() override = default;
 
   Status Init(const uint32_t align_interval,
@@ -190,7 +190,7 @@ class CpuTaskModelBatchDequeue : public CpuTaskInfo {
 
 class CpuTaskModelGatherDequeue : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelGatherDequeue(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelGatherDequeue(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelGatherDequeue() override = default;
 
   Status Init(const std::vector<QueueAttrs> &queues, const InputAlignAttrs &align_attrs,
@@ -208,7 +208,7 @@ class CpuTaskModelGatherDequeue : public CpuTaskInfo {
 ///
 class CpuTaskZeroCopy : public CpuTaskInfo {
  public:
-  explicit CpuTaskZeroCopy(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskZeroCopy(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskZeroCopy() override;
 
   Status Init(std::vector<uintptr_t> &mbuf_list,
@@ -248,7 +248,7 @@ class CpuTaskZeroCopy : public CpuTaskInfo {
 ///
 class CpuTaskProcessOutput : public CpuTaskInfo {
  public:
-  CpuTaskProcessOutput(rtStream_t const stream, const ProcessStage stage,
+  CpuTaskProcessOutput(aclrtStream const stream, const ProcessStage stage,
                        const bool out_has_tensor_desc = false)
       : CpuTaskInfo(stream), stage_(stage), out_has_tensor_desc_(out_has_tensor_desc) {}
   ~CpuTaskProcessOutput() override = default;
@@ -270,7 +270,7 @@ class CpuTaskProcessOutput : public CpuTaskInfo {
 ///
 class CpuTaskMarkStep : public CpuTaskInfo {
  public:
-  explicit CpuTaskMarkStep(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskMarkStep(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskMarkStep() override = default;
 
   Status Init(const GroupInfo &group_info, const std::string &dump_step,
@@ -284,7 +284,7 @@ class CpuTaskMarkStep : public CpuTaskInfo {
 
 class CpuTaskModelEnqueue : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelEnqueue(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelEnqueue(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelEnqueue() override = default;
 
   Status Init(const uint32_t queue_id, const uintptr_t out_mbuf);
@@ -301,16 +301,16 @@ class CpuTaskModelEnqueue : public CpuTaskInfo {
 ///
 class CpuTaskActiveEntry : public CpuTaskInfo {
  public:
-  explicit CpuTaskActiveEntry(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskActiveEntry(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskActiveEntry() override = default;
 
-  Status Init(rtStream_t const stream);
+  Status Init(aclrtStream const stream);
 
   Status Distribute() override;
 
  private:
   using CpuTaskInfo::Init;
-  rtStream_t active_stream_{nullptr};
+  aclrtStream active_stream_{nullptr};
 };
 
 ///
@@ -319,7 +319,7 @@ class CpuTaskActiveEntry : public CpuTaskInfo {
 ///
 class CpuTaskWaitEndGraph : public CpuTaskInfo {
  public:
-  explicit CpuTaskWaitEndGraph(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskWaitEndGraph(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskWaitEndGraph() override = default;
 
   Status Init(const uint32_t model_id);
@@ -336,7 +336,7 @@ class CpuTaskWaitEndGraph : public CpuTaskInfo {
 ///
 class CpuTaskModelReportStatus : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelReportStatus(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelReportStatus(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelReportStatus() override = default;
 
   Status Init(const uint32_t model_uuid,
@@ -355,7 +355,7 @@ class CpuTaskModelReportStatus : public CpuTaskInfo {
 ///
 class CpuTaskModelRepeat : public CpuTaskInfo {
  public:
-  explicit CpuTaskModelRepeat(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskModelRepeat(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskModelRepeat() override = default;
 
   Status Init(const uint32_t model_id);
@@ -372,7 +372,7 @@ class CpuTaskModelRepeat : public CpuTaskInfo {
 ///
 class CpuTaskProcessInputsMemCopy : public CpuTaskInfo {
  public:
-  explicit CpuTaskProcessInputsMemCopy(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskProcessInputsMemCopy(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskProcessInputsMemCopy() override;
 
   Status Init(const std::vector<uintptr_t> &mbuf_list,
@@ -392,7 +392,7 @@ class CpuTaskProcessInputsMemCopy : public CpuTaskInfo {
 
 class CpuTaskProcessInputsShapeCheck : public CpuTaskInfo {
  public:
-  explicit CpuTaskProcessInputsShapeCheck(rtStream_t const stream) : CpuTaskInfo(stream) {}
+  explicit CpuTaskProcessInputsShapeCheck(aclrtStream const stream) : CpuTaskInfo(stream) {}
   ~CpuTaskProcessInputsShapeCheck() override;
 
   Status Init(const std::vector<uintptr_t> &mbuf_list,

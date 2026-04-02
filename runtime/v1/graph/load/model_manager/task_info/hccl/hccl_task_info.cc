@@ -211,10 +211,10 @@ Status HcclTaskInfo::SetFollowStream(const ConstOpDescPtr &op_desc) {
 
   const std::lock_guard<std::mutex> lock(hccl_follow_stream_mutex_);
   const int64_t main_stream_id = op_desc->GetStreamId();
-  const std::map<int64_t, std::vector<rtStream_t>> &main_follow_stream_mapping = davinci_model_->GetHcclFolowStream();
+  const std::map<int64_t, std::vector<aclrtStream>> &main_follow_stream_mapping = davinci_model_->GetHcclFolowStream();
 
   if (main_follow_stream_mapping.find(main_stream_id) != main_follow_stream_mapping.end()) {
-    const std::vector<rtStream_t> &follow_stream_usage = main_follow_stream_mapping.at(main_stream_id);
+    const std::vector<aclrtStream> &follow_stream_usage = main_follow_stream_mapping.at(main_stream_id);
     GE_CHECK_GE(hccl_stream_num, 0);
     if (static_cast<size_t>(hccl_stream_num) <= follow_stream_usage.size()) {
       GELOGI("capacity of follow stream is enough to be reused.");
@@ -255,7 +255,7 @@ Status HcclTaskInfo::CreateStream(const int64_t stream_num, const int64_t main_s
   // task num of follow stream can not exceed that of main stream
   const int32_t task_num = davinci_model_->GetTaskNumOfStream(logic_stream_id_);
   for (int64_t i = 0; i < stream_num; ++i) {
-    rtStream_t stream = nullptr;
+    aclrtStream stream = nullptr;
     uint32_t stream_flags = static_cast<uint32_t>(RT_STREAM_PERSISTENT) | static_cast<uint32_t>(RT_STREAM_FORCE_COPY);
     if (isOverflowDetectionOpen) {
       stream_flags |= RT_STREAM_OVERFLOW;
@@ -853,7 +853,7 @@ bool HcclTaskInfo::IsFeatureBaseRefreshable(const ge::DavinciModel *const davinc
 Status HcclTaskInfo::AssembleAttachedRtStream(GETaskInfo &ge_task_info) const {
   GE_CHECK_NOTNULL(hccl_op_desc_);
   GE_CHECK_NOTNULL(davinci_model_);
-  const std::vector<rtStream_t> &stream_list = davinci_model_->GetStreamList();
+  const std::vector<aclrtStream> &stream_list = davinci_model_->GetStreamList();
   const auto stream_ids = hccl_op_desc_->GetAttachedStreamIds();
   for (const auto stream_id : stream_ids) {
     if (stream_id < 0) {

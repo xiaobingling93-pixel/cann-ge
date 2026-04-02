@@ -15,6 +15,8 @@
 #include "exe_graph/runtime/tensor.h"
 #include "graph/compute_graph.h"
 #include "graph/manager/graph_manager.h"
+#include "acl/acl_rt.h"
+
 namespace ge {
 class CompileContext {
 public:
@@ -27,9 +29,9 @@ public:
   Status Compile(uint32_t graph_id, const ComputeGraphPtr &graph, const std::vector<ge::Tensor> &inputs,
     uint64_t session_id);
   Status Fork(uint32_t origin_graph_id, uint32_t forked_graph_id);
-  Status Load(uint32_t graph_id,  const rtStream_t stream) const;
+  Status Load(uint32_t graph_id,  const aclrtStream stream) const;
   Status Load(uint32_t graph_id, const std::map<AscendString, AscendString> &options,
-              const rtStream_t stream);
+              const aclrtStream stream);
   bool IsGraphNeedRebuild(uint32_t graph_id);
   Status GetCompiledGraphSummary(uint32_t graph_id, CompiledGraphSummaryPtr &summary) const;
 

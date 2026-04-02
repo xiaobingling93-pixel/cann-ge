@@ -117,7 +117,7 @@ std::vector<gert::Tensor> inputs = ...;
 std::vector<gert::Tensor> outputs;
 session->RunGraphWithStreamAsync(graph_id, stream, inputs, outputs);
 // inputs 和 outputs 在 stream 同步之前不能释放
-// 需要调用 rtStreamSynchronize(stream) 或其他同步机制
+// 需要调用 aclrtSynchronizeStream(stream) 或其他同步机制
 ```
 
 #### RunGraphAsync 接口（**重要**）

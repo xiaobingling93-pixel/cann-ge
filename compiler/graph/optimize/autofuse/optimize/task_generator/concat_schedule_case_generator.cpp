@@ -299,9 +299,11 @@ Status ConcatFusionCaseGenerator::PropagateAxisChanges(ge::Node *start_node,
     const auto curr_node = dynamic_cast<ge::AscNode *>(node_queue.front());
     node_queue.pop();
     GE_ASSERT_NOTNULL(curr_node);
-    curr_node->attr.sched.axis = new_axis_ids;
-    for (const auto &out_tensor : curr_node->outputs()) {
-      out_tensor->attr.axis = new_axis_ids;
+    if (curr_node->attr.api.type != ge::ApiType::kAPITypeBuffer) {
+      curr_node->attr.sched.axis = new_axis_ids;
+      for (const auto &out_tensor: curr_node->outputs()) {
+        out_tensor->attr.axis = new_axis_ids;
+      }
     }
 
     for (const auto &out_node : curr_node->GetOutDataNodes()) {

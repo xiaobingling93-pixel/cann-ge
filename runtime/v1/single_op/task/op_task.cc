@@ -98,7 +98,7 @@ void OpTask::GetHostArgsAndSize(uintptr_t &args, size_t &arg_size) {
   arg_size = 0UL;
 }
 
-Status OpTask::OpenDump(rtStream_t const stream) {
+Status OpTask::OpenDump(aclrtStream const stream) {
   if (DumpManager::GetInstance().GetDumpProperties(kInferSessionId).IsSingleOpNeedDump()) {
     GELOGI("Dump is open in single op, start to set dump info");
     std::vector<uintptr_t> input_addrs;
@@ -138,10 +138,10 @@ Status OpTask::OpenDump(rtStream_t const stream) {
   return SUCCESS;
 }
 
-Status OpTask::GetTaskIdAndStreamId(rtStream_t const stream) {
+Status OpTask::GetTaskIdAndStreamId(aclrtStream const stream) {
   if (ProfilingManager::Instance().ProfilingModelLoadOn()) {
     GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-    GE_CHK_RT_RET(rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
+    GE_CHK_RT_RET(aclrtStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
   }
   return SUCCESS;
 }
@@ -155,11 +155,11 @@ void OpTask::SetTaskTag() const {
   }
 }
 
-Status OpTask::PostProcess(rtStream_t const stream) {
+Status OpTask::PostProcess(aclrtStream const stream) {
   GE_CHK_STATUS_RET(OpenDump(stream), "[Open][Dump]failed, single op:%s.",
                     GetOpdesc()->GetName().c_str());
   GE_ASSERT_RT_OK(rtsGetThreadLastTaskId(&task_id_));
-  GE_ASSERT_RT_OK(rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_ASSERT_RT_OK(aclrtStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id_)));
   ErrorTracking::GetInstance().SaveSingleOpTaskOpdescInfo(op_desc_, task_id_, stream_id_);
   GE_CHK_STATUS(SaveExceptionDumpInfo(), "Save Exception dump failed.");
   ResetDumperResource();
@@ -317,7 +317,7 @@ Status OpTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                             const std::vector<DataBuffer> &input_buffers,
                             std::vector<GeTensorDesc> &output_desc,
                             std::vector<DataBuffer> &output_buffers,
-                            rtStream_t const stream) {
+                            aclrtStream const stream) {
   (void)input_desc;
   (void)input_buffers;
   (void)output_desc;
@@ -385,7 +385,7 @@ void TbeOpTask::ResetDumperResource() {
   }
 }
 
-Status TbeOpTask::LaunchKernel(rtStream_t const stream) {
+Status TbeOpTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("To invoke rtKernelLaunch. task = %s, block_dim = %u", this->stub_name_.c_str(), block_dim_);
 
   bool is_soft_sync = false;
@@ -510,7 +510,7 @@ Status TbeOpTask::CheckAndExecuteAtomic(const std::vector<GeTensorDesc> &input_d
                                         const std::vector<DataBuffer> &input_buffers,
                                         std::vector<GeTensorDesc> &output_desc,
                                         std::vector<DataBuffer> &output_buffers,
-                                        rtStream_t const stream) {
+                                        aclrtStream const stream) {
   (void)stream;
   if (clear_atomic_ && (atomic_task_ != nullptr)) {
     RT2_PROFILING_SCOPE_CONST(gert::profiling::kAtomic, gert::profiling::kOpExecute);
@@ -723,7 +723,7 @@ Status TbeOpTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                                const std::vector<DataBuffer> &input_buffers,
                                std::vector<GeTensorDesc> &output_desc,
                                std::vector<DataBuffer> &output_buffers,
-                               rtStream_t const stream) {
+                               aclrtStream const stream) {
   GELOGD("[%s] Start to launch kernel", node_->GetName().c_str());
   GE_CHK_STATUS_RET(UpdateIoAddr(input_buffers, output_buffers), "[Update][IoAddr] failed.");
   GE_CHK_STATUS_RET_NOLOG(UpdateNodeByShape(input_desc, output_desc));
@@ -738,7 +738,7 @@ Status TbeOpTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
   return SUCCESS;
 }
 
-Status TbeOpTask::DoLaunchKernel(rtStream_t const stream) {
+Status TbeOpTask::DoLaunchKernel(aclrtStream const stream) {
   GE_PROFILING_START(kRt2tKernelLaunch);
   GE_CHK_RT_RET(static_cast<rtError_t>(DoLaunchKernelWithArgsEx(stream)));
   GE_PROFILING_END(gert::profiling::kUnknownName, gert::profiling::kStaticSingleOpKernelLaunch, kRt2tKernelLaunch);
@@ -746,7 +746,7 @@ Status TbeOpTask::DoLaunchKernel(rtStream_t const stream) {
   return SUCCESS;
 }
 
-Status TbeOpTask::DoLaunchKernelWithArgsEx(rtStream_t const stream) {
+Status TbeOpTask::DoLaunchKernelWithArgsEx(aclrtStream const stream) {
   auto *const sm_desc = PtrToPtr<void, rtSmDesc_t>(sm_desc_);
   cfg_.dumpflag = 0U;
   if (handle_ == nullptr) {
@@ -1005,7 +1005,7 @@ Status AiCpuBaseTask::SetInputConst() {
 
 Status AiCpuBaseTask::UpdateExtInfo(const std::vector<GeTensorDesc> &input_desc,
                                     const std::vector<GeTensorDesc> &output_desc,
-                                    rtStream_t const stream) {
+                                    aclrtStream const stream) {
   GELOGI("Update ext info begin, unknown_type is %d.", unknown_type_);
   GE_CHECK_NOTNULL(aicpu_ext_handle_);
   GE_CHK_STATUS_RET(aicpu_ext_handle_->UpdateExecuteMode(false), "[Update][ExecuteMode] failed.");
@@ -1183,7 +1183,7 @@ Status AiCpuBaseTask::CheckDeviceSupportBlockingAicpuOpProcess(bool &is_support)
   return SUCCESS;
 }
 
-Status AiCpuBaseTask::DistributeWaitTaskForAicpuBlockingOp(rtStream_t const stream) {
+Status AiCpuBaseTask::DistributeWaitTaskForAicpuBlockingOp(aclrtStream const stream) {
   bool is_support = false;
   if (CheckDeviceSupportBlockingAicpuOpProcess(is_support) != SUCCESS) {
     GELOGE(FAILED, "[Call][CheckDeviceSupportBlockingAicpuOpProcess] Call CheckDeviceSupportBlockingAicpuOpProcess failed");
@@ -1241,7 +1241,7 @@ Status AiCpuTask::UpdateHostMemInputArgs(const std::vector<DataBuffer> &inputs,
   return SUCCESS;
 }
 
-Status AiCpuTask::LaunchKernel(rtStream_t const stream) {
+Status AiCpuTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("Start to launch kernel. task = %s", this->op_type_.c_str());
   SetTaskTag();
   const tagRtMemcpyKind memcpy_kind =
@@ -1340,7 +1340,7 @@ Status AiCpuBaseTask::ReadResultSummaryAndPrepareMemory() {
 }
 
 Status AiCpuCCTask::CopyDataToHbm(std::vector<DataBuffer> &outputs,
-                                  rtStream_t const stream) {
+                                  aclrtStream const stream) {
   GE_CHK_STATUS_RET_NOLOG(PrepareCopyInputs(outputs));
   rtArgsEx_t args_ex = {};
   args_ex.args = memcpy_args_.get();
@@ -1350,17 +1350,17 @@ Status AiCpuCCTask::CopyDataToHbm(std::vector<DataBuffer> &outputs,
                                              block_dim_, &args_ex,
                                              nullptr, stream, RT_KERNEL_DEFAULT);
   GE_CHK_RT_RET(ret);
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   return SUCCESS;
 }
 
 Status AiCpuTask::CopyDataToHbm(std::vector<DataBuffer> &outputs,
-                                rtStream_t const stream) {
+                                aclrtStream const stream) {
   GE_CHK_STATUS_RET_NOLOG(PrepareCopyInputs(outputs));
 
   GE_CHK_RT_RET(rtKernelLaunchEx(copy_task_args_buf_, static_cast<uint32_t>(sizeof(STR_FWK_OP_KERNEL)),
                                  RT_KERNEL_DEFAULT, stream));
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   return SUCCESS;
 }
 
@@ -1396,7 +1396,7 @@ Status AiCpuBaseTask::UpdateShapeByHbmBuffer(std::vector<GeTensorDesc> &output_d
 
 Status AiCpuBaseTask::UpdateShapeAndDataByResultSummary(std::vector<GeTensorDesc> &output_desc,
                                                         std::vector<DataBuffer> &outputs,
-                                                        rtStream_t const stream) {
+                                                        aclrtStream const stream) {
   if (num_outputs_ == 0U) {
     GELOGI("Output num is 0, there is no need to update the output and size.");
     return SUCCESS;
@@ -1500,7 +1500,7 @@ Status AiCpuTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                                const std::vector<DataBuffer> &input_buffers,
                                std::vector<GeTensorDesc> &output_desc,
                                std::vector<DataBuffer> &output_buffers,
-                               rtStream_t const stream) {
+                               aclrtStream const stream) {
   GE_CHK_STATUS_RET_NOLOG(UpdateExtInfo(input_desc, output_desc, stream));
   if (unknown_type_ == DEPEND_COMPUTE) {
     std::vector<DataBuffer> summary_buffers;
@@ -1514,10 +1514,10 @@ Status AiCpuTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
 
   GE_CHK_STATUS_RET_NOLOG(LaunchKernel(stream));
   if (unknown_type_ == DEPEND_SHAPE_RANGE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateOutputShape(output_desc));
   } else if (unknown_type_ == DEPEND_COMPUTE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateShapeAndDataByResultSummary(output_desc, output_buffers, stream));
   } else {
     // something else
@@ -1530,7 +1530,7 @@ Status AiCpuCCTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                                  const std::vector<DataBuffer> &input_buffers,
                                  std::vector<GeTensorDesc> &output_desc,
                                  std::vector<DataBuffer> &output_buffers,
-                                 rtStream_t const stream) {
+                                 aclrtStream const stream) {
   GE_CHK_STATUS_RET_NOLOG(UpdateExtInfo(input_desc, output_desc, stream));
   if (unknown_type_ == DEPEND_COMPUTE) {
     std::vector<DataBuffer> summary_buffers;
@@ -1544,10 +1544,10 @@ Status AiCpuCCTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
 
   GE_CHK_STATUS_RET_NOLOG(LaunchKernel(stream));
   if (unknown_type_ == DEPEND_SHAPE_RANGE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateOutputShape(output_desc));
   } else if (unknown_type_ == DEPEND_COMPUTE) {
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
     GE_CHK_STATUS_RET_NOLOG(UpdateShapeAndDataByResultSummary(output_desc, output_buffers, stream));
   } else {
     // something else
@@ -1696,7 +1696,7 @@ Status AiCpuCCTask::UpdateHostMemInputArgs(const std::vector<DataBuffer> &inputs
   return SUCCESS;
 }
 
-Status AiCpuCCTask::LaunchKernel(rtStream_t const stream) {
+Status AiCpuCCTask::LaunchKernel(aclrtStream const stream) {
   GELOGI("To invoke rtCpuKernelLaunch. block_dim = %u, so_name is %s, kernel_name is %s", block_dim_, so_name_.data(),
          kernel_name_.data());
   // sm_desc is nullptr, because l2 buffer does not support
@@ -1729,7 +1729,7 @@ void AiCpuCCTask::GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) {
   arg_count = io_addr_num_;
 }
 
-Status MemcpyAsyncTask::LaunchKernel(rtStream_t const stream) {
+Status MemcpyAsyncTask::LaunchKernel(aclrtStream const stream) {
   const auto src_addr = ValueToPtr(static_cast<uint64_t>(addresses_[0]));
   const auto dst_addr = ValueToPtr(static_cast<uint64_t>(addresses_[1]));
   kind_ = (kind_ == RT_MEMCPY_ADDR_DEVICE_TO_DEVICE) ? RT_MEMCPY_DEVICE_TO_DEVICE : kind_;
@@ -1883,11 +1883,11 @@ Status MixL2OpTask::UpdateIoAddr(const std::vector<DataBuffer> &inputs,
   return SUCCESS;
 }
 
-Status MixL2OpTask::DoLaunchKernel(rtStream_t const stream) {
+Status MixL2OpTask::DoLaunchKernel(aclrtStream const stream) {
   return LaunchKernel(stream);
 }
 
-Status MixL2OpTask::LaunchKernel(rtStream_t const stream) {
+Status MixL2OpTask::LaunchKernel(aclrtStream const stream) {
   // single op mode
   if (!host_args_.empty()) {
     GE_CHK_RT(rtMemcpyAsync(device_args_, arg_size_, host_args_.data(), host_args_.size() * sizeof(uintptr_t),
@@ -1902,7 +1902,7 @@ Status MixL2OpTask::LaunchKernel(rtStream_t const stream) {
 
 Status MixL2OpTask::LaunchKernel(const std::vector<GeTensorDesc> &input_desc,
                                  const std::vector<DataBuffer> &input_buffers, std::vector<GeTensorDesc> &output_desc,
-                                 std::vector<DataBuffer> &output_buffers, rtStream_t const stream) {
+                                 std::vector<DataBuffer> &output_buffers, aclrtStream const stream) {
   (void)input_desc;
   (void)input_buffers;
   (void)output_desc;
@@ -1923,7 +1923,7 @@ MixL2OpTask::~MixL2OpTask() noexcept {
   CleanRtFftsPlusTask(ffts_plus_task_info_);
 }
 
-Status NpuGetFloatStatusTask::LaunchKernel(rtStream_t const stream) {
+Status NpuGetFloatStatusTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("NpuGetFloatStatusTask launch in.");
   GE_CHK_RT_RET(rtMemcpyAsync(args_, args_size_, &output_addr_, args_size_, RT_MEMCPY_HOST_TO_DEVICE_EX, stream));
   GE_CHK_RT_RET(ge::rtNpuGetFloatStatus(args_, output_size_, mode_, stream));
@@ -1941,13 +1941,13 @@ NpuGetFloatStatusTask::~NpuGetFloatStatusTask() noexcept {
   }
 }
 
-Status NpuClearFloatStatusTask::LaunchKernel(rtStream_t const stream) {
+Status NpuClearFloatStatusTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("NpuClearFloatStatusTask launch in.");
   GE_CHK_RT_RET(ge::rtNpuClearFloatStatus(mode_, stream));
   return SUCCESS;
 }
 
-Status NpuGetFloatDebugStatusTask::LaunchKernel(rtStream_t const stream) {
+Status NpuGetFloatDebugStatusTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("NpuGetFloatDebugStatusTask launch in.");
   GE_CHK_RT_RET(rtMemcpyAsync(args_, args_size_, &output_addr_, args_size_, RT_MEMCPY_HOST_TO_DEVICE_EX, stream));
   GE_CHK_RT_RET(ge::rtNpuGetFloatDebugStatus(args_, output_size_, mode_, stream));
@@ -1965,7 +1965,7 @@ NpuGetFloatDebugStatusTask::~NpuGetFloatDebugStatusTask() noexcept {
   }
 }
 
-Status NpuClearFloatDebugStatusTask::LaunchKernel(rtStream_t const stream) {
+Status NpuClearFloatDebugStatusTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("NpuClearFloatDebugStatusTask launch in.");
   GE_CHK_RT_RET(ge::rtNpuClearFloatDebugStatus(mode_, stream));
   return SUCCESS;
@@ -1976,7 +1976,7 @@ void DsaTask::GetIoAddr(uintptr_t *&arg_base, size_t &arg_count) {
   arg_count = io_addr_.size();
 }
 
-Status DsaTask::UpdateDsaSqe(rtStream_t const stream) {
+Status DsaTask::UpdateDsaSqe(aclrtStream const stream) {
   if (io_addr_.size() != (input_size_ + output_size_ + workspace_size_)) {
     GELOGE(ACL_ERROR_GE_INTERNAL_ERROR, "io_addr size is not right");
     return ACL_ERROR_GE_INTERNAL_ERROR;
@@ -2030,7 +2030,7 @@ Status DsaTask::UpdateDsaSqe(rtStream_t const stream) {
   return SUCCESS;
 }
 
-Status DsaTask::LaunchKernel(rtStream_t const stream) {
+Status DsaTask::LaunchKernel(aclrtStream const stream) {
   GELOGD("DSATask Distribute Start.");
   GE_CHK_STATUS_RET(UpdateDsaSqe(stream), "Update dsa sqe failed");
   GE_CHK_RT_RET(ge::rtStarsTaskLaunchWithFlag(&dsa_sqe_, static_cast<uint32_t>(sizeof(dsa_sqe_)), stream, 0U));

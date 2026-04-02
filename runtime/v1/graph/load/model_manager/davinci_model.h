@@ -246,7 +246,7 @@ class DavinciModel {
   /// @param [in] async_mode  is asynchronize mode.
   /// @param [in] input_data  model input data
   /// @param [out] output_data  model output data
-  Status NnExecute(rtStream_t const stream, const bool async_mode,
+  Status NnExecute(aclrtStream const stream, const bool async_mode,
                    const InputData &input_data, OutputData &output_data,
                    const std::vector<GeTensor> &input_tensor,
                    const std::vector<GeTensor> &output_tensor);
@@ -257,7 +257,7 @@ class DavinciModel {
   /// @param [in] async_mode  is asynchronize mode.
   /// @param [in] input_data  model input data
   /// @param [out] output_data  model output data
-  Status NnExecute(rtStream_t const stream, const bool async_mode,
+  Status NnExecute(aclrtStream const stream, const bool async_mode,
                    const std::vector<gert::Tensor> &input_tensor,
                    std::vector<gert::Tensor> &output_tensor);
 
@@ -347,7 +347,7 @@ class DavinciModel {
   // get Event list
   const std::vector<aclrtEvent> &GetEventList() const { return event_list_; }
 
-  const std::vector<rtStream_t> &GetStreamList() const { return stream_list_; }
+  const std::vector<aclrtStream> &GetStreamList() const { return stream_list_; }
 
   void SetReusableStreamAllocator(ReusableStreamAllocator *reusable_stream_allocator) {
     reusable_stream_allocator_ = reusable_stream_allocator;
@@ -404,7 +404,7 @@ class DavinciModel {
   const std::vector<TaskInfoPtr> &GetTaskList() const { return task_list_; }
 
     // MDC特定形态下多单流模型加载保证串行，需要加锁保证不同流之间不串
-  Status SetStreamLockOrUnlocK(rtStream_t stm, const bool is_lock) const;
+  Status SetStreamLockOrUnlocK(aclrtStream stm, const bool is_lock) const;
 
   rtModel_t GetRtModelHandle() const { return rt_model_handle_; }
 
@@ -412,9 +412,9 @@ class DavinciModel {
 
   uint32_t GetFlowctrlIndex(const uint32_t op_index);
 
-  void PushHcclStream(rtStream_t const hccl_stream);
+  void PushHcclStream(aclrtStream const hccl_stream);
 
-  void SetHcclTaskStream(rtStream_t const hccl_stream);
+  void SetHcclTaskStream(aclrtStream const hccl_stream);
 
   CustAICPUKernelPtr GetCustAICPUKernel(const OpDescPtr &op_desc) const;
 
@@ -691,10 +691,10 @@ class DavinciModel {
 
   DavinciModel(const DavinciModel &model) = delete;
 
-  const std::map<int64_t, std::vector<rtStream_t>> &GetHcclFolowStream() const {
+  const std::map<int64_t, std::vector<aclrtStream>> &GetHcclFolowStream() const {
     return main_follow_stream_mapping_;
   }
-  void SaveHcclFollowStream(const int64_t main_stream_id, rtStream_t stream);
+  void SaveHcclFollowStream(const int64_t main_stream_id, aclrtStream stream);
   Status InitRuntimeParams();
   Status InitVariableMem();
   Status UpdateRuntimeParamBase();
@@ -790,8 +790,8 @@ class DavinciModel {
   void SetAiCpuCustFlag(const bool flag) { aicpu_flg_ = flag; }
 
   // for blocking aicpu op
-  Status GetEventByStream(rtStream_t const stream, aclrtEvent &rt_event);
-  Status GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, rtStream_t const stream, uint32_t &event_id);
+  Status GetEventByStream(aclrtStream const stream, aclrtEvent &rt_event);
+  Status GetEventIdForBlockingAicpuOp(const OpDescPtr &op_desc, aclrtStream const stream, uint32_t &event_id);
 
   uint32_t GetResultCode();
   Status ResetResult();
@@ -817,7 +817,7 @@ class DavinciModel {
 
   bool NeedClearDfxCacheFlagAfterInit() const;
 
-  rtStream_t GetModelExecuteStream() const {
+  aclrtStream GetModelExecuteStream() const {
     return rt_model_stream_;
   }
 
@@ -847,7 +847,7 @@ class DavinciModel {
   /// @ingroup ge
   /// @brief Init model stream for NN model.
   /// @return Status
-  Status InitModelStream(rtStream_t const stream);
+  Status InitModelStream(aclrtStream const stream);
 
   std::vector<MemAllocation> &GetLogicalMemAllocation() {
     return logical_mem_allocations_;
@@ -904,7 +904,7 @@ class DavinciModel {
 
   bool GetPhysicalMemoryRefreshable() const;
 
-  Status LaunchEventForHcclGroupOrderedStream(rtStream_t const stream);
+  Status LaunchEventForHcclGroupOrderedStream(aclrtStream const stream);
 
   Status RecoverModel();
 
@@ -1172,7 +1172,7 @@ class DavinciModel {
   /// @param [in] stream_id: Logical stream id.
   /// @param [out] stream: rt stream.
   /// @return Status
-  Status GetOpStream(const OpDescPtr &op_desc, const size_t stream_id, rtStream_t &stream);
+  Status GetOpStream(const OpDescPtr &op_desc, const size_t stream_id, aclrtStream &stream);
 
   /// @ingroup ge
   /// @brief LabelSet Op Initialize.
@@ -1488,22 +1488,22 @@ class DavinciModel {
   std::map<uint32_t, uint32_t> stream_to_first_task_id_;
   int32_t priority_;
 
-  std::vector<rtStream_t> stream_list_;
+  std::vector<aclrtStream> stream_list_;
   std::vector<uint32_t> stream_flag_list_;
 
   std::mutex all_hccl_stream_list_mutex_;
-  std::vector<rtStream_t> all_hccl_stream_list_; // hccl 从流
+  std::vector<aclrtStream> all_hccl_stream_list_; // hccl 从流
 
   // for reuse hccl_follow_stream
   std::mutex capacity_of_stream_mutex_;
-  std::map<int64_t, std::vector<rtStream_t>> main_follow_stream_mapping_;
+  std::map<int64_t, std::vector<aclrtStream>> main_follow_stream_mapping_;
 
   std::vector<rtNotify_t> notify_list_;
   std::vector<aclrtEvent> event_list_;
 
-  std::unordered_set<std::string > hccl_group_id_set_;
+  std::unordered_set<std::string> hccl_group_id_set_;
   std::vector<aclrtEvent> hccl_group_ordered_event_list_;
-  std::vector<rtStream_t> hccl_group_ordered_stream_list_; // 流资源为hccl管理
+  std::vector<aclrtStream> hccl_group_ordered_stream_list_; // 流资源为hccl管理
 
   std::mutex hccl_task_stream_set_mutex_;
   std::unordered_set<uint64_t> hccl_task_stream_set_; // hccl task所在的流
@@ -1542,9 +1542,9 @@ class DavinciModel {
   // rt_model_handle
   rtModel_t rt_model_handle_{nullptr};
 
-  rtStream_t rt_model_stream_{nullptr};
+  aclrtStream rt_model_stream_{nullptr};
 
-  rtStream_t rt_stream_to_destroy_{nullptr};
+  aclrtStream rt_stream_to_destroy_{nullptr};
 
   // label if rt_model_stream_ is (1)true: inner created, (2)false: outer stream
   bool is_inner_model_stream_{false};
@@ -1556,8 +1556,8 @@ class DavinciModel {
 
   bool is_stream_list_bind_{false};
   bool is_pure_head_stream_{false};
-  rtStream_t rt_head_stream_{nullptr};
-  rtStream_t rt_entry_stream_{nullptr};
+  aclrtStream rt_head_stream_{nullptr};
+  aclrtStream rt_entry_stream_{nullptr};
 
   // ACL queue schedule, save queue ids for Init.
   std::unordered_map<uint32_t, bool> is_queue_data_;  // key:data_index
@@ -1576,7 +1576,7 @@ class DavinciModel {
   std::mutex flowctrl_op_index_internal_map_mutex_;
   std::map<uint32_t, uint32_t> flowctrl_op_index_internal_map_;
 
-  std::vector<rtStream_t> active_stream_list_;
+  std::vector<aclrtStream> active_stream_list_;
   std::set<uint32_t> active_stream_indication_;
 
   std::set<uint32_t> hcom_streams_;
@@ -1663,7 +1663,7 @@ class DavinciModel {
   // op name to attrs mapping
   std::map<std::string, std::map<std::string, std::vector<std::string>>> op_name_to_attrs_;
 
-  std::map<rtStream_t, aclrtEvent> stream_2_event_;
+  std::map<aclrtStream, aclrtEvent> stream_2_event_;
 
   AiCpuResources aicpu_resources_;
   std::map<std::string, std::string> file_id_and_path_map_;

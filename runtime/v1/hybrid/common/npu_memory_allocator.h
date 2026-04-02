@@ -37,14 +37,14 @@ class AllocationAttr {
 
 class NpuMemoryAllocator {
  public:
-  NpuMemoryAllocator(const uint32_t device_id, const rtStream_t stream);
+  NpuMemoryAllocator(const uint32_t device_id, const aclrtStream stream);
   ~NpuMemoryAllocator();
-  static NpuMemoryAllocator *GetAllocator(const uint32_t device_id, const rtStream_t stream);
-  static NpuMemoryAllocator *GetAllocator(const rtStream_t stream);
+  static NpuMemoryAllocator *GetAllocator(const uint32_t device_id, const aclrtStream stream);
+  static NpuMemoryAllocator *GetAllocator(const aclrtStream stream);
   static NpuMemoryAllocator *GetAllocator();
   static void Finalize();
   static void FreeCachedMem();
-  static void ClearStream(const rtStream_t stream);
+  static void ClearStream(const aclrtStream stream);
 
   static AllocationAttr* AttrWithDefaultPadding() {
     static AllocationAttr attr(kDefaultPadding, nullptr);
@@ -62,13 +62,13 @@ class NpuMemoryAllocator {
   void *AllocateCachingMem(const std::size_t size, void *const try_reuse_addr) const;
 
   uint32_t device_id_;
-  rtStream_t stream_;
+  aclrtStream stream_;
   std::unique_ptr<CachingAllocator> caching_allocator_;
 
   using DeviceidAllocatorMap = std::map<uint32_t, std::unique_ptr<NpuMemoryAllocator>>;
   static DeviceidAllocatorMap default_allocators_;
-  static std::map<rtStream_t, std::unique_ptr<DeviceidAllocatorMap>> allocators_;
-  static std::set<rtStream_t> streams_;
+  static std::map<aclrtStream, std::unique_ptr<DeviceidAllocatorMap>> allocators_;
+  static std::set<aclrtStream> streams_;
   static std::mutex mu_;
 };
 }  // namespace hybrid

@@ -8,7 +8,7 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 
-#include "inner_tensor_move_delete_pass.h"
+#include "inner_identity_delete_pass.h"
 #include <checker.h>
 #include "graph/ge_context.h"
 #include "graph/utils/op_type_utils.h"
@@ -18,7 +18,7 @@
 
 namespace ge {
 namespace {
-const std::string kInnerTensorMoveAttr = "_inner_tensor_move";
+const std::string kInnerIdentityAttr = "_inner_identity";
 bool IsInputFromData(const NodePtr &node) {
   for (const auto &input: node->GetInDataNodes()) {
     GE_ASSERT_NOTNULL(input);
@@ -40,44 +40,44 @@ bool HasTensorMemoryScope(const NodePtr &node) {
 }
 
 // nano形态下，是根据编译出来的kernel决定基地址来自于ioa/workspace/weight，而打着ATTR_NAME_TENSOR_MEMORY_SCOPE属性的算子的输出一定是分配的ioa地址，所以不能将其轻易删除，后续会有正式方案解决。临时方案如下：
-// 1. 如果tensormove算子打了ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出是ioa地址，如果其输入不来自于Data算子，则说明其输入不是ioa地址，这种情况下不可以删除这个TensorMove算子。否则可以删除，因为输入输出都是ioa地址。
-//    Data(ioa) -> (ioa)transdata(workspace) -> (workspace)tensormove(ioa) -> (ioa)ref   不可以删除
-//    Data(ioa) -> (ioa)tensormove(ioa) -> (ioa)ref   可以删除
-// 2. 如果tensormove算子没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出不是ioa地址，如果其输出直连的算子中没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性的算子，则可以删除。否则如果其输入来自于Data算子，则说明其输入是ioa地址，这种情况下不可以删除这个TensorMove算子。
-//    Data(ioa) -> (ioa)relu(workspace) -> (workspace)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   可以删除
-//    Data(ioa) -> (ioa)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   不可以删除
-bool IsCannotDelete(const NodePtr &tensor_move) {
-  bool has_tensor_memory_scope = HasTensorMemoryScope(tensor_move);
-  // tensormove直连ref算子，如果输入不来自于Data，则不可以删除。否则可以删除，因为Data也是ioa地址。
+// 1. 如果identity算子打了ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出是ioa地址，如果其输入不来自于Data算子，则说明其输入不是ioa地址，这种情况下不可以删除这个identity算子。否则可以删除，因为输入输出都是ioa地址。
+//    Data(ioa) -> (ioa)transdata(workspace) -> (workspace)identity(ioa) -> (ioa)ref   不可以删除
+//    Data(ioa) -> (ioa)identity(ioa) -> (ioa)ref   可以删除
+// 2. 如果identity算子没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性，则说明其输出不是ioa地址，如果其输出直连的算子中没有打ATTR_NAME_TENSOR_MEMORY_SCOPE属性的算子，则可以删除。否则如果其输入来自于Data算子，则说明其输入是ioa地址，这种情况下不可以删除这个identity算子。
+//    Data(ioa) -> (ioa)relu(workspace) -> (workspace)identity(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   可以删除
+//    Data(ioa) -> (ioa)identity(workspace) -> (workspace)transdata(ioa) -> (ioa)ref   不可以删除
+bool IsCannotDelete(const NodePtr &identity) {
+  bool has_tensor_memory_scope = HasTensorMemoryScope(identity);
+  // identity直连ref算子，如果输入不来自于Data，则不可以删除。否则可以删除，因为Data也是ioa地址。
   if (has_tensor_memory_scope) {
-    if (!IsInputFromData(tensor_move)) {
+    if (!IsInputFromData(identity)) {
       return true;
     }
     return false;
   }
-  for (const auto &node : tensor_move->GetOutDataNodes()) {
+  for (const auto &node : identity->GetOutDataNodes()) {
     GE_ASSERT_NOTNULL(node);
     if (HasTensorMemoryScope(node)) {
       has_tensor_memory_scope = true;
       break;
     }
   }
-  // tensormove的输出没有直连ref，所以可以删除
+  // identity的输出没有直连ref，所以可以删除
   if (!has_tensor_memory_scope) {
     return false;
   }
-  // Data(ioa) -> (ioa)tensormove(workspace) -> (workspace)transdata(ioa) -> (ioa)ref
-  // tensormove的输出直连ref，且tensormove的输入来自于Data则不可以删除
-  return IsInputFromData(tensor_move);
+  // Data(ioa) -> (ioa)identity(workspace) -> (workspace)transdata(ioa) -> (ioa)ref
+  // identity的输出直连ref，且identity的输入来自于Data则不可以删除
+  return IsInputFromData(identity);
 }
 
-bool IsInnerTensorMove(const NodePtr &node) {
-  if (node->GetType() != TENSORMOVE) {
+bool IsInneridentity(const NodePtr &node) {
+  if (node->GetType() != IDENTITY) {
     return false;
   }
-  bool is_inner_tensor_move = false;
-  (void)AttrUtils::GetBool(node->GetOpDesc(), kInnerTensorMoveAttr, is_inner_tensor_move);
-  return is_inner_tensor_move;
+  bool is_inner_identity = false;
+  (void)AttrUtils::GetBool(node->GetOpDesc(), kInnerIdentityAttr, is_inner_identity);
+  return is_inner_identity;
 }
 
 bool IsRefNode(const NodePtr &node) {
@@ -99,8 +99,8 @@ NodePtr FindRefNode(const NodePtr &node) {
 }
 
 NodePtr FindRealOutNode(const NodePtr &node) {
-  // 如果是内置TensorMove则需要继续向后找到其对应的ref node，这个才是实际的输出
-  if (IsInnerTensorMove(node)) {
+  // 如果是内置identity则需要继续向后找到其对应的ref node，这个才是实际的输出
+  if (IsInneridentity(node)) {
     return FindRefNode(node);
   }
   return node;
@@ -118,9 +118,9 @@ bool IsStableRDFS() {
 }
 }
 
-Status InnerTensorMoveDeletePass::IsolateAndDeleteTensorMoveNode(const NodePtr &node) {
+Status InnerIdentityDeletePass::IsolateAndDeleteIdentityNode(const NodePtr &node) {
   GE_ASSERT_NOTNULL(node);
-  if (!IsInnerTensorMove(node)) {
+  if (!IsInneridentity(node)) {
     GELOGE(FAILED, "node %s is not inner tensor move, cannot delete", node->GetNamePtr());
     return FAILED;
   }
@@ -130,46 +130,46 @@ Status InnerTensorMoveDeletePass::IsolateAndDeleteTensorMoveNode(const NodePtr &
   return SUCCESS;
 }
 
-Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
+Status InnerIdentityDeletePass::DeleteInnerIdentity(const NodePtr &node) {
   GE_ASSERT_TRUE(node->GetInDataNodesSize() == 1U);
-  auto tensor_move_peer_out_anchor = node->GetInDataAnchor(0)->GetPeerOutAnchor();
-  GE_ASSERT_NOTNULL(tensor_move_peer_out_anchor);
-  auto input_node = tensor_move_peer_out_anchor->GetOwnerNode();
+  auto identity_peer_out_anchor = node->GetInDataAnchor(0)->GetPeerOutAnchor();
+  GE_ASSERT_NOTNULL(identity_peer_out_anchor);
+  auto input_node = identity_peer_out_anchor->GetOwnerNode();
   GE_ASSERT_NOTNULL(input_node);
-  // 场景一：TensorMove输入节点是const之类不可改写的类型，则不可以删除
+  // 场景一：identity输入节点是const之类不可改写的类型，则不可以删除
   if (OpTypeUtils::IsConstNode(input_node->GetType())) {
-    GELOGI("TensorMove %s 's input %s is const, cannot remove it", node->GetNamePtr(), input_node->GetNamePtr());
+    GELOGI("identity %s 's input %s is const, cannot remove it", node->GetNamePtr(), input_node->GetNamePtr());
     return SUCCESS;
   }
 
   // 如果topo排序方式是稳定拓扑序，则可以删除
   if (IsStableRDFS()) {
     GELOGI(
-        "TensorMove %s 's input has multi output, and it self has one output, topo sort mode is StableRDFS, can be deleted",
+        "identity %s 's input has multi output, and it self has one output, topo sort mode is StableRDFS, can be deleted",
         node->GetNamePtr());
-    return IsolateAndDeleteTensorMoveNode(node);
+    return IsolateAndDeleteIdentityNode(node);
   }
 
-  // 如果inner tensormove后面连的不是ref算子，则可以删除
+  // 如果inner identity后面连的不是ref算子，则可以删除
   bool is_all_out_not_ref = true;
   for (const auto &out_node : node->GetOutDataNodes()) {
     is_all_out_not_ref = (is_all_out_not_ref && !IsRefNode(out_node));
   }
   if (is_all_out_not_ref) {
-    GELOGI("TensorMove %s 's output is not ref, can be deleted", node->GetNamePtr());
-    return IsolateAndDeleteTensorMoveNode(node);
+    GELOGI("identity %s 's output is not ref, can be deleted", node->GetNamePtr());
+    return IsolateAndDeleteIdentityNode(node);
   }
 
-  if (tensor_move_peer_out_anchor->GetPeerInDataNodesSize() == 1U) {
-    // 场景二：TensorMove输入节点A是单引用，且TensorMove输出是单引用，则可以删除
+  if (identity_peer_out_anchor->GetPeerInDataNodesSize() == 1U) {
+    // 场景二：identity输入节点A是单引用，且identity输出是单引用，则可以删除
     if (node->GetOutDataNodesSize() == 1U) {
-      GELOGI("TensorMove %s 's input has only one output, and it self has only one output, can be deleted",
+      GELOGI("identity %s 's input has only one output, and it self has only one output, can be deleted",
              node->GetNamePtr());
-      return IsolateAndDeleteTensorMoveNode(node);
+      return IsolateAndDeleteIdentityNode(node);
     }
-    // 场景三：TensorMove输入节点A是单引用，TensorMove是多引用，TensorMove除Ref之外的其他所有输出都受Ref控制则可以删除
+    // 场景三：identity输入节点A是单引用，identity是多引用，identity除Ref之外的其他所有输出都受Ref控制则可以删除
     auto ref_node = FindRefNode(node);
-    GE_ASSERT_NOTNULL(ref_node, "TensorMove %s has no ref output node", node->GetNamePtr());
+    GE_ASSERT_NOTNULL(ref_node, "identity %s has no ref output node", node->GetNamePtr());
     bool is_other_all_out_depend_ref = true;
     for (const auto &out_node : node->GetOutDataNodes()) {
       if (out_node == ref_node) {
@@ -181,13 +181,13 @@ Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
     }
     if (is_other_all_out_depend_ref) {
       GELOGI(
-          "TensorMove %s 's input has only one output, and it self has multi output, all out node except ref depend ref, can be deleted",
+          "identity %s 's input has only one output, and it self has multi output, all out node except ref depend ref, can be deleted",
           node->GetNamePtr());
-      return IsolateAndDeleteTensorMoveNode(node);
+      return IsolateAndDeleteIdentityNode(node);
     }
   } else {
     if (node->GetOutDataNodesSize() == 1U) {
-      // 场景四：TensorMove输入节点A是多引用，且TensorMove输出是单引用，如果A节点除TensorMove之外的其他所有输出都指向了ref，则可以删除
+      // 场景四：identity输入节点A是多引用，且identity输出是单引用，如果A节点除identity之外的其他所有输出都指向了ref，则可以删除
       auto ref_node = FindRefNode(node);
       GE_ASSERT_NOTNULL(ref_node);
       bool is_ref_depend_other_all_node = true;
@@ -201,16 +201,16 @@ Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
       }
       if (is_ref_depend_other_all_node) {
         GELOGI(
-            "TensorMove %s 's input has multi output, and it self has one output, ref depend other all A's out node, can be deleted",
+            "identity %s 's input has multi output, and it self has one output, ref depend other all A's out node, can be deleted",
             node->GetNamePtr());
-        return IsolateAndDeleteTensorMoveNode(node);
+        return IsolateAndDeleteIdentityNode(node);
       }
     } else {
-      // 场景五：TensorMove输入节点A是多引用，且TensorMove输出是多引用，且TensorMove的其他输出节点都依赖ref，且A节点除TensorMove之外的其他输出都指向ref，则可以删除
+      // 场景五：identity输入节点A是多引用，且identity输出是多引用，且identity的其他输出节点都依赖ref，且A节点除identity之外的其他输出都指向ref，则可以删除
       auto ref_node = FindRefNode(node);
       GE_ASSERT_NOTNULL(ref_node);
       bool can_delete = true;
-      // TensorMove的其他输出节点都依赖ref
+      // identity的其他输出节点都依赖ref
       for (const auto &out_node : node->GetOutDataNodes()) {
         if (out_node == ref_node) {
           continue;
@@ -219,7 +219,7 @@ Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
         can_delete = (can_delete && connectivity_->IsConnected(ref_node, real_out_node));
       }
 
-      // A节点除TensorMove之外的其他输出都指向ref
+      // A节点除identity之外的其他输出都指向ref
       for (const auto &out_node : input_node->GetOutDataNodes()) {
         if (out_node == node) {
           continue;
@@ -229,17 +229,17 @@ Status InnerTensorMoveDeletePass::DeleteInnerTensorMove(const NodePtr &node) {
       }
       if (can_delete) {
         GELOGI(
-            "TensorMove %s 's input has multi output, and it self has multi output, ref depend other all A's out node, other all TensorMove's out node depend ref, can be deleted",
+            "identity %s 's input has multi output, and it self has multi output, ref depend other all A's out node, other all identity's out node depend ref, can be deleted",
             node->GetNamePtr());
-        return IsolateAndDeleteTensorMoveNode(node);
+        return IsolateAndDeleteIdentityNode(node);
       }
     }
   }
-  GELOGI("TensorMove %s cannot be deleted", node->GetNamePtr());
+  GELOGI("identity %s cannot be deleted", node->GetNamePtr());
   return SUCCESS;
 }
 
-Status InnerTensorMoveDeletePass::Run(ComputeGraphPtr graph) {
+Status InnerIdentityDeletePass::Run(ComputeGraphPtr graph) {
   if (connectivity_ == nullptr) {
     connectivity_ = ComGraphMakeUnique<ConnectionMatrix>(graph);
     if (connectivity_ == nullptr) {
@@ -252,17 +252,16 @@ Status InnerTensorMoveDeletePass::Run(ComputeGraphPtr graph) {
   }
   GE_ASSERT_SUCCESS(PassUtils::UpdateRefAttr(graph));
   for (const auto &node : graph->GetDirectNode()) {
-    if (IsInnerTensorMove(node)) {
+    if (IsInneridentity(node)) {
       if (IsCannotDelete(node)) {
-        GE_ASSERT_TRUE(AttrUtils::SetBool(node->GetOpDesc(), ATTR_NAME_CANNOT_BE_DELETED, true));
-        GELOGI("Inner Tensormove %s cannot be deleted", node->GetNamePtr());
+        GELOGI("Inner identity %s cannot be deleted", node->GetNamePtr());
         continue;
       }
-      GE_ASSERT_SUCCESS(DeleteInnerTensorMove(node), "Inner TensorMove %s delete failed", node->GetNamePtr());
+      GE_ASSERT_SUCCESS(DeleteInnerIdentity(node), "Inner identity %s delete failed", node->GetNamePtr());
     }
   }
   return SUCCESS;
 }
 
-REG_PASS_OPTION("InnerTensorMoveDeletePass").LEVELS(OoLevel::kO0);
+REG_PASS_OPTION("InnerIdentityDeletePass").LEVELS(OoLevel::kO0);
 } // namespace ge

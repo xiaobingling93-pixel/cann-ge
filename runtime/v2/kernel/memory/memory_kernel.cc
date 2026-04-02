@@ -64,7 +64,7 @@ ge::graphStatus SelectL1Allocator(KernelContext *context) {
   GE_ASSERT_NOTNULL(out_allocator);
   auto placement = context->GetInputValue<TensorPlacement>(static_cast<size_t>(SelectL1AllocatorInputs::kPlacement));
   GE_ASSERT_TRUE(static_cast<size_t>(placement) < static_cast<size_t>(TensorPlacement::kTensorPlacementEnd));
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(SelectL1AllocatorInputs::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(SelectL1AllocatorInputs::kStream));
 
   auto external_allocator =
       context->GetInputValue<Allocators *>(static_cast<size_t>(SelectL1AllocatorInputs::kExternalAllocator));
@@ -177,7 +177,7 @@ ge::graphStatus BindingL1Allocator(KernelContext *context) {
       context->GetOutputPointer<GertAllocator>(static_cast<size_t>(CreateInitL2AllocatorOutputs::kInitL2Allocator));
   GE_ASSERT_NOTNULL(l2_allocator);
   if (stream_num > 1U) {
-    auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(CreateInitL2AllocatorInputs::kStream));
+    auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(CreateInitL2AllocatorInputs::kStream));
     reinterpret_cast<memory::MultiStreamL2Allocator *>(l2_allocator)->SetRtsStream(stream);
   }
 
@@ -336,7 +336,7 @@ ge::graphStatus SelectL2Allocator(KernelContext *context) {
   // set rt streams to multi stream l2 allocator
   // todo set stream abstract to interface
   if (l2_allocators->GetSize() > 1U) {
-    auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(SelectL2AllocatorInputs::kStream));
+    auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(SelectL2AllocatorInputs::kStream));
     (reinterpret_cast<memory::MultiStreamL2Allocator *>(l2_allocator))->SetRtsStream(stream);
     KERNEL_TRACE("[MEM]select l2 allocator, stream: %p, placement: %s",
                  stream, GetPlacementStr(placement));
@@ -761,7 +761,7 @@ ge::graphStatus GetUserAllocatorOrFixedBaseAllocator(KernelContext *context) {
    *
    * 优先使用用户注册的allocator
    */
-  const auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(
+  const auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(
       GerUserAllocatorOrFixedBaseAllocatorInputs::kStream));
   if (stream != nullptr) {
     const auto external_allocator = ge::ExternalAllocatorManager::GetExternalAllocator(stream);

@@ -56,7 +56,7 @@ ge::Status StageState::Load(const gert::ModelExecuteArg &arg, const gert::ModelL
   ModelDescToTensorSpec(model_output_desc, num_outputs_, stage_outputs_);
 
   if (daemon) {
-    GE_ASSERT_RT_OK(rtStreamCreate(&execute_arg_.stream, 0));  // Daemon load on stage-owned stream
+    GE_ASSERT_RT_OK(aclrtCreateStream(&execute_arg_.stream));  // Daemon load on stage-owned stream
   } else {
     execute_arg_ = arg;  // Non daemon stage will use model stream
   }
@@ -128,7 +128,7 @@ ge::Status StageState::Stop() {
     notification_->Notify(args);
     worker_.join();
     if (execute_arg_.stream != nullptr) {
-      (void)rtStreamDestroy(execute_arg_.stream);
+      (void)aclrtDestroyStream(execute_arg_.stream);
       execute_arg_.stream = nullptr;
     }
     GELOGI("Worker thread for stage %s exited", id_.c_str());
@@ -278,7 +278,7 @@ ge::Status StageState::RunTask() {
   FreeInterimOutputs();
   GE_ASSERT_SUCCESS(executor_->Execute(execute_arg_, executor_inputs_.data(), executor_inputs_.size(),
                                        executor_outputs_.data(), executor_outputs_.size()));
-  GE_ASSERT_RT_OK(rtStreamSynchronize(execute_arg_.stream), "Stage %s sync stream failed", id_.c_str());
+  GE_ASSERT_RT_OK(aclrtSynchronizeStream(execute_arg_.stream), "Stage %s sync stream failed", id_.c_str());
   return ge::SUCCESS;
 }
 

@@ -12,6 +12,7 @@
 #include <string>
 #include "utils/math_utils.h"
 #include "platform/soc_spec.h"
+#include "graph/types.h"
 
 #define NPUARCH_TO_STR(arch) std::to_string(static_cast<uint32_t>(arch))
 
@@ -149,21 +150,21 @@ aclError AippScfSizeCheck(const aclmdlAIPP *const aippParmsSet, const size_t bat
         return ACL_ERROR_INVALID_PARAM;
     }
 
-    float32_t scfRatio = (static_cast<float32_t>(scfOutputSizeW) * 1.0F) / static_cast<float32_t>(scfInputSizeW);
+    ge::float32_t scfRatio = (static_cast<ge::float32_t>(scfOutputSizeW) * 1.0F) / static_cast<ge::float32_t>(scfInputSizeW);
     // scf factor is within [1/16, 16]
     flag = ((scfRatio < (1.0F / 16.0F)) || (scfRatio > 16.0F));
     if (flag) {
         ACL_LOG_INNER_ERROR("[Check][Params]resize_output_w/resize_input_w[%f] should be within [1/16, 16]!",
-            static_cast<float64_t>(scfRatio));
+            static_cast<ge::float64_t>(scfRatio));
         return ACL_ERROR_INVALID_PARAM;
     }
 
-    scfRatio = (static_cast<float32_t>(scfOutputSizeH) * 1.0F) / static_cast<float32_t>(scfInputSizeH);
+    scfRatio = (static_cast<ge::float32_t>(scfOutputSizeH) * 1.0F) / static_cast<ge::float32_t>(scfInputSizeH);
     // scf factor is within [1/16, 16]
     flag = ((scfRatio < (1.0F / 16.0F)) || (scfRatio > 16.0F));
     if (flag) {
         ACL_LOG_INNER_ERROR("[Check][Params]resize_output_h/resize_input_h[%f] should be within [1/16, 16]!",
-            static_cast<float64_t>(scfRatio));
+            static_cast<ge::float64_t>(scfRatio));
         return ACL_ERROR_INVALID_PARAM;
     }
 

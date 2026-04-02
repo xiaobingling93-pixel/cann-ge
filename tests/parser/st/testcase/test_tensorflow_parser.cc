@@ -9,7 +9,7 @@
  */
 
 #include <gtest/gtest.h>
-
+#include "file_utils.h"
 #include "parser/common/op_parser_factory.h"
 #include "parser/tensorflow/tensorflow_parser.h"
 #include "graph/operator_reg.h"
@@ -72,7 +72,6 @@
 
 #include "depends/mmpa/src/parser_mmpa_stub.h"
 #include "graph_metadef/common/plugin/plugin_manager.h"
-#include <experimental/filesystem>
 
 using namespace std;
 using namespace domi::tensorflow;
@@ -82,7 +81,6 @@ using namespace std;
 using namespace google::protobuf;
 
 static const string GRAPH_DEFAULT_NAME = "default";
-namespace fs = std::experimental::filesystem;
 namespace ge {
 int32_t dl_flag = -1;
 int32_t dl_open_count = 0;
@@ -5765,37 +5763,31 @@ TEST_F(STestTensorflowCustomOpParser, test_BuildCustomOpStrings_failed) {
 }
 
 TEST_F(STestTensorflowCustomOpParser, DeleteTmpDirectoryContents_DirExists_ReturnSuccess) {
-  fs::path test_dir = fs::temp_directory_path() / "test_tmp_dir_exists";
-  fs::create_directories(test_dir);
-  fs::path test_file = test_dir / "test_file.txt";
-  std::ofstream(test_file).put('a');
-  fs::path sub_dir = test_dir / "sub_dir";
-  fs::create_directory(sub_dir);
-  EXPECT_TRUE(fs::exists(test_dir));
-  EXPECT_TRUE(fs::exists(test_file));
-  EXPECT_TRUE(fs::exists(sub_dir));
-  TensorFlowCustomOpParser parser;
-  Status ret_status = parser.DeleteTmpDirectoryContents(test_dir);
+  const std::string test_dir = std::string(CMAKE_BINARY_DIR) + "/test_tmp_dir_exists";
+  EXPECT_EQ(ge::CreateDir(test_dir), 0);
+  std::string test_file = test_dir + "/test_file.txt";
+  std::string sub_dir = test_dir + "/sub_dir";
+  EXPECT_EQ(ge::CreateDir(sub_dir), 0);
+  Status ret_status = TensorFlowCustomOpParser::DeleteTmpDirectoryContents(test_dir);
 
   EXPECT_EQ(ret_status, SUCCESS);
-  EXPECT_FALSE(fs::exists(test_dir));
-  if (fs::exists(test_dir)) {
-    fs::remove_all(test_dir);
+  EXPECT_FALSE(mmAccess(test_dir.c_str()) == EN_OK);
+  if (mmAccess(test_dir.c_str()) == EN_OK) {
+    EXPECT_EQ(TensorFlowCustomOpParser::DeleteTmpDirectoryContents(test_dir), SUCCESS);
   }
 }
 
 TEST_F(STestTensorflowCustomOpParser, DeleteTmpDirectoryContents_DirNotExists_ReturnSuccess) {
-  fs::path non_exist_dir = fs::temp_directory_path() / "test_tmp_dir_not_exist";
-  if (fs::exists(non_exist_dir)) {
-    fs::remove_all(non_exist_dir);
+  const std::string non_exist_dir = std::string(CMAKE_BINARY_DIR) + "/test_tmp_dir_not_exist";
+  if (mmAccess(non_exist_dir.c_str()) == EN_OK) {
+    EXPECT_EQ(TensorFlowCustomOpParser::DeleteTmpDirectoryContents(non_exist_dir), SUCCESS);
   }
-  EXPECT_FALSE(fs::exists(non_exist_dir));
-  TensorFlowCustomOpParser parser;
-  Status ret_status = parser.DeleteTmpDirectoryContents(non_exist_dir);
+  EXPECT_FALSE(mmAccess(non_exist_dir.c_str()) == EN_OK);
+  Status ret_status = TensorFlowCustomOpParser::DeleteTmpDirectoryContents(non_exist_dir);
   EXPECT_EQ(ret_status, SUCCESS);
-  EXPECT_FALSE(fs::exists(non_exist_dir));
-  if (fs::exists(non_exist_dir)) {
-    fs::remove_all(non_exist_dir);
+  EXPECT_FALSE(mmAccess(non_exist_dir.c_str()) == EN_OK);
+  if (mmAccess(non_exist_dir.c_str()) == EN_OK) {
+    EXPECT_EQ(TensorFlowCustomOpParser::DeleteTmpDirectoryContents(non_exist_dir), SUCCESS);
   }
 }
 

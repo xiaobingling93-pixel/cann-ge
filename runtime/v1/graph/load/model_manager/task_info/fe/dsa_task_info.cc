@@ -309,7 +309,7 @@ Status DSATaskInfo::Distribute() {
   const TaskProfGuarder prof_guarder(this);
   GE_CHK_RT_RET(ge::rtStarsTaskLaunchWithFlag(&dsa_sqe_, static_cast<uint32_t>(sizeof(dsa_sqe_)), stream_, dump_flag_));
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-  GE_CHK_RT_RET(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_CHK_RT_RET(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
   GELOGI("DSATaskInfo %s Distribute TaskId[%u], stream id [%u], dumpflag [%u] Success.",
          op_desc_->GetNamePtr(), task_id_, stream_id_, dump_flag_);
 
@@ -347,7 +347,7 @@ void DSATaskInfo::PostProcess(const domi::TaskDef &task_def) {
 void DSATaskInfo::PostProfilingProcess(const domi::TaskDef &task_def) {
   const domi::DSATaskDef &dsa_task = task_def.dsa_task();
   GE_CHK_RT_EXEC(rtsGetThreadLastTaskId(&task_id_), return);
-  GE_CHK_RT_EXEC(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
+  GE_CHK_RT_EXEC(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)), return);
   davinci_model_->SaveDfxInfo(dsa_task.op_index(), task_def, *this);
 }
 

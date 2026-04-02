@@ -421,7 +421,7 @@ Status KernelExTaskInfo::Distribute() {
   GE_ASSERT_SUCCESS(KernelHandleUtils::LaunchKernel(func_handle_, launch_kernel_param));
   GE_CHECK_NOTNULL(davinci_model_);
   GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id_));
-  GE_CHK_RT_RET(rtsStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
+  GE_CHK_RT_RET(aclrtStreamGetId(stream_, reinterpret_cast<int32_t*>(&stream_id_)));
 
   GELOGI("KernelExTaskInfo %s Distribute Success. task id: %u, stream id: %u, stream: %p.",
          op_desc_->GetNamePtr(), task_id_, stream_id_, stream_);

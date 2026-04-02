@@ -13,7 +13,8 @@ target_compile_options(ascendcl_stub PRIVATE -g)
 target_include_directories(ascendcl_stub PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${AIR_CODE_DIR}/inc/graph_metadef
-    ${AIR_CODE_DIR}/base/metadef/pkg_inc)
+    ${AIR_CODE_DIR}/base/metadef/pkg_inc
+    ${AIR_CODE_DIR}/tests/depends/runtime/src)
 target_link_libraries(ascendcl_stub
     PRIVATE
         intf_llt_pub
@@ -22,6 +23,7 @@ target_link_libraries(ascendcl_stub
         msprof_headers
         datagw_headers
         mmpa_headers
+        runtime_stub
     PUBLIC
         ascendcl_headers
 )

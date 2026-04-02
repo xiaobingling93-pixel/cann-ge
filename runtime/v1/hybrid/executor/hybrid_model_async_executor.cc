@@ -69,12 +69,12 @@ HybridModelAsyncExecutor::~HybridModelAsyncExecutor() {
   if (stream_ != nullptr) {
     if (owner_stream_) {
       NpuMemoryAllocator::ClearStream(stream_);
-      GE_CHK_RT(rtStreamDestroy(stream_));
+      GE_CHK_RT(aclrtDestroyStream(stream_));
     } else if (default_stream_guarder.default_stream != nullptr) {
       default_stream_guarder.stream_ref_count--;
       if (default_stream_guarder.stream_ref_count == 0U) {
         NpuMemoryAllocator::ClearStream(default_stream_guarder.default_stream);
-        GE_CHK_RT(rtStreamDestroy(default_stream_guarder.default_stream));
+        GE_CHK_RT(aclrtDestroyStream(default_stream_guarder.default_stream));
         default_stream_guarder.default_stream = nullptr;
       }
     } else {
@@ -149,14 +149,14 @@ Status HybridModelAsyncExecutor::Stop() {
   if (stream_ != nullptr) {
     if (owner_stream_) {
       NpuMemoryAllocator::ClearStream(stream_);
-      GE_CHK_RT(rtStreamSynchronize(stream_));
-      GE_CHK_RT(rtStreamDestroyForce(stream_));
+      GE_CHK_RT(aclrtSynchronizeStream(stream_));
+      GE_CHK_RT(aclrtDestroyStreamForce(stream_));
     } else if (default_stream_guarder.default_stream != nullptr) {
       default_stream_guarder.stream_ref_count--;
       if (default_stream_guarder.stream_ref_count == 0U) {
         NpuMemoryAllocator::ClearStream(default_stream_guarder.default_stream);
-        GE_CHK_RT(rtStreamSynchronize(default_stream_guarder.default_stream));
-        GE_CHK_RT(rtStreamDestroyForce(default_stream_guarder.default_stream));
+        GE_CHK_RT(aclrtSynchronizeStream(default_stream_guarder.default_stream));
+        GE_CHK_RT(aclrtDestroyStreamForce(default_stream_guarder.default_stream));
         default_stream_guarder.default_stream = nullptr;
       }
     } else {
@@ -183,7 +183,7 @@ Status HybridModelAsyncExecutor::BuildExecutor() {
   return SUCCESS;
 }
 
-Status HybridModelAsyncExecutor::Init(const rtStream_t stream) {
+Status HybridModelAsyncExecutor::Init(const aclrtStream stream) {
   data_inputer_ = MakeUnique<DataInputer>();
   GE_CHECK_NOTNULL(data_inputer_);
   // 如果用户传入了stream，将stream设置为用户传入的, 更新own_stream_为true。
@@ -265,7 +265,7 @@ Status HybridModelAsyncExecutor::Execute(const std::vector<DataBuffer> &inputs,
                                          const std::vector<GeTensorDesc> &input_desc,
                                          std::vector<DataBuffer> &outputs,
                                          std::vector<GeTensorDesc> &output_desc,
-                                         rtStream_t stream) {
+                                         aclrtStream stream) {
   GELOGI("Start to execute model.");
   output_cache_.clear();
   HybridModelExecutor::ExecuteArgs args;
@@ -312,13 +312,13 @@ Status HybridModelAsyncExecutor::Execute(const std::vector<DataBuffer> &inputs,
 
 Status HybridModelAsyncExecutor::ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs,
                                                         std::vector<GeTensor> &outputs,
-                                                        rtStream_t stream) {
+                                                        aclrtStream stream) {
     return executor_->ExecuteWithStreamAsync(inputs, outputs, stream);
 }
 
 Status HybridModelAsyncExecutor::ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                         std::vector<gert::Tensor> &outputs,
-                                                        rtStream_t stream) {
+                                                        aclrtStream stream) {
     return executor_->ExecuteWithStreamAsync(inputs, outputs, stream);
 }
 

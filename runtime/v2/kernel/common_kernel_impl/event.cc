@@ -50,7 +50,7 @@ REGISTER_KERNEL(CreateGertEvents).RunFunc(CreateGertEvents);
  * @param context
  * @return
  */
-using DoFuncType = ge::graphStatus(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+using DoFuncType = ge::graphStatus(KernelContext *context, GertEvent &event, aclrtEvent rt_event, aclrtStream stream,
                                    memory::MultiStreamL2Allocator *allocator);
 template <DoFuncType DoFunc>
 ge::graphStatus DoEvents(KernelContext *context) {
@@ -70,7 +70,7 @@ ge::graphStatus DoEvents(KernelContext *context) {
            rt_events->GetSize(), events->size());
     return ge::GRAPH_FAILED;
   }
-  auto stream = context->GetInputValue<rtStream_t>(static_cast<size_t>(SendEventsInput::kStream));
+  auto stream = context->GetInputValue<aclrtStream>(static_cast<size_t>(SendEventsInput::kStream));
 
   for (size_t i = 0UL; i < event_ids->GetSize(); ++i) {
     auto event_id = event_ids->GetData()[i];
@@ -88,7 +88,7 @@ ge::graphStatus DoEvents(KernelContext *context) {
   return ge::GRAPH_SUCCESS;
 }
 
-ge::graphStatus CallRtsSendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus CallRtsSendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, aclrtStream stream,
                                  memory::MultiStreamL2Allocator *) {
   GE_ASSERT_RT_OK(aclrtRecordEvent(rt_event, stream));
   KERNEL_TRACE("Sent event %" PRId64 " RT event %p from stream %" PRId64, event.logic_id, rt_event,
@@ -97,7 +97,7 @@ ge::graphStatus CallRtsSendEvent(KernelContext *context, GertEvent &event, aclrt
 }
 REGISTER_KERNEL(LastSendEvents).RunFunc(DoEvents<CallRtsSendEvent>).ConcurrentCriticalSectionKey(kKernelUseMemory);
 
-ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, aclrtStream stream,
                           memory::MultiStreamL2Allocator *allocator) {
   auto blocks = allocator->GetClearLocalRecycleBlocks(event.compile_time_event_info.logic_dst_stream);
   for (auto iter = blocks.Begin(); iter != blocks.End(); blocks.Next(iter)) {
@@ -123,14 +123,14 @@ ge::graphStatus SendEvent(KernelContext *context, GertEvent &event, aclrtEvent r
 }
 REGISTER_KERNEL(SendEvents).RunFunc(DoEvents<SendEvent>).ConcurrentCriticalSectionKey(kKernelUseMemory);
 
-ge::graphStatus CallRtsWaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus CallRtsWaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, aclrtStream stream,
                                  memory::MultiStreamL2Allocator *) {
   GE_ASSERT_RT_OK(rtStreamWaitEvent(stream, rt_event));
   KERNEL_TRACE("Waited event %" PRId64 " RT event %p at stream %" PRId64, event.logic_id, rt_event,
                event.compile_time_event_info.logic_dst_stream);
   return ge::GRAPH_SUCCESS;
 }
-ge::graphStatus WaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, rtStream_t stream,
+ge::graphStatus WaitEvent(KernelContext *context, GertEvent &event, aclrtEvent rt_event, aclrtStream stream,
                           memory::MultiStreamL2Allocator *allocator) {
   GE_ASSERT_GRAPH_SUCCESS(CallRtsWaitEvent(context, event, rt_event, stream, nullptr));
 

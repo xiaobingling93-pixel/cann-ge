@@ -77,14 +77,14 @@ ge::Status CannTracingProfiler::ReportTraceInfo(uint16_t tag_id, const Node *nod
     rt_streams_ =
         reinterpret_cast<Chain *>(execution_data->base_ed.input_values[stream_idx])->GetValue<ContinuousVector *>();
   }
-  rtStream_t cur_stream = extend_info_.stream;
+  aclrtStream cur_stream = extend_info_.stream;
   int64_t logic_stream_id = 0;
   if (node_ids_to_attrs_.find(node->node_id) != node_ids_to_attrs_.end()) {
     auto trace_info = node_ids_to_attrs_[node->node_id];
     logic_stream_id = trace_info.logic_stream_id;
     GE_ASSERT_NOTNULL(rt_streams_);
     cur_stream =
-        *(reinterpret_cast<rtStream_t *>(rt_streams_->MutableData()) + static_cast<size_t>(logic_stream_id));
+        *(reinterpret_cast<aclrtStream *>(rt_streams_->MutableData()) + static_cast<size_t>(logic_stream_id));
   }
   GE_ASSERT_RT_OK(rtProfilerTraceEx(iteration_num_, static_cast<uint64_t>(extend_info_.model_id),
       tag_id, cur_stream));

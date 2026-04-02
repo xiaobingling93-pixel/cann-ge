@@ -258,7 +258,7 @@ Status DumpOp::DumpInput(toolkit::aicpu::dump::Task &task, const OpDescPtr &op_d
 
 void DumpOp::SetDumpInfo(const DumpProperties &dump_properties, const OpDescPtr &op_desc,
                          const std::vector<uintptr_t> &input_addrs, const std::vector<uintptr_t> &output_addrs,
-                         rtStream_t const stream) {
+                         aclrtStream const stream) {
   dump_properties_ = dump_properties;
   op_desc_ = op_desc;
   input_addrs_ = input_addrs;
@@ -648,7 +648,7 @@ Status DumpOp::LaunchDumpOp(const bool is_single_op_dump, bool need_device_args)
   if ((task_id_ == 0U) || (stream_id_ == 0U)) {
     GE_CHK_RT(rtsGetThreadLastTaskId(&task_id_));
     int32_t temp_stream_id;
-    GE_CHK_RT(rtsStreamGetId(stream_, &temp_stream_id));
+    GE_CHK_RT(aclrtStreamGetId(stream_, &temp_stream_id));
     stream_id_ = static_cast<uint32_t>(temp_stream_id);
   }
   int32_t bit_width;

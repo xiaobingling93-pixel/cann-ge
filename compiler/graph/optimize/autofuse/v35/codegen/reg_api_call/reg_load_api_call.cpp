@@ -42,7 +42,7 @@ Status LoadRegApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::Axi
     std::string dtype_name;
     Tensor::DtypeName(gm.dtype, dtype_name);
     ss << "DataCopyPadExtend<" << dtype_name << ", AscendC::PaddingMode::Normal>(" << ub << ", " << gm << "[offset], "
-       << "curAivM, curAlignN, (shapeN - curAlignN), 0);" << std::endl;
+       << "curAivM, load_block_len, load_src_stride, load_dst_stride);" << std::endl;
   } else {
     DataCopyParams param;
     bool status = CalculateDmaParams(tpipe, ub, ub, param);

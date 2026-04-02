@@ -75,10 +75,10 @@ Status StreamActiveTaskInfo::Distribute() {
   GE_ASSERT_NOTNULL(op_desc_);
   GELOGI("StreamActiveTaskInfo op %s Distribute Start.", op_desc_->GetNamePtr());
   SetTaskTag(op_desc_->GetName().c_str());
-  const rtError_t rt_ret = rtStreamActive(active_stream_, stream_);
-  if (rt_ret != RT_ERROR_NONE) {
-    REPORT_INNER_ERR_MSG("E19999", "Call rtStreamActive failed, ret:%d", rt_ret);
-    GELOGE(RT_FAILED, "[Call][RtStreamActive] failed, ret:%d", rt_ret);
+  const auto rt_ret = aclrtActiveStream(active_stream_, stream_);
+  if (rt_ret != ACL_SUCCESS) {
+    REPORT_INNER_ERR_MSG("E19999", "Call aclrtActiveStream failed, ret:%d", rt_ret);
+    GELOGE(RT_FAILED, "[Call][aclrtActiveStream] failed, ret:%d", rt_ret);
     return RT_ERROR_TO_GE_STATUS(rt_ret);
   }
 

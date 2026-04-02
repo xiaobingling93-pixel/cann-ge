@@ -37,9 +37,9 @@ constexpr uint32_t REMAINDER_TMP_BUF_FACTOR = 3U;  // Need 3 temp buffers for di
  * @tparam T Input data type (float or int32)
  * @tparam DstType Output data type (defaults to float for int32 input, same as T for float input)
  */
-template <typename T, typename DstType = typename std::conditional<AscendC::IsSameType<T, int32_t>::value, float, T>::type, bool isReuseSource = false>
-__aicore__ inline void RemainderExtend(const LocalTensor<DstType> &dst, const LocalTensor<T> &dividend,
-                                 const LocalTensor<T> &divisor, const LocalTensor<uint8_t> &tmp_buf,
+template <typename T, bool isReuseSource = false>
+__aicore__ inline void RemainderExtend(const AscendC::LocalTensor<typename std::conditional<AscendC::IsSameType<T, int32_t>::value, float, T>::type> &dst, const AscendC::LocalTensor<T> &dividend,
+                                 const AscendC::LocalTensor<T> &divisor, const AscendC::LocalTensor<uint8_t> &tmp_buf,
                                  const uint32_t calCount) {
   // Static type check: only support float and int32 for input
   static_assert(AscendC::IsSameType<T, float>::value || AscendC::IsSameType<T, int32_t>::value,
@@ -51,30 +51,30 @@ __aicore__ inline void RemainderExtend(const LocalTensor<DstType> &dst, const Lo
   constexpr bool isInt32Input = AscendC::IsSameType<T, int32_t>::value;
   
   // Split tmp_buf into 3 parts for intermediate results
-  // Note: ONE_BLK_SIZE = 32 bytes, buffer should be 32-byte aligned for optimal performance
+  // Note: AscendC::ONE_BLK_SIZE = 32 bytes, buffer should be 32-byte aligned for optimal performance
   uint32_t totalBufSize = tmp_buf.GetSize();
   
   // Calculate aligned buffer size for each of 3 buffers
-  // Must be at least ONE_BLK_SIZE (32 bytes) for hardware requirements
-  uint32_t alignedTotalSize = totalBufSize / ONE_BLK_SIZE * ONE_BLK_SIZE;
+  // Must be at least AscendC::ONE_BLK_SIZE (32 bytes) for hardware requirements
+  uint32_t alignedTotalSize = totalBufSize / AscendC::ONE_BLK_SIZE * AscendC::ONE_BLK_SIZE;
   uint32_t bufSize = alignedTotalSize / REMAINDER_TMP_BUF_FACTOR;
   
-  // Ensure bufSize is at least ONE_BLK_SIZE to meet hardware alignment requirements
-  if (bufSize < ONE_BLK_SIZE) {
+  // Ensure bufSize is at least AscendC::ONE_BLK_SIZE to meet hardware alignment requirements
+  if (bufSize < AscendC::ONE_BLK_SIZE) {
     // If buffer is too small, we cannot process safely - this indicates caller error
     // For safety, use minimal buffer size (may cause overflow, but caller should ensure enough space)
-    bufSize = ONE_BLK_SIZE;
+    bufSize = AscendC::ONE_BLK_SIZE;
   }
   
   uint32_t bufElementCount = bufSize / sizeof(ComputeType);
   
-  LocalTensor<ComputeType> buf0 = tmp_buf.ReinterpretCast<ComputeType>();
-  LocalTensor<ComputeType> buf1 = tmp_buf[bufSize].ReinterpretCast<ComputeType>();
-  LocalTensor<ComputeType> buf2 = tmp_buf[bufSize * 2].ReinterpretCast<ComputeType>();
+  AscendC::LocalTensor<ComputeType> buf0 = tmp_buf.ReinterpretCast<ComputeType>();
+  AscendC::LocalTensor<ComputeType> buf1 = tmp_buf[bufSize].ReinterpretCast<ComputeType>();
+  AscendC::LocalTensor<ComputeType> buf2 = tmp_buf[bufSize * 2].ReinterpretCast<ComputeType>();
   
-  constexpr uint32_t ONE_RPT_SIZE = ONE_REPEAT_BYTE_SIZE / sizeof(ComputeType);
+  constexpr uint32_t ONE_RPT_SIZE = AscendC::ONE_REPEAT_BYTE_SIZE / sizeof(ComputeType);
   uint32_t maxBufRptNum = bufElementCount / ONE_RPT_SIZE;
-  uint32_t maxDoRptNum = MAX_REPEAT_TIME > maxBufRptNum ? maxBufRptNum : MAX_REPEAT_TIME;
+  uint32_t maxDoRptNum = AscendC::MAX_REPEAT_TIMES > maxBufRptNum ? maxBufRptNum : AscendC::MAX_REPEAT_TIMES;
   uint32_t maxDoSize = maxDoRptNum * ONE_RPT_SIZE;
 
   uint32_t doSize = 0;
@@ -83,9 +83,9 @@ __aicore__ inline void RemainderExtend(const LocalTensor<DstType> &dst, const Lo
   // ==================== Float type processing ====================
   if constexpr (!isInt32Input) {
     // For float type, use buffers directly for intermediate results
-    LocalTensor<ComputeType>& divRes = buf0;
-    LocalTensor<ComputeType>& floorRes = buf1;
-    LocalTensor<ComputeType>& mulRes = buf2;
+    AscendC::LocalTensor<ComputeType>& divRes = buf0;
+    AscendC::LocalTensor<ComputeType>& floorRes = buf1;
+    AscendC::LocalTensor<ComputeType>& mulRes = buf2;
     
     // Process in chunks with max repeat times (only if buffer can hold at least one repeat)
     if (maxDoRptNum > 0 && maxDoSize <= calCount) {
@@ -161,7 +161,7 @@ __aicore__ inline void RemainderExtend(const LocalTensor<DstType> &dst, const Lo
     
     uint32_t batchSize = (bufElementCount > 0) ? bufElementCount : calCount;
     // For DataCopy alignment: float requires 32-byte alignment, so 8 elements
-    constexpr uint32_t alignElements = ONE_BLK_SIZE / sizeof(ComputeType);  // 8 for float
+    constexpr uint32_t alignElements = AscendC::ONE_BLK_SIZE / sizeof(ComputeType);  // 8 for float
     
     for (calcSize = 0; calcSize < calCount; calcSize += batchSize) {
       uint32_t currentSize = (calCount - calcSize) > batchSize ? batchSize : (calCount - calcSize);

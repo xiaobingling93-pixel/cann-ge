@@ -43,8 +43,8 @@ REG_ASC_IR(RoundToInt)
     .Impl(v2_soc_versions,
           {ge::ascir::AscIrImplCreator<ge::ascir::RoundToIntAscIrAttImplV2>(),
            ge::ascir::AscIrImplCreator<ge::ascir::RoundToIntAscIrCodegenImplV2>(),
-           {{{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
-             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}}});
+           {{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
+             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}});
 
 REG_ASC_IR(TruncToInt)
     .Input("x", "T1")
@@ -53,8 +53,8 @@ REG_ASC_IR(TruncToInt)
     .Impl(v2_soc_versions,
           {ge::ascir::AscIrImplCreator<ge::ascir::TruncToIntAscIrAttImplV2>(),
            ge::ascir::AscIrImplCreator<ge::ascir::TruncToIntAscIrCodegenImplV2>(),
-           {{{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
-             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}}});
+           {{"T1", OrderedTensorTypeList{DT_FLOAT, DT_FLOAT, DT_FLOAT, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_FLOAT16, DT_BF16}},
+             {"T2", OrderedTensorTypeList{DT_INT64, DT_INT32, DT_INT16, DT_INT16, DT_INT32, DT_INT8, DT_UINT8, DT_INT32}}}});
 
 REG_ASC_IR(Xor)
     .Input("x1", "T")

@@ -992,9 +992,10 @@ TEST_F(UtestDavinciModel, davinci_init_success) {
     model.SetAiCpuCustFlag(true);
     EXPECT_EQ(model.Init(), SUCCESS);
     EXPECT_EQ(model.stream_to_task_index_list_.size(), 1); // 单条流
-    EXPECT_EQ(model.stream_to_task_index_list_[1].size(), 7);
+    uint64_t stream = model.stream_to_task_index_list_.begin()->first;
+    EXPECT_EQ(model.stream_to_task_index_list_[stream].size(), 7);
     // 单条流，hccl所在流上有7个task
-    model.main_follow_stream_mapping_[1].push_back(ge::ValueToPtr((2))); // hccl从流
+    model.main_follow_stream_mapping_[stream].push_back(ge::ValueToPtr((2))); // hccl从流
     EXPECT_EQ(model.RecoverModel(), SUCCESS); // 单条流，hccl所在流上有7个task
     runtime_stub.Clear();
     dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 1);

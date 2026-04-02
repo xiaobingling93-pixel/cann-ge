@@ -17,8 +17,8 @@ constexpr size_t kOpDebugMemorySize = 2048UL;
 constexpr size_t kDebugP2pSize = 8UL;
 }  // namespace
 std::mutex OpdebugRegister::mu_;
-std::map<rtStream_t, std::unique_ptr<OpDebugTask>> OpdebugRegister::op_debug_tasks_;
-std::map<rtStream_t, uint32_t>  OpdebugRegister::stream_ref_count_;
+std::map<aclrtStream, std::unique_ptr<OpDebugTask>> OpdebugRegister::op_debug_tasks_;
+std::map<aclrtStream, uint32_t>  OpdebugRegister::stream_ref_count_;
 
 OpDebugTask::~OpDebugTask() {
   if (op_debug_addr_ != nullptr) {
@@ -75,7 +75,7 @@ void OpdebugRegister::UnregisterDebugForModel(rtModel_t const model_handle) {
   return;
 }
 
-Status OpdebugRegister::CreateOpDebugTaskByStream(rtStream_t const stream, const uint32_t op_debug_mode) {
+Status OpdebugRegister::CreateOpDebugTaskByStream(aclrtStream const stream, const uint32_t op_debug_mode) {
   const std::lock_guard<std::mutex> lk(mu_);
   stream_ref_count_[stream] += 1U;
   if (op_debug_tasks_.find(stream) != op_debug_tasks_.end()) {
@@ -99,7 +99,7 @@ Status OpdebugRegister::MallocP2PDebugMem(const void * const op_debug_addr) {
   return SUCCESS;
 }
 
-Status OpdebugRegister::RegisterDebugForStream(rtStream_t const stream, const uint32_t op_debug_mode,
+Status OpdebugRegister::RegisterDebugForStream(aclrtStream const stream, const uint32_t op_debug_mode,
                                                DataDumper &data_dumper) {
   GELOGD("Start to register debug for stream in stream overflow");
   GE_CHK_STATUS_RET(CreateOpDebugTaskByStream(stream, op_debug_mode));
@@ -113,7 +113,7 @@ Status OpdebugRegister::RegisterDebugForStream(rtStream_t const stream, const ui
   return SUCCESS;
 }
 
-void OpdebugRegister::UnregisterDebugForStream(rtStream_t const stream) {
+void OpdebugRegister::UnregisterDebugForStream(aclrtStream const stream) {
   rtError_t rt_ret = RT_ERROR_NONE;
   if (stream != nullptr) {
     const std::lock_guard<std::mutex> lk(mu_);

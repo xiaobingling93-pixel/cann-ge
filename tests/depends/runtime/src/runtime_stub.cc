@@ -28,7 +28,7 @@ std::string g_runtime_stub_mock = "";
 std::string g_runtime_stub_mock_v2 = "";
 static const int32_t END_OF_SEQUENCE = 507005;
 
-static int32_t g_free_stream_num = 2048;
+extern int32_t g_free_stream_num = 2048;
 static int32_t g_free_event_num = 2048;
 static int32_t g_cnt_rtStreamSynchronize_over_flow = 0;
 static int32_t g_cnt_rtStreamSynchronize_fail = 0;
@@ -528,7 +528,7 @@ rtError_t RuntimeStub::rtStreamCreate(rtStream_t *stream, int32_t priority) {
     return -1;
   }
   g_free_stream_num--;
-  *stream = new uint32_t;
+  *stream = new std::unique_ptr<uint32_t>(std::make_unique<uint32_t>());
   return RT_ERROR_NONE;
 }
 rtError_t RuntimeStub::rtStreamCreateWithFlags(rtStream_t *stream, int32_t priority, uint32_t flags) {
@@ -536,13 +536,13 @@ rtError_t RuntimeStub::rtStreamCreateWithFlags(rtStream_t *stream, int32_t prior
     return -1;
   }
   g_free_stream_num--;
-  *stream = new uint32_t;
+  *stream = new std::unique_ptr<uint32_t>(std::make_unique<uint32_t>());
   return RT_ERROR_NONE;
 }
 
 rtError_t RuntimeStub::rtStreamDestroy(rtStream_t stream) {
   if (stream != nullptr) {
-    delete (uint32_t *)stream;
+    delete static_cast<std::unique_ptr<uint32_t>*>(stream);
   }
   g_free_stream_num++;
   return RT_ERROR_NONE;
@@ -556,7 +556,7 @@ rtError_t RuntimeStub::rtStreamSetMode(rtStream_t stm, const uint64_t stmMode) {
 
 rtError_t RuntimeStub::rtStreamDestroyForce(rtStream_t stream) {
   if (stream != nullptr) {
-    delete (uint32_t *)stream;
+    delete static_cast<std::unique_ptr<uint32_t>*>(stream);
   }
   g_free_stream_num++;
   return RT_ERROR_NONE;

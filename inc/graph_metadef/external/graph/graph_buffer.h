@@ -14,7 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include "./types.h"
+#include "graph/types.h"
 
 namespace ge {
 class Graph;

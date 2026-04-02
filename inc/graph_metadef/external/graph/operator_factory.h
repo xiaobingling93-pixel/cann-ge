@@ -16,10 +16,10 @@
 #include <string>
 #include <vector>
 
-#include "./operator.h"
-#include "./ge_error_codes.h"
-#include "./ascend_string.h"
-#include "./types.h"
+#include "graph/operator.h"
+#include "graph/ge_error_codes.h"
+#include "graph/ascend_string.h"
+#include "graph/types.h"
 
 namespace ge {
 using OpCreator = std::function<Operator(const std::string &)>;

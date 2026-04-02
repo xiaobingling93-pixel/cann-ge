@@ -25,6 +25,7 @@
 
 #include "jit_execution/user_graphs_manager.h"
 #include "user_hybrid_graph_manager.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 
@@ -51,10 +52,10 @@ class InnerSession {
 
   Status RunGraph(uint32_t graph_id, const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs);
 
-  Status RunGraphWithStreamAsync(uint32_t graph_id, rtStream_t stream, const std::vector<Tensor> &inputs,
+  Status RunGraphWithStreamAsync(uint32_t graph_id, aclrtStream stream, const std::vector<Tensor> &inputs,
                                  std::vector<Tensor> &outputs);
 
-  Status ExecuteGraphWithStreamAsync(uint32_t graph_id, const rtStream_t stream,
+  Status ExecuteGraphWithStreamAsync(uint32_t graph_id, const aclrtStream stream,
                                      const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs);
 
   Status RemoveGraph(uint32_t graph_id);
@@ -172,7 +173,7 @@ class InnerSession {
   UserHybridGraphManagerPtr user_hybrid_graph_manager_{nullptr};
 };
 using SessionPtr = std::shared_ptr<InnerSession>;
-void CopyGeOutputsMemToUserOutputs(const rtStream_t stream, const std::vector<GeTensor> &ge_outputs,
+void CopyGeOutputsMemToUserOutputs(const aclrtStream stream, const std::vector<GeTensor> &ge_outputs,
                                    std::vector<Tensor> &outputs);
 }  // namespace ge
 

@@ -13,7 +13,7 @@
 
 #include <map>
 #include <mutex>
-#include "runtime/rt.h"
+#include "acl/acl_rt.h"
 #include "framework/common/debug/ge_log.h"
 
 namespace ge {
@@ -25,8 +25,8 @@ enum class MngActionType : uint32_t {
 };
 
 typedef union {
-  rtStream_t stream;
-  rtContext_t context;
+  aclrtStream stream;
+  aclrtContext context;
   int32_t device_id;
 } MngResourceHandle;
 

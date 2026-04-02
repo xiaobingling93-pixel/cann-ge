@@ -501,7 +501,7 @@ bool ProfilingManager::ProfilingSubscribeOn() const {
 ProfilerCollector::ProfilerCollector(const uint32_t model_id, const uint32_t graph_id)
     : model_id_(model_id), graph_id_(graph_id), step_id_{1U} {}
 
-ge::Status ProfilerCollector::RecordStart(const rtStream_t stream) const {
+ge::Status ProfilerCollector::RecordStart(const aclrtStream stream) const {
   if (gert::GlobalProfilingWrapper::GetInstance()->IsEnabled(gert::ProfilingType::kTaskTime)) {
     MsprofEvent model_execute_info{};
     gert::GlobalProfilingWrapper::GetInstance()->SetModelIdStepId(model_id_, step_id_);
@@ -516,7 +516,7 @@ ge::Status ProfilerCollector::RecordStart(const rtStream_t stream) const {
   return ge::SUCCESS;
 }
 
-ge::Status ProfilerCollector::RecordEnd(const rtStream_t stream) {
+ge::Status ProfilerCollector::RecordEnd(const aclrtStream stream) {
   if (!host_cpu_flag_) {
     GE_ASSERT_SUCCESS(
         gert::GlobalProfilingWrapper::ProfileStepTrace(static_cast<uint64_t>(step_id_), model_id_, kEndTag, stream));

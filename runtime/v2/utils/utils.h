@@ -12,13 +12,13 @@
 #define AIR_CXX_RUNTIME_V2_UTILS_H
 
 #include "ge/ge_api_types.h"
-#include "runtime/base.h"
+#include "acl/acl_rt.h"
 #include "core/executor/executor_base_def.h"
 
 namespace gert {
-ge::Status DoRtStreamSyncWithTimeout(rtStream_t stream);
+ge::Status DoRtStreamSyncWithTimeout(aclrtStream stream);
 
-ge::Status GetKernelStream(const Node *node, rtStream_t &stream);
+ge::Status GetKernelStream(const Node *node, aclrtStream &stream);
 
 bool IsInputPlacementOnDeviceHbm();
 

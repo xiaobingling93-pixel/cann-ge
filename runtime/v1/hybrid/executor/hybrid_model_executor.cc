@@ -487,7 +487,7 @@ void HybridModelExecutor::ParserContextOption(const string &option_name, string 
 }
 
 Status HybridModelExecutor::ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                                   const rtStream_t stream) {
+                                                   const aclrtStream stream) {
   (void)inputs;
   (void)outputs;
   (void)stream;
@@ -497,7 +497,7 @@ Status HybridModelExecutor::ExecuteWithStreamAsync(const std::vector<GeTensor> &
 
 Status HybridModelExecutor::ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                                   std::vector<gert::Tensor> &outputs,
-                                                                  const rtStream_t stream) {
+                                                                  const aclrtStream stream) {
   (void)inputs;
   (void)outputs;
   (void)stream;

@@ -16,6 +16,7 @@
 #include "graph/load/model_manager/data_inputer.h"
 #include "common/model/ge_root_model.h"
 #include "exe_graph/runtime/tensor.h"
+#include "acl/acl_rt.h"
 
 namespace ge {
 namespace hybrid {
@@ -36,15 +37,15 @@ class HybridDavinciModel {
                          const std::vector<GeTensorDesc> &input_desc,
                          std::vector<DataBuffer> &outputs,
                          std::vector<GeTensorDesc> &output_desc,
-                         const rtStream_t stream);
+                         const aclrtStream stream);
 
   Status Execute(const std::vector<gert::Tensor> &inputs, std::vector<gert::Tensor> &outputs);
 
   Status ExecuteWithStreamAsync(const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs,
-                                const rtStream_t stream = nullptr);
+                                const aclrtStream stream = nullptr);
   Status ExecuteWithStreamAsync(const std::vector<gert::Tensor> &inputs,
                                                     std::vector<gert::Tensor> &outputs,
-                                                    const rtStream_t stream = nullptr);
+                                                    const aclrtStream stream = nullptr);
 
   Status ModelRunStart();
 
@@ -62,7 +63,7 @@ class HybridDavinciModel {
 
   void SetFileConstantWeightDir(const std::string &file_constant_weight_dir);
 
-  void SetLoadStream(const rtStream_t stream);
+  void SetLoadStream(const aclrtStream stream);
 
   uint64_t GetSessionId();
 

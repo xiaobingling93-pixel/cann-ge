@@ -34,11 +34,11 @@ StageExecutor::StageExecutor(const int32_t id, HybridModel *const model, PipeExe
 StageExecutor::~StageExecutor() {
   GELOGD("~StageExecutor(), id = %d", id_);
   if (stream_ != nullptr) {
-    GE_CHK_RT(rtStreamDestroy(stream_));
+    GE_CHK_RT(aclrtDestroyStream(stream_));
     stream_ = nullptr;
   }
   if (hccl_stream_ != nullptr) {
-    GE_CHK_RT(rtStreamDestroy(hccl_stream_));
+    GE_CHK_RT(aclrtDestroyStream(hccl_stream_));
     hccl_stream_ = nullptr;
   }
 }
@@ -47,8 +47,8 @@ Status StageExecutor::Init() {
   GELOGD("[Executor: %d] Start to init StateExecutor", id_);
   context_.rt_context = pipe_config_->rt_context;
   GE_CHK_STATUS_RET_NOLOG(InitExecutionContext());
-  GE_CHK_RT_RET(rtStreamCreate(&stream_, static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT)));
-  GE_CHK_RT_RET(rtStreamCreate(&hccl_stream_, static_cast<int32_t>(RT_STREAM_PRIORITY_DEFAULT)));
+  GE_CHK_RT_RET(aclrtCreateStream(&stream_));
+  GE_CHK_RT_RET(aclrtCreateStream(&hccl_stream_));
   context_.stream = stream_;
   context_.hccl_stream = hccl_stream_;
 
@@ -246,7 +246,7 @@ void StageSubject::Cond::Release() {
 }
 
 HybridModelPipelineExecutor::HybridModelPipelineExecutor(HybridModel *const model, const uint32_t device_id,
-                                                         const rtStream_t stream)
+                                                         const aclrtStream stream)
     : HybridModelExecutor(model, device_id, stream) {
   config_.num_executors = kNumExecutors;
   config_.num_stages = static_cast<int32_t>(model_->GetRootGraphItem()->NumGroups());

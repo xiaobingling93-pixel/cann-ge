@@ -21,7 +21,7 @@ namespace memory {
 class L2MemPool;
 class MultiStreamL1Allocator : public DeviceMemAllocator {
  public:
-  MultiStreamL1Allocator(ge::Allocator *l1_allocator, rtStream_t l2_stream,
+  MultiStreamL1Allocator(ge::Allocator *l1_allocator, aclrtStream l2_stream,
                          TypedContinuousVector<L2MemPool *> *all_l2_mem_pool = nullptr)
       : l1_allocator_(l1_allocator),
         l2_stream_(l2_stream),
@@ -37,19 +37,19 @@ class MultiStreamL1Allocator : public DeviceMemAllocator {
   void SetL1Allocator(ge::Allocator *allocator) {
     l1_allocator_ = allocator;
   }
-  void SetStream(rtStream_t stream) {
+  void SetStream(aclrtStream stream) {
     l2_stream_ = stream;
   }
 
  private:
   ge::Allocator *l1_allocator_;
-  rtStream_t l2_stream_;
+  aclrtStream l2_stream_;
   TypedContinuousVector<L2MemPool *> *all_l2_mem_pool_;
   bool is_rt2_multi_thread_;
 };
 class L2MemPool : public ge::Allocator, public MemSynchronizer {
  public:
-  explicit L2MemPool(ge::Allocator *allocator, rtStream_t stream,
+  explicit L2MemPool(ge::Allocator *allocator, aclrtStream stream,
                      TypedContinuousVector<L2MemPool *> *all_l2_mem_pool = nullptr);
 
   ~L2MemPool() override;
@@ -67,15 +67,15 @@ class L2MemPool : public ge::Allocator, public MemSynchronizer {
              caching_mem_allocator->GetScalableAllocator()->GetId().c_str(), memory_pool_->GetId().c_str());
     }
   }
-  rtStream_t GetStream();
-  void SetStream(rtStream_t stream);
+  aclrtStream GetStream();
+  void SetStream(aclrtStream stream);
   ge::MemBlock *MoveL2ToL1(ge::MemBlock *block);
 
  private:
   MultiStreamL1Allocator first_level_pool_;
   SpanAllocatorImp span_allocator_;
   std::unique_ptr<MemoryPool> memory_pool_;
-  rtStream_t stream_;
+  aclrtStream stream_;
 };
 }  // namespace memory
 }  // namespace gert

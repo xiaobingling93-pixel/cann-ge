@@ -435,14 +435,14 @@ ModelManager::ModelManager() {
 
 Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_type, const uint64_t session_id,
                                     const uint32_t model_id, const uint32_t sub_model_id) {
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   std::vector<void *> allocated_mem;
   GE_MAKE_GUARD(kernel_launch_release, [&]() {
     for (auto &mem : allocated_mem) {
       GE_CHK_RT(rtFree(mem));
     }
     if (stream != nullptr) {
-      GE_CHK_RT(rtStreamDestroy(stream));
+      GE_CHK_RT(aclrtDestroyStream(stream));
     }
   });
 
@@ -481,7 +481,7 @@ Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_t
   allocated_mem.emplace_back(device_base);
   GE_CHK_RT_RET(rtMemcpy(device_base, op_kernel_size, &param_base, op_kernel_size, RT_MEMCPY_HOST_TO_DEVICE));
 
-  GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
+  GE_CHK_RT_RET(aclrtCreateStream(&stream));
   KernelRegisterInfo register_info;
   GE_ASSERT_SUCCESS(KernelRegisterInfoBuilder::ConstructAicpuRegisterInfo("TfSessionTask",
       "libtf_kernels.so", "TFOperateAPI", "TFKernel", register_info));
@@ -498,7 +498,7 @@ Status ModelManager::KernelLaunchEx(const aicpu::FWKAdapter::FWKOperateType op_t
   launch_kernel_param.block_dim = 1U;
   launch_kernel_param.stream = stream;
   GE_ASSERT_SUCCESS(KernelHandleUtils::LaunchKernel(func_handle, launch_kernel_param));
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   return SUCCESS;
 }
 
@@ -654,7 +654,7 @@ Status ModelManager::DoLoadHybridModelOnline(const uint32_t model_id,
                                              const uint32_t device_id,
                                              const GeRootModelPtr &ge_root_model,
                                              const std::shared_ptr<ModelListener> &listener,
-                                             const rtStream_t stream) {
+                                             const aclrtStream stream) {
   auto hybrid_model = hybrid::HybridDavinciModel::Create(ge_root_model);
   GE_CHECK_NOTNULL(hybrid_model);
   hybrid_model->SetListener(listener);
@@ -686,7 +686,7 @@ bool ModelManager::IsNeedHybridLoad(const GeRootModel &ge_root_model) const {
 ///
 Status ModelManager::LoadModelOnline(uint32_t &model_id, const GeRootModelPtr &ge_root_model,
                                      const GraphNodePtr &graph_node, const uint32_t device_id,
-                                     const rtStream_t stream) {
+                                     const aclrtStream stream) {
   std::shared_ptr<ModelListener> listener;
   if (graph_node->IsAsync()) {
     listener = MakeShared<RunAsyncListener>();
@@ -1688,7 +1688,7 @@ Status ModelManager::LoadModelWithoutQ(uint32_t &model_id, const GeRootModelPtr 
 /// @param [out] output_data  output data
 /// @param [out] output_desc  description of output data
 ///
-Status ModelManager::ExecuteModel(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+Status ModelManager::ExecuteModel(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                                   const InputData &input_data, const std::vector<GeTensorDesc> &input_desc,
                                   OutputData &output_data, std::vector<GeTensorDesc> &output_desc,
                                   const std::vector<GeTensor> &input_tensor,
@@ -1768,7 +1768,7 @@ void GetGeTensorDescs(const std::vector<GeTensor> &tensors, std::vector<GeTensor
 }
 }
 
-Status ModelManager::ExecuteModelAsync(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+Status ModelManager::ExecuteModelAsync(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                                        const std::vector<GeTensor> &input_tensor,
                                        std::vector<GeTensor> &output_tensor) {
   InputData input_buffer;
@@ -1806,7 +1806,7 @@ Status ModelManager::ExecuteModelAsync(const uint32_t model_id, const rtStream_t
   return status;
 }
 
-Status ModelManager::ExecuteModel(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+Status ModelManager::ExecuteModel(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                                   const std::vector<GeTensor> &input_tensor,
                                   std::vector<GeTensor> &output_tensor) {
   GE_ASSERT_SUCCESS(ExecuteModelAsync(model_id, stream, async_mode,
@@ -1819,7 +1819,7 @@ Status ModelManager::ExecuteModel(const uint32_t model_id, const rtStream_t stre
   return SUCCESS;
 }
 
-Status ModelManager::ExecuteModelWithStream(const uint32_t model_id, const rtStream_t stream, const bool async_mode,
+Status ModelManager::ExecuteModelWithStream(const uint32_t model_id, const aclrtStream stream, const bool async_mode,
                                   const std::vector<gert::Tensor> &input_tensor,
                                   std::vector<gert::Tensor> &output_tensor) {
   const auto &davinci_model = GetModel(model_id);
@@ -1831,7 +1831,7 @@ Status ModelManager::ExecuteModelWithStream(const uint32_t model_id, const rtStr
 
 Status ModelManager::ExecuteModelWithStreamAsync(const uint32_t model_id, const GraphNodePtr &graph_node,
                                                  const std::vector<GeTensor> &input_tensor,
-                                                 std::vector<GeTensor> &output_tensor, const rtStream_t stream) {
+                                                 std::vector<GeTensor> &output_tensor, const aclrtStream stream) {
   // ExecuteModelWithStreamAsync: dynamic model should return output tensor to usr
   const auto &hybrid_davinci_model = GetHybridModel(model_id);
   if (hybrid_davinci_model != nullptr) {
@@ -1862,7 +1862,7 @@ Status ModelManager::ExecuteModelWithStreamAsync(const uint32_t model_id, const 
 
 Status ModelManager::ExecuteModelWithStreamAsync(const uint32_t model_id, const GraphNodePtr &graph_node,
                                                  const std::vector<gert::Tensor> &input_tensor,
-                                                 std::vector<gert::Tensor> &output_tensor, const rtStream_t stream) {
+                                                 std::vector<gert::Tensor> &output_tensor, const aclrtStream stream) {
   // ExecuteModelWithStreamAsync: dynamic model should return output tensor to usr
   const auto &hybrid_davinci_model = GetHybridModel(model_id);
   if (hybrid_davinci_model != nullptr) {
@@ -1988,14 +1988,14 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
     }
   }
 
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   std::vector<void *> allocated_mem;
   const std::function<void()> callback = [&stream, &allocated_mem]() {
     for (auto &mem : allocated_mem) {
       GE_CHK_RT(rtFree(mem));
     }
     if (stream != nullptr) {
-      GE_CHK_RT(rtStreamDestroy(stream));
+      GE_CHK_RT(aclrtDestroyStream(stream));
     }
   };
   GE_MAKE_GUARD(release, callback);
@@ -2047,7 +2047,7 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
   GE_ASSERT_EOK(strcpy_s(batch_cust_so.kernel_name, sizeof(batch_cust_so.kernel_name), kernel_name.c_str()));
 
   constexpr uint32_t batch_args_size = static_cast<uint32_t>(sizeof(BatchLoadOpFromBufArgs));
-  GE_CHK_RT(rtStreamCreate(&stream, 0));
+  GE_CHK_RT(aclrtCreateStream(&stream));
   rtAicpuArgsEx_t args_info = {};
   args_info.args = const_cast<void *>(static_cast<void *>(&batch_cust_so));
   args_info.argsSize = batch_args_size;
@@ -2062,7 +2062,7 @@ Status ModelManager::LaunchKernelCustAicpuSo(const std::string &kernel_name) {
   GELOGI("Load cust so, soNameAddrOffset %u, kernelNameAddrOffset %u, timeout %u", args_info.soNameAddrOffset,
          args_info.kernelNameAddrOffset, args_info.timeout);
 
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   GELOGI("Cpu kernel launch task success.");
   return SUCCESS;
 }
@@ -2206,7 +2206,7 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
     return SUCCESS;
   }
 
-  rtStream_t stream = nullptr;
+  aclrtStream stream = nullptr;
   void *d_aicpu_data = nullptr;
   void *d_so_name = nullptr;
   const std::function<void()> callback = [&stream, &d_aicpu_data, &d_so_name]() -> void {
@@ -2217,7 +2217,7 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
       GE_CHK_RT(rtFree(d_so_name));
     }
     if (stream != nullptr) {
-      GE_CHK_RT(rtStreamDestroy(stream));
+      GE_CHK_RT(aclrtDestroyStream(stream));
     }
   };
   GE_MAKE_GUARD(release, callback);
@@ -2239,7 +2239,7 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
     GE_ASSERT_EOK(strcpy_s(aicpu_so_buf.so_name, sizeof(aicpu_so_buf.so_name), kLibAicpuExtendKernelsSo.c_str()));
     GE_ASSERT_EOK(strcpy_s(aicpu_so_buf.kernel_name, sizeof(aicpu_so_buf.kernel_name), kernel_name.c_str()));
 
-    GE_CHK_RT(rtStreamCreate(&stream, 0));
+    GE_CHK_RT(aclrtCreateStream(&stream));
     rtAicpuArgsEx_t args_info = {};
     args_info.args = static_cast<void *>(&aicpu_so_buf);
     args_info.argsSize = static_cast<uint32_t>(sizeof(LoadSoFromBufArgs));
@@ -2257,7 +2257,7 @@ Status ModelManager::LaunchKernelBuiltinAicpuSo(const std::string &kernel_name, 
            kernel_name.c_str(), PtrToValue(stream));
     GELOGI("Load build in so, soNameAddrOffset %u, kernelNameAddrOffset %u, timeout %u", args_info.soNameAddrOffset,
            args_info.kernelNameAddrOffset, args_info.timeout);
-    GE_CHK_RT_RET(rtStreamSynchronize(stream));
+    GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
   }
   return SUCCESS;
 }
@@ -2511,10 +2511,10 @@ Status ModelManager::LaunchKernelCheckAicpuOp(const std::vector<std::string> &ai
                  sizeof(SysOpCheckResp));
   GE_CHK_BOOL_RET_STATUS(ret == EOK, FAILED, "[Memcpy] Call memcpy failed from src op_check_info_res, ret=%d", ret);
 
-  rtStream_t stream = nullptr;
-  GE_CHK_RT_RET(rtStreamCreate(&stream, 0));
+  aclrtStream stream = nullptr;
+  GE_CHK_RT_RET(aclrtCreateStream(&stream));
   GE_MAKE_GUARD(stream_guard, [&stream]() {
-    GE_CHK_RT(rtStreamDestroy(stream));
+    GE_CHK_RT(aclrtDestroyStream(stream));
   });
   rtArgsEx_t args_info = {};
   args_info.args = const_cast<void *>(static_cast<void *>(args.get()));
@@ -2523,7 +2523,7 @@ Status ModelManager::LaunchKernelCheckAicpuOp(const std::vector<std::string> &ai
   GE_CHK_RT(rtCpuKernelLaunchWithFlag(nullptr,
       kernel_name.c_str(), 1U, &args_info, nullptr, stream, RT_KERNEL_DEFAULT));
 
-  GE_CHK_RT_RET(rtStreamSynchronize(stream));
+  GE_CHK_RT_RET(aclrtSynchronizeStream(stream));
 
   // Check the response
   const void *const d_op_check_info_res = ValueToPtr(PtrToValue(args.get()) + op_check_info_req.offSetLen);
@@ -2764,7 +2764,7 @@ Status ModelManager::SetCallBackFuncForDumpManager() {
 }
 
 Status ModelManager::ExternalAllocatorMalloc(const GraphId graph_id, const uint32_t model_id,
-                                             const GraphNodePtr &graph_node, const rtStream_t stream) {
+                                             const GraphNodePtr &graph_node, const aclrtStream stream) {
   if (stream == nullptr) {
     return SUCCESS;
   }

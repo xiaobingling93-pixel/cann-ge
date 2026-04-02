@@ -966,8 +966,8 @@ TEST_F(TensorMoveTest, TensorMoveInSubgraph_FromParentData_NotDeleted) {
   ge::GetThreadLocalContext().SetGraphOption({});
 }
 
-// 公共子表达式消除场景，添加内置TensorMove
-TEST_F(TensorMoveTest, Add_InnerTensorMove1) {
+// 公共子表达式消除场景，添加内置Identity
+TEST_F(TensorMoveTest, Add_InnerIdentity1) {
   DEF_GRAPH(g1) {
     auto assign = OP_CFG(ASSIGN)
                       .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
@@ -1009,16 +1009,16 @@ TEST_F(TensorMoveTest, Add_InnerTensorMove1) {
     // 公共子表达式消除，add1和add2合并
     EXPECT_EQ(add_count, 2U);
 
-    auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-    ASSERT_NE(tensor_move, nullptr);
+    auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+    ASSERT_NE(identity, nullptr);
     auto assign = graph->FindFirstNodeMatchType(ASSIGN);
     ASSERT_NE(assign, nullptr);
-    EXPECT_EQ(assign->GetInDataNodes().at(0), tensor_move);
+    EXPECT_EQ(assign->GetInDataNodes().at(0), identity);
   };
 }
 
-// 常量折叠场景，添加内置TensorMove
-TEST_F(TensorMoveTest, Add_InnerTensorMove2) {
+// 常量折叠场景，添加内置Identity
+TEST_F(TensorMoveTest, Add_InnerIdentity2) {
   DEF_GRAPH(g1) {
     auto assign = OP_CFG(ASSIGN)
                       .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
@@ -1053,16 +1053,16 @@ TEST_F(TensorMoveTest, Add_InnerTensorMove2) {
   EXPECT_EQ(ret, SUCCESS);
 
   CHECK_GRAPH(PreRunAfterBuild) {
-    auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-    ASSERT_NE(tensor_move, nullptr);
+    auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+    ASSERT_NE(identity, nullptr);
     auto assign = graph->FindFirstNodeMatchType(ASSIGN);
     ASSERT_NE(assign, nullptr);
-    EXPECT_EQ(assign->GetInDataNodes().at(0), tensor_move);
+    EXPECT_EQ(assign->GetInDataNodes().at(0), identity);
   };
 }
 
-// relu多引用，连给两个ref op，且ref之间没有连边关系，需要插入内置inner TensorMove
-TEST_F(TensorMoveTest, Add_InnerTensorMove3) {
+// relu多引用，连给两个ref op，且ref之间没有连边关系，需要插入内置inner Identity
+TEST_F(TensorMoveTest, Add_InnerIdentity3) {
   DEF_GRAPH(g1) {
     auto assign1 = OP_CFG(ASSIGN)
                       .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
@@ -1099,18 +1099,18 @@ TEST_F(TensorMoveTest, Add_InnerTensorMove3) {
   EXPECT_EQ(ret, SUCCESS);
 
   CHECK_GRAPH(PreRunAfterBuild) {
-    size_t tensor_move_count = 0U;
+    size_t identity_count = 0U;
     for (const auto &node : graph->GetAllNodes()) {
-      if (node->GetType() == TENSORMOVE) {
-        tensor_move_count++;
+      if (node->GetType() == IDENTITY) {
+        identity_count++;
       }
     }
-    EXPECT_EQ(tensor_move_count, 2U);
+    EXPECT_EQ(identity_count, 2U);
   };
 }
 
-// relu多引用，且relu的另一个输出节点依赖ref算子，不需要插入内置inner TensorMove
-TEST_F(TensorMoveTest, InnerTensorMove_Delete1) {
+// relu多引用，且relu的另一个输出节点依赖ref算子，不需要插入内置inner Identity
+TEST_F(TensorMoveTest, InnerIdentity_Delete1) {
   DEF_GRAPH(g1) {
     auto assign = OP_CFG(ASSIGN)
                       .TensorDesc(FORMAT_ND, DT_FLOAT, {2, 2})
@@ -1140,7 +1140,7 @@ TEST_F(TensorMoveTest, InnerTensorMove_Delete1) {
   EXPECT_EQ(ret, SUCCESS);
 
   CHECK_GRAPH(PreRunAfterBuild) {
-    auto tensor_move = graph->FindFirstNodeMatchType(TENSORMOVE);
-    ASSERT_EQ(tensor_move, nullptr);
+    auto identity = graph->FindFirstNodeMatchType(IDENTITY);
+    ASSERT_EQ(identity, nullptr);
   };
 }

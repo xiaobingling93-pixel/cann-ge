@@ -97,8 +97,8 @@ class ProfilingManager {
 class ProfilerCollector {
  public:
   ProfilerCollector(const uint32_t model_id, const uint32_t graph_id);
-  ge::Status RecordStart(const rtStream_t stream) const;
-  ge::Status RecordEnd(const rtStream_t stream);
+  ge::Status RecordStart(const aclrtStream stream) const;
+  ge::Status RecordEnd(const aclrtStream stream);
 
   bool host_cpu_flag_ = false;
  private:

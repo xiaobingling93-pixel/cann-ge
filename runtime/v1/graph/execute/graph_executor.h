@@ -44,12 +44,12 @@ class GraphExecutor {
                       const std::vector<gert::Tensor> &input_tensor, std::vector<gert::Tensor> &output_tensor) const;
 
   Status ExecuteGraphAsync(const GeRootModelPtr &ge_root_model, const std::shared_ptr<RunArgs> &args) const;
-  Status ExecuteGraphWithStream(rtStream_t const stream, const GraphNodePtr &graph_node,
+  Status ExecuteGraphWithStream(aclrtStream const stream, const GraphNodePtr &graph_node,
                                 const GeRootModelPtr &ge_root_model,
                                 const std::vector<GeTensor> &input_tensor,
                                 std::vector<GeTensor> &output_tensor) const;
   
-  Status ExecuteGraphWithStream(rtStream_t const stream, const GraphNodePtr &graph_node,
+  Status ExecuteGraphWithStream(aclrtStream const stream, const GraphNodePtr &graph_node,
                                 const GeRootModelPtr &ge_root_model,
                                 const std::vector<gert::Tensor> &input_tensor,
                                 std::vector<gert::Tensor> &output_tensor) const;

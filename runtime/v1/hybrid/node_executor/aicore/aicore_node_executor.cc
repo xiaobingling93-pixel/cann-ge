@@ -299,7 +299,7 @@ Status AiCoreNodeTask::CheckOverflow(TaskContext &context) const {
     if ((rt_ret == ACL_ERROR_RT_AICORE_OVER_FLOW) || (rt_ret == ACL_ERROR_RT_AIVEC_OVER_FLOW)) {
       context.SetOverFlow(true);
       (void)rtsGetThreadLastTaskId(context.MutableTaskId());
-      (void)rtsStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
+      (void)aclrtStreamGetId(context.GetStream(), reinterpret_cast<int32_t*>(context.MutableStreamId()));
       GELOGW("Dynamic shape op %s is over flow", context.GetNodeName());
       return SUCCESS;
     } else if (rt_ret == ACL_ERROR_RT_STREAM_SYNC_TIMEOUT) {

@@ -39,11 +39,9 @@
 #include "common/op_registration_tbe.h"
 #include "graph/custom_op_factory.h"
 #include "graph/opsproto_manager.h"
-#include <experimental/filesystem>
 #include "common/types_map.h"
 #include "utils/file_utils.h"
 
-namespace fs = std::experimental::filesystem;
 namespace ge {
 const std::regex kSafePathRegex(R"(^(?!.*\.{2})[A-Za-z0-9./+\-_]+$)");
 std::string TfDTypeToGeSymbol(domi::tensorflow::DataType dt) {
@@ -296,6 +294,32 @@ std::unordered_set<std::string> CollectTypeAttrNames(const domi::tensorflow::OpD
   return type_attr_names;
 }
 
+int32_t RemoveDirectories(const std::string &path) {
+  DIR *dir = opendir(path.c_str());
+  if (!dir) {
+    GELOGE(FAILED, "%s is not a directory", path.c_str());
+    return -1;
+  }
+  struct dirent *entry;
+  struct stat st;
+  while ((entry = readdir(dir)) != nullptr) {
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+      continue;
+    }
+
+    std::string full_name = path + "/" + entry->d_name;
+    if (lstat(full_name.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        RemoveDirectories(full_name);
+      } else {
+        remove(full_name.c_str());
+      }
+    }
+  }
+  closedir(dir);
+  return rmdir(path.c_str());
+}
+
 Status TensorFlowCustomOpParser::ConstructRegOpString(const domi::tensorflow::OpDef &opdef, std::string &reg_op) {
   const std::string &op_type = opdef.name();
   reg_op.reserve(reg_op.size() + 2048);
@@ -497,7 +521,7 @@ namespace ge {
   return SUCCESS;
 }
 
-Status TensorFlowCustomOpParser::WriteTextFile(const fs::path &file_path, const std::string &content) {
+Status TensorFlowCustomOpParser::WriteTextFile(const std::string &file_path, const std::string &content) {
   std::ofstream reg_op_file(file_path, std::ios::out | std::ios::trunc);
   if (!reg_op_file.is_open()) {
     GELOGE(FAILED, "Failed to open file %s for writing", file_path.c_str());
@@ -516,7 +540,7 @@ Status TensorFlowCustomOpParser::WriteTextFile(const fs::path &file_path, const 
   return SUCCESS;
 }
 
-Status TensorFlowCustomOpParser::WriteWrapperCc(const fs::path &cc_path) {
+Status TensorFlowCustomOpParser::WriteWrapperCc(const std::string &cc_path) {
   std::ofstream custom_op_cc_file(cc_path, std::ios::out | std::ios::trunc);
   GE_ASSERT_TRUE(custom_op_cc_file.is_open());
   std::string wrapper_code = R"(
@@ -534,9 +558,9 @@ extern "C" {
   return SUCCESS;
 }
 
-Status TensorFlowCustomOpParser::DeleteTmpDirectoryContents(const fs::path &out_dir) {
-  if (fs::exists(out_dir)) {
-    fs::remove_all(out_dir);
+Status TensorFlowCustomOpParser::DeleteTmpDirectoryContents(const std::string &out_dir) {
+  if ((mmAccess(out_dir.c_str()) == EN_OK) && (mmIsDir(out_dir.c_str()) == EN_OK)) {
+    (void)RemoveDirectories(out_dir);
   } else {
     GELOGW("Directory %s does not exist.", out_dir.c_str());
   }
@@ -551,15 +575,15 @@ Status TensorFlowCustomOpParser::ParseCustomOp(const std::unordered_map<std::str
   // generate register code
   std::string all_reg_op_strings;
   GE_ASSERT_SUCCESS(BuildCustomOpStrings(custom_nodes_map, all_reg_op_strings));
-  const fs::path out_dir("./custom_op_tmp");
-  const fs::path header_path = out_dir / "op_reg_custom.h";
-  const fs::path cc_path = out_dir / "op_custom.cc";
-  const fs::path so_path = out_dir / "lib_op_custom.so";
+  const std::string out_dir("./custom_op_tmp");
+  const std::string header_path = out_dir + "/op_reg_custom.h";
+  const std::string cc_path = out_dir + "/op_custom.cc";
+  const std::string so_path = out_dir + "/lib_op_custom.so";
   GE_ASSERT_TRUE((ge::CreateDir(out_dir) == EOK), "Create direct failed, path: %s.", out_dir.c_str());
   GE_ASSERT_SUCCESS(WriteTextFile(header_path, all_reg_op_strings));
   GE_ASSERT_SUCCESS(WriteWrapperCc(cc_path));
-  GE_ASSERT_SUCCESS(CompileCustomOpFiles(cc_path, so_path.string()));
-  GE_ASSERT_SUCCESS(LoadCustomOpsLibrary(so_path.string()));
+  GE_ASSERT_SUCCESS(CompileCustomOpFiles(cc_path, so_path));
+  GE_ASSERT_SUCCESS(LoadCustomOpsLibrary(so_path));
   GE_ASSERT_SUCCESS(DeleteTmpDirectoryContents(out_dir));
   return SUCCESS;
 }

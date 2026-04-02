@@ -45,7 +45,7 @@
 #include "graph/passes/memory_conflict/atomic_addr_clean_pass.h"
 #include "graph/passes/control_flow_and_stream/attach_stream_label_pass.h"
 #include "graph/passes/feature/attached_resource_pass.h"
-#include "graph/passes/feature/inner_tensor_move_delete_pass.h"
+#include "graph/passes/feature/inner_identity_delete_pass.h"
 #include "graph/passes/format_optimize/cast_remove_pass.h"
 #include "graph/passes/standard_optimize/common_subexpression_elimination_pass.h"
 #include "graph/passes/feature/compile_nodes_pass.h"
@@ -1096,7 +1096,7 @@ Status GraphManager::PreRunOptimizeOriginalGraph(const GraphNodePtr &graph_node,
   GM_RUN_AND_DUMP_PERF("PrepareRunningFormatRefiner", stages.preparer.PrepareRunningFormatRefiner);
   GM_RUN_AND_DUMP_PERF("RefineRunningPrecision",
       stages.optimizer.OptimizeOriginalGraphJudgePrecisionInsert, compute_graph);
-  GM_RUN_AND_DUMP_PERF("AutofuseWithExtOptimize", AutofuseWithExtOptimize, compute_graph, inputs); 
+  GM_RUN_AND_DUMP_PERF("AfterPrecisionRefine", AfterPrecisionRefine, compute_graph, inputs); 
   GM_RUN_AND_DUMP_PERF("RefineRunningFormat",
       stages.optimizer.OptimizeOriginalGraphJudgeFormatInsert, compute_graph);
   GM_RUN_AND_DUMP_PERF("SubexpressionMigration", SubexpressionMigration, compute_graph);
@@ -1534,7 +1534,7 @@ Status GraphManager::UpdateMultiBatchContext(const std::vector<NodePtr> &data_no
 }
 
 Status GraphManager::InnerRunGraphWithStream(const GraphNodePtr &graph_node, const GraphId &graph_id,
-                                             rtStream_t stream, const std::vector<GeTensor> &inputs,
+                                             aclrtStream stream, const std::vector<GeTensor> &inputs,
                                              std::vector<GeTensor> &outputs) {
   GE_CHECK_NOTNULL(executor_);
   return executor_->RunGraphWithStream(graph_node, graph_id, stream, inputs, outputs);
@@ -1557,7 +1557,7 @@ Status GraphManager::SubexpressionMigration(ComputeGraphPtr &compute_graph) cons
 }
 
 Status GraphManager::StartForRunGraph(const GraphNodePtr &graph_node, const std::vector<GeTensor> &inputs,
-                                      GeRootModelPtr &ge_root_model, uint64_t session_id, const rtStream_t stream) {
+                                      GeRootModelPtr &ge_root_model, uint64_t session_id, const aclrtStream stream) {
   // it will not execute graph prreprocess, optimize, parition, build if the graph has built successful.
   GE_CHECK_NOTNULL(graph_node);
   GE_CHECK_NOTNULL(graph_node->GetGraph());
@@ -1690,7 +1690,7 @@ Status GraphManager::SetFrozenInputAttrs(const GeRootModelPtr &ge_root_model, co
 }
 
 Status GraphManager::LoadGraph(const uint32_t graph_id, const std::map<AscendString, AscendString> &options,
-    const rtStream_t stream) {
+    const aclrtStream stream) {
   GraphNodePtr graph_node = nullptr;
   GE_ASSERT_SUCCESS(GetGraphNode(graph_id, graph_node));
   GE_ASSERT_NOTNULL(graph_node);
@@ -1738,7 +1738,7 @@ Status GraphManager::LoadGraph(const uint32_t graph_id, const std::map<AscendStr
 }
 
 Status GraphManager::InnerLoadGraph(const GeRootModelPtr &ge_root_model, const GraphNodePtr &graph_node,
-                                    const rtStream_t stream) const {
+                                    const aclrtStream stream) const {
   GE_CHECK_NOTNULL(graph_node);
   GELOGI("[LoadGraph] run_graph_flag[%d], graph_id[%u]", options_.run_graph_flag, graph_node->GetGraphId());
   if (!options_.run_graph_flag) {
@@ -1843,7 +1843,7 @@ Status GraphManager::CheckGraphVaildBeforeExecute(const GraphId &graph_id, Graph
   return SUCCESS;
 }
 
-Status GraphManager::ExecuteGraphWithStreamAsync(const GraphId &graph_id, const rtStream_t stream,
+Status GraphManager::ExecuteGraphWithStreamAsync(const GraphId &graph_id, const aclrtStream stream,
                                                  const std::vector<gert::Tensor> &inputs,
                                                  std::vector<gert::Tensor> &outputs) {
   if (inputs.empty()) {
@@ -1883,7 +1883,7 @@ Status GraphManager::ExecuteGraphWithStreamAsync(const GraphId &graph_id, const 
   return executor_->ExecuteGraphWithStream(graph_node, graph_id, stream, inputs, outputs);
 }
 
-Status GraphManager::RunGraphWithStreamAsync(const GraphId &graph_id, const rtStream_t stream, uint64_t session_id,
+Status GraphManager::RunGraphWithStreamAsync(const GraphId &graph_id, const aclrtStream stream, uint64_t session_id,
                                              const std::vector<GeTensor> &inputs, std::vector<GeTensor> &outputs) {
   logLevel_ = dlog_getlevel(GE_MODULE_NAME, nullptr);
 
@@ -3171,19 +3171,16 @@ Status GraphManager::RemoveIsolatedConst(ge::ComputeGraphPtr &compute_graph) {
   return SUCCESS;
 }
 
-Status GraphManager::AutofuseWithExtOptimize(ge::ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs) {
+Status GraphManager::AfterPrecisionRefine(ge::ComputeGraphPtr &compute_graph, const std::vector<GeTensor> &inputs) {
   PassManager after_merge_passes;
-  GE_CHK_STATUS_RET(after_merge_passes.AddPass("AutofuseWithExtOptimize::TransOpWithoutReshapeFusionPass",
+  GE_CHK_STATUS_RET(after_merge_passes.AddPass("AfterPrecisionRefine::TransOpWithoutReshapeFusionPass",
                                                new (std::nothrow) TransOpWithoutReshapeFusionPass));
   GE_TRACE_START(after_merge_passes);
   auto ret = after_merge_passes.Run(compute_graph);
-  GE_COMPILE_TRACE_TIMESTAMP_END(after_merge_passes, "GraphManager::AutofuseWithExtOptimize");
-  if (ret != SUCCESS && ret != NOT_CHANGED) {
-    GELOGE(ret, "[Run][Passes] when AutofuseWithExtOptimize failed, ret:%u.", ret);
-    return ret;
-  }
-
-  GE_DUMP(compute_graph, "AutofuseWithExtOptimize");
+  GE_COMPILE_TRACE_TIMESTAMP_END(after_merge_passes, "GraphManager::AfterPrecisionRefine");
+  GE_CHK_BOOL_RET_STATUS(ret == SUCCESS || ret == NOT_CHANGED, ret,
+                    "[Run][Passes] when AfterPrecisionRefine failed, ret:%u.", ret);
+  GE_DUMP(compute_graph, "AfterPrecisionRefine");
 
   AutofuseOptimize autofuser;
   GE_CHK_STATUS_RET(autofuser.Run(compute_graph, inputs), "Failed to auto fuse optimize for graph:%s",
@@ -3405,8 +3402,8 @@ Status GraphManager::OptimizeStage2(ge::ComputeGraphPtr &compute_graph) {
   GELOGD("Start optimize after merge sub graph.");
 
   PassManager after_merge_passes;
-  GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::InnerTensorMoveDeletePass",
-                                               new (std::nothrow) InnerTensorMoveDeletePass));
+  GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::InnerIdentityDeletePass",
+                                               new (std::nothrow) InnerIdentityDeletePass));
   GE_CHK_STATUS_RET(after_merge_passes.AddPass("OptimizeStage2::AfterMergePasses::LinkGenMaskNodesPass",
                                                new (std::nothrow)
                                                    LinkGenMaskNodesPass(options_.stream_max_parallel_num)));

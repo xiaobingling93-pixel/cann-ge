@@ -15,6 +15,7 @@
 #include "exe_graph/runtime/tensor.h"
 #include "exe_graph/runtime/gert_tensor_data.h"
 #include "common/runtime_api_wrapper.h"
+#include "acl/acl_rt.h"
 
 namespace gert {
 namespace kernel {
@@ -33,7 +34,7 @@ struct NpuGetFloatStatusArgsHolder {
 ge::graphStatus NpuGetFloatStatus(KernelContext *const context) {
   auto args_dev = context->GetInputValue<gert::GertTensorData *>(kGetFloatDevArgsIdx);
   auto args_holder = context->GetInputValue<NpuGetFloatStatusArgsHolder *>(kGetFloatHostArgsIdx);
-  auto stream = context->GetInputValue<rtStream_t>(kGetFloatStreamIdx);
+  auto stream = context->GetInputValue<aclrtStream>(kGetFloatStreamIdx);
 
   GE_ASSERT_NOTNULL(args_dev);
   GE_ASSERT_NOTNULL(args_holder);
@@ -67,7 +68,7 @@ ge::graphStatus CreateNpuGetFloatStatusArgs(const ge::FastNode *node, KernelCont
 REGISTER_KERNEL(NpuGetFloatStatusArgs).RunFunc(NpuGetFloatStatusArgs).OutputsCreator(CreateNpuGetFloatStatusArgs);
 
 ge::graphStatus NpuClearFloatStatus(KernelContext *const context) {
-  auto stream = context->GetInputValue<rtStream_t>(0UL);
+  auto stream = context->GetInputValue<aclrtStream>(0UL);
   GE_ASSERT_RT_OK(ge::rtNpuClearFloatStatus(0UL, stream));
   return ge::GRAPH_SUCCESS;
 }
@@ -76,7 +77,7 @@ REGISTER_KERNEL(NpuClearFloatStatus).RunFunc(NpuClearFloatStatus);
 ge::graphStatus NpuGetFloatDebugStatus(KernelContext *const context) {
   auto args_dev = context->GetInputValue<gert::GertTensorData *>(kGetFloatDevArgsIdx);
   auto args_holder = context->GetInputValue<NpuGetFloatStatusArgsHolder *>(kGetFloatHostArgsIdx);
-  auto stream = context->GetInputValue<rtStream_t>(kGetFloatStreamIdx);
+  auto stream = context->GetInputValue<aclrtStream>(kGetFloatStreamIdx);
 
   GE_ASSERT_NOTNULL(args_dev);
   GE_ASSERT_NOTNULL(args_holder);
@@ -89,7 +90,7 @@ ge::graphStatus NpuGetFloatDebugStatus(KernelContext *const context) {
 REGISTER_KERNEL(NpuGetFloatDebugStatus).RunFunc(NpuGetFloatDebugStatus);
 
 ge::graphStatus NpuClearFloatDebugStatus(KernelContext *const context) {
-  auto stream = context->GetInputValue<rtStream_t>(0UL);
+  auto stream = context->GetInputValue<aclrtStream>(0UL);
   GE_ASSERT_RT_OK(ge::rtNpuClearFloatDebugStatus(0UL, stream));
   return ge::GRAPH_SUCCESS;
 }

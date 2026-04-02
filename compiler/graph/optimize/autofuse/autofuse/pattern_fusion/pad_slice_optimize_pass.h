@@ -13,7 +13,7 @@
 #define CANN_GRAPH_ENGINE_PAD_SLICE_OPTIMIZE_PASS_H
 
 #include "graph/node.h"
-#include "ge_error_codes.h"
+#include "graph/ge_error_codes.h"
 #include "gnode.h"
 
 namespace ge {

@@ -178,7 +178,7 @@ bool IsNeedCheckOverflowNode(const char *const node_type) {
          IsExecuteOpFuncNode(node_type) || IsExecuteOplaunchNode(node_type) || IsDavinciModelExecute(node_type) ||
          IsCustomOpFuncNode(node_type);
 }
-ge::Status CheckOverflow(const Node &node, const rtStream_t stream, bool &is_overflow) {
+ge::Status CheckOverflow(const Node &node, const aclrtStream stream, bool &is_overflow) {
   auto timeout = ge::GetContext().StreamSyncTimeout();
   const auto rt_ret = rtStreamSynchronizeWithTimeout(stream, timeout);
   if ((rt_ret == ACL_ERROR_RT_OVER_FLOW) || (rt_ret == ACL_ERROR_RT_AICORE_OVER_FLOW) ||
@@ -232,14 +232,14 @@ bool GetKeyAndCallbackByKernel(const std::string &kernel_type, const KernelConte
 }
 
 ge::Status NormalProcessor(const ge::OpDescPtr &op_desc, ge::ExceptionDumper *dumper, NodeDumpUnit &dump_unit,
-                           ge::ExtraOpInfo &extra_dump_unit, rtStream_t &stream) {
+                           ge::ExtraOpInfo &extra_dump_unit, aclrtStream &stream) {
   if (UpdateAddrsForExceptionDump(dump_unit, true, extra_dump_unit.input_addrs) == ge::SUCCESS &&
       UpdateAddrsForExceptionDump(dump_unit, false, extra_dump_unit.output_addrs) == ge::SUCCESS) {
     uint32_t task_id = 0U;
     uint32_t stream_id = 0U;
     int32_t device_id = 0;
     GE_CHK_RT_RET(rtsGetThreadLastTaskId(&task_id));
-    GE_CHK_RT_RET(rtsStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id)));
+    GE_CHK_RT_RET(aclrtStreamGetId(stream, reinterpret_cast<int32_t*>(&stream_id)));
     GE_CHK_RT_RET(aclrtGetDevice(&device_id));
     ge::OpDescInfoId id(task_id, stream_id, device_id);
     dumper->SaveDumpOpInfo(op_desc, extra_dump_unit, id, true);
@@ -248,7 +248,7 @@ ge::Status NormalProcessor(const ge::OpDescPtr &op_desc, ge::ExceptionDumper *du
 }
 
 ge::Status FftsPlusProcessor(const ge::OpDescPtr &op_desc, ge::ExceptionDumper *dumper, NodeDumpUnit &dump_unit,
-                             ge::ExtraOpInfo &extra_dump_unit, const rtStream_t &stream) {
+                             ge::ExtraOpInfo &extra_dump_unit, const aclrtStream &stream) {
   (void) stream;
   int32_t device_id = 0;
   GE_CHK_RT_RET(aclrtGetDevice(&device_id));
@@ -275,7 +275,7 @@ ge::Status FftsPlusProcessor(const ge::OpDescPtr &op_desc, ge::ExceptionDumper *
 
 enum class ProcessorType { kNormal = 0U, kFftsPlus, kEnd };
 const std::array<
-    std::function<ge::Status(const ge::OpDescPtr &, ge::ExceptionDumper *, NodeDumpUnit &, ge::ExtraOpInfo &, rtStream_t &)>,
+    std::function<ge::Status(const ge::OpDescPtr &, ge::ExceptionDumper *, NodeDumpUnit &, ge::ExtraOpInfo &, aclrtStream &)>,
     static_cast<uint32_t>(ProcessorType::kEnd)>
     processors = {NormalProcessor, FftsPlusProcessor};
 
@@ -985,7 +985,7 @@ ge::Status ExecutorDumper::DoDataDump(NodeDumpUnit &dump_unit, const ge::DumpPro
   auto rt_streams =
       reinterpret_cast<Chain *>(execution_data->base_ed.input_values[stream_idx])->GetValue<ContinuousVector *>();
   GE_ASSERT_NOTNULL(rt_streams);
-  auto stream = *(reinterpret_cast<rtStream_t *>(rt_streams->MutableData()) + 0U);
+  auto stream = *(reinterpret_cast<aclrtStream *>(rt_streams->MutableData()) + 0U);
   GE_ASSERT_SUCCESS(GetKernelStream(exe_node, stream));
   dump_op.SetDumpInfo(dump_properties, op_desc_dump, input_addrs, output_addrs, stream);
   dump_op.SetWorkspaceAddrs(dump_unit.workspace_info);
@@ -1148,7 +1148,7 @@ ge::Status ExecutorDumper::DoStreamSyncAfterFftsTask(const Node *node) {
   auto rt_streams =
       reinterpret_cast<Chain *>(execution_data->base_ed.input_values[stream_idx])->GetValue<ContinuousVector *>();
   GE_ASSERT_NOTNULL(rt_streams);
-  auto stream = *(reinterpret_cast<rtStream_t *>(rt_streams->MutableData()) + 0U);
+  auto stream = *(reinterpret_cast<aclrtStream *>(rt_streams->MutableData()) + 0U);
   GE_ASSERT_SUCCESS(GetKernelStream(node, stream));
   GE_ASSERT_SUCCESS(DoRtStreamSyncWithTimeout(stream));
   return ge::SUCCESS;
@@ -1289,7 +1289,7 @@ ge::Status ExecutorDumper::PrepareExceptionDump(const Node &node, const char *ke
   auto rt_streams =
       reinterpret_cast<Chain *>(execution_data->base_ed.input_values[stream_idx])->GetValue<ContinuousVector *>();
   GE_ASSERT_NOTNULL(rt_streams);
-  auto stream = *(reinterpret_cast<rtStream_t *>(rt_streams->MutableData()) + 0U);
+  auto stream = *(reinterpret_cast<aclrtStream *>(rt_streams->MutableData()) + 0U);
   GE_ASSERT_SUCCESS(GetKernelStream(&node, stream));
   const auto processor_type = dump_unit.context_list.empty() ? ProcessorType::kNormal : ProcessorType::kFftsPlus;
   GE_ASSERT_SUCCESS(processors[static_cast<uint32_t>(processor_type)](op_desc_dump, dumper, dump_unit,
@@ -1373,7 +1373,7 @@ ge::Status ExecutorDumper::SetOverflowDumpFlag(ExecutorEvent event, const Node &
   }
   if ((event == kExecuteEnd) && (IsNeedCheckOverflowNode(kernel_type))) {
     bool is_overflow = false;
-    rtStream_t cur_stream = *(reinterpret_cast<rtStream_t *>(streams_->MutableData()));
+    aclrtStream cur_stream = *(reinterpret_cast<aclrtStream *>(streams_->MutableData()));
     GE_ASSERT_SUCCESS(GetKernelStream(&node, cur_stream));
     GE_ASSERT_SUCCESS(CheckOverflow(node, cur_stream, is_overflow));
     if (is_overflow) {
@@ -1433,7 +1433,7 @@ ge::Status ExecutorDumper::DumpOpDebug() {
   LoadDumpTaskForDavinciModels(true);
   const uint32_t op_debug_mode = dump_properties.GetOpDebugMode();
   for (size_t i = 0U; i < streams_->GetSize(); ++i) {
-    auto rt_stream = *(reinterpret_cast<const rtStream_t *>(streams_->GetData()) + i);
+    auto rt_stream = *(reinterpret_cast<const aclrtStream *>(streams_->GetData()) + i);
     auto data_dumper = std::make_shared<ge::DataDumper>(nullptr);
     data_dumpers_.emplace_back(data_dumper);
     auto op_debug_register = std::make_shared<ge::OpdebugRegister>();
@@ -1474,7 +1474,7 @@ ge::Status ExecutorDumper::ClearDumpOpDebug() {
   GE_ASSERT_TRUE(streams_->GetSize() == data_dumpers_.size());
   GE_ASSERT_TRUE(op_debug_registers_.size() == streams_->GetSize());
   for (size_t i = 0U; i < streams_->GetSize(); ++i) {
-    auto rt_stream = *(reinterpret_cast<const rtStream_t *>(streams_->GetData()) + i);
+    auto rt_stream = *(reinterpret_cast<const aclrtStream *>(streams_->GetData()) + i);
     op_debug_registers_[i]->UnregisterDebugForStream(rt_stream);
     // Unload dump info by model_id when there is no static subgraph in model
     GE_ASSERT_SUCCESS(data_dumpers_[i]->UnloadDumpInfoByModel(extend_info_->model_id));

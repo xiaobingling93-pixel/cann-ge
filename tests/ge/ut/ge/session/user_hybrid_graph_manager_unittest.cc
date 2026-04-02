@@ -97,6 +97,7 @@ class UserHybridGraphManagerlUT : public testing::Test {
   void SetUp() override {
     gert_stub_.GetKernelStub().StubTiling();
     RuntimeStub::Install(nullptr); // gert的rts stub不能在多线程环境下工作，因此使用默认rts stub
+    AclRuntimeStub::Install(nullptr);
   }
   void TearDown() override {
     gert_stub_.Clear();
@@ -311,7 +312,6 @@ TEST_F(UserHybridGraphManagerlUT, RunGraphAsyncTest) {
   ge_env.Install(FakeOp("GetShape").InferShape(GetShapeInferShape).InfoStoreAndBuilder("AiCoreLib"));
   ge_env.Install(FakeOp(CONCAT).InfoStoreAndBuilder("AiCoreLib"));
   ge_env.Install(FakeOp(CONCATV2).InfoStoreAndBuilder("AiCoreLib"));
-
   EXPECT_EQ(session.AddGraph(graph_id, graph, options), SUCCESS);
   EXPECT_EQ(session.BuildGraph(graph_id, inputs), SUCCESS);
   EXPECT_FALSE(session.IsGraphNeedRebuild(graph_id));
@@ -320,6 +320,7 @@ TEST_F(UserHybridGraphManagerlUT, RunGraphAsyncTest) {
   EXPECT_TRUE(session.IsGraphNeedRebuild(graph_id));
   EXPECT_EQ(GEFinalize(), SUCCESS);
   RuntimeStub::Reset();
+  AclRuntimeStub::Reset();
   ge_env.Reset();
 }
 

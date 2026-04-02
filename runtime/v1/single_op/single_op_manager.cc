@@ -63,7 +63,7 @@ Status SingleOpManager::ReleaseResource(const void *const stream) {
   return SUCCESS;
 }
 
-StreamResource *SingleOpManager::GetResource(const uintptr_t resource_id, rtStream_t const stream) {
+StreamResource *SingleOpManager::GetResource(const uintptr_t resource_id, aclrtStream const stream) {
   const std::lock_guard<std::recursive_mutex> lk(mutex_);
   const auto it = stream_resources_.find(resource_id);
   StreamResource *res = nullptr;
@@ -139,7 +139,7 @@ void SingleOpManager::RegisterTilingFunc() {
   tiling_func_registered_ = true;
 }
 
-Status SingleOpManager::GetResourceId(rtStream_t const stream, uintptr_t &resource_id) {
+Status SingleOpManager::GetResourceId(aclrtStream const stream, uintptr_t &resource_id) {
   // runtime uses NULL to denote a default stream for each device
   if (stream == nullptr) {
     // get current context default stream
@@ -155,7 +155,7 @@ Status SingleOpManager::GetResourceId(rtStream_t const stream, uintptr_t &resour
   return SUCCESS;
 }
 
-Status SingleOpManager::SetAllocator(rtStream_t const stream, Allocator *const allocator) {
+Status SingleOpManager::SetAllocator(aclrtStream const stream, Allocator *const allocator) {
   uintptr_t resource_id = 0U;
   GE_ASSERT_SUCCESS(GetResourceId(stream, resource_id));
   auto res = GetResource(resource_id, stream);
