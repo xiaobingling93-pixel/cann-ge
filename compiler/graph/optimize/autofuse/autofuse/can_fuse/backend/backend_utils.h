@@ -39,6 +39,7 @@ const std::string kExpandDimsType = "ExpandDims";
 const std::string kReshapeType = "Reshape";
 const std::string kSqueezeType = "Squeeze";
 const std::string kUnsqueezeType = "Unsqueeze";
+const std::string kAllNodesType = "all";
 const ge::Expression kSymbolZero = ge::Symbol(0);
 const ge::Expression kSymbolOne = ge::Symbol(1);
 const std::set kPureSplitIncludedAscirNodeTypes({kSplitType, kDataType, kLoadType, kStoreType, kOutputType});
