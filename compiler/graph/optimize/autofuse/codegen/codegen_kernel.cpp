@@ -64,7 +64,6 @@ Status RequireContiguousInputBufs(const ge::AscNodePtr &node, ApiCall &api_call,
     GE_CHK_BOOL_RET_SPECIAL_STATUS((!IsShareInputs(node)), ge::SUCCESS,
                                    "%s(%s) can not require contiguous inputs, not sharing single input TQue",
                                    node->GetNamePtr(), api_call.api_name_.c_str());
-    GELOGD("%s(%s) can require contiguous inputs, all inputs are from single shared TQue");
     for (size_t i = 0; i < api_call.inputs.size(); ++i) {
       auto &in_tensor = api_call.inputs[i];
       in_tensor->share_order = static_cast<int32_t>(i);
