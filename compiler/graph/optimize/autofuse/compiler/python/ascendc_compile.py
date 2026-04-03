@@ -55,7 +55,6 @@ def generate_host_compile_cmd(args: argparse.Namespace, temp_dir, base_host_file
         "-I", f"{ASCEND_PATH}/{machine}-linux/include",
         "-I", f"{ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform",
         "-fPIC", f"--npu-arch={soc_version}", "-O2", "-fno-common", "-Wextra", "-Wfloat-equal", "-fvisibility=default",
-        f"{args.compile_options}",
         "-D", "LOG_CPP", "-o",
         f"{temp_dir}/host/{base_host_file}.o", "-c", "-x", "asc",
         f"{temp_dir}/host/{base_host_file}"]
