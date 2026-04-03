@@ -6398,6 +6398,143 @@ TEST_F(SymbolicShapeInferenceST, InferShapeForBNTrainingUpdateGrad) {
   EXPECT_EQ(attr1->symbolic_tensor.GetOriginSymbolShape().GetDims(), gert::SymbolShape({s3}).GetDims());
 }
 
+TEST_F(SymbolicShapeInferenceST, InferSymbolicShapeForGatherShapesSuccess) {
+  std::vector<vector<int64_t>> axes = {{0, 0},{0, 1}};
+  auto gatherShapes = OP_CFG("GatherShapes").InCnt(1).OutCnt(1).Build("GatherShapes");
+  DEF_GRAPH(g1) {
+          CHAIN(NODE(data)->EDGE(0, 0)->NODE(gatherShapes));
+          CHAIN(NODE(gatherShapes)->NODE("NetOutput", NETOUTPUT));
+          CHAIN(NODE(data)->EDGE(0, 0)->NODE(gatherShapes)->EDGE(0, 0)->NODE("NetOutput", NETOUTPUT));
+  };
+  auto graph = ToComputeGraph(g1);
+  auto gatherShapes_node = graph->FindFirstNodeMatchType("GatherShapes");
+  ASSERT_NE(gatherShapes_node, nullptr);
+  gatherShapes_node->GetOpDesc()->MutableInputDesc(0)->SetFormat(FORMAT_ND);
+  gatherShapes_node->GetOpDesc()->SetAttr("axes",GeAttrValue::CreateFrom<std::vector<std::vector<int64_t>>>(axes));
+  auto data_node = graph->FindFirstNodeMatchType(DATA);
+  ASSERT_NE(data_node, nullptr);
+  gert::SymbolShape symol_shape({Symbol("s0"), Symbol("s1"), Symbol("s2")});
+  data_node->GetOpDesc()->MutableOutputDesc(0)->GetOrCreateAttrsGroup<SymbolicDescAttr>()->symbolic_tensor.
+  SetSymbolShape(symol_shape);
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(graph), ge::SUCCESS);
+  gatherShapes_node = graph->FindFirstNodeMatchType("GatherShapes");
+  ASSERT_NE(gatherShapes_node, nullptr);
+  auto op_desc = gatherShapes_node->GetOpDesc();
+  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  auto expect_shape = std::vector<Expression>{Symbol(2)};
+  EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape().GetDims(), expect_shape);
+}
+
+TEST_F(SymbolicShapeInferenceST, InferSymbolicShapeForSparseToDenseSuccess) {
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto indices = builder_->CreateInput(0, "indices");
+  indices.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  ASSERT_NE(indices.GetCTensorHolder(), nullptr);
+
+  auto output_shape = builder_->CreateInput(1, "output_shape");
+  output_shape.SetOriginSymbolShape(std::vector<const char *>({"2"}));
+  ASSERT_NE(output_shape.GetCTensorHolder(), nullptr);
+  auto output_shape_node = NodeAdapter::GNode2Node(*output_shape.GetProducer());
+  auto sym0 = Symbol(1);
+  auto sym1 = Symbol(2);
+  auto ptr = std::make_unique<std::vector<ge::Expression>>();
+  ASSERT_NE(ptr, nullptr);
+  ptr->emplace_back(sym0);
+  ptr->emplace_back(sym1);
+  std::vector<ge::Expression> symbol_value = {Symbol(1), Symbol(2)};
+  auto output_desc = output_shape_node->GetOpDesc()->MutableOutputDesc(0);
+  ASSERT_NE(output_desc, nullptr);
+  auto out_desc_attr = output_desc->GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(out_desc_attr, nullptr);
+  out_desc_attr->symbolic_tensor.SetSymbolicValue(std::move(ptr));
+  output_desc->SetDataType(DT_INT32);
+
+  auto values = builder_->CreateInput(2, "values");
+  values.SetOriginSymbolShape(std::vector<const char *>({"2"}));
+  ASSERT_NE(values.GetCTensorHolder(), nullptr);
+
+  auto default_value = builder_->CreateInput(3, "default_value");
+  default_value.SetOriginSymbolShape(std::vector<const char *>({}));
+  ASSERT_NE(default_value.GetCTensorHolder(), nullptr);
+
+
+  auto sparseToDense = es::SparseToDense(indices, output_shape, values, default_value, true);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(sparseToDense, 0), 0);
+  auto graph = builder_->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+  auto sparseToDense_node = NodeAdapter::GNode2Node(*sparseToDense.GetProducer());
+  ASSERT_NE(sparseToDense_node, nullptr);
+  auto op_desc = sparseToDense_node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  op_desc->MutableInputDesc(0)->SetDataType(DT_INT32);
+  op_desc->MutableInputDesc(1)->SetDataType(DT_INT32);
+
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
+  auto node = cg->FindFirstNodeMatchType("SparseToDense");
+  ASSERT_NE(node, nullptr);
+  op_desc = node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  auto attr = op_desc->GetOutputDesc(0).GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(attr, nullptr);
+  EXPECT_EQ(attr->symbolic_tensor.GetOriginSymbolShape(), gert::SymbolShape({sym0, sym1}));
+}
+
+TEST_F(SymbolicShapeInferenceST, InferSymbolicShapeForSparseToDenseUnSupport) {
+  auto s0 = ge::Symbol("s0");
+  auto s1 = ge::Symbol("s1");
+  auto indices = builder_->CreateInput(0, "indices");
+  indices.SetOriginSymbolShape(std::vector<const char *>({"s0", "s1"}));
+  ASSERT_NE(indices.GetCTensorHolder(), nullptr);
+
+  auto output_shape = builder_->CreateInput(1, "output_shape");
+  output_shape.SetOriginSymbolShape(std::vector<const char *>({"2"}));
+  ASSERT_NE(output_shape.GetCTensorHolder(), nullptr);
+  auto output_shape_node = NodeAdapter::GNode2Node(*output_shape.GetProducer());
+  auto sym0 = Symbol(1.1);
+  auto sym1 = Symbol(2);
+  auto ptr = std::make_unique<std::vector<ge::Expression>>();
+  ASSERT_NE(ptr, nullptr);
+  ptr->emplace_back(sym0);
+  ptr->emplace_back(sym1);
+  std::vector<ge::Expression> symbol_value = {Symbol(1), Symbol(2)};
+  auto output_desc = output_shape_node->GetOpDesc()->MutableOutputDesc(0);
+  ASSERT_NE(output_desc, nullptr);
+  auto out_desc_attr = output_desc->GetAttrsGroup<SymbolicDescAttr>();
+  ASSERT_NE(out_desc_attr, nullptr);
+  out_desc_attr->symbolic_tensor.SetSymbolicValue(std::move(ptr));
+  output_desc->SetDataType(DT_INT32);
+
+  auto values = builder_->CreateInput(2, "values");
+  values.SetOriginSymbolShape(std::vector<const char *>({"2"}));
+  ASSERT_NE(values.GetCTensorHolder(), nullptr);
+
+  auto default_value = builder_->CreateInput(3, "default_value");
+  default_value.SetOriginSymbolShape(std::vector<const char *>({}));
+  ASSERT_NE(default_value.GetCTensorHolder(), nullptr);
+
+  auto sparseToDense = es::SparseToDense(indices, output_shape, values, default_value, true);
+  ASSERT_EQ(es::EsGraphBuilder::SetOutput(sparseToDense, 0), 0);
+  auto graph = builder_->BuildAndReset();
+  auto cg = GraphUtilsEx::GetComputeGraph(*graph);
+  ASSERT_NE(cg, nullptr);
+
+  auto sparseToDense_node = NodeAdapter::GNode2Node(*sparseToDense.GetProducer());
+  ASSERT_NE(sparseToDense_node, nullptr);
+  auto op_desc = sparseToDense_node->GetOpDesc();
+  ASSERT_NE(op_desc, nullptr);
+  op_desc->MutableInputDesc(0)->SetDataType(DT_INT32);
+  op_desc->MutableInputDesc(1)->SetDataType(DT_INT32);
+
+  SymbolicShapeInference ssi;
+  ASSERT_EQ(ssi.Infer(cg), ge::SUCCESS);
+}
+
 TEST_F(SymbolicShapeInferenceST, InferSymbolicShapeForDiagPartDSuccess) {
   auto x = builder_->CreateInput(0, "x");
   auto assist = builder_->CreateInput(1, "assist");

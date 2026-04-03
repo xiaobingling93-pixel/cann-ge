@@ -438,6 +438,32 @@ Status CheckNodeDtype(const NodePtr &node) {
 }
 
 Status IsAllNodesInBlacklist(const AscGraph &asc_graph, bool &is_in_blacklist) {
+  auto &blacklist2 = autofuse::AutoFuseConfig::Config().GetFusionStrategySolver().improve_precision_blacklist;
+  bool has_all = (blacklist2.find(kAllNodesType) != blacklist2.end());
+  // 如果有"all"，则对所有节点检查数据类型
+  if (has_all) {
+    GELOGI("Graph %s: 'all' improve precision blacklist flag is set, checking dtype for all nodes",
+           asc_graph.GetName().c_str());
+    for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
+      // 跳过输入输出节点
+      if (BackendUtils::IsOutputNode(node) || BackendUtils::IsInputNode(node)) {
+        continue;
+      }
+      // 检查节点数据类型
+      auto status = CheckNodeDtype(node);
+      if (status != SUCCESS) {
+        // 节点必须升精度
+        GELOGI("Graph %s: node %s(%s) must improve precision, 'all' flag ignored for this graph",
+               asc_graph.GetName().c_str(), node->GetName().c_str(), node->GetType().c_str());
+        is_in_blacklist = false;
+        return SUCCESS;
+      }
+    }
+    // 所有节点都通过了数据类型检查，不升精度
+    GELOGI("Graph %s: all nodes passed dtype check, skip precision improvement", asc_graph.GetName().c_str());
+    return SUCCESS;
+  }
+  // 没有"all"，走按ascir配置黑名单处理的流程
   for (const auto &node : AscGraphUtils::GetComputeGraph(asc_graph)->GetAllNodes()) {
     if (IsInBlackList1(node)) {
       // 在内部写死升精度黑名单, doing nothing
@@ -447,6 +473,7 @@ Status IsAllNodesInBlacklist(const AscGraph &asc_graph, bool &is_in_blacklist) {
     } else {
       // 既不在内部写死升精度黑名单，又不在外部配置升精度黑名单，则走默认升精度
       is_in_blacklist = false;
+      return SUCCESS;
     }
   }
   return SUCCESS;

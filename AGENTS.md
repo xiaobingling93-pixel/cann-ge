@@ -129,26 +129,8 @@ rm -rf build_ut/ build_st/ output/ build/ build_out/ cov/
 - **host_cpu_engine**：主机侧执行
 
 ## 开发规范
-
-### 提交代码/创建PR
-**使用技能**: `gitcode-pr`
-
-**适用场景**: 创建 PR、推送代码到远程、使用 PR 模板。支持口语化表达如"提个PR"、"push代码"等。
-
-**指令格式**:
-```
-/skill gitcode-pr
-```
-
-### 读取 issue
-**使用技能**: `gitcode-issue`
-
-**适用场景**: 读取 GitCode issue 详情、评论。支持 URL、issue 编号或口语化表达（如"看看issue 123"）。
-
-**指令格式**:
-```
-/gitcode-issue <issue_url 或 issue_number>
-```
+### gitcode pr/issue 操作
+@.claude/skills/default-skills/SKILL.md
 
 ### 代码风格
 - 遵循 Google 开源代码规范

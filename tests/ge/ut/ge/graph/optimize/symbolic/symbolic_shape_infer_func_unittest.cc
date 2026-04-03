@@ -5360,6 +5360,132 @@ TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForBNTrainingUpdateGrad) {
   ASSERT_EQ(infer_context->GetOutputSymbolShape(1)->GetDims(), expect_shape.GetDims());
 }
 
+
+TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForGatherShapes) {
+  ShapeEnvAttr shape_env;
+  ShapeEnvGuarder guarder(&shape_env);
+  auto s0 = shape_env.CreateSymbol(4, MakeShared<InputShapeSource>(0, 1));
+  auto s1 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 2));
+  auto s2 = shape_env.CreateSymbol(5, MakeShared<InputShapeSource>(0, 3));
+  auto s3 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 4));
+
+  auto x1_shape = gert::SymbolShape({s0, s1, s2, s3});
+  auto x2_shape = gert::SymbolShape({s0, s1});
+
+  InferSymbolShapeContextTestBuilder builder("GatherShapes", "GatherShapes");
+  auto op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axes");
+  std::vector<std::vector<int64_t>> axes = {{0, 1},{0, 3},{1, 0}};
+  AttrUtils::SetListListInt(op_desc, "axes", axes);
+  op_desc->AddDynamicInputDesc("x", 2, true);
+  auto infer_context = builder.AppendInputSymbolTensor(x1_shape).AppendInputSymbolTensor(x2_shape)
+                              .OutputNum(1).Build();
+
+  const auto func = GetInferFunc("GatherShapes");
+  ASSERT_TRUE(func.first != nullptr);
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  auto expect_shape = std::vector<Expression>{Symbol(axes.size())};
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), expect_shape);
+
+  // 校验axes异常
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axes");
+  std::vector<std::vector<int64_t>> axes1 = {};
+  AttrUtils::SetListListInt(op_desc, "axes", axes1);
+  op_desc->AddDynamicInputDesc("x", 2, true);
+  infer_context = builder.AppendInputSymbolTensor(x1_shape).AppendInputSymbolTensor(x2_shape)
+          .OutputNum(1).Build();
+  ASSERT_NE(func.first(infer_context), ge::GRAPH_SUCCESS);
+
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axes");
+  std::vector<std::vector<int64_t>> axes2 = {{0}};
+  AttrUtils::SetListListInt(op_desc, "axes", axes2);
+  op_desc->AddDynamicInputDesc("x", 2, true);
+  infer_context = builder.AppendInputSymbolTensor(x1_shape).AppendInputSymbolTensor(x2_shape)
+          .OutputNum(1).Build();
+  ASSERT_NE(func.first(infer_context), ge::GRAPH_SUCCESS);
+
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axes");
+  std::vector<std::vector<int64_t>> axes3 = {{2, 0}};
+  AttrUtils::SetListListInt(op_desc, "axes", axes3);
+  op_desc->AddDynamicInputDesc("x", 2, true);
+  infer_context = builder.AppendInputSymbolTensor(x1_shape).AppendInputSymbolTensor(x2_shape)
+          .OutputNum(1).Build();
+  ASSERT_NE(func.first(infer_context), ge::GRAPH_SUCCESS);
+
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AppendIrAttrName("axes");
+  std::vector<std::vector<int64_t>> axes4 = {{1, 2}};
+  AttrUtils::SetListListInt(op_desc, "axes", axes4);
+  op_desc->AddDynamicInputDesc("x", 2, true);
+  infer_context = builder.AppendInputSymbolTensor(x1_shape).AppendInputSymbolTensor(x2_shape)
+          .OutputNum(1).Build();
+  ASSERT_NE(func.first(infer_context), ge::GRAPH_SUCCESS);
+}
+
+TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForSparseToDense) {
+  ShapeEnvAttr shape_env;
+  ShapeEnvGuarder guarder(&shape_env);
+  auto s0 = shape_env.CreateSymbol(4, MakeShared<InputShapeSource>(0, 1));
+  auto s1 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 2));
+  auto s2 = shape_env.CreateSymbol(5, MakeShared<InputShapeSource>(0, 3));
+  auto s3 = shape_env.CreateSymbol(2, MakeShared<InputShapeSource>(0, 4));
+
+  auto x1_shape = gert::SymbolShape({s0, s1, s2, s3});
+  auto x2_shape = gert::SymbolShape({Symbol(2)});
+
+  std::vector<ge::Expression> symbol_value = {Symbol(1), s0};
+  InferSymbolShapeContextTestBuilder builder("SparseToDense", "SparseToDense");
+  auto op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AddInputDesc(GeTensorDesc());
+  op_desc->AddInputDesc(GeTensorDesc(GeShape(), FORMAT_ND, DT_INT32));
+  auto infer_context = builder.AppendInputSymbolTensor(x1_shape)
+                              .AppendInputSymbolTensor(x2_shape, true, &symbol_value)
+                              .OutputNum(1).Build();
+
+  const auto func = GetInferFunc("SparseToDense");
+  ASSERT_TRUE(func.first != nullptr);
+  ASSERT_EQ(func.first(infer_context), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(infer_context->GetOutputSymbolShape(0)->GetDims(), symbol_value);
+
+  // SymbolicValue为空
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AddInputDesc(GeTensorDesc());
+  op_desc->AddInputDesc(GeTensorDesc(GeShape(), FORMAT_ND, DT_INT32));
+  infer_context = builder.AppendInputSymbolTensor(x1_shape)
+                         .AppendInputSymbolTensor(x2_shape)
+                         .OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::UNSUPPORTED);
+
+  // DataType异常
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AddInputDesc(GeTensorDesc());
+  op_desc->AddInputDesc(GeTensorDesc(GeShape(), FORMAT_ND, DT_INT8));
+  infer_context = builder.AppendInputSymbolTensor(x1_shape)
+                         .AppendInputSymbolTensor(x2_shape, true, &symbol_value)
+                         .OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::PARAM_INVALID);
+
+  // 常量不为int
+  builder.Destroy();
+  op_desc = builder.GetOrCreateOpDescPtr();
+  op_desc->AddInputDesc(GeTensorDesc());
+  op_desc->AddInputDesc(GeTensorDesc(GeShape(), FORMAT_ND, DT_INT32));
+  symbol_value = {Symbol(1.1), Symbol(2)};
+  infer_context = builder.AppendInputSymbolTensor(x1_shape)
+                         .AppendInputSymbolTensor(x2_shape, true, &symbol_value)
+                         .OutputNum(1).Build();
+  ASSERT_EQ(func.first(infer_context), ge::UNSUPPORTED);
+}
+
 TEST_F(SymbolicShapeInferFuncUT, InferSymbolicShapeForDiagPartD) {
   ShapeEnvAttr shape_env;
   ShapeEnvGuarder guarder(&shape_env);

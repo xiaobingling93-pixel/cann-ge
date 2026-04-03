@@ -16,6 +16,7 @@
 #include "framework/common/debug/ge_log.h"
 #include "framework/common/ge_inner_error_codes.h"
 #include "graph/utils/graph_utils.h"
+#include "common/checker.h"
 
 namespace ge {
 namespace {
@@ -60,6 +61,7 @@ Status SavePass::Run(ge::ComputeGraphPtr graph) {
     out_nodes_info.emplace_back(std::pair<NodePtr, int32_t>(front_nodes[i], out_index[i]));
   }
   graph->AppendGraphOutNodesInfo(out_nodes_info);
+  GE_IF_BOOL_EXEC(front_nodes.size() != 0U, GE_ASSERT_SUCCESS(graph->CreateOrUpdateNetoutput(true)););
 
   // delete save node
   for (auto &node_ptr : del_nodes) {

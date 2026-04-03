@@ -153,7 +153,7 @@ bool ConcatInputUnificationPass::IsDstColSizeOverLimit(const ge::AscNodePtr &con
   }
   int64_t dst_col_size = -1;
   GE_WARN_ASSERT(dst_col_size_expr.GetConstValue(dst_col_size));
-  constexpr int64_t kDstColSizeLimit = 128;
+  constexpr int64_t kDstColSizeLimit = 256;
   GELOGI("dst_col_size = %ld", dst_col_size);
   return (dst_col_size * dtype_size) > kDstColSizeLimit;
 }

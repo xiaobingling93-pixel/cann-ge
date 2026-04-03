@@ -33,7 +33,6 @@ private:
 
 private:
   std::string ws_dir_;
-  bool is_code_compiled_ = false;
 };
 }  // namespace ge
 

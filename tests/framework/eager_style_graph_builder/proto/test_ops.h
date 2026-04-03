@@ -704,11 +704,26 @@ REG_OP(SelectV2)
     .OP_END_FACTORY_REG(SelectV2)
 
 REG_OP(Shape)
-    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT8, DT_INT16, DT_UINT16, DT_UINT8,
-        DT_INT32, DT_INT64, DT_UINT32, DT_UINT64, DT_BOOL, DT_DOUBLE, DT_STRING, DT_BF16}))
+    .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType({DT_INT32, DT_INT64}))
     .ATTR(dtype, Int, DT_INT32)
     .OP_END_FACTORY_REG(Shape)
+
+REG_OP(GatherShapes)
+    .DYNAMIC_INPUT(x, TensorType::ALL())
+    .OUTPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .REQUIRED_ATTR(axes, ListListInt)
+    .ATTR(dtype, Int, DT_INT32)
+    .OP_END_FACTORY_REG(GatherShapes)
+
+REG_OP(SparseToDense)
+    .INPUT(indices, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(output_shape, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(values, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16,DT_INT16,DT_UINT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_BOOL,DT_DOUBLE}))
+    .INPUT(default_value, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16,DT_INT16,DT_UINT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_BOOL,DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16,DT_INT16,DT_UINT16,DT_INT32,DT_INT64,DT_INT8,DT_UINT8,DT_BOOL,DT_DOUBLE}))
+    .ATTR(validate_indices, Bool, true)
+    .OP_END_FACTORY_REG(SparseToDense)
 
 REG_OP(Sigmoid)
     .INPUT(x, TensorType::UnaryDataType())

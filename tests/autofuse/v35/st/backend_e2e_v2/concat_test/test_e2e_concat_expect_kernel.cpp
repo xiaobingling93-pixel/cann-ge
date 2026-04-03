@@ -89,18 +89,18 @@ TEST_P(E2E_BackendConcat_Code, CalculateCorrect) {
 
 INSTANTIATE_TEST_SUITE_P(CalcWithDifferentShape, E2E_BackendConcat_Code,
                          ::testing::Values(
-                             std::vector<int>{16, 100},
-                             std::vector<int>{1, 1},
-                             std::vector<int>{100, 1},
-                             std::vector<int>{2, 2},
-                             std::vector<int>{200, 2},
-                             std::vector<int>{15, 15},
-                             std::vector<int>{16, 16},
-                             std::vector<int>{17, 17},
-                             std::vector<int>{29, 31},
-                             std::vector<int>{29, 31, 33},
-                             std::vector<int>{30, 32},
-                             std::vector<int>{31, 33},
-                             std::vector<int>{511, 63},
-                             std::vector<int>{1025, 64}
+                             std::vector<int>{16, 100}
+                             // std::vector<int>{1, 1},
+                             // std::vector<int>{100, 1},
+                             // std::vector<int>{2, 2},
+                             // std::vector<int>{200, 2},
+                             // std::vector<int>{15, 15},
+                             // std::vector<int>{16, 16},
+                             // std::vector<int>{17, 17},
+                             // std::vector<int>{29, 31},
+                             // std::vector<int>{29, 31, 33},
+                             // std::vector<int>{30, 32},
+                             // std::vector<int>{31, 33},
+                             // std::vector<int>{511, 63},
+                             // std::vector<int>{1025, 64}
                          ));

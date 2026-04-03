@@ -671,17 +671,26 @@ def replace_host_files(replace_root, host_build_dir, graph_name):
         return
     logger.info("replace host source dir: %s", source_dir)
     logger.info("replace host target dir: %s", host_build_dir)
+    host_build_path = Path(host_build_dir)
+    if source_dir.resolve() == host_build_path.resolve():
+        logger.info("skip host replacement because source dir equals target dir")
+        return
     removed_files = cleanup_host_tiling_files(host_build_dir, graph_name)
     logger.info("cleanup stale host tiling files: %s", removed_files)
-    host_build_path = Path(host_build_dir)
     copied_files = []
     for src in source_dir.glob(f"{graph_name}*_tiling_func*.cpp"):
-        shutil.copy(str(src), str(host_build_path / src.name))
+        dst = host_build_path / src.name
+        if src.resolve() == dst.resolve():
+            continue
+        shutil.copy(str(src), str(dst))
         copied_files.append(src.name)
     for header_name in ["autofuse_tiling_data.h", "autofuse_tiling_func_common.h", "autofuse_cube_tiling_data.h"]:
         header_path = source_dir / header_name
         if header_path.exists():
-            shutil.copy(str(header_path), str(host_build_path / header_name))
+            dst = host_build_path / header_name
+            if header_path.resolve() == dst.resolve():
+                continue
+            shutil.copy(str(header_path), str(dst))
             copied_files.append(header_name)
     logger.info("copied host files: %s", copied_files)
 

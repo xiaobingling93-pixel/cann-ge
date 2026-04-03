@@ -191,6 +191,7 @@ ge::graphStatus InferShapeForAsString(InferShapeContext *context) {
 }
 IMPL_OP(AsString).InferShape(InferShapeForAsString);
 
+IMPL_OP(SparseToDense).InputsDataDependency({1});
 IMPL_OP(Const).InputsDataDependency({});
 IMPL_OP(Variable).InputsDataDependency({});
 IMPL_OP(VariableV2).InputsDataDependency({});

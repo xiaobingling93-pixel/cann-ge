@@ -64,7 +64,6 @@ Status RequireContiguousInputBufs(const ge::AscNodePtr &node, ApiCall &api_call,
     GE_CHK_BOOL_RET_SPECIAL_STATUS((!IsShareInputs(node)), ge::SUCCESS,
                                    "%s(%s) can not require contiguous inputs, not sharing single input TQue",
                                    node->GetNamePtr(), api_call.api_name_.c_str());
-    GELOGD("%s(%s) can require contiguous inputs, all inputs are from single shared TQue");
     for (size_t i = 0; i < api_call.inputs.size(); ++i) {
       auto &in_tensor = api_call.inputs[i];
       in_tensor->share_order = static_cast<int32_t>(i);
@@ -2416,11 +2415,11 @@ static bool IsNodeSplitB(const ascir::NodeView &node, const Tiler &tiler, std::s
     GE_ASSERT_NOTNULL(in_node, "Input of node %s[%s] is null", node->GetTypePtr(), node->GetNamePtr());
     GE_ASSERT_NOTNULL(std::dynamic_pointer_cast<ge::AscNode>(in_node));
     const auto &prev_node = std::dynamic_pointer_cast<ge::AscNode>(in_node);
-    if (!IsNodeSplitB(prev_node, tiler, enable_cache_with_condition, is_ar, true)) {
+    if (!IsOps<Scalar>(prev_node) && !IsNodeSplitB(prev_node, tiler, enable_cache_with_condition, is_ar, true)) {
       return false;
     }
   }
-  return true;
+  return !enable_cache_with_condition.empty();
 }
 
 static bool IsValidCacheCondition(const ge::ExecuteCondition &exec_condition) {
