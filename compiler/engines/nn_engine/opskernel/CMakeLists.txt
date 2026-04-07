@@ -31,6 +31,10 @@ target_compile_definitions(opskernel PRIVATE
         $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_BLUE>
         )
 
+target_link_directories(opskernel PRIVATE
+ 	${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(opskernel PRIVATE
         intf_pub
         mmpa_headers

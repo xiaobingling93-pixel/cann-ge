@@ -49,6 +49,7 @@ usage() {
   echo "            =dflow        Build ge dflow ut"
   echo "        =engines          Build all engines ut"
   echo "            =fe           Build fusion engine ut"
+  echo "            =tefusion      Build tefusion engine ut"
   echo "            =dvpp         Build dvpp engine ut"
   echo "            =aicpu        Build aicpu engine ut"
   echo "            =ffts         Build ffts engine ut"
@@ -67,6 +68,7 @@ usage() {
   echo "            =dflow        Build ge dflow st"
   echo "        =engines          Build all engines st"
   echo "            =fe           Build fusion engine st"
+  echo "            =tefusion      Build tefusion engine st"
   echo "            =dvpp         Build dvpp engine st"
   echo "            =aicpu        Build aicpu engine st"
   echo "            =ffts         Build ffts engine st"
@@ -123,6 +125,7 @@ checkopts() {
   ENABLE_DFLOW="off"
   ENABLE_ENGINES="off"
   ENABLE_FE="off"
+  ENABLE_TEFUSION="off"
   ENABLE_FFTS="off"
   ENABLE_RTS="off"
   ENABLE_HCCE="off"
@@ -156,6 +159,80 @@ checkopts() {
         case "$2" in
           "acl")
             ENABLE_ACL_UT="on"
+            shift 2
+            ;;
+          "")
+            ENABLE_GE="on"
+            ENABLE_GE_COMMON="on"
+            ENABLE_RT="on"
+            ENABLE_PYTHON="on"
+            ENABLE_PARSER="on"
+            ENABLE_DFLOW="on"
+            ENABLE_ENGINES="on"
+            ENABLE_FE="on"
+            ENABLE_TEFUSION="on"
+            ENABLE_DVPP="on"
+            ENABLE_AICPU="on"
+            ENABLE_FFTS="on"
+            ENABLE_RTS="on"
+            ENABLE_HCCE="on"
+            shift 2
+            ;;
+          "ge")
+            ENABLE_GE_COMMON="on"
+            ENABLE_RT="on"
+            ENABLE_PYTHON="on"
+            ENABLE_GE="on"
+            ENABLE_PARSER="on"
+            ENABLE_DFLOW="on"
+            shift 2
+            ;;
+          "ge_common")
+            ENABLE_GE_COMMON="on"
+            ENABLE_GE="on"
+            shift 2
+            ;;
+          "rt")
+            ENABLE_RT="on"
+            ENABLE_GE="on"
+            shift 2
+            ;;
+          "python")
+            ENABLE_PYTHON="on"
+            ENABLE_GE="on"
+            shift 2
+            ;;
+          "parser")
+            ENABLE_PARSER="on"
+            ENABLE_GE="on"
+            shift 2
+            ;;
+          "dflow")
+            ENABLE_DFLOW="on"
+            ENABLE_GE="on"
+            shift 2
+            ;;
+          "engines")
+            ENABLE_ENGINES="on"
+            ENABLE_FE="on"
+            ENABLE_TEFUSION="on"
+            ENABLE_DVPP="on"
+            ENABLE_AICPU="on"
+            ENABLE_FFTS="on"
+            ENABLE_RTS="on"
+            ENABLE_HCCE="on"
+            shift 2
+            ;;
+          "fe")
+            ENABLE_ENGINES="on"
+            ENABLE_FE="on"
+            BUILD_METADEF="on"
+            shift 2
+            ;;
+          "tefusion")
+            ENABLE_ENGINES="on"
+            ENABLE_TEFUSION="on"
+            BUILD_METADEF="on"
             shift 2
             ;;
           "")
@@ -286,6 +363,7 @@ checkopts() {
             ENABLE_DFLOW="on"
             ENABLE_ENGINES="on"
             ENABLE_FE="on"
+            ENABLE_TEFUSION="on"
             ENABLE_DVPP="on"
             ENABLE_AICPU="on"
             ENABLE_FFTS="on"
@@ -336,6 +414,7 @@ checkopts() {
           "engines")
             ENABLE_ENGINES="on"
             ENABLE_FE="on"
+            ENABLE_TEFUSION="on"
             ENABLE_DVPP="on"
             ENABLE_AICPU="on"
             ENABLE_FFTS="on"
@@ -346,6 +425,12 @@ checkopts() {
           "fe")
             ENABLE_ENGINES="on"
             ENABLE_FE="on"
+            BUILD_METADEF="on"
+            shift 2
+            ;;
+          "tefusion")
+            ENABLE_ENGINES="on"
+            ENABLE_TEFUSION="on"
             BUILD_METADEF="on"
             shift 2
             ;;
@@ -653,6 +738,7 @@ main() {
     ENABLE_DFLOW="on"
     ENABLE_ENGINES="on"
     ENABLE_FE="on"
+    ENABLE_TEFUSION="on"
     ENABLE_DVPP="on"
     ENABLE_AICPU="on"
     ENABLE_FFTS="on"
@@ -720,6 +806,10 @@ main() {
         export LD_LIBRARY_PATH=${ASCEND_INSTALL_PATH}/lib64:${ASCEND_INSTALL_PATH}/devlib:$LD_LIBRARY_PATH
         bash scripts/build.sh -u -n -j $THREAD_NUM $VERBOSE $COVERAGE
       fi
+      if [ "X$ENABLE_TEFUSION" = "Xon" ]; then
+        export LD_LIBRARY_PATH=${ASCEND_INSTALL_PATH}/lib64:${ASCEND_INSTALL_PATH}/devlib:$LD_LIBRARY_PATH
+        bash scripts/build.sh -u -t -j $THREAD_NUM $VERBOSE $COVERAGE
+      fi
       if [ "X$ENABLE_DVPP" = "Xon" ]; then
         export LD_LIBRARY_PATH=${ASCEND_INSTALL_PATH}/lib64:${ASCEND_INSTALL_PATH}/devlib:$LD_LIBRARY_PATH
         bash scripts/build.sh -k -u -j $THREAD_NUM $VERBOSE $COVERAGE
@@ -757,6 +847,10 @@ main() {
       fi
       if [ "X$ENABLE_FFTS" = "Xon" ]; then
         bash scripts/build.sh -f -s -j $THREAD_NUM $VERBOSE $COVERAGE
+      fi
+      if [ "X$ENABLE_TEFUSION" = "Xon" ]; then
+        export LD_LIBRARY_PATH=${ASCEND_INSTALL_PATH}/lib64:${ASCEND_INSTALL_PATH}/devlib:$LD_LIBRARY_PATH
+        bash scripts/build.sh -s -t -j $THREAD_NUM $VERBOSE $COVERAGE
       fi
       if [ "X$ENABLE_HCCE" = "Xon" ]; then
         export LD_LIBRARY_PATH=${ASCEND_INSTALL_PATH}/lib64:${ASCEND_INSTALL_PATH}/devlib:$LD_LIBRARY_PATH

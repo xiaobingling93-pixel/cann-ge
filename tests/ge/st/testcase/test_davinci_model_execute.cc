@@ -85,7 +85,7 @@ namespace {
     std::string op_name;
     std::vector<Adx::TensorInfo> tensors;
     rtStream_t stream;
-    AdxStub::DumpCfg cfg;
+    Adx::DumpCfg cfg;
   } g_adump_record;
 
   void ResetAdumpRecord() {
@@ -95,9 +95,9 @@ namespace {
   int64_t g_persistent_capability = 0;
 }
 
-int32_t AdxStub::AdumpDumpTensorWithCfg(const std::string& op_type, const std::string& op_name,
+int32_t Adx::AdumpDumpTensorWithCfg(const std::string& op_type, const std::string& op_name,
                                         const std::vector<Adx::TensorInfo>& tensors,
-                                        rtStream_t stream, const AdxStub::DumpCfg& cfg) {
+                                        rtStream_t stream, const Adx::DumpCfg& cfg) {
   g_adump_record.call_count++;
   g_adump_record.op_type = op_type;
   g_adump_record.op_name = op_name;
@@ -6417,7 +6417,7 @@ TEST_F(DavinciModelTest, Adump_Enable_Success) {
 
 TEST_F(DavinciModelTest, Adump_Interface_DirectCall) {
   ResetAdumpRecord();
-  ASSERT_NE(AdxStub::AdumpDumpTensorWithCfg, nullptr);
+  ASSERT_NE(Adx::AdumpDumpTensorWithCfg, nullptr);
 
   RuntimeParam rts_param;
   DataDumper dumper(&rts_param);

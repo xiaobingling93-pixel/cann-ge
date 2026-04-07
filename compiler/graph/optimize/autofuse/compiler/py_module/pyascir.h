@@ -74,6 +74,7 @@ PyMODINIT_FUNC PyInit_pyautofuse(void);
   OP(RShift)           \
   OP(Isnan)            \
   OP(Max)              \
+  OP(ArgMax)           \
   OP(Any)              \
   OP(All)              \
   OP(Sum)              \

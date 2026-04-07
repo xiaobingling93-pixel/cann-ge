@@ -20,6 +20,9 @@ public:
   Status Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                   const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                   const std::vector<std::reference_wrapper<const Tensor>> &outputs, std::string &result) const override;
+
+private:
+  int64_t GetTmpBufIdByLifeTime(int64_t life_time, const std::string &api_name) const;
 };
 }
 #endif // __AUTOFUSE_REDUCE_API_CALL_H__

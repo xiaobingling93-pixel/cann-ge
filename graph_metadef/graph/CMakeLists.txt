@@ -124,6 +124,7 @@ SET(GRAPH_SOURCE_LIST
     "utils/multi_thread_graph_builder.cc"
     "utils/type_utils_ex.cc"
     "utils/screen_printer.cc"
+    "utils/tensor_size_utils.cc"
     "${GE_METADEF_DIR}/third_party/transformer/src/axis_util.cc"
     "${GE_METADEF_DIR}/third_party/transformer/src/transfer_shape_according_to_format.cc"
     "${GE_METADEF_DIR}/third_party/transformer/src/expand_dimension.cc"

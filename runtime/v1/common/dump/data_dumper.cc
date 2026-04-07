@@ -30,7 +30,6 @@
 #include "acl/acl_rt.h"
 
 namespace {
-constexpr uint32_t FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB = 4U;
 constexpr uint32_t kAicpuLoadFlag = 1U;
 constexpr uint32_t kAicpuUnloadFlag = 0U;
 constexpr uint64_t kOpDebugSize = 2048U;
@@ -101,9 +100,9 @@ DataDumper::~DataDumper() noexcept {
 }
 
 void DataDumper::InitAdumpCapability() {
-  adump_interface_available_ = (AdxStub::AdumpDumpTensorWithCfg != nullptr);
+  adump_interface_available_ = (Adx::AdumpDumpTensorWithCfg != nullptr);
   int64_t support = 0;
-  if (rtGetRtCapability(static_cast<rtFeatureType_t>(FEATURE_TYPE_AICPU_OVERFLOW_DUMP_STUB), 0, &support) == SUCCESS) {
+  if (rtGetRtCapability(FEATURE_TYPE_AICPU_OVERFLOW_DUMP, 0, &support) == SUCCESS) {
     overflow_enabled_ = (support == 1);
   } else {
     overflow_enabled_ = false;
@@ -212,41 +211,41 @@ void DataDumper::SetWorkSpaceAddrForPrint(const std::shared_ptr<OpDesc> &op_desc
   } 
 }
 
-std::vector<AdxStub::DumpAttr> DataDumper::BuildDumpAttrs() const {
-  std::vector<AdxStub::DumpAttr> attrs;
+std::vector<Adx::DumpAttr> DataDumper::BuildDumpAttrs() const {
+  std::vector<Adx::DumpAttr> attrs;
   const std::string& dumpStep = dump_properties_.GetDumpStep();  // 引用成员，保证生命周期
 
-  auto addAttr = [&](AdxStub::DumpAttrId id) {
-    AdxStub::DumpAttr attr;
+  auto addAttr = [&](Adx::DumpAttrId id) {
+    Adx::DumpAttr attr;
     attr.id = id;
-    if (id == AdxStub::DUMP_ATTR_MODEL_NAME) {
+    if (id == Adx::DUMP_ATTR_MODEL_NAME) {
       attr.value.modelName = const_cast<char*>(model_name_.c_str());
-    } else if (id == AdxStub::DUMP_ATTR_MODEL_NAMESIZE) {
+    } else if (id == Adx::DUMP_ATTR_MODEL_NAMESIZE) {
       attr.value.modelNameSize = model_name_.size();
-    } else if (id == AdxStub::DUMP_ATTR_MODEL_ID) {
+    } else if (id == Adx::DUMP_ATTR_MODEL_ID) {
       attr.value.modelId = model_id_;
-    } else if (id == AdxStub::DUMP_ATTR_STEP_ID_ADDR) {
+    } else if (id == Adx::DUMP_ATTR_STEP_ID_ADDR) {
       attr.value.stepIdAddr = static_cast<uint64_t>(global_step_);
-    } else if (id == AdxStub::DUMP_ATTR_ITER_PER_LOOP_ADDR) {
+    } else if (id == Adx::DUMP_ATTR_ITER_PER_LOOP_ADDR) {
       attr.value.iterPerLoopAddr = static_cast<uint64_t>(loop_per_iter_);
-    } else if (id == AdxStub::DUMP_ATTR_LOOP_COND_ADDR) {
+    } else if (id == Adx::DUMP_ATTR_LOOP_COND_ADDR) {
       attr.value.loopCondAddr = static_cast<uint64_t>(loop_cond_);
-    } else if (id == AdxStub::DUMP_ATTR_DUMP_STEP) {
+    } else if (id == Adx::DUMP_ATTR_DUMP_STEP) {
       attr.value.dumpStep = const_cast<char*>(dumpStep.c_str());
-    } else if (id == AdxStub::DUMP_ATTR_DUMP_STEPSIZE) {
+    } else if (id == Adx::DUMP_ATTR_DUMP_STEPSIZE) {
       attr.value.dumpStepSize = dumpStep.size();
     }
     attrs.push_back(attr);
   };
 
-  addAttr(AdxStub::DUMP_ATTR_MODEL_NAME);
-  addAttr(AdxStub::DUMP_ATTR_MODEL_NAMESIZE);
-  addAttr(AdxStub::DUMP_ATTR_MODEL_ID);
-  addAttr(AdxStub::DUMP_ATTR_STEP_ID_ADDR);
-  addAttr(AdxStub::DUMP_ATTR_ITER_PER_LOOP_ADDR);
-  addAttr(AdxStub::DUMP_ATTR_LOOP_COND_ADDR);
-  addAttr(AdxStub::DUMP_ATTR_DUMP_STEP);
-  addAttr(AdxStub::DUMP_ATTR_DUMP_STEPSIZE);
+  addAttr(Adx::DUMP_ATTR_MODEL_NAME);
+  addAttr(Adx::DUMP_ATTR_MODEL_NAMESIZE);
+  addAttr(Adx::DUMP_ATTR_MODEL_ID);
+  addAttr(Adx::DUMP_ATTR_STEP_ID_ADDR);
+  addAttr(Adx::DUMP_ATTR_ITER_PER_LOOP_ADDR);
+  addAttr(Adx::DUMP_ATTR_LOOP_COND_ADDR);
+  addAttr(Adx::DUMP_ATTR_DUMP_STEP);
+  addAttr(Adx::DUMP_ATTR_DUMP_STEPSIZE);
 
   return attrs;
 }
@@ -1335,7 +1334,7 @@ Status DataDumper::DumpOpWithAdump(const InnerDumpInfo &dump_info) {
 
   // 构建 dumpCfg
   auto attrs = BuildDumpAttrs();
-  AdxStub::DumpCfg dumpCfg;
+  Adx::DumpCfg dumpCfg;
   dumpCfg.attrs = attrs.data();
   dumpCfg.numAttrs = attrs.size();
 
@@ -1391,7 +1390,7 @@ Status DataDumper::DumpOpWithAdump(const InnerDumpInfo &dump_info) {
   }
   GE_CHECK_NOTNULL(dump_info.stream);
 
-  if (AdxStub::AdumpDumpTensorWithCfg) {
+  if (Adx::AdumpDumpTensorWithCfg) {
     GE_CHK_STATUS_RET(AdumpDumpTensorWithCfg(op_desc->GetType(), op_name.c_str(),
                       tensors, dump_info.stream, dumpCfg), "[Adump] AdumpDumpTensorWithCfg failed for op %s", op_name.c_str());
   } else {

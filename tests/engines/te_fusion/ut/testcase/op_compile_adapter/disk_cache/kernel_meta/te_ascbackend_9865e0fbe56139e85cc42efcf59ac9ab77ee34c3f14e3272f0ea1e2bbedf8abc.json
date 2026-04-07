@@ -1,0 +1,114 @@
+{
+  "binFileName": "libte_ascbackend_9865e0fbe56139e85cc42efcf59ac9ab77ee34c3f14e3272f0ea1e2bbedf8abc",
+  "binFileSuffix": ".so",
+  "blockDim": -1,
+  "compileInfo": "1234567890",
+  "kernelList": [
+    {
+      "compileInfo": {
+        "_pattern": "Matmul",
+        "attrs": {
+          "transpose_a": false,
+          "transpose_b": false
+        },
+        "block_dim": {
+          "10003": 1
+        },
+        "correct_range_flag": null,
+        "cost_range": {},
+        "dynamic_mode": "dynamic_mkn",
+        "repo_range": {
+          "10003": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "repo_seeds": {
+          "10003": [
+            1,
+            2,
+            1,
+            1
+          ]
+        }
+      },
+      "implMode": "high_performance",
+      "kernelName": "te_ascbackend_9865e0fbe56139e85cc42efcf59ac9ab77ee34c3f14e3272f0ea1e2bbedf8abc_10003",
+      "supportInfo": {
+        "inputs": [
+          {
+            "index": 0,
+            "tensor": [
+              {
+                "range": [
+                  [
+                    1,
+                    16
+                  ],
+                  [
+                    17,
+                    32
+                  ]
+                ],
+                "shape": [
+                  -1,
+                  -1
+                ]
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "tensor": [
+              {
+                "range": [
+                  [
+                    1,
+                    2147483647
+                  ],
+                  [
+                    1,
+                    16
+                  ]
+                ],
+                "shape": [
+                  -1,
+                  -1
+                ]
+              }
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "index": 0,
+            "tensor": [
+              {
+                "range": [
+                  [
+                    1,
+                    16
+                  ],
+                  [
+                    1,
+                    16
+                  ]
+                ],
+                "shape": [
+                  -1,
+                  -1
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -18,6 +18,9 @@ using namespace codegen;
 
 static std::map<std::string, std::pair<int, std::string>> reduce_type_map = {
   {"Min", {ReduceOpType::kMin, "Min"}},  {"Max", {ReduceOpType::kMax, "Max"}},
+  {"ArgMax", {ReduceOpType::kMax, "Max"}},
+  {"ArgMaxMultiRPhase1", {ReduceOpType::kMax, "Max"}},
+  {"ArgMaxMultiRPhase2", {ReduceOpType::kMax, "Max"}},
   {"Any", {ReduceOpType::kAny, "Max"}},  {"All", {ReduceOpType::kAll, "Min"}},
   {"Sum", {ReduceOpType::kSum, "Add"}},  {"Prod", {ReduceOpType::kProd, "Mul"}},
   {"Mean", {ReduceOpType::kMean, "Add"}}
@@ -30,7 +33,20 @@ bool IsNeedMultiReduce(const Tiler &tiler, const Tensor &input, const Tensor &ou
 void ReduceMeanCodeGen(std::string &dtype_name, const TPipe &tpipe, const Tensor &dst,
                        std::stringstream &ss);
 void ReduceInitCodeGen(const Tensor &x, const Tensor &y, const int &type_value,
-                       std::stringstream &ss, const TPipe &tpipe);
+                       std::stringstream &ss, const TPipe &tpipe, const std::string &dtype_name);
 void ReduceDimACodeGen(const Tensor &x, const std::string &apiName, std::stringstream &ss);
-}  // namespace codegen
+Status GetDtypeNameForReduce(const std::string &api_name, const Tensor &x, const Tensor &y, std::string &dtype_name);
+void GenAccumulatedOffsetDeclForArgMax(const std::string &api_name, const Tensor &x, const Tensor &y,
+                              const TPipe &tpipe, std::stringstream &ss);
+
+/**
+ * @brief 生成获取最后两个R轴大小乘积的代码字符串
+ * @param x 输入张量
+ * @param y 输出张量
+ * @param tpipe Tiler对象
+ * @param ss 输出字符串流
+ */
+void GenLastTwoRAxisSizeProductCode(const Tensor &x, const Tensor &y,
+                                    const TPipe &tpipe, std::stringstream &ss);
+}  // namespace reduce_base
 #endif // __AUTOFUSE_REDUCE_API_CALL_BASE_H__

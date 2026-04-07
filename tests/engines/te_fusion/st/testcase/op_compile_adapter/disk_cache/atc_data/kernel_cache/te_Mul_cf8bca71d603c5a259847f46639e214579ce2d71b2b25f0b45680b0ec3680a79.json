@@ -1,0 +1,21 @@
+{
+    "KBHit": false,
+    "binFileName": "te_Mul_cf8bca71d603c5a259847f46639e214579ce2d71b2b25f0b45680b0ec3680a79",
+    "headerFileSuffix": ".h",
+    "binFileSuffix": ".o",
+    "blockDim": 40,
+    "core_type": "AIV",
+    "deterministic": "ignore",
+    "kernelName": "te_mul_6d6affe1fc8f852e623b68f88be050d565e73738022a19c92c19c5ae0588ea20_1__kernel0",
+    "magic": "RT_DEV_BINARY_MAGIC_ELF_AIVEC",
+    "memoryStamping": [],
+    "modeInArgsFirstField": 0,
+    "opParaSize": 0,
+    "parameters": [
+        0,
+        0,
+        0
+    ],
+    "sha256": "a411ce71496907a94d5e2df4ab3b85a307d0a5efa4b934b83cf19d1e26a75343",
+    "taskRation": 0
+}

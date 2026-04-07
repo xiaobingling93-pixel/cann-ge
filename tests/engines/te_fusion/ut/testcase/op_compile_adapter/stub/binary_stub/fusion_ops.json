@@ -1,0 +1,323 @@
+{
+    "binList": [
+        {
+			"int64Mode": false,
+            "graphPattern": "Conv2d_Transdata_1",
+            "staticKey": "86d55bbbc4cd1543c0ee9f067647167e5059dc164055f118167c9977e46da707",
+            "inputs": [
+                {
+                    "id": "input_data1",
+                    "dtype": "float16",
+                    "format": "NC1HWC0",
+                    "oriFormat": "NCHW",
+                    "shape": [
+                        -2
+                    ],
+                    "oriShape": [
+                        -2
+                    ]
+                },
+                {
+                    "id": "input_data2",
+                    "dtype": "float16",
+                    "format": "NC1HWC0",
+                    "oriFormat": "NCHW",
+                    "shape": [
+                        -2
+                    ],
+                    "oriShape": [
+                        -2
+                    ]
+                },
+                {
+                    "id": "input_data3",
+                    "dtype": "float16",
+                    "format": "NC1HWC0",
+                    "oriFormat": "NCHW",
+                    "shape": [
+                        -2
+                    ],
+                    "oriShape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "output_data1",
+                    "dtype": "float16",
+                    "format": "NCHW",
+                    "oriFormat": "NCHW",
+                    "shape": [
+                        -2
+                    ],
+                    "oriShape": [
+                        -2
+                    ]
+                }
+            ],
+            "graphOPParams": [
+                {
+                    "implMode": "high_performance",
+                    "attrs": [
+                        {
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": null
+                        }
+                    ]
+                },
+				null,
+                {
+                    "implMode": "high_performance",
+                    "attrs": [
+                        {
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": null
+                        },
+                        {
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": null
+                        }
+                    ]
+                }
+            ],
+            "binInfo": {
+                "jsonFilePath": "ascend910/fusion_op_1.json"
+            }
+        },
+        {
+            "graphPattern": "Conv2d_Transdata_2",
+            "staticKey": "success",
+            "inputs":  [
+                {
+					"L1_addr_offset":2,
+                    "slice_offset":[
+						1,
+						2
+					],
+                    "is_first_layer": false,
+                    "split_index":1,
+                    "data_type":"float16",
+                    "dtype": "float16",
+                    "format": "ND",
+					"ori_format":"NCHW",
+                    "shape": [
+                        -2
+                    ],
+					"range": [
+						[
+							2,
+							5
+						],
+						[
+							7,
+							10
+						]
+					],
+					"ori_range":[
+						[
+							2,
+							5
+						],
+						[
+							16,
+							200
+						],
+						[
+							768,
+							768
+						]
+					],
+					"ori_shape":[
+						16,
+						128,
+						768
+					],
+					"valid_shape": [
+                        11,
+						12
+                    ],
+					"total_shape": [
+                        11
+                    ]
+                },
+				null,
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ],
+					"ori_range": [
+                        [
+							1,
+							-1
+						]
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ],
+					"slice_offset":[
+
+                    ],
+                    "split_index":0,
+                    "sub_format":2,
+                    "total_shape":[
+                        16,
+                        128,
+                        768
+                    ],
+                    "valid_shape":[
+
+                    ]
+                }
+            ],
+            "graphOpParams": [
+                {
+                    "implMode": "high_performance",
+                    "attrs": [
+                        {
+							"dtype": "int",
+							"value": 1
+						},
+						{
+							"dtype": "int",
+							"value": 2
+						},
+						{
+							"dtype": "int",
+							"value": 4
+						},
+						{
+							"dtype": "int",
+							"value": 3
+						},
+						{
+							"dtype": "int",
+							"value": 3
+						},
+						{
+							"dtype": "list_int",
+							"value": [
+									1,
+									5
+								]
+						},
+						{
+							"dtype": "list_int",
+							"value": [
+									2,
+									5
+								]
+						},
+						{
+							"dtype": "list_float",
+							"value": [
+									1,
+									4
+								]
+						},
+						{
+							"dtype": "list_float",
+							"value": [
+									1,
+								   -1
+								]
+						},
+						{
+							"dtype": "list_list_int",
+							"value": [
+									[
+										16,
+										16
+									],
+									[
+										2,
+										12
+									],
+									[
+										500,
+										768
+									]
+								]
+						},
+						{
+							"dtype": "list_string",
+							"value": [
+									"str1",
+									"str2",
+									"str3"
+								]
+						},
+						{
+							"dtype": "int",
+							"value": 4
+						},
+						{
+							"dtype": "int",
+							"value": 4
+						}
+                    ]
+                },
+				{
+                    "implMode": "high_performance"
+                },
+                {
+                    "implMode": "high_performance",
+                    "attrs": [
+                        {
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": [
+									1,
+									5
+								]
+                        },
+                        {
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": [
+									1,
+									5
+								]
+                        },
+						{
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": [
+									1,
+									5
+								]
+                        },
+						{
+                            "name": "strides",
+                            "dtype": "list_int",
+                            "value": [
+									1,
+									5
+								]
+                        }
+                    ]
+                }
+            ],
+            "binInfo": {
+                "jsonFilePath": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762.json"
+            }
+        },
+        {
+            "omKeyId": "te_matmul_2",
+            "binInfo": {
+                "jsonFilePath": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762.json"
+            }
+        }
+    ]
+}

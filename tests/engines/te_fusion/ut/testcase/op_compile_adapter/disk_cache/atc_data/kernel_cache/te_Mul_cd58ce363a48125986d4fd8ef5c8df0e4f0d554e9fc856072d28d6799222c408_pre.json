@@ -1,0 +1,5 @@
+{
+    "coreType": "VectorCore",
+    "pattern": "Broadcast",
+    "prebuilt_options": "sth_just_like_this"
+}

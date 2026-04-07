@@ -60,6 +60,8 @@ class NpuMemoryAllocator {
   Status TryFreeAndMalloc(const size_t size, void **buffer) const;
   Status TryFreeCachingMem() const;
   void *AllocateCachingMem(const std::size_t size, void *const try_reuse_addr) const;
+  void *AllocateHbmBuffer(const uint64_t size, const AllocationAttr *const attr,
+                           uint64_t &allocate_size) const;
 
   uint32_t device_id_;
   aclrtStream stream_;

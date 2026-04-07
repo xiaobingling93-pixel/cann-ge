@@ -597,4 +597,24 @@ TEST_F(GeLocalEngineTest, PhonySplitGraphBuild) {
   };
 }
 
+// 新增接口临时使用UT替代ST进行测试，待仓库使用新接口后删除此用例。
+TEST_F(GeLocalEngineTest, GetTensorMemorySizeInBytesWithAutoPadding_SUCCESS) {
+  GeTensorDesc tensorDesc;
+  int64_t size;
+  graphStatus ret = TensorUtils::GetTensorMemorySizeInBytesWithAutoPadding(tensorDesc, size);
+  EXPECT_EQ(ret, GRAPH_SUCCESS);
+}
+
+// 新增接口临时使用UT替代ST进行测试，待仓库使用新接口后删除此用例。
+TEST_F(GeLocalEngineTest, GetTensorMemorySizeInBytesWithAutoPadding_FAILED) {
+  vector<int64_t> dims({2, 3, 4, 5});
+  GeShape ge_shape(dims);
+  Format format = FORMAT_RESERVED;
+  DataType data_type = DT_MAX;
+  GeTensorDesc tensorDesc(ge_shape, format, data_type);
+  int64_t size;
+  graphStatus ret = TensorUtils::GetTensorMemorySizeInBytesWithAutoPadding(tensorDesc, size);
+  EXPECT_EQ(ret, GRAPH_FAILED);
+}
+
 }  // namespace ge

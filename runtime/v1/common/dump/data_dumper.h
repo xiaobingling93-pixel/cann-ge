@@ -29,49 +29,6 @@
 #include "dump/adump_pub.h"
 #include "dump/adump_api.h"
 
-//adx代码回蓝之后删除
-namespace AdxStub {
-  typedef enum {
-    DUMP_ATTR_MODEL_NAME = 1,
-    DUMP_ATTR_MODEL_NAMESIZE,
-    DUMP_ATTR_MODEL_ID,
-    DUMP_ATTR_STEP_ID_ADDR,
-    DUMP_ATTR_ITER_PER_LOOP_ADDR,
-    DUMP_ATTR_LOOP_COND_ADDR,
-    DUMP_ATTR_DUMP_STEP,
-    DUMP_ATTR_DUMP_STEPSIZE,
-    DUMP_ATTR_STREAM_MODEL,
-  } DumpAttrId;
-  
-  typedef union {
-    char* modelName;
-    uint64_t modelNameSize;
-    uint32_t modelId;
-    uint64_t stepIdAddr;
-    uint64_t iterPerLoopAddr;
-    uint64_t loopCondAddr;
-    char* dumpStep;
-    uint64_t dumpStepSize;
-    uint32_t streamModel;
-  } DumpAttrVal;
-  
-  typedef struct {
-    DumpAttrId id;
-    DumpAttrVal value;
-  } DumpAttr;
-  
-  typedef struct {
-    DumpAttr* attrs;
-    size_t numAttrs;
-  } DumpCfg;
-
-  __attribute__((weak)) int32_t AdumpDumpTensorWithCfg(const std::string& op_type,
-                                                        const std::string& op_name,
-                                                        const std::vector<Adx::TensorInfo>& tensors,
-                                                        rtStream_t stream,
-                                                        const DumpCfg& cfg);
-}
-
 namespace ge {
 struct FirstLevelAddressInfo {
   bool address_type;
@@ -248,7 +205,7 @@ class DataDumper {
                             std::vector<Adx::TensorInfo>& tensors);
   Status FillRawTensorInfos(const InnerDumpInfo &dump_info, std::vector<Adx::TensorInfo> &tensors,
                           bool dump_input = true, bool dump_output = true) const;
-  std::vector<AdxStub::DumpAttr> BuildDumpAttrs() const;
+  std::vector<Adx::DumpAttr> BuildDumpAttrs() const;
   bool IsInInputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const;
   bool IsInOutputOpBlackIist(const std::shared_ptr<OpDesc>& op_desc, size_t index) const;
 };

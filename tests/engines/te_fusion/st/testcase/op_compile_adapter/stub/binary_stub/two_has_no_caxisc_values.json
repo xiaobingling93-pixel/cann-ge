@@ -1,0 +1,69 @@
+[
+    {
+        "L1_addr_offset":0,
+        "L1_fusion_type":-1,
+        "L1_workspace_size":-1,
+        "addr_type":0,
+        "data_type":"float32",
+        "format":"NC1HWC0",
+        "name":"0_11_trans_TransData_23__0",
+        "ori_format":"NHWC",
+        "ori_shape":[
+            32,
+            112,
+            112,
+            64
+        ],
+        "shape":[
+            32,
+            4,
+            112,
+            112,
+            16
+        ],
+        "slice_offset":[
+
+        ],
+        "split_index":0,
+        "total_shape":[
+
+        ],
+        "valid_shape":[
+
+        ]
+    },
+    {
+        "L1_addr_offset":0,
+        "L1_fusion_type":-1,
+        "L1_workspace_size":-1,
+        "addr_type":0,
+        "data_type":"uint8",
+        "format":"NHWC",
+        "name":"0_11_Relu__1",
+        "ori_format":"NHWC",
+        "ori_shape":[
+            32,
+            4,
+            112,
+            112,
+            2
+        ],
+        "shape":[
+            32,
+            4,
+            112,
+            112,
+            2
+        ],
+        "slice_offset":[
+
+        ],
+        "split_index":0,
+        "total_shape":[
+
+        ],
+        "valid_shape":[
+
+        ]
+    }
+]

@@ -1,0 +1,32 @@
+{
+	"attrs": [{
+		"dtype": "bool",
+		"value": false
+	}, {
+		"dtype": "bool",
+		"value": true
+	}, {
+		"dtype": "int"
+	}],
+	"buildOptions": {
+		"status_check": "true"
+	},
+	"inputs": [{
+		"dtype": "float16",
+		"format": "FRACTAL_NZ",
+		"shape": [-2]
+	}, {
+		"dtype": "float16",
+		"format": "FRACTAL_NZ",
+		"shape": [-2]
+	}, {
+		"dtype": "float16",
+		"format": "ND",
+		"shape": [37]
+	}, null],
+	"outputs": [{
+		"dtype": "float16",
+		"format": "FRACTAL_NZ",
+		"shape": [-2]
+	}]
+}

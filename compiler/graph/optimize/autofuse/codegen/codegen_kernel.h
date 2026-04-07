@@ -518,6 +518,9 @@ struct ReduceOpType {
   static constexpr int32_t kAny = 4;
   static constexpr int32_t kAll = 5;
   static constexpr int32_t kMean = 6;
+  static constexpr int32_t kArgMax = 7;
+  static constexpr int32_t kArgMaxMultiRPhase1 = 8;
+  static constexpr int32_t kArgMaxMultiRPhase2 = 9;
 };
 
 struct CodegenConfig {

@@ -40,7 +40,7 @@ TEST_P(E2E_BackendRemainderBf16_Code, CalculateCorrect) {
     input2[i] = static_cast<bfloat16_t>(f2);
     expect[i] = static_cast<bfloat16_t>(
         static_cast<float>(input1[i]) -
-        input2[i] * static_cast<bfloat16_t>(std::trunc(static_cast<float>(input1[i]) / static_cast<float>(input2[i]))));
+        input2[i] * static_cast<bfloat16_t>(std::floor(static_cast<float>(input1[i]) / static_cast<float>(input2[i]))));
   }
 
   // Launch

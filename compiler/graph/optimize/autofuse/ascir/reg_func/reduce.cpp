@@ -104,8 +104,30 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcReduceTmpSize(const ge::AscNode
       a_in_ub_exp = GetAlignSize(a_in_ub_exp);
     }
     ge::Expression ub_size = GetByteSize(a_in_ub_exp);
-    ge::TmpBufDesc desc2 = {ub_size, 0};
-    tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc2));
+
+    // ArgMax 和 ArgMaxMultiRPhase2 需要额外的 tmp_buf
+    // ArgMaxMultiRPhase1只需要生命周期为0的tmp_buf
+    if (node.GetType() == "ArgMax" || node.GetType() == "ArgMaxMultiRPhase2") {
+      // 生命周期为0的第一个tmp_buf：当前迭代的index临时存储
+      ge::TmpBufDesc desc2 = {sym::Mul(ub_size, ge::Symbol(2)), 0};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc2));
+      // 生命周期为1的第一个tmp_buf：当前迭代的value临时存储
+      ge::TmpBufDesc desc3 = {ub_size, 1};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc3));
+      // 生命周期为2的tmp_buf：value的历史最大结果（R轴分核累加时使用）
+      ge::TmpBufDesc desc4 = {ub_size, 2};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc4));
+    } else if (node.GetType() == "ArgMaxMultiRPhase1") {
+      // 生命周期为0的第一个tmp_buf：当前迭代的index临时存储
+      ge::TmpBufDesc desc2 = {sym::Mul(ub_size, ge::Symbol(2)), 0};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc2));
+      // 生命周期为1的第一个tmp_buf：当前迭代的value临时存储
+      ge::TmpBufDesc desc3 = {ub_size, 1};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc3));
+    } else {
+      ge::TmpBufDesc desc2 = {ub_size, 0};
+      tmp_buf_desc.emplace_back(std::make_unique<ge::TmpBufDesc>(desc2));
+    }
   }
 
   return tmp_buf_desc;

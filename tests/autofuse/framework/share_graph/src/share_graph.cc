@@ -10777,4 +10777,81 @@ ge::ComputeGraphPtr ShareGraph::RemainderBf16FusedGraph(size_t dims_size) {
   return compute_graph;
 }
 
+static void CreateArgMaxAscGraph(ge::AscGraph &graph, size_t dims_size) {
+  const Expression s0 = graph.CreateSizeVar(32);
+  const Expression s1 = graph.CreateSizeVar(16);
+  const Expression s2 = graph.CreateSizeVar(16);
+  auto One = Symbol(1);
+  auto Zero = Symbol(0);
+  auto z0 = graph.CreateAxis("z0", s0);
+  auto z1 = graph.CreateAxis("z1", s1);
+  auto z2 = graph.CreateAxis("z2", s2);
+
+  ge::ascir_op::Data x("data0", graph);
+  x.ir_attr.SetIndex(0);
+  x.y.dtype = ge::DataType::DT_FLOAT;
+
+  ge::ascir_op::Load load1("load1");
+  load1.x = x.y;
+  load1.attr.api.compute_type = ComputeType::kComputeLoad;
+  load1.attr.api.type = ge::ApiType::kAPITypeCompute;
+  load1.attr.sched.axis = {z0.id, z1.id, z2.id};
+  *load1.y.axis = {z0.id, z1.id, z2.id};
+  *load1.y.repeats = {s0, s1, s2};
+  *load1.y.strides = {s1 * s2, s2, One};
+  load1.y.dtype = ge::DataType::DT_FLOAT;
+  load1.attr.api.unit = ComputeUnit::kUnitMTE2;
+
+  ge::ascir_op::ArgMax argmax("argmax");
+  argmax.x = load1.y;
+  argmax.attr.sched.axis = {z0.id, z1.id, z2.id};
+  *argmax.y.axis = {z0.id, z1.id, z2.id};
+  *argmax.y.repeats = {s0, s1, One};
+  *argmax.y.strides = {s1, One, Zero};
+  argmax.y.dtype = ge::DataType::DT_INT64;
+  argmax.attr.tmp_buffers = {{{ge::Symbol(8192), -1}, MemAttr(), 0}, {{ge::Symbol(8192), 0}, MemAttr(), 1}};
+
+  ge::ascir_op::Store store1("store1");
+  store1.x = argmax.y;
+  store1.attr.api.compute_type = ComputeType::kComputeStore;
+  store1.attr.api.type = ge::ApiType::kAPITypeCompute;
+  store1.attr.sched.axis = {z0.id, z1.id, z2.id};
+  *store1.y.axis = {z0.id, z1.id, z2.id};
+  *store1.y.repeats = {s0, s1, One};
+  *store1.y.strides = {s1, One, Zero};
+  store1.y.dtype = ge::DataType::DT_INT64;
+  store1.attr.api.unit = ComputeUnit::kUnitMTE3;
+
+  ge::ascir_op::Output y1("y1");
+  y1.x = store1.y;
+  y1.attr.api.compute_type = ComputeType::kComputeInvalid;
+  y1.attr.api.type = ge::ApiType::kAPITypeBuffer;
+  y1.y.dtype = ge::DataType::DT_INT64;
+  y1.ir_attr.SetIndex(0);
+}
+
+ge::ComputeGraphPtr ShareGraph::ArgMaxFusedGraph(size_t dims_size) {
+  auto builder = GraphBuilder("argmax_test");
+  auto data0 = builder.AddNode("data0", "Data", 0, 1);
+  ge::AttrUtils::SetInt(data0->GetOpDescBarePtr(), "_parent_node_index", 0);
+
+  auto ascbc = builder.AddNode("ascbc", "AscGraph", 1, 1);
+  auto netoutput = builder.AddNode("netoutput1", ge::NETOUTPUT, 1, 0);
+
+  builder.AddDataEdge(data0, 0, ascbc, 0);
+  builder.AddDataEdge(ascbc, 0, netoutput, 0);
+  ComputeGraphPtr compute_graph = builder.GetGraph();
+  if (compute_graph == nullptr) {
+    return nullptr;
+  }
+  auto ascbc_node = compute_graph->FindNode("ascbc");
+  ge::AscGraph sub_graph("argmax");
+  CreateArgMaxAscGraph(sub_graph, dims_size);
+
+  std::string sub_graph_str;
+  ge::AscGraphUtils::SerializeToReadable(sub_graph, sub_graph_str);
+  ge::AttrUtils::SetStr(ascbc_node->GetOpDescBarePtr(), "ascgraph", sub_graph_str);
+  return compute_graph;
+}
+
 }  // namespace ascir

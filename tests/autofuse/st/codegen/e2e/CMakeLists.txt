@@ -65,6 +65,7 @@ add_library(e2e_com SHARED
     # ./e2e_softmax.cpp
     ./e2e_broadcast.cpp
     ./e2e_rmax.cpp
+    ./e2e_rargmax.cpp
     ./e2e_rmean.cpp
     ./e2e_constant_load_gt_store.cpp
     ./e2e_multi_vectorize_axis.cpp
@@ -132,6 +133,7 @@ add_subdirectory(discrete_load)
 add_subdirectory(store_scalar)
 add_subdirectory(broadcast_force_merge)
 # add_subdirectory(load_rmax_store)
+add_subdirectory(load_rargmax_store)
 # add_subdirectory(load_rmean_store)
 # add_subdirectory(load_removepad_store)
 # add_subdirectory(load_rmin_store)

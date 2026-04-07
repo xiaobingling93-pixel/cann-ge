@@ -1,0 +1,5 @@
+{
+    "coreType": "VectorCore",
+    "pattern": "ElemWise",
+    "prebuilt_options": ""
+}

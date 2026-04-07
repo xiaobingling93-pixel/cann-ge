@@ -37,6 +37,7 @@ set(ascendc_api_extend_src
     true_div.h
     brc_inline_api.h
     axpy.h
+    argmax_with_value.h
     scalar_add.h
     scalar_mul.h
     scalar_maximum.h

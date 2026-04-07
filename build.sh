@@ -30,7 +30,7 @@ usage() {
   echo "Usage:"
   echo "  sh build.sh [-h | --help] [-v | --verbose] [-j<N>]"
   echo "              [--ge_compiler] [--ge_executor]  [--dflow]"
-  echo "              [--build_type=<TYPE> | --build-type=<TYPE>]"
+  echo "              [--build-type=<TYPE>]"
   echo "              [--output_path=<PATH>] [--cann_3rd_lib_path=<PATH>]"
   echo "              [--python_path=<PATH>]"
   echo "              [--enable-sign] [--sign-script=<PATH>]"
@@ -45,7 +45,7 @@ usage() {
   echo "    --dflow         Build dflow-executor run package with kernel bin"
   echo "    --asan            Enable AddressSanitizer"
   echo "    --cov             Enable Coverage"
-  echo "    --build_type=<TYPE>, --build-type=<TYPE>"
+  echo "    --build-type=<TYPE>"
   echo "                      Specify build type (TYPE option: Release/Debug), Default: Release"
   echo "    --output_path=<PATH>"
   echo "                      Set output path, default ./output"
@@ -62,8 +62,8 @@ usage() {
   echo ""
 }
 
-# check value of build_type option
-# usage: check_build_type build_type
+# check value of build-type option
+# usage: check_build_type build-type
 check_build_type() {
   arg_value="$1"
   if [ "X$arg_value" != "XRelease" ] && [ "X$arg_value" != "XDebug" ]; then

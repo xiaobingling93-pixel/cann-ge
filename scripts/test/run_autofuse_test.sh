@@ -565,6 +565,7 @@ codegen_e2e_st() {
                     store_empty_tensor_e2e \
                     load_rsum_invalid_axis_store_e2e \
                     load_gather_first_axis_split_b_t_abs_store_e2e \
+                    load_rargmax_store_e2e \
                     load_logicalnot_store_e2e"
   if [[ "X$RUN_V35_TESTS" = "Xon" ]]; then
     MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \
@@ -670,6 +671,7 @@ build_backend() {
                     pgo_add_abs_test_e2e \
                     matmul_elemwise_test_e2e \
                     axpy_abs_test_e2e \
+                    argmax_test_e2e \
                     load_logical_not_store_test_e2e"
   if [[ "X$RUN_V35_TESTS" = "Xon" ]]; then
     MAKE_TARGET_LIST="${MAKE_TARGET_LIST} \

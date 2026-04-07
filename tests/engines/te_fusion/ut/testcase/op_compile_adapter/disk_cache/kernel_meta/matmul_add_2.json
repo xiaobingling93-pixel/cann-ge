@@ -1,0 +1,22 @@
+{
+    "coreType": "MixAICore",
+    "modeInArgsFirstField": 1,
+    "taskRation": 2,
+    "blockDim": 32,
+    "jsonList": [
+        {
+            "binType": "AIC",
+            "jsonFileName": "matmul_add_2_mix_aic.json"
+        },
+        {
+            "binType": "AIV",
+            "jsonFileName": "matmul_add_2_mix_aiv.json"
+        }
+    ],
+    "compileInfo": {
+        "vars": {
+            "_ub_size": 11,
+            "_core_num": 32
+        }
+    }
+}

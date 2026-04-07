@@ -102,7 +102,7 @@ static const std::map<std::string, ge::ComputeType> kOpTypeToComputeType = {
     {Load::Type, ge::ComputeType::kComputeLoad},           {Store::Type, ge::ComputeType::kComputeStore},
 
     {Sum::Type, ge::ComputeType::kComputeReduce},          {Max::Type, ge::ComputeType::kComputeReduce},
-    {Mean::Type, ge::ComputeType::kComputeReduce},         {Min::Type, ge::ComputeType::kComputeReduce},
+    {ArgMax::Type, ge::ComputeType::kComputeReduce},       {Mean::Type, ge::ComputeType::kComputeReduce},         {Min::Type, ge::ComputeType::kComputeReduce},
     {Prod::Type, ge::ComputeType::kComputeReduce},         {All::Type, ge::ComputeType::kComputeReduce},
     {Any::Type, ge::ComputeType::kComputeReduce},
 

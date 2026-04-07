@@ -58,6 +58,7 @@ checkopts()
   VERBOSE=""
   THREAD_NUM=8
   ENABLE_FE_LLT="off"
+  ENABLE_TEFUSION_LLT="off"
   ENABLE_FFTS_LLT="off"
   ENABLE_AICPU_LLT="off"
   ENABLE_DVPP_LLT="off"
@@ -74,13 +75,18 @@ checkopts()
   CMAKE_BUILD_TYPE="Release"
 
   # Process the options
-  while getopts 'dnfakerchj:vp:guswo' opt
+  while getopts 'dnftakerchj:vp:guswo' opt
   do
     OPTARG=$(echo ${OPTARG} | tr '[A-Z]' '[a-z]')
     case "${opt}" in
       n)
         ENABLE_FE_LLT="on"
         ENABLE_ASAN="true"
+        CMAKE_BUILD_TYPE="GCOV"
+        ;;
+      t)
+        ENGINE_DT="on"
+        ENABLE_TEFUSION_LLT="on"
         CMAKE_BUILD_TYPE="GCOV"
         ;;
       f)
@@ -291,6 +297,7 @@ build_air()
         -D ENABLE_LLT_COV=${ENABLE_LLT_COV} \
         -D ENGINE_DT=${ENGINE_DT} \
         -D ENABLE_FE_LLT=${ENABLE_FE_LLT} \
+        -D ENABLE_TEFUSION_LLT=${ENABLE_TEFUSION_LLT} \
         -D ENABLE_FFTS_LLT=${ENABLE_FFTS_LLT} \
         -D ENABLE_RTS_LLT=${ENABLE_RTS_LLT} \
         -D ENABLE_AICPU_LLT=${ENABLE_AICPU_LLT} \
@@ -310,7 +317,7 @@ build_air()
         -D ENABLE_PKG=${ENABLE_PKG} \
         -D ENABLE_LLT_PKG=${ENABLE_LLT_PKG} \
         ..
-  if [ "X$ENABLE_AICPU_LLT" = "Xon" ] || [ "X$ENABLE_FE_LLT" = "Xon" ] || [ "X$ENABLE_FFTS_LLT" = "Xon" ] || [ "X$ENABLE_DVPP_LLT" = "Xon" ] || [ "X$ENABLE_RTS_LLT" = "Xon" ] || [ "X$ENABLE_HCCE_LLT" = "Xon" ];then
+  if [ "X$ENABLE_AICPU_LLT" = "Xon" ] || [ "X$ENABLE_FE_LLT" = "Xon" ] || [ "X$ENABLE_TEFUSION_LLT" = "Xon" ] || [ "X$ENABLE_FFTS_LLT" = "Xon" ] || [ "X$ENABLE_DVPP_LLT" = "Xon" ] || [ "X$ENABLE_RTS_LLT" = "Xon" ] || [ "X$ENABLE_HCCE_LLT" = "Xon" ];then
     make ${VERBOSE} select_targets -j${THREAD_NUM}
   else
     make ${VERBOSE} select_targets -j${THREAD_NUM} && make install
@@ -423,6 +430,43 @@ run_llt_with_cov()
         lcov -c -d build/tests/engines/nn_engine/st -o cov_fe_st_whole_process/tmp.info
         lcov -r cov_fe_st_whole_process/tmp.info '*/output/*' '*/build/opensrc/*' '*/build/proto/*' '*/third_party/*' '*/test/*' '/usr/local/*' '/usr/include/*'  -o cov_fe_st_whole_process/coverage.info
         cd "${BASEPATH}/cov_fe_st_whole_process/"
+        genhtml coverage.info
+      fi
+    fi
+  fi
+  if [ "X$ENABLE_TEFUSION_LLT" = "Xon" ]
+  then
+    if [ "X$ENABLE_UT" = "Xon" ]
+    then
+      echo "---------------- Begin to run tefusion ut ----------------"
+      cd "${BASEPATH}/../"
+      ./$AIRDIR/build/tests/engines/te_fusion/ut/tefusion_ut
+      echo "---------------- Finish tefusion ut ----------------"
+      if [ "X$ENABLE_LLT_COV" = "Xon" ]
+      then
+        echo "---------------- Begin to generate coverage of tefusion ut ----------------"
+        cd "${BASEPATH}"
+        mk_dir "${BASEPATH}/cov_tefusion_ut/"
+        lcov -c -d build/tests/engines/te_fusion/ut -o cov_tefusion_ut/tmp.info
+        lcov -r cov_tefusion_ut/tmp.info '*/output/*' '*/build/opensrc/*' '*/build/proto/*' '*/third_party/*' '*/test/*' '/usr/local/*' '/usr/include/*'  -o cov_tefusion_ut/coverage.info
+        cd "${BASEPATH}/cov_tefusion_ut/"
+        genhtml coverage.info
+        echo "---------------- Finish generating coverage of tefusion ut ----------------"
+      fi
+    fi
+    if [ "X$ENABLE_ST" = "Xon" ]
+    then
+      echo "---------------- Begin to run tefusion st ----------------"
+      cd "${BASEPATH}/../"
+      ./$AIRDIR/build/tests/engines/te_fusion/st/tefusion_st
+      echo "---------------- Finish tefusion st ----------------"
+      if [ "X$ENABLE_LLT_COV" = "Xon" ]
+      then
+        cd "${BASEPATH}"
+        mk_dir "${BASEPATH}/cov_tefusion_st/"
+        lcov -c -d build/tests/engines/te_fusion/st -o cov_tefusion_st/tmp.info
+        lcov -r cov_tefusion_st/tmp.info '*/output/*' '*/build/opensrc/*' '*/build/proto/*' '*/third_party/*' '*/test/*' '/usr/local/*' '/usr/include/*'  -o cov_tefusion_st/coverage.info
+        cd "${BASEPATH}/cov_tefusion_st/"
         genhtml coverage.info
       fi
     fi
@@ -743,7 +787,7 @@ main() {
   build_air || { echo "AIR build failed."; exit 1; }
   echo "---------------- AIR build finished ----------------"
 
-  if [[ "X$ENABLE_FE_LLT" = "Xoff" ]] && [[ "X$ENABLE_AICPU_LLT" = "Xoff" ]] && [[ "X$ENABLE_DVPP_LLT" = "Xoff" ]]  && [[ "X$ENABLE_RTS_LLT" = "Xoff" ]] && [[ "X$ENABLE_FFTS_LLT" = "Xoff" ]] && [[ "X$ENABLE_HCCE_LLT" = "Xoff" ]]; then
+  if [[ "X$ENABLE_FE_LLT" = "Xoff" ]] && [[ "X$ENABLE_TEFUSION_LLT" = "Xoff" ]] && [[ "X$ENABLE_AICPU_LLT" = "Xoff" ]] && [[ "X$ENABLE_DVPP_LLT" = "Xoff" ]]  && [[ "X$ENABLE_RTS_LLT" = "Xoff" ]] && [[ "X$ENABLE_FFTS_LLT" = "Xoff" ]] && [[ "X$ENABLE_HCCE_LLT" = "Xoff" ]]; then
     generate_package
   else
     echo "....---> beforerun_llt_with_cov"

@@ -624,6 +624,87 @@ class MaxAscIrCodegenImpl : public AscIrCodegen {
   }
 };
 
+class ArgMaxAscIrCodegenImpl : public AscIrCodegen {
+ public:
+  std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcReduceTmpSize(node);
+  }
+  std::string GetApiCallName() const override {
+    return "ReduceApiCall";
+  }
+  std::string GetApiName() const override {
+    return "ArgMax";
+  }
+  std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"reduce_init.h", "reduce.h", "argmax.h", "compare.h", "compare_v2.h", "duplicate.h", "where.h", "argmax_with_value.h"};
+  }
+  std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/kernel_operator_vec_duplicate_intf.h",
+      "basic_api/kernel_operator_vec_binary_intf.h",
+      "basic_api/kernel_operator_vec_reduce_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_brcb_intf.h",
+      "adv_api/reduce/reduce.h",
+      "basic_api/kernel_operator_vec_gather_mask_intf.h",
+    };
+  }
+};
+
+class ArgMaxMultiRPhase1AscIrCodegenImpl : public AscIrCodegen {
+ public:
+  std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcReduceTmpSize(node);
+  }
+  std::string GetApiCallName() const override {
+    return "ReduceApiCall";
+  }
+  std::string GetApiName() const override {
+    return "ArgMaxMultiRPhase1";
+  }
+  std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"reduce_init.h", "reduce.h", "argmax.h", "compare.h", "compare_v2.h", "duplicate.h", "where.h", "argmax_with_value.h"};
+  }
+  std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/kernel_operator_vec_duplicate_intf.h",
+      "basic_api/kernel_operator_vec_binary_intf.h",
+      "basic_api/kernel_operator_vec_reduce_intf.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_brcb_intf.h",
+      "basic_api/kernel_operator_vec_gather_mask_intf.h",
+      "adv_api/reduce/reduce.h",
+    };
+  }
+};
+
+class ArgMaxMultiRPhase2AscIrCodegenImpl : public AscIrCodegen {
+ public:
+  std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {
+    return CalcReduceTmpSize(node);
+  }
+  std::string GetApiCallName() const override {
+    return "ReduceApiCall";
+  }
+  std::string GetApiName() const override {
+    return "ArgMaxMultiRPhase2";
+  }
+  std::vector<std::string> LoadApiHeaderFiles() const override {
+    return {"reduce_init.h", "reduce.h", "argmax.h", "compare.h", "compare_v2.h", "duplicate.h", "where.h", "argmax_with_value.h"};
+  }
+  std::vector<std::string> IncludeApiHeaderFiles() const override {
+    return {
+      "basic_api/kernel_operator_vec_duplicate_intf.h",
+      "basic_api/kernel_operator_vec_binary_intf.h",
+      "basic_api/kernel_operator_vec_reduce_intf.h",
+      "adv_api/reduce/reduce.h",
+      "basic_api/kernel_operator_vec_binary_scalar_intf.h",
+      "basic_api/kernel_operator_vec_brcb_intf.h",
+      "basic_api/kernel_operator_vec_gather_mask_intf.h",
+    };
+  }
+};
+
 class SumAscIrCodegenImpl : public AscIrCodegen {
  public:
   std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcTmpBufSize(const ge::AscNode &node) override {

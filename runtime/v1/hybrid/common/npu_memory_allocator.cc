@@ -15,6 +15,7 @@
 #include "graph/def_types.h"
 #include "graph/ge_context.h"
 #include "graph/manager/mem_manager.h"
+#include "graph/utils/tensor_utils.h"
 #include "runtime/rt.h"
 #include "hybrid/common/npu_memory_allocator.h"
 #include "acl/acl_rt.h"
@@ -23,6 +24,8 @@ namespace ge {
 namespace hybrid {
 namespace {
 constexpr size_t kPaddingUnit = 2U;
+constexpr size_t kAlignSize = 32U;
+
 constexpr uint64_t kMaxHbmMemorySize = 1099511627776UL; // 1024UL * 1024UL * 1024UL * 1024UL; // 1024G
 constexpr uint32_t kDeviceIdHost = static_cast<uint32_t>(-1);
 const std::string kAllocFailLog =
@@ -200,6 +203,39 @@ void *NpuMemoryAllocator::AllocateCachingMem(const std::size_t size, void *const
   return buffer;
 }
 
+void *NpuMemoryAllocator::AllocateHbmBuffer(const uint64_t size, const AllocationAttr *const attr,
+                                             uint64_t &allocate_size) const {
+  void *try_reuse_addr = nullptr;
+  int32_t padding = kDefaultPadding;
+  bool user_specified_padding = false;
+  if (attr != nullptr) {
+    try_reuse_addr = attr->try_reuse_addr_;
+    if (attr->padding_ > 0) {
+      padding = attr->padding_;
+      user_specified_padding = true;
+    }
+  }
+
+  if (user_specified_padding) {
+    allocate_size = ((size + (kPaddingUnit * static_cast<uint64_t>(padding)) - 1U) /
+                     static_cast<uint64_t>(padding)) * static_cast<uint64_t>(padding);
+    GELOGD("Padding size [%" PRIu64 "] by user specified %d. final size = [%" PRIu64 "].",
+           size, padding, allocate_size);
+  } else {
+    const size_t platform_padding = static_cast<size_t>(ge::TensorUtils::GetPaddingSize());
+    const uint64_t append_size = kAlignSize + static_cast<uint64_t>(platform_padding);
+    allocate_size = ((size + append_size - 1U) / kAlignSize) * kAlignSize;
+    GELOGD("Padding size [%" PRIu64 "] by platform padding [%zu]. final size = [%" PRIu64 "].",
+           size, platform_padding, allocate_size);
+  }
+
+  void *buffer = AllocateCachingMem(static_cast<size_t>(allocate_size), try_reuse_addr);
+  if (buffer == nullptr) {
+    (void)TryFreeAndMalloc(static_cast<size_t>(allocate_size), &buffer);
+  }
+  return buffer;
+}
+
 void *NpuMemoryAllocator::Allocate(const uint64_t size, const AllocationAttr *const attr) const {
   uint64_t allocate_size = size;
   MemStorageType mem_type = MemStorageType::HBM;
@@ -233,22 +269,7 @@ void *NpuMemoryAllocator::Allocate(const uint64_t size, const AllocationAttr *co
                         allocate_size, kMaxHbmMemorySize);
       return nullptr;
     }
-    void *try_reuse_addr = nullptr;
-    int32_t padding = kDefaultPadding;
-    if (attr != nullptr) {
-      try_reuse_addr = attr->try_reuse_addr_;
-      if (attr->padding_ > 0) {
-        padding = attr->padding_;
-      }
-    }
-    // padding up to multiple of padding, and add extra padding
-    allocate_size = ((size + (kPaddingUnit * static_cast<size_t>(padding)) - 1U) / static_cast<size_t>(padding)) *
-        static_cast<size_t>(padding);
-    GELOGD("Padding size [%zu] by %d. final size = [%zu].", size, padding, allocate_size);
-    buffer = AllocateCachingMem(allocate_size, try_reuse_addr);
-    if (buffer == nullptr) {
-      (void)TryFreeAndMalloc(allocate_size, &buffer); // check buffer nullptr after call
-    }
+    buffer = AllocateHbmBuffer(size, attr, allocate_size);
   }
   if (buffer == nullptr) {
     GELOGE(MEMALLOC_FAILED, "[Malloc][Memory] Failed, device_id = %u, size = %zu",

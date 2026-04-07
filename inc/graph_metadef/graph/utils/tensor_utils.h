@@ -62,12 +62,40 @@ class TensorUtils {
                                                       const Format format,
                                                       const DataType data_type,
                                                       int64_t &mem_size);
+  // 待废弃接口，为保持兼容暂时保留。后续请使用GetTensorMemorySizeInBytesWithAutoPadding替代GetTensorMemorySizeInBytes.
   static ge::graphStatus GetTensorMemorySizeInBytes(const GeTensorDesc &desc_temp, int64_t &size_temp);
+
+  /**
+   * @brief Calculate tensor memory size with automatic alignment padding.
+   *
+   * This function calculates the tensor memory size with automatic alignment padding
+   * added, ensuring the memory allocation meets hardware alignment requirements.
+   * Compared to GetTensorMemorySizeInBytes, this function additionally considers
+   * the actual SoC padding size.
+   *
+   * @param [in] desc_temp Tensor descriptor containing shape, data type, format, etc.
+   * @param [out] size_temp Calculated memory size in bytes, including alignment padding.
+   * @return ge::GRAPH_SUCCESS on success; ge::GRAPH_FAILED on failure.
+   *
+   * @note Recommended to use this function instead of GetTensorMemorySizeInBytes.
+   */
+  static ge::graphStatus GetTensorMemorySizeInBytesWithAutoPadding(const GeTensorDesc &desc_temp, int64_t &size_temp);
   static ge::graphStatus GetTensorSizeInBytes(const GeTensorDesc &desc_temp, int64_t &size_temp);
   static ge::graphStatus CheckShapeByShapeRange(const GeShape &shape,
                                                 const std::vector<std::pair<int64_t, int64_t>> &shape_range);
   static bool IsShapeEqual(const GeShape &src, const GeShape &dst);
   static bool IsMemorySizeCalcTypeAlwaysEmpty(const GeTensorDesc &tensor_desc);
+
+  /**
+    * @brief Get the padding size for memory allocation.
+    *
+    * This function queries the SoC specification to get the actual padding size.
+    * If the query fails, it returns the default padding size (32 bytes).
+    * The result is cached for subsequent calls.
+    *
+    * @return The padding size in bytes.
+    */
+  static int64_t GetPaddingSize();
 };
 }  // namespace ge
 #endif  // INC_GRAPH_UTILS_TENSOR_UTILS_H_

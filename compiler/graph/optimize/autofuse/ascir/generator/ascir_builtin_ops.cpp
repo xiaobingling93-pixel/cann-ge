@@ -224,6 +224,43 @@ REG_ASC_IR(Ln)
                             ge::ascir::AscIrImplCreator<ge::ascir::LnAscIrCodegenImpl>(),
                             {{"T", TensorType{DT_FLOAT16, DT_FLOAT}}}});
 
+REG_ASC_IR(ArgMax)
+    .Input("x", "T")
+    .Output("y", "U")
+    .CalcTmpBufSize("CalcReduceTmpSize")
+    .DataType("T", TensorType{DT_FLOAT, DT_INT32})
+    .DataType("U", TensorType{DT_INT64})
+    .ComputeType(ge::ComputeType::kComputeReduce)
+    .Impl(v1_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ReduceArgMaxAscIrAttImpl>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::ArgMaxAscIrCodegenImpl>(),
+                            {{"T", TensorType{DT_FLOAT, DT_INT32}}, {"U", TensorType{DT_INT64}}}});
+
+// ArgMax R轴分核 Phase1: 输入x，输出value和index
+REG_ASC_IR(ArgMaxMultiRPhase1)
+    .Input("x", "T")
+    .Output("value", "T")
+    .Output("index", "U")
+    .CalcTmpBufSize("CalcReduceTmpSize")
+    .DataType("T", TensorType{DT_FLOAT, DT_INT32})
+    .DataType("U", TensorType{DT_INT64})
+    .ComputeType(ge::ComputeType::kComputeReduce)
+    .Impl(v1_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ReduceArgMaxMultiRPhase1AscIrAttImpl>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::ArgMaxMultiRPhase1AscIrCodegenImpl>(),
+                            {{"T", TensorType{DT_FLOAT, DT_INT32}}, {"U", TensorType{DT_INT64}}}});
+
+// ArgMax R轴分核 Phase2: 输入value和index，输出最终index
+REG_ASC_IR(ArgMaxMultiRPhase2)
+    .Input("value", "T")
+    .Input("index", "U")
+    .Output("y", "U")
+    .CalcTmpBufSize("CalcReduceTmpSize")
+    .DataType("T", TensorType{DT_FLOAT, DT_INT32})
+    .DataType("U", TensorType{DT_INT64})
+    .ComputeType(ge::ComputeType::kComputeReduce)
+    .Impl(v1_soc_versions, {ge::ascir::AscIrImplCreator<ge::ascir::ReduceArgMaxMultiRPhase2AscIrAttImpl>(),
+                            ge::ascir::AscIrImplCreator<ge::ascir::ArgMaxMultiRPhase2AscIrCodegenImpl>(),
+                            {{"T", TensorType{DT_FLOAT, DT_INT32}}, {"U", TensorType{DT_INT64}}}});
+
 REG_ASC_IR(Sqrt)
     .Input("x", "T")
     .Output("y", "T")

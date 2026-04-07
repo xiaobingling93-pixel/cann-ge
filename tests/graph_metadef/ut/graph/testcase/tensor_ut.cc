@@ -792,4 +792,16 @@ TEST_F(TensorUT, GeTensorDesc2TensorDesc_expand_dims_rule) {
   tensor_desc.GetExpandDimsRule(expand_dims_rule);
   EXPECT_STREQ(expand_dims_rule.GetString(), "0011");
 }
+
+TEST_F(TensorUT, GetPaddingSize_ReturnsValidValue) {
+  const int64_t padding_size = TensorUtils::GetPaddingSize();
+  EXPECT_GE(padding_size, 0);
+  EXPECT_LE(padding_size, 32);
+}
+
+TEST_F(TensorUT, GetPaddingSize_ReturnsCachedValue) {
+  const int64_t first = TensorUtils::GetPaddingSize();
+  const int64_t second = TensorUtils::GetPaddingSize();
+  EXPECT_EQ(first, second);
+}
 }  // namespace ge

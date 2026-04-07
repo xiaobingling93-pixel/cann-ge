@@ -73,7 +73,7 @@ Status RegReduceApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::A
 
   ReduceDimACodeGen(x, this->api_name_, ss);
 
-  ReduceInitCodeGen(x, y, type_value, ss, tpipe);
+  ReduceInitCodeGen(x, y, type_value, ss, tpipe, dtype_name);
 
   ss << "uint32_t tmp_reduce_shape[] = {first_actual, last};" << std::endl;
 

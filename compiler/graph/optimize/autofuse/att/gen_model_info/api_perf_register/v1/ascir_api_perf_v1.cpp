@@ -911,6 +911,39 @@ ge::Status ReduceMaxApi([[maybe_unused]] const std::vector<TensorShapeInfo> &inp
 }
 
 /*
+ArgMaxapi的性能公式：
+  ArgMax的性能特征与Max类似，复用ReduceMaxPerf
+*/
+ge::Status ArgMaxPerf([[maybe_unused]] const std::vector<TensorShapeInfo> &input_shapes, PerfOutputInfo &perf_res) {
+  return ReduceMaxPerf(input_shapes, perf_res);
+}
+
+ge::Status ArgMaxApi([[maybe_unused]] const std::vector<TensorShapeInfo> &input_shapes,
+                     [[maybe_unused]] const std::vector<TensorShapeInfo> &output_shapes,
+                     [[maybe_unused]] const NodeInfo &node, PerfOutputInfo &perf_res) {
+  GE_ASSERT_TRUE(!output_shapes.empty() && !input_shapes.empty());
+  return ArgMaxPerf(input_shapes, perf_res);
+}
+
+/*
+ArgMaxMultiRPhase1和ArgMaxMultiRPhase2的性能公式：
+  性能特征与ArgMax类似，复用ArgMaxPerf
+*/
+ge::Status ArgMaxMultiRPhase1Api([[maybe_unused]] const std::vector<TensorShapeInfo> &input_shapes,
+                                  [[maybe_unused]] const std::vector<TensorShapeInfo> &output_shapes,
+                                  [[maybe_unused]] const NodeInfo &node, PerfOutputInfo &perf_res) {
+  GE_ASSERT_TRUE(!output_shapes.empty() && !input_shapes.empty());
+  return ArgMaxPerf(input_shapes, perf_res);
+}
+
+ge::Status ArgMaxMultiRPhase2Api([[maybe_unused]] const std::vector<TensorShapeInfo> &input_shapes,
+                                  [[maybe_unused]] const std::vector<TensorShapeInfo> &output_shapes,
+                                  [[maybe_unused]] const NodeInfo &node, PerfOutputInfo &perf_res) {
+  GE_ASSERT_TRUE(!input_shapes.empty());
+  return ArgMaxPerf(input_shapes, perf_res);
+}
+
+/*
 ReduceMinapi的性能公式：
   比较复杂，目前先实现AR形式且isReuseSource=false的场景
   建模时根据尾轴>32B且<256B的分支建模
@@ -1713,6 +1746,9 @@ REGISTER_EVAL_FUNC(kRelu, ascir_v1::ReluApi);
 REGISTER_EVAL_FUNC(kReduceAll, ascir_v1::ReduceAllApi);
 REGISTER_EVAL_FUNC(kReduceAny, ascir_v1::ReduceAnyApi);
 REGISTER_EVAL_FUNC(kReduceMax, ascir_v1::ReduceMaxApi);
+REGISTER_EVAL_FUNC(kArgMax, ascir_v1::ArgMaxApi);
+REGISTER_EVAL_FUNC(kArgMaxMultiRPhase1, ascir_v1::ArgMaxMultiRPhase1Api);
+REGISTER_EVAL_FUNC(kArgMaxMultiRPhase2, ascir_v1::ArgMaxMultiRPhase2Api);
 REGISTER_EVAL_FUNC(kReduceMean, ascir_v1::ReduceMeanApi);
 REGISTER_EVAL_FUNC(kReduceMin, ascir_v1::ReduceMinApi);
 REGISTER_EVAL_FUNC(kReduceSum, ascir_v1::ReduceSumApi);

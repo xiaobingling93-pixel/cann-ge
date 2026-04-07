@@ -27,7 +27,7 @@ struct AdumpCallInfo {
   std::string op_name;
   std::vector<Adx::TensorInfo> tensors;
   rtStream_t stream;
-  AdxStub::DumpCfg cfg;
+  Adx::DumpCfg cfg;
 } g_adump_call;
 
 void ResetAdumpCall() {
@@ -35,9 +35,9 @@ void ResetAdumpCall() {
 }
 }  // namespace
 
-int32_t AdxStub::AdumpDumpTensorWithCfg(const std::string& op_type, const std::string& op_name,
+int32_t Adx::AdumpDumpTensorWithCfg(const std::string& op_type, const std::string& op_name,
                                         const std::vector<Adx::TensorInfo>& tensors,
-                                        rtStream_t stream, const AdxStub::DumpCfg& cfg) {
+                                        rtStream_t stream, const Adx::DumpCfg& cfg) {
   g_adump_call.call_count++;
   g_adump_call.op_type = op_type;
   g_adump_call.op_name = op_name;

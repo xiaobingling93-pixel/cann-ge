@@ -25,6 +25,7 @@
 
 #define private public
 #define protected public
+#include "adapter/common/get_attr_by_type.h"
 #include "graph/tuning_utils.h"
 #include "graph/node.h"
 #include "graph/op_desc.h"

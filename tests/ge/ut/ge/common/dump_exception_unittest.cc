@@ -31,9 +31,15 @@
 namespace ge {
 class UTEST_dump_exception : public testing::Test {
  protected:
-  void SetUp() {}
+  std::string temp_dump_path_;
+
+  void SetUp() {
+    temp_dump_path_ = "./test_dump_temp_" + std::to_string(getpid()) + "_" + std::to_string(rand());
+  }
+
   void TearDown() override {
     remove("valid_path");
+    mmRmdir(temp_dump_path_.c_str());
   }
 };
 namespace {
@@ -277,6 +283,8 @@ TEST_F(UTEST_dump_exception, host_dump_all) {
 }
 
 TEST_F(UTEST_dump_exception, dump_node_info_wrong) {
+  ASSERT_TRUE(ge::CreateDirectory(temp_dump_path_) == 0);
+
   ge::DumpProperties dump_properties;
   dump_properties.AddPropertyValue("ALL_MODEL_NEED_DUMP_AND_IT_IS_NOT_A_MODEL_NAME", {"test"});
   dump_properties.SetDumpMode("all");
@@ -307,11 +315,11 @@ TEST_F(UTEST_dump_exception, dump_node_info_wrong) {
   ExceptionDumper exception_dumper;
   gert::GertRuntimeStub runtime_stub;
   dlog_setlevel(GE_MODULE_NAME, DLOG_INFO, 0);
-  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var/", false, false, dump_properties), ge::SUCCESS);
+  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, temp_dump_path_, false, false, dump_properties), ge::SUCCESS);
   dlog_setlevel(GE_MODULE_NAME, DLOG_ERROR, 0);
 
   // exception dump logs for tools analysis, don't modify!!!
-  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, "/var/", true, false, dump_properties), ge::SUCCESS);
+  EXPECT_EQ(exception_dumper.DumpNodeInfo(op_desc_info, temp_dump_path_, true, false, dump_properties), ge::SUCCESS);
   EXPECT_TRUE(CheckLogExpected(runtime_stub.GetSlogStub().GetLogs(), "[Dump][Exception] dump exception to file, file:"));
 }
 

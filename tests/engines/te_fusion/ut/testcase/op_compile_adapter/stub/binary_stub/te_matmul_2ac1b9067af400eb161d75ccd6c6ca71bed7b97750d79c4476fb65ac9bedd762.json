@@ -1,0 +1,75 @@
+{
+    "binFileName": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762",
+    "binFileSuffix": ".o",
+    "blockDim": -1,
+    "kernelList": [
+        {
+            "kernelName": "add_100010"
+        },
+        {
+            "kernelName": "add_100020"
+        }
+    ],
+	"kernelName": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762",
+    "magic": "RT_DEV_BINARY_MAGIC_ELF",
+    "maxKernelId": 10007,
+    "opParaSize": 12,
+    "parameters": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "sha256": "b97559990204d88759446ca413be0189aa572e941ff87908a658d7044ead8854",
+    "supportInfo": {
+        "implMode": "high_performance",
+        "staticKey":"86d55bbbc4cd1543c0ee9f067647167e5059dc164055f118167c9977e46da707",
+        "inputs": [
+            {
+                "dtype": "float16",
+                "format": "ND",
+                "shape": [
+                    -2
+                ]
+            },
+            {
+                "dtype": "float16",
+                "format": "ND",
+                "shape": [
+                    -2
+                ]
+            }
+        ],
+        "outputs": [
+            {
+                "dtype": "float16",
+                "format": "ND",
+                "oriFormat": "ND",
+                "shape": [
+                    -2
+                ],
+                "oriShape": [
+                    -2
+                ]
+            }
+        ],
+        "attrs": [
+            {
+                "name": "strides",
+                "dtype": "list_int",
+                "value": null
+            },
+            {
+                "name": "strides",
+                "dtype": "list_int",
+                "value": null
+            }
+        ]
+    },
+    "compileInfo": {
+        "vars": {
+            "_ub_size": 11,
+            "_core_num": 32
+        }
+    }
+}

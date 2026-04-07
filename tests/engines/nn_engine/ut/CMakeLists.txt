@@ -25,9 +25,6 @@ add_executable(fe_ut
         ${FE_SRC_CC_LIST}
         ${CMAKE_CURRENT_LIST_DIR}/testcase/main.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/fe_llt_utils.cc
-        ${CMAKE_CURRENT_LIST_DIR}/stub/Python.cc
- 	${CMAKE_CURRENT_LIST_DIR}/stub/Python_stub.cc
- 	${CMAKE_CURRENT_LIST_DIR}/stub/te_llt_utils.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/pass_manager.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/ub_pass_manager.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/graph_builder_utils.cc
@@ -173,22 +170,7 @@ add_executable(fe_ut
         ${CMAKE_CURRENT_LIST_DIR}/testcase/fusion_engine/cmo/generate_cmo_type_invalid_ut.cc
         ${CMAKE_CURRENT_LIST_DIR}/testcase/fusion_engine/cmo/generate_cmo_type_manager_ut.cc
         ${CMAKE_CURRENT_LIST_DIR}/testcase/fusion_engine/lx_fusion_optimizer/lx_fusion_optimizer_unit_test.cc
-        ${CMAKE_CURRENT_LIST_DIR}/testcase/fusion_engine/trace_handle_manager/trace_handle_manager_unittest.cc
-        ${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/stub/common_stub.cc
-        ${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/stub/example_utest_stub.cc 
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/api/fusion_api_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/common/te_config_info_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/cache/te_cache_manager_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/python_adapter/py_object_utils_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/python_adapter/py_decouple_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/python_adapter/py_adapter_manager_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_base.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_test.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_fuzzy_build.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_build_file_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_py_obj_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_binary_ut.cc
- 	${CMAKE_CURRENT_LIST_DIR}/testcase/op_compile_adapter/testcase/te_fusion_dfx_ut.cc)
+        ${CMAKE_CURRENT_LIST_DIR}/testcase/fusion_engine/trace_handle_manager/trace_handle_manager_unittest.cc)
         
 
 target_include_directories(fe_ut PRIVATE

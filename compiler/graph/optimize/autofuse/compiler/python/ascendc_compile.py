@@ -55,6 +55,7 @@ def generate_host_compile_cmd(args: argparse.Namespace, temp_dir, base_host_file
         "-I", f"{ASCEND_PATH}/{machine}-linux/include",
         "-I", f"{ASCEND_PATH}/{machine}-linux/ascendc/include/highlevel_api/tiling/platform",
         "-fPIC", f"--npu-arch={soc_version}", "-O2", "-fno-common", "-Wextra", "-Wfloat-equal", "-fvisibility=default",
+        f"{args.compile_options}",
         "-D", "LOG_CPP", "-o",
         f"{temp_dir}/host/{base_host_file}.o", "-c", "-x", "asc",
         f"{temp_dir}/host/{base_host_file}"]
@@ -109,7 +110,7 @@ def parse_compile_args(argv: List[str]):
     parser.add_argument('--lib_type', default='SHARED', type=str, help='Generate lib type.')
     parser.add_argument('--host_files', type=str, required=True, help='Host file name.')
     parser.add_argument('--device_files', type=str, required=True, help='Device file name.')
-    parser.add_argument('--compile_options',  help='Compile options.')
+    parser.add_argument('--compile_options', default='', type=str, help='Compile options.')
     parser.add_argument('--job', type=str, help='Jobs num.')
     parser.add_argument('--output_file', required=True, type=str, help='Destination directory.')
     parser.add_argument('--graph_name', default='autofuse', type=str, help='Graph name.')

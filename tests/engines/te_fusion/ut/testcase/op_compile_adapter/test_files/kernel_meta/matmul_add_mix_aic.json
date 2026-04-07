@@ -1,0 +1,35 @@
+{
+    "binFileName": "matmul_add_mix_aic",
+    "binFileSuffix": ".txt",
+    "sha256": "e1ca083d4849f4b9c21b09f19f0a0c9234afe93111a5675812014e90374b3e4e",
+    "KBHit": false,
+    "blockDim": 32,
+    "opParaSize": 64,
+    "parameters": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "kernelName": "matmul_add_mix_aic",
+    "kernelList": [
+        {
+            "kernelName": "matmul_add_mix_aic_64"
+        },
+        {
+            "kernelName": "matmul_add_mix_aic_100"
+        }
+    ],
+    "magic": "RT_DEV_BINARY_MAGIC_ELF",
+    "workspace": {
+        "num": 1,
+        "size": [
+            65536
+        ],
+        "type": [
+            0
+        ]
+    }
+}

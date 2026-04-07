@@ -1,0 +1,97 @@
+{
+    "Switch":{
+        "GraphFusion":{
+
+        },
+        "UBFusion":{
+        }
+    },
+    "Priority":{
+        "GraphFusion":{
+            "Top":{
+
+            },
+            "Main":{
+                "A_MomentumLossscaleFusionPass":"4000",
+                "ASplitConv2dConcatPass":"4010",
+                "AConv2dbackpropFusionPass":"4020",
+                "AABiasaddConvFusion":"4030",
+                "ABatchnormFusionPass":"4040",
+                "ADeconvGroupFusionPass":"4050",
+                "ConvBatchnormFusionPass":"4060",
+                "ConvScaleFusionPass":"4070",
+                "GroupConv2DFusionPass":"4080",
+                "AReduceAllFusionPass":"4090",
+                "AReduceAnyFusionPass":"4100",
+                "AReduceMaxFusionPass":"4110",
+                "AReduceMeanFusionPass":"4120",
+                "AReduceMinFusionPass":"4130",
+                "AReduceProdFusionPass":"4140",
+                "AReduceSumFusionPass":"4150",
+                "ApplyAddOutputPass":"4160",
+                "ConstToAttrPass":"4170",
+                "FusedBatchNormGradFusionPass":"4180",
+                "PadFusionPass":"4190",
+                "PaddConv2dFusionPass":"4200",
+                "PaddMaxPoolFusionPass":"4210"
+            },
+            "Down":{
+                "ZConcatDFusionPass":"5000",
+                "ZConcatExt2FusionPass":"5010",
+                "ZConcatFusionPass":"5020",
+                "ZConcatv2dFusionPass":"5030",
+                "ZSplitDFusionPass":"5040",
+                "ZSplitFusionPass":"5050",
+                "ZSplitVDFusionPass":"5060",
+                "ZSplitVFusionPass":"5070",
+                "ReluFusionPass": "5080",
+                "ExtremumGradFusionPass": "5090",
+                "LogSoftmaxGradFusionPass": "5100",
+                "MatmulCastFusionPass": "5110",
+                "MatMulBiasAddFusionPass": "5120",
+                "DreluFusionPass": "5130",
+                "BatchNormBnInferFusionPass": "5140",
+                "HostBNFusionPass": "5150"
+            }
+        },
+        "UBFusion":{
+            "Top":{
+
+
+            },
+            "Main":{
+                "TbeAippConvReluMaxpoolingFusion":"4000",
+                "TbeAippConvReluQuantFusion":"4010",
+                "TbeAippConvSingleInFusion":"4020",
+                "TbeAippConvZ":"4030",
+                "TbeConv2DDequantMultiOutQuantPass":"4040",
+                "TbeStridedreadConvStridedwriteFusionPass":"4050",
+                "TbeConvStridedwriteFusionPass":"4060",
+                "TbeStridereadConvDequantStridewriteFusionPass":"4070",
+                "TbeConvDequantStridewriteFusionPass":"4080",
+                "TbeConvReluQuantFusionPass":"4090",
+                "TbeConv2DBackpropElemwiseFusionPass":"4100",
+                "TbeConvBnreduceFusionPass":"4110",
+                "TbeConvReluMaxpoolingFusionPass":"4120",
+                "TbeConvSigmoidMulQuantFusionPass":"4130",
+                "TbeConvDoubleInFusionPass":"4140",
+                "TbeConvSingleInFusionPass":"4150",
+                "TbeConvDequantVaddReluQuantFusionPass":"4160",
+                "TbeConvDequantVaddReluFusionPass":"4170",
+                "TbeConvDequantQuantFusionPass":"4180",
+                "TbeConvDequantFusionPass":"4190",
+                "TbeConvRequantFusionPass":"4200",
+                "TbeAntiquantMaxpoolingFusionPass":"4210",
+                "TbePool2dQuantFusionPass":"4220",
+                "TbeMultiOutputFusionPass":"4250",
+                "TbeReduceElemwiseFusionPass":"4260",
+                "TbeSegmentElemwiseFusionPass":"4270",
+                "TbeEltwiseFusionPass":"4280",
+                "TbeMultiOutputByWayFusionPass":"4290"
+            },
+            "Down":{
+                "TbeConv2DEltwisePass":"5000"
+            }
+        }
+    }
+}

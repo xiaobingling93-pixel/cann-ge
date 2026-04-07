@@ -25,7 +25,9 @@ using ReduceType = std::variant<
     ge::ascir_op::Min,
     ge::ascir_op::Prod,
     ge::ascir_op::Any,
-    ge::ascir_op::All
+    ge::ascir_op::All,
+    ge::ascir_op::ArgMaxMultiRPhase1,
+    ge::ascir_op::ArgMaxMultiRPhase2
 >;
 
 class ReducePartitionCaseGenerator : public FusionCaseGenerator {
@@ -91,6 +93,7 @@ private:
   Status PartitionByReduce(ascir::ImplGraph &impl_graph, ReduceType &phase2graph_reduce,
                            std::vector<ge::AscNodePtr> &node_order);
   Status SetNodeOrder(std::vector<ge::AscNodePtr> &node_order);
+  Status SetupArgMaxIndexNodes(const ge::AscNodePtr &reduce_node, ascir::ImplGraph &phase2graph);
 };
 }
 

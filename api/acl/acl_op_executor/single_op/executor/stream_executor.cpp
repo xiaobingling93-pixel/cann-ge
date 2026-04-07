@@ -15,6 +15,7 @@
 #include "securec.h"
 #include "utils/math_utils.h"
 #include "utils/attr_utils.h"
+#include "graph/utils/tensor_utils.h"
 
 namespace acl {
 namespace {
@@ -23,14 +24,14 @@ constexpr size_t DATA_MEMORY_ALIGN_SIZE = 32UL;
 
 aclError GetAlignedAndPaddingSize(const size_t size, const bool isPadding, size_t &alignedSize)
 {
-  // check overflow, the max value of size must be less than 0xFFFFFFFFFFFFFFFF-32*2
-  if ((size + (DATA_MEMORY_ALIGN_SIZE * 2UL)) < size) {
+  const size_t padding_size = static_cast<size_t>(ge::TensorUtils::GetPaddingSize());
+  const size_t appendSize = isPadding ? (DATA_MEMORY_ALIGN_SIZE + padding_size)
+                                      : DATA_MEMORY_ALIGN_SIZE;
+  if ((size + appendSize) < size) {
     ACL_LOG_INNER_ERROR("[Check][Size]size too large: %zu", size);
     return ACL_ERROR_INVALID_PARAM;
   }
 
-  // align size to multiple of 32 and padding 32 if needed
-  const size_t appendSize = isPadding ? DATA_MEMORY_ALIGN_SIZE * 2UL : DATA_MEMORY_ALIGN_SIZE;
   alignedSize = (size + appendSize - 1UL) / DATA_MEMORY_ALIGN_SIZE * DATA_MEMORY_ALIGN_SIZE;
   return ACL_SUCCESS;
 }

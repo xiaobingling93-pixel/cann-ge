@@ -1,0 +1,31 @@
+{
+    "binaryList": [
+    {
+      "coreType": 1,
+      "simplifiedKey": [
+        "Abs/d=0,p=0/0,2/0,2",
+        "Abs/d=1,p=0/0,2/0,2"
+      ],
+      "binPath": "ascend910/abs/Abs_5c5e58e043224cccf51a06108010ae13_high_performance.o",
+      "jsonPath": null
+    },
+    {
+      "coreType": 1,
+      "simplifiedKey": [
+        "Abs/d=0,p=0/3,2/3,2",
+        "Abs/d=1,p=0/3,2/3,2"
+      ],
+      "binPath": "ascend910/abs/Abs_8098b79498645e9c0da095babdeaf862_high_performance.o",
+      "jsonPath": null
+    },
+    {
+      "coreType": 1,
+      "simplifiedKey": [
+        "Abs/d=0,p=0/1,2/1,2",
+        "Abs/d=1,p=0/1,2/1,2"
+      ],
+      "binPath": "ascend910/abs/Abs_d2db1a80c523e7e59a032c95969880af_high_performance.o",
+      "jsonPath": null
+    }
+  ]
+}

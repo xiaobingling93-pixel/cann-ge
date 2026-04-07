@@ -414,6 +414,7 @@ INT32 mmDladdr(VOID *addr, mmDlInfo *info) {
 
 const static std::string libcce_name("libcce.so");
 const static std::string libmdat_name("libmdat.so");
+const static std::string libruntime_name("libruntime.so");
 ge::ccStatus_t ccUpdateKernelArgs(ge::ccOpContext &, uint64_t, uint64_t, uint64_t, void *, uint64_t, void *) {
   return ge::ccStatus_t::CC_STATUS_SUCCESS;
 }
@@ -442,13 +443,20 @@ static bool MockIsEnableMdeTopoSort() {
   return false;
 }
 
+static rtError_t MockRtGetSocSpec(const char *label, const char *key, char *value, uint32_t size) {
+  return 0;
+}
+
 VOID *mmDlopen(const CHAR *fileName, INT32 mode) {
-  const std::string so_name = fileName;
+  const std::string so_name = fileName ? fileName : "";
   if (so_name.find("libcce.so") != std::string::npos) {
     return (void *)(libcce_name.data());
   };
   if (so_name.find("libmdat.so") != std::string::npos) {
     return (void *)(libmdat_name.data());
+  }
+  if (so_name.find("libruntime.so") != std::string::npos) {
+    return (void *)(libruntime_name.data());
   }
 
  if (so_name.find("libopmaster_success_rt2.0.so") != std::string::npos) {
@@ -474,6 +482,9 @@ INT32 mmDlclose(VOID *handle) {
   if (libmdat_name.data() == handle) {
     return 0;
   }
+  if (libruntime_name.data() == handle) {
+    return 0;
+  }
   if (handle == nullptr){
     return 1;
   }
@@ -485,6 +496,10 @@ INT32 mmDlclose(VOID *handle) {
 }
 
 VOID *mmDlsym(VOID *handle, const CHAR *funcName) {
+  if (std::string(funcName) == "rtGetSocSpec") {
+    return (void *) &MockRtGetSocSpec;
+  }
+
   if ((handle == libcce_name.data()) && (funcName == std::string("ccUpdateKernelArgs"))) {
     return (void *)ccUpdateKernelArgs;  // for st: KernelTaskInfo::CceUpdateKernelArgs
   }

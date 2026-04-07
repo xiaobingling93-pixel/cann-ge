@@ -154,7 +154,9 @@ std::vector<std::unique_ptr<ge::TmpBufDesc>> CalcConcatTmpSizeV2(const ge::AscNo
   AscNodeOutputs node_outputs = node.outputs;
   GE_ASSERT_TRUE(node_inputs.Size() > 0);
   uint32_t concat_dim = 0;
-  for (uint32_t i = 0; i < node_outputs[0].attr.repeats.size(); ++i) {
+  const auto num_dims = node_outputs[0].attr.repeats.size();
+  for (uint32_t idx = 0; idx < num_dims; ++idx) {
+    const auto i = num_dims - idx - 1;
     if (node_outputs[0].attr.repeats[i] != node_inputs[0].attr.repeats[i]) {
       concat_dim = i;
       break;

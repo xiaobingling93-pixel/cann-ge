@@ -33,7 +33,7 @@ __aicore__ inline void RemainderImplVF(__ubuf__ T* dst, __ubuf__ T* src1, __ubuf
         AscendC::MicroAPI::Div(quotient, srcVreg1, srcVreg2, mask);
 
         // Truncate to floor (trunc towards zero)
-        AscendC::MicroAPI::Truncate<T, AscendC::RoundMode::CAST_TRUNC>(truncatedQuotient, quotient, mask);
+        AscendC::MicroAPI::Truncate<T, AscendC::RoundMode::CAST_FLOOR>(truncatedQuotient, quotient, mask);
 
         // Calculate x2 * trunc(x1/x2)
         AscendC::MicroAPI::Mul(mulResult, srcVreg2, truncatedQuotient, mask);

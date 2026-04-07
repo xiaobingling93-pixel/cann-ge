@@ -40,7 +40,7 @@ protected:
 TEST(PyDecoupleUT, init_and_finalize_case1) {
     HandleManager handleManager;
     EXPECT_EQ(handleManager.Initialize(), true);
-    EXPECT_EQ(handleManager.IsPyEnvInitBeforeTbe(), false);
+    EXPECT_EQ(handleManager.IsPyEnvInitBeforeTbe(), true);
     EXPECT_NE(handleManager.get_py_false(), nullptr);
     EXPECT_NE(handleManager.get_py_none(), nullptr);
     EXPECT_NE(handleManager.get_py_true(), nullptr);
@@ -96,7 +96,7 @@ TEST(PyDecoupleUT, init_and_finalize_case1) {
 TEST(PyDecoupleUT, init_and_finalize_case2) {
     HandleManager handleManager1;
     EXPECT_EQ(handleManager1.Initialize(), true);
-    EXPECT_EQ(handleManager1.IsPyEnvInitBeforeTbe(), false);
+    EXPECT_EQ(handleManager1.IsPyEnvInitBeforeTbe(), true);
     HandleManager handleManager2;
     EXPECT_EQ(handleManager2.Initialize(), true);
     EXPECT_EQ(handleManager2.IsPyEnvInitBeforeTbe(), true);

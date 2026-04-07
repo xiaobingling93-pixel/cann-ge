@@ -113,6 +113,10 @@ target_compile_definitions(fe PRIVATE
         $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_BLUE>
         )
 
+target_link_directories(fe PRIVATE
+        ${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(fe PRIVATE
         intf_pub
         msprof_headers

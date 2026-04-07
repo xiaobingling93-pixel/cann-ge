@@ -145,6 +145,12 @@ Register::Register() {
   const std::string kAscendcScalarMulStr = {
 #include "scalar_mul_str.h"
   };
+  const std::string kAscendcArgmax_with_valueStr = {
+#include "argmax_with_value_str.h"
+  };
+  const std::string kAscendcArgmaxStr = {
+#include "argmax_str.h"
+  };
   const std::string kAscendcScalarMaximumStr = {
 #include "scalar_maximum_str.h"
   };
@@ -167,6 +173,8 @@ Register::Register() {
       {"cast.h", kAscendcCastStr},
       {"clipbyvalue.h", kAscendcClipbyvalueStr},
       {"compare.h", kAscendcCompareStr},
+      {"argmax_with_value.h", kAscendcArgmax_with_valueStr},
+      {"argmax.h", kAscendcArgmaxStr},
       {"compare_v2.h", kAscendcCompareV2Str},
       {"concat.h", kAscendcConcatStr},
       {"datacopy.h", kAscendcDatacopyStr},

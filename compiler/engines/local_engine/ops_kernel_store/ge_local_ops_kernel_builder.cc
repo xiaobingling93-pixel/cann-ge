@@ -36,8 +36,9 @@ const char *const kConstOpType = "Const";
 const std::unordered_set<std::string> kDependComputeOps = {"StackPop"};
 const int64_t kMemAlignSize = 32;
 int64_t AlignOutputMemSize(const int64_t mem_size) {
+  const int64_t padding_size = TensorUtils::GetPaddingSize();
   GE_ASSERT_TRUE(mem_size < std::numeric_limits<int64_t>::max() - kMemAlignSize);
-  return (mem_size + kMemAlignSize - 1) / kMemAlignSize * kMemAlignSize + kMemAlignSize;
+  return (mem_size + kMemAlignSize - 1) / kMemAlignSize * kMemAlignSize + padding_size;
 }
 using CalcOpParamCall = std::function<graphStatus(const Node &node)>;
 std::map<std::string, CalcOpParamCall> calc_op_param_call = {

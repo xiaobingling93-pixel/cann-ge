@@ -714,6 +714,59 @@ def Max(owner_graph: ascir.HintGraph,
     return _common_in_1_out_1_normal_op("Max", owner_graph, x, axis=axis, size=size, stride=stride)
 
 
+def ArgMax(owner_graph: ascir.HintGraph,
+           x: ascir.OpsOperatorOutput,
+           *,
+           axis: List[ascir.Axis],
+           size: Optional[List[ascir.SizeExpr]] = None,
+           stride: Optional[List[ascir.SizeExpr]] = None
+           ) -> ascir.OpsOperatorOutput:
+    return _common_in_1_out_1_normal_op("ArgMax", owner_graph, x, axis=axis, size=size, stride=stride)
+
+
+def ArgMaxMultiRPhase1(owner_graph: ascir.HintGraph,
+                       x: ascir.OpsOperatorOutput,
+                       *,
+                       axis: List[ascir.Axis],
+                       size: Optional[List[ascir.SizeExpr]] = None,
+                       stride: Optional[List[ascir.SizeExpr]] = None
+                       ) -> tuple:
+    """ArgMax R轴分核 Phase1: 1输入2输出（value, index）"""
+    name = _generate_op_name(owner_graph, "argmaxmultirphase1")
+    op_class = getattr(ascir.ops, "ArgMaxMultiRPhase1")
+    op_instance = op_class(name)
+    meta = _get_metadata(owner_graph)
+    meta.ops.append(op_instance)
+    op_instance.attr.sched.axis = axis
+    op_instance.x = x
+    _infer_or_set_view(op_instance.value, axis, size, stride)
+    _infer_or_set_view(op_instance.index, axis, size, stride)
+    op_instance.infer_dtype()
+    return (op_instance.value, op_instance.index)
+
+
+def ArgMaxMultiRPhase2(owner_graph: ascir.HintGraph,
+                       value: ascir.OpsOperatorOutput,
+                       index: ascir.OpsOperatorOutput,
+                       *,
+                       axis: List[ascir.Axis],
+                       size: Optional[List[ascir.SizeExpr]] = None,
+                       stride: Optional[List[ascir.SizeExpr]] = None
+                       ) -> ascir.OpsOperatorOutput:
+    """ArgMax R轴分核 Phase2: 2输入1输出"""
+    name = _generate_op_name(owner_graph, "argmaxmultirphase2")
+    op_class = getattr(ascir.ops, "ArgMaxMultiRPhase2")
+    op_instance = op_class(name)
+    meta = _get_metadata(owner_graph)
+    meta.ops.append(op_instance)
+    op_instance.attr.sched.axis = axis
+    op_instance.value = value
+    op_instance.index = index
+    _infer_or_set_view(op_instance.y, axis, size, stride)
+    op_instance.infer_dtype()
+    return op_instance.y
+
+
 def Any(owner_graph: ascir.HintGraph,
         x: ascir.OpsOperatorOutput,
         *,
@@ -1038,79 +1091,6 @@ def Ln(owner_graph: ascir.HintGraph,
     return _common_in_1_out_1_normal_op("Ln", owner_graph, x, axis=axis, size=size, stride=stride)
 
 
-def FloorToInt(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("FloorToInt", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Fmod(owner_graph: ascir.HintGraph,
-           x1: ascir.OpsOperatorOutput,
-           x2: ascir.OpsOperatorOutput,
-           *,
-           axis: List[ascir.Axis],
-           size: Optional[List[ascir.SizeExpr]] = None,
-           stride: Optional[List[ascir.SizeExpr]] = None
-           ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("Fmod", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
-
-
-def Hypot(owner_graph: ascir.HintGraph,
-           x1: ascir.OpsOperatorOutput,
-           x2: ascir.OpsOperatorOutput,
-           *,
-           axis: List[ascir.Axis],
-           size: Optional[List[ascir.SizeExpr]] = None,
-           stride: Optional[List[ascir.SizeExpr]] = None
-           ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("Hypot", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
-
-
-def Lgamma(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Lgamma", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Log10(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Log10", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def LogicalXor(owner_graph: ascir.HintGraph,
-           x1: ascir.OpsOperatorOutput,
-           x2: ascir.OpsOperatorOutput,
-           *,
-           axis: List[ascir.Axis],
-           size: Optional[List[ascir.SizeExpr]] = None,
-           stride: Optional[List[ascir.SizeExpr]] = None
-           ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("LogicalXor", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
-
-
-def Log1p(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Log1p", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
 def Expm(owner_graph: ascir.HintGraph,
          x: ascir.OpsOperatorOutput,
          *,
@@ -1237,96 +1217,3 @@ def IsFinite(owner_graph: ascir.HintGraph,
              stride: Optional[List[ascir.SizeExpr]] = None
              ) -> ascir.OpsOperatorOutput:
     return _common_in_1_out_1_normal_op("IsFinite", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Trunc(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Trunc", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def RoundToInt(owner_graph: ascir.HintGraph,
-              x: ascir.OpsOperatorOutput,
-              *,
-              axis: List[ascir.Axis],
-              size: Optional[List[ascir.SizeExpr]] = None,
-              stride: Optional[List[ascir.SizeExpr]] = None
-              ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("RoundToInt", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def TruncToInt(owner_graph: ascir.HintGraph,
-              x: ascir.OpsOperatorOutput,
-              *,
-              axis: List[ascir.Axis],
-              size: Optional[List[ascir.SizeExpr]] = None,
-              stride: Optional[List[ascir.SizeExpr]] = None
-              ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("TruncToInt", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Tan(owner_graph: ascir.HintGraph,
-        x: ascir.OpsOperatorOutput,
-        *,
-        axis: List[ascir.Axis],
-        size: Optional[List[ascir.SizeExpr]] = None,
-        stride: Optional[List[ascir.SizeExpr]] = None
-        ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Tan", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Square(owner_graph: ascir.HintGraph,
-          x: ascir.OpsOperatorOutput,
-          *,
-          axis: List[ascir.Axis],
-          size: Optional[List[ascir.SizeExpr]] = None,
-          stride: Optional[List[ascir.SizeExpr]] = None
-          ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Square", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def Sinh(owner_graph: ascir.HintGraph,
-        x: ascir.OpsOperatorOutput,
-        *,
-        axis: List[ascir.Axis],
-        size: Optional[List[ascir.SizeExpr]] = None,
-        stride: Optional[List[ascir.SizeExpr]] = None
-        ) -> ascir.OpsOperatorOutput:
-    return _common_in_1_out_1_normal_op("Sinh", owner_graph, x, axis=axis, size=size, stride=stride)
-
-
-def TruncDiv(owner_graph: ascir.HintGraph,
-            x1: ascir.OpsOperatorOutput,
-            x2: ascir.OpsOperatorOutput,
-            *,
-            axis: List[ascir.Axis],
-            size: Optional[List[ascir.SizeExpr]] = None,
-            stride: Optional[List[ascir.SizeExpr]] = None
-            ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("TruncDiv", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
-
-
-def Remainder(owner_graph: ascir.HintGraph,
-              x1: ascir.OpsOperatorOutput,
-              x2: ascir.OpsOperatorOutput,
-              *,
-              axis: List[ascir.Axis],
-              size: Optional[List[ascir.SizeExpr]] = None,
-              stride: Optional[List[ascir.SizeExpr]] = None
-              ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("Remainder", owner_graph, x1, x2, axis=axis, size=size, stride=stride)
-
-
-def Xor(owner_graph: ascir.HintGraph,
-        x1: ascir.OpsOperatorOutput,
-        x2: ascir.OpsOperatorOutput,
-        *,
-        axis: List[ascir.Axis],
-        size: Optional[List[ascir.SizeExpr]] = None,
-        stride: Optional[List[ascir.SizeExpr]] = None
-        ) -> ascir.OpsOperatorOutput:
-    return _common_in_2_out_1_normal_op("Xor", owner_graph, x1, x2, axis=axis, size=size, stride=stride)

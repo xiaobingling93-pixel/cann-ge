@@ -1,0 +1,228 @@
+{
+	"int64Mode": false,
+	"inputs": [
+		{
+			"L1_addr_offset":2,
+			"slice_offset":[
+				1,
+				2
+			],
+            "is_first_layer": false,
+            "split_index":1,
+			"data_type":"float16",
+			"dtype": "float16",
+			"format": "ND",
+			"ori_format":"NCHW",
+			"shape": [
+				-2
+			],
+			"range": [
+				[
+					2,
+					4
+				]
+			],
+			"ori_range":[
+				[
+					16,
+					16
+				],
+				[
+					128,
+					128
+				],
+				[
+					768,
+					768
+				]
+			],
+			"ori_shape":[
+				16,
+				128,
+				768
+			],
+			"const_value": {
+				"dtype": "float16",
+				"value": 11
+			},
+			"valid_shape": [
+				11,
+				12
+			],
+			"total_shape": [
+				11
+			]
+		},
+		null,
+		{
+			"dtype": "float16",
+			"format": "ND",
+			"shape": [
+				-2
+			],
+			"ori_range": [
+				[
+					3,
+					6
+				]
+			],
+			"const_value_range": {
+				"dtype": "int",
+				"value": [
+				      1,
+					  5
+			    ]
+			}
+		}
+	],
+	"outputs": [
+		{
+			"dtype": "float16",
+			"format": "ND",
+			"shape": [
+				-2
+			],
+			"slice_offset":[
+
+			],
+			"split_index":0,
+			"sub_format":2,
+			"total_shape":[
+				16,
+				128,
+				768
+			],
+			"valid_shape":[
+
+			]
+		}
+	],
+	"graphOpParams": [
+		{
+			"implMode": "high_performance",
+			"attrs": [
+				{
+					"dtype": "int",
+					"value": 1
+				},
+				{
+					"dtype": "int",
+					"value": 2
+				},
+				{
+					"dtype": "int",
+					"value": 4
+				},
+				{
+					"dtype": "int",
+					"value": 3
+				},
+				{
+					"dtype": "int",
+					"value": 3
+				},
+				{
+					"dtype": "list_int",
+					"value": [
+							1,
+							5
+						]
+				},
+				{
+					"dtype": "list_int",
+					"value": [
+							2,
+							5
+						]
+				},
+				{
+					"dtype": "list_float",
+					"value": [
+							1,
+							4
+						]
+				},
+				{
+					"dtype": "list_float",
+					"value": [
+							1,
+							-1
+						]
+				},
+				{
+					"dtype": "list_list_int",
+					"value": [
+							[
+								16,
+								16
+							],
+							[
+								2,
+								12
+							],
+							[
+								500,
+								768
+							]
+						]
+				},
+				{
+					"dtype": "list_string",
+					"value": [
+							"str1",
+							"str2",
+							"str3"
+						]
+				},
+				{
+					"dtype": "int",
+					"value": 4
+				},
+				{
+					"dtype": "int",
+					"value": 4
+				}
+			]
+		},
+		{
+			"implMode": "high_performance"
+		},
+		{
+			"implMode": "high_performance",
+			"attrs": [
+				{
+					"name": "strides",
+					"dtype": "list_int",
+					"value": [
+							1,
+							5
+						]
+				},
+				{
+					"name": "strides",
+					"dtype": "list_int",
+					"value": [
+							1,
+							5
+						]
+				},
+				{
+					"name": "strides",
+					"dtype": "list_int",
+					"value": [
+							1,
+							5
+						]
+				},
+				{
+					"name": "strides",
+					"dtype": "list_int",
+					"value": [
+							1,
+							5
+						]
+				}
+			]
+		}
+	]
+}

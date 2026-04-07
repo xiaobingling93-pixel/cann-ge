@@ -219,6 +219,10 @@ target_link_options(ge_common PRIVATE
     -Wl,-Bsymbolic
 )
 
+target_link_directories(ge_common PRIVATE
+ 	${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(ge_common
     PRIVATE
         intf_pub
@@ -288,6 +292,10 @@ target_include_directories(ge_common_base PRIVATE
 
 target_link_options(ge_common_base PRIVATE
     -Wl,-Bsymbolic
+)
+
+target_link_directories(ge_common_base PRIVATE
+ 	${ASCEND_INSTALL_PATH}/lib64
 )
 
 target_link_libraries(ge_common_base

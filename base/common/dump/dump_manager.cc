@@ -33,6 +33,7 @@ const std::string kDumpEnable = "1";
 const std::string kLiteExceptionDumpEnable = "2";
 const std::string kDeviceDumpOn = "device_on";
 constexpr uint32_t kAllOverFlow = 3U;
+constexpr uint32_t kDumpSwitchOff = 0U;
 const std::string kReloadDumpFuncName = "Load";
 const std::string kUnloadDumpFuncName = "Unload";
 
@@ -477,7 +478,7 @@ Status DumpManager::AddDumpProperties(uint64_t session_id, const DumpProperties 
     config.dumpPath = dump_properties.GetDumpPath();
     config.dumpMode = dump_properties.GetDumpMode();
     config.dumpData = dump_properties.GetDumpData();
-    config.dumpSwitch = Adx::OPERATOR_OP_DUMP;
+    config.dumpSwitch = kDumpSwitchOff;
     GELOGI("Add overflow dump properties, session id:%lu, dumpPath:%s, dumpMode: %s, dumpData: %s", session_id,
            config.dumpPath.c_str(), config.dumpMode.c_str(), config.dumpData.c_str());
     GE_ASSERT_TRUE((Adx::AdumpSetDumpConfig(Adx::DumpType::OP_OVERFLOW, config) == Adx::ADUMP_SUCCESS),
@@ -513,7 +514,7 @@ void DumpManager::RemoveDumpProperties(uint64_t session_id) {
   if (dump_properties_map_.empty() && (Adx::AdumpGetDumpSwitch(Adx::DumpType::OP_OVERFLOW)) != 0) {
     Adx::DumpConfig config;
     config.dumpStatus = "off";
-    config.dumpSwitch = 0;
+    config.dumpSwitch = kDumpSwitchOff;
     const auto adx_ret = Adx::AdumpSetDumpConfig(Adx::DumpType::OP_OVERFLOW, config);
     GELOGI("call AdumpSetDumpConfig to disable overflow dump, adx errorCode = %d", adx_ret);
   }

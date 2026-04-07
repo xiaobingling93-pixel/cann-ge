@@ -77,6 +77,10 @@ target_compile_definitions(fusion_pass PRIVATE
         $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_BLUE>
         )
 
+target_link_directories(fusion_pass PRIVATE
+        ${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(fusion_pass PRIVATE
         intf_pub
         msprof_headers

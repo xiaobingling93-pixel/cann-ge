@@ -177,7 +177,6 @@ add_executable(fe_st
         ${FE_TEST_ROOT_PATH}/graph_constructor/ub_pass_manager.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/graph_builder_utils.cc
         ${FE_TEST_ROOT_PATH}/graph_constructor/graph_constructor.cc
-        ${TEFUSION_ST_TEST_LIST}
         ${CMAKE_CURRENT_LIST_DIR}/testcase/main.cc)
 
 target_include_directories(fe_st PRIVATE

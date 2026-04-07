@@ -40,6 +40,10 @@ target_compile_definitions(aicore_utils PRIVATE
         $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_BLUE>
         )
 
+target_link_directories(aicore_utils PRIVATE
+ 	${ASCEND_INSTALL_PATH}/lib64
+)
+
 target_link_libraries(aicore_utils
         PRIVATE
                 intf_pub

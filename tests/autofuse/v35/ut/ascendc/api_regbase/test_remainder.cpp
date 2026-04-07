@@ -73,7 +73,7 @@ class TestRegbaseApiRemainder :public testing::Test {
       // Remainder: x1 - x2 * trunc(x1/x2)
       param.exp[i] = static_cast<T>(static_cast<double>(input) -
                                     static_cast<double>(input1) *
-                                        std::trunc(static_cast<double>(input) / static_cast<double>(input1)));
+                                        std::floor(static_cast<double>(input) / static_cast<double>(input1)));
     }
   }
 

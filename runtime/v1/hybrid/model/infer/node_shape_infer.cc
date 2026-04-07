@@ -19,7 +19,6 @@ namespace hybrid {
 
 namespace {
 const int32_t kAlignment = 32;
-const int32_t kAlignmentUnit = 2;
 
 Status CalcTensorSize(const DataType data_type, const std::vector<int64_t> &shape,
                       int64_t &tensor_size) {
@@ -43,12 +42,14 @@ Status CalcTensorSize(const DataType data_type, const std::vector<int64_t> &shap
     tensor_size *= dim;
   }
 
+  const int64_t padding_size = TensorUtils::GetPaddingSize();
+  const int64_t append_size = kAlignment + padding_size;
   GE_CHK_STATUS_RET(
-      CheckInt64AddOverflow(tensor_size, kAlignmentUnit * kAlignment - 1),
-      "[Check][Overflow]Tensor size is too large:%ld, shape = [%s]"
+      CheckInt64AddOverflow(tensor_size, append_size - 1),
+      "[Check][Overflow]Tensor size is too large:%" PRId64 ", shape = [%s]"
       "Shape size will overflow when add align.",
       tensor_size, GeShape(shape).ToString().c_str());
-  tensor_size = (tensor_size + kAlignmentUnit * kAlignment - 1) / kAlignment * kAlignment;
+  tensor_size = (tensor_size + append_size - 1) / kAlignment * kAlignment;
   return SUCCESS;
 }
 

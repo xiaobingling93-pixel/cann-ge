@@ -193,11 +193,9 @@ bool IsTilerLastReduceAxis(const Tensor &tensor) {
   return count == 1;
 }
 
-void ReduceInitCodeGen(const Tensor &x, const Tensor &y, const int &type_value, std::stringstream &ss, const TPipe &tpipe)
+void ReduceInitCodeGen(const Tensor &x, const Tensor &y, const int &type_value, std::stringstream &ss, const TPipe &tpipe, const std::string &dtype_name)
 {
   if (x.isAr) {
-    std::string dtype_name;
-    Tensor::DtypeName(y.dtype, dtype_name); // 调用处已经做过校验
     std::string is_last_axis_str = IsTilerLastReduceAxis(y) ? "true" : "false";
     ss << "ReduceInit<" << dtype_name << ", " << type_value << ", " << is_last_axis_str << ">("
       << x << ", " << "first_actual" << ", last" << ", last_actual, " << tpipe.tiler.GetAxis(x.vectorized_axis.back()).actual_size
@@ -220,4 +218,63 @@ void ReduceDimACodeGen(const Tensor &x, const std::string &apiName, std::strings
   return;
 }
 
-}  // namespace codegen
+void GenLastTwoRAxisSizeProductCode(const Tensor &x, const Tensor &y,
+                                    const TPipe &tpipe, std::stringstream &ss) {
+  // 收集所有R轴
+  std::vector<std::pair<ascir::AxisId, size_t>> r_axes;
+
+  for (size_t i = 0; i < x.axis.size(); ++i) {
+    bool is_r_axis = (y.axis_strides[i] == Zero && x.axis_strides[i] != Zero);
+    if (is_r_axis) {
+      r_axes.push_back({x.axis[i], i});
+    }
+  }
+
+  // 根据R轴数量生成不同的代码
+  if (r_axes.size() >= 2) {
+    // 有至少两个R轴，使用最后两个R轴
+    ascir::AxisId last_r_axis = r_axes[r_axes.size() - 1].first;
+    ascir::AxisId second_last_r_axis = r_axes[r_axes.size() - 2].first;
+
+    ss << "// 最后两个R轴大小的乘积，作为每个核处理的R轴块大小" << std::endl;
+    ss << "int64_t r_axis_block_size = "
+       << tpipe.tiler.AxisSize(last_r_axis)
+       << " * "
+       << tpipe.tiler.AxisSize(second_last_r_axis)
+       << ";" << std::endl;
+  } else if (r_axes.size() == 1) {
+    // 只有一个R轴
+    ss << "// 只有一个R轴，使用其大小作为块大小" << std::endl;
+    ss << "int64_t r_axis_block_size = " << tpipe.tiler.AxisSize(r_axes[0].first) << ";" << std::endl;
+  } else {
+    // 没有R轴（特殊情况）
+    ss << "// 没有R轴，使用默认值" << std::endl;
+    ss << "int64_t r_axis_block_size = 1;" << std::endl;
+  }
+}
+
+Status GetDtypeNameForReduce(const std::string &api_name, const Tensor &x, const Tensor &y, std::string &dtype_name) {
+  // ArgMax系列算子（ArgMax、ArgMaxMultiRPhase1、ArgMaxMultiRPhase2）需要使用value的类型作为模板参数
+  // 而不是index的类型，因此统一使用x（inputs[0]）的dtype
+  if (api_name == "ArgMax" || api_name == "ArgMaxMultiRPhase1" || api_name == "ArgMaxMultiRPhase2") {
+    GE_CHK_STATUS_RET(Tensor::DtypeName(x.dtype, dtype_name), "Codegen get data type:%d failed", static_cast<int32_t>(x.dtype));
+  } else {
+    GE_CHK_STATUS_RET(Tensor::DtypeName(y.dtype, dtype_name), "Codegen get data type:%d failed", static_cast<int32_t>(y.dtype));
+  }
+  return ge::SUCCESS;
+}
+
+void GenAccumulatedOffsetDeclForArgMax(const std::string &api_name, const Tensor &x, const Tensor &y,
+                              const TPipe &tpipe, std::stringstream &ss) {
+  // ArgMax 和 ArgMaxMultiRPhase1 需要在循环外声明累加的 offset 变量（使用 static 保存状态）
+  if (api_name == "ArgMax") {
+    ss << "static int64_t accumulated_offset = 0;" << std::endl;
+  } else if (api_name == "ArgMaxMultiRPhase1") {
+    // ArgMaxMultiRPhase1的初始offset = block_dim * 最后两个R轴大小的乘积
+    // 使用辅助函数生成计算最后两个R轴大小乘积的代码
+    GenLastTwoRAxisSizeProductCode(x, y, tpipe, ss);
+    ss << "static int64_t accumulated_offset = 0;" << std::endl;
+  }
+}
+
+}  // namespace reduce_base

@@ -1,0 +1,105 @@
+{
+    "binFileName": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd764",
+    "binFileSuffix": ".o",
+    "blockDim": -1,
+    "kernelName": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd764",
+    "magic": "RT_DEV_BINARY_MAGIC_ELF",
+    "maxKernelId": 10007,
+    "opParaSize": 12,
+    "parameters": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "sha256": "b97559990204d88759446ca413be0189aa572e941ff87908a658d7044ead8854",
+    "supportInfo": {
+        "inputs": [
+            {
+                "index": 0,
+                "tensor": [
+                    {
+                        "range": [
+                            [
+                                1,
+                                16
+                            ],
+                            [
+                                33,
+                                48
+                            ]
+                        ],
+                        "shape": [
+                            -1,
+                            -1
+                        ]
+                    }
+                ],
+                "valueSkip": "true"
+            },
+            {
+                "index": 1,
+                "tensor": [
+                    {
+                        "range": [
+                            [
+                                1,
+                                16
+                            ],
+                            [
+                                33,
+                                48
+                            ]
+                        ],
+                        "shape": [
+                            -1,
+                            -1
+                        ]
+                    }
+                ],
+                "valueSkip": "false"
+            },
+            {
+                "index": 2,
+                "tensor": [
+                    {
+                        "const_value_range": [
+                            1,
+                            16
+                        ],
+                        "range": [
+                            [
+                                1,
+                                16
+                            ],
+                            [
+                                33,
+                                48
+                            ]
+                        ],
+                        "shape": [
+                            -1,
+                            -1
+                        ]
+                    }
+                ],
+                "valueSkip": "false"
+            }
+        ]
+    },
+    "staticSupportInfo": {
+        "outputs": [
+            {
+                "index": 1,
+                "tensor": [
+                    {
+                        "shape": [
+                            -1,
+                            -1
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

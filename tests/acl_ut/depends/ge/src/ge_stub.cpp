@@ -85,6 +85,7 @@ namespace {
     std::map<std::string, std::string> ge_context_option_name_map;
     int32_t ge_context_stream_sync_timeout = -1;
     int32_t ge_context_event_sync_timeout = -1;
+    constexpr int64_t kDefaultPaddingSize = 32;
 }
 
 ge::Status aclStub::SetDump(const ge::DumpConfig &dumpConfig)
@@ -1631,6 +1632,11 @@ std::map<string, AnyValue> g_geAttrMap;
 
     void TensorUtils::SetOutputTensor(GeTensorDesc& tensorDesc, bool flag)
     {
+    }
+
+    int64_t TensorUtils::GetPaddingSize()
+    {
+        return kDefaultPaddingSize;
     }
 
 

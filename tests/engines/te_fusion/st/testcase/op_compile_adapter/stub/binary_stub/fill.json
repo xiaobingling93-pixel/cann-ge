@@ -1,0 +1,191 @@
+{
+    "binList": [
+        {
+			"int64Mode": false,
+            "implMode": "high_precision",
+            "staticKey": "success",
+            "inputs": [
+                {
+					"L1_addr_offset":2,
+                    "L1_fusion_type":6,
+                    "L1_workspace_size":-1,
+                    "addr_type":0,
+                    "data_type":"float16",
+                    "dtype": "float16",
+                    "format": "ND",
+					"ori_format":"NCHW",
+                    "shape": [
+                        -2
+                    ],
+					"range": [
+						[
+							2,
+							5
+						],
+						[
+							7,
+							10
+						]
+					],
+					"ori_range":[
+						[
+							2,
+							5
+						],
+						[
+							16,
+							200
+						],
+						[
+							768,
+							768
+						]
+					],
+					"ori_shape":[
+						16,
+						128,
+						768
+					]
+                },
+				null,
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ],
+					"ori_range": [
+                        [
+							1,
+							-1
+						]
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ],
+					"slice_offset":[
+
+                    ],
+                    "split_index":1,
+                    "sub_format":0,
+                    "total_shape":[
+                        16,
+                        128,
+                        768
+                    ],
+                    "valid_shape":[
+
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "dtype": "bool",
+                    "value": true
+                },
+                {
+                    "dtype": "list_int",
+                    "value": null
+                },
+                {
+                    "dtype": "string",
+                    "value": "condv"
+                },
+                {
+                    "dtype": "int",
+                    "value": 3
+                },
+                {
+                    "dtype": "float",
+                    "value": 3
+                },
+				{
+                    "dtype": "list_int",
+                    "value": [
+							2,
+							5
+						]
+                },
+				{
+                    "dtype": "list_list_int",
+                    "value": [
+							[
+								16,
+								16
+							],
+							[
+								2,
+								20
+							],
+							[
+								500,
+								768
+							]
+						]
+                },
+				{
+                    "dtype": "list_bool",
+                    "value": [
+							true,
+							false
+						]
+                },
+				{
+                    "dtype": "float",
+                    "value": 4
+                }
+            ],
+            "binInfo": {
+                "jsonFilePath": "te_matmul_2ac1b9067af400eb161d75ccd6c6ca71bed7b97750d79c4476fb65ac9bedd762.json"
+            }
+        },
+        {
+            "implMode": "high_performance",
+            "staticKey": "86d55bbbc4cd1543c0ee9f067647167e5059dc164055f118167c9977e46da707",
+            "inputs": [
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ]
+                },
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "dtype": "float16",
+                    "format": "ND",
+                    "shape": [
+                        -2
+                    ]
+                }
+            ],
+            "attrs": [
+                {
+                    "dtype": "bool",
+                    "value": true
+                },
+                {
+                    "dtype": "list_int",
+                    "value": null
+                }
+            ],
+            "binInfo": {
+                "binFilePath": "ascend910/add/add_1.json"
+            }
+        }
+    ]
+}

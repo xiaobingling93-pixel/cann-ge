@@ -150,6 +150,7 @@ struct ShareGraph {
   static ge::ComputeGraphPtr RoundToIntFloatToInt32FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr TruncToIntBf16ToInt32FusedGraph(size_t dims_size);
   static ge::ComputeGraphPtr RemainderBf16FusedGraph(size_t dims_size);
+  static ge::ComputeGraphPtr ArgMaxFusedGraph(size_t dims_size);
 };
 }  // namespace ascir
 #endif

@@ -67,6 +67,7 @@ target_compile_options(lowering PRIVATE
 target_link_libraries(lowering PRIVATE
     ascend_protobuf
     graph_base
+    graph
     register
 )
 

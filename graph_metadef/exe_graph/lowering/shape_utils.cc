@@ -11,6 +11,7 @@
 #include "exe_graph/lowering/shape_utils.h"
 #include "graph/utils/type_utils.h"
 #include "graph/utils/math_util.h"
+#include "graph/utils/tensor_utils.h"
 #include "common/checker.h"
 
 namespace gert {
@@ -37,8 +38,9 @@ ge::graphStatus CalcAlignedSizeByShape(const Shape &shape, ge::DataType data_typ
     return ge::GRAPH_FAILED;
   }
 
+  const uint64_t padding_size = static_cast<uint64_t>(ge::TensorUtils::GetPaddingSize());
   // 不可能溢出，因为ret最大值也只有int64的最大值
-  ret_tensor_size = ge::RoundUp(static_cast<uint64_t>(cal_size), kAlignBytes) + kAlignBytes;
+  ret_tensor_size = ge::RoundUp(static_cast<uint64_t>(cal_size), kAlignBytes) + padding_size;
   return ge::GRAPH_SUCCESS;
 }
 }  // namespace gert

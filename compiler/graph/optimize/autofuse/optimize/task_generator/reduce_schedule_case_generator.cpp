@@ -61,6 +61,9 @@ Status DoCopyWorkspaceTensorAttr(const ge::AscNodePtr &src_node, ge::AscNodePtr 
 
 const std::unordered_map<std::string, std::function<ReduceType(const char*)>> reducers = {
   {"Max",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::Max>{}, n}; }},
+  {"ArgMax",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::ArgMaxMultiRPhase2>{}, n}; }},  // ArgMax 二阶段使用 ArgMaxMultiRPhase2
+  {"ArgMaxMultiRPhase1",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::ArgMaxMultiRPhase2>{}, n}; }},  // ArgMaxMultiRPhase1 二阶段使用 ArgMaxMultiRPhase2
+  {"ArgMaxMultiRPhase2",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::ArgMaxMultiRPhase2>{}, n}; }},  // ArgMaxMultiRPhase2 二阶段使用 ArgMaxMultiRPhase2
   {"Sum",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::Sum>{}, n}; }},
   {"Mean", [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::Sum>{}, n}; }},  // Mean 二阶段使用 Sum
   {"Min",  [](const char* n) { return ReduceType{std::in_place_type_t<ge::ascir_op::Min>{}, n}; }},
@@ -374,7 +377,7 @@ Status ReducePartitionCaseGenerator::PartitionReduce(ge::AscNodePtr &src_node, a
   GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(store_node->GetOutAnchor(0UL), workspace_pre_node->GetInAnchor(0UL)));
   // add workspace_post_node->load->dst
   GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(workspace_post_node->GetOutAnchor(0UL), load_node->GetInAnchor(0UL)));
-	  return ge::GRAPH_SUCCESS;
+  return ge::GRAPH_SUCCESS;
 }
 
 Status ReducePartitionCaseGenerator::ReducePartitionPostFusion(ascir::ImplGraph &impl_graph) {
@@ -647,16 +650,38 @@ Status RMulticorePhase2Graph::Construct() {
   std::visit([](auto&& reduce_op) {
     reduce_op.attr.sched.axis = {0, 1};
   }, phase2graph_reduce);
+
+  // 对于ArgMax，需要在调用CompletePhaseGraph之前保存输入dtype（value类型）
+  // 因为CompletePhaseGraph会调用PartitionByReduce，后者会删除reduce_node
+  ge::AscTensorDataType argmax_input_dtype;
+  if (reduce_node->GetType() == "ArgMax") {
+    GE_ASSERT_TRUE(!reduce_node->inputs().empty(), "ArgMax node should have at least 1 input");
+    argmax_input_dtype = reduce_node->inputs[0].attr.dtype;
+  }
+
   GE_CHK_STATUS_RET(CompletePhaseGraph(phase2graph_reduce));
   GE_CHK_STATUS_RET(CreateVarAxis());
+
   auto workspace_node = phase2graph.FindNode((phase2graph.GetName() + "_workspace").c_str());
   GE_ASSERT_NOTNULL(workspace_node);
   workspace_node->attr.sched.axis = {0, 1};
-  GE_CHK_STATUS_RET(CompleteNodeAttr(workspace_node, true, reduce_node->outputs[0].attr.dtype));
+  // 对于ArgMax，workspace存储的是value（输入类型），不是index（输出类型）
+  ge::AscTensorDataType workspace_dtype;
+  if (reduce_node->GetType() == "ArgMax") {
+    workspace_dtype = argmax_input_dtype;
+  } else {
+    workspace_dtype = reduce_node->outputs[0].attr.dtype;
+  }
+  GE_CHK_STATUS_RET(CompleteNodeAttr(workspace_node, true, workspace_dtype));
   auto load_node = phase2graph.FindNode((phase2graph.GetName() + "_load").c_str());
   GE_ASSERT_NOTNULL(load_node);
   load_node->attr.sched.axis = {0, 1};
-  GE_CHK_STATUS_RET(CompleteNodeAttr(load_node, true, reduce_node->outputs[0].attr.dtype));
+  // load从workspace读取，dtype与workspace相同
+  GE_CHK_STATUS_RET(CompleteNodeAttr(load_node, true, workspace_dtype));
+
+  // ArgMax特殊处理：需要设置load_index_node和workspace_index_node的属性
+  GE_CHK_STATUS_RET(SetupArgMaxIndexNodes(reduce_node, phase2graph));
+
   auto reduce_node_parse2graph = phase2graph.FindNode((phase2graph.GetName() + "_" + reduce_node->GetName() + "_reduce").c_str());
   GE_ASSERT_NOTNULL(reduce_node_parse2graph);
   std::set<ge::NodePtr> visited{reduce_node_parse2graph};
@@ -707,6 +732,30 @@ Status RMulticorePhase2Graph::CompleteNodeAttr(ge::AscNodePtr &node, bool before
   return ge::GRAPH_SUCCESS;
 }
 
+Status RMulticorePhase2Graph::SetupArgMaxIndexNodes(const ge::AscNodePtr &reduce_node,
+                                                     ascir::ImplGraph &phase2graph) {
+  // ArgMax特殊处理：需要设置load_index_node和workspace_index_node的属性
+  // 注意：虽然这些设置可能被后续的CopyFrom部分覆盖，但轴信息(strides, repeats等)需要保留
+  if (reduce_node->GetType() == "ArgMax") {
+    auto workspace_index_node = phase2graph.FindNode((phase2graph.GetName() + "_workspace_index").c_str());
+    if (workspace_index_node != nullptr) {
+      workspace_index_node->attr.sched.axis = {0, 1};
+      ge::AscTensorDataType index_dtype;
+      index_dtype = ge::DT_INT64;
+      GE_CHK_STATUS_RET(CompleteNodeAttr(workspace_index_node, true, index_dtype));
+    }
+
+    auto load_index_node = phase2graph.FindNode((phase2graph.GetName() + "_load_index").c_str());
+    if (load_index_node != nullptr) {
+      load_index_node->attr.sched.axis = {0, 1};
+      ge::AscTensorDataType index_dtype;
+      index_dtype = ge::DT_INT64;
+      GE_CHK_STATUS_RET(CompleteNodeAttr(load_index_node, true, index_dtype));
+    }
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
 Status RMulticorePhase2Graph::CompletePhaseGraph(ReduceType &phase2graph_reduce) {
   std::vector<ge::AscNodePtr> node_order;
   GE_ASSERT_GRAPH_SUCCESS(PartitionByReduce(phase_graph, phase2graph_reduce, node_order));
@@ -719,6 +768,331 @@ Status RMulticorePhase2Graph::CompletePhaseGraph(ReduceType &phase2graph_reduce)
   return ge::GRAPH_SUCCESS;
 }
 
+// 辅助函数：设置ArgMaxMultiRPhase1的输出属性
+// ArgMaxMultiRPhase1有2个输出：output[0]=value(T类型), output[1]=index(DT_INT64)
+// value的shape从原始ArgMax输出复制，dtype从输入复制
+// index的shape从原始ArgMax输出复制，dtype固定为DT_INT64
+static Status SetupArgMaxPhase1OutputAttrs(const ge::AscNodePtr &phase1_node,
+                                    const ge::AscTensorAttr &input_attr,
+                                    const ge::AscTensorAttr &output_attr) {
+  // 设置输出0（value）：shape从argmax_node输出复制，dtype从输入复制
+  {
+    auto op_desc = phase1_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    // 复制shape等属性，但dtype使用输入的类型
+    *tensor_attr_group = output_attr;
+    tensor_attr_group->dtype = input_attr.dtype;
+  }
+
+  // 设置输出1（index）：shape和格式等从输出0复制，dtype固定为DT_INT64
+  {
+    auto op_desc = phase1_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(1));
+    auto tensor_attr_group = op_desc->MutableOutputDesc(1)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    // 使用之前保存的output_attr，而不是访问phase1_node->outputs[0]
+    *tensor_attr_group = output_attr;
+    tensor_attr_group->dtype = ge::DT_INT64;
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
+// 辅助函数：复制节点级别的属性（sched、ir_attr等）
+static void CopyNodeLevelAttrs(const ge::AscNodePtr &dst_node, const ge::AscNodePtr &src_node) {
+  auto dst_op_desc = dst_node->GetOpDesc();
+  auto dst_asc_node_attr = dst_op_desc->GetOrCreateAttrsGroup<ge::AscNodeAttr>();
+  auto src_op_desc = src_node->GetOpDesc();
+  auto src_asc_node_attr = src_op_desc->GetOrCreateAttrsGroup<ge::AscNodeAttr>();
+  if (src_asc_node_attr != nullptr && dst_asc_node_attr != nullptr) {
+    dst_asc_node_attr->sched = src_asc_node_attr->sched;
+    if (src_asc_node_attr->ir_attr) {
+      dst_asc_node_attr->ir_attr = src_asc_node_attr->ir_attr->Clone();
+    }
+  }
+}
+
+// R轴分核时，在阶段1将ArgMax替换为ArgMaxMultiRPhase1
+Status ReplaceArgMaxInPhase1(ascir::ImplGraph &phase_graph,
+                              const ge::AscNodePtr &argmax_node,
+                              ge::AscNodePtr &store_node,
+                              ge::AscNodePtr &workspace_pre_node,
+                              ge::AscNodePtr &workspace_pre_index_node_out) {
+  // 创建ArgMaxMultiRPhase1节点替换原始ArgMax
+  ge::ascir_op::ArgMaxMultiRPhase1 argmax_phase1((argmax_node->GetName() + "_phase1").c_str());
+  auto argmax_phase1_node = phase_graph.AddNode(argmax_phase1);
+
+  // 复制节点级别的属性（sched、ir_attr等）
+  CopyNodeLevelAttrs(argmax_phase1_node, argmax_node);
+
+  // 保存输入和输出属性，因为后续重定向边会导致inputs被清空
+  const auto &input_attr = argmax_node->inputs[0].attr;
+  const auto &output_attr = argmax_node->outputs[0].attr;
+
+  // 为ArgMaxMultiRPhase1的两个输出设置正确的tensor属性
+  (void)SetupArgMaxPhase1OutputAttrs(argmax_phase1_node, input_attr, output_attr);
+
+  // 将ArgMax节点的所有输入边重定向到ArgMaxMultiRPhase1节点
+  for (const auto &in_anchor : argmax_node->GetAllInDataAnchors()) {
+    GE_ASSERT_NOTNULL(in_anchor);
+    auto src_anchor = in_anchor->GetPeerOutAnchor();
+    if (src_anchor == nullptr) {
+      continue;
+    }
+    GE_CHK_STATUS_RET(ge::GraphUtils::RemoveEdge(src_anchor, in_anchor));
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(src_anchor, argmax_phase1_node->GetInAnchor(in_anchor->GetIdx())));
+  }
+
+  // 为ArgMaxMultiRPhase1的第二个输出（index）创建额外的store节点
+  // 注意：workspace_pre_index_node由调用方创建并传入，通过名称"_workspace_index"与Phase2的workspace_post_index关联
+  ge::ascir_op::Store store_index((argmax_node->GetName() + "_Store_index").c_str());
+  auto store_index_node = phase_graph.AddNode(store_index);
+
+  // 复制tensor属性
+  // 注意：argmax_phase1_node有两个输出，需要正确设置属性
+
+  // store_node接收argmax_phase1_node的输出0（value），类型应该是T（和输入相同）
+  // 不能从argmax_node复制（argmax_node的输出是index，类型DT_INT64）
+  // 注意：此时输入边已被重定向，argmax_node->inputs()可能为空，需要使用之前保存的属性
+  {
+    // 复制节点级别属性
+    CopyNodeLevelAttrs(store_node, argmax_node);
+    // 复制输出tensor属性：shape从output_attr复制，dtype从input_attr复制
+    auto op_desc = store_node->GetOpDesc();
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    *tensor_attr_group = output_attr;
+    tensor_attr_group->dtype = input_attr.dtype;
+  }
+
+  // store_index_node接收argmax_phase1_node的输出1（index），类型是DT_INT64
+  // 使用之前保存的属性设置，因为此时输入边已被重定向
+  {
+    // 复制节点级别属性
+    CopyNodeLevelAttrs(store_index_node, argmax_node);
+    // 复制输出tensor属性：使用保存的output_attr
+    auto op_desc = store_index_node->GetOpDesc();
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    *tensor_attr_group = output_attr;  // index的shape和argmax输出相同
+  }
+
+  // workspace_pre_node连接到store_node，从store_node复制属性
+  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(store_node, workspace_pre_node));
+  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(store_index_node, workspace_pre_index_node_out));
+
+  // 连接ArgMaxMultiRPhase1的第一个输出（value）到store节点
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(argmax_phase1_node->GetOutAnchor(0UL),
+                                            store_node->GetInAnchor(0UL)));
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(store_node->GetOutAnchor(0UL),
+                                            workspace_pre_node->GetInAnchor(0UL)));
+
+  // 连接ArgMaxMultiRPhase1的第二个输出（index）到store_index和workspace
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(argmax_phase1_node->GetOutAnchor(1UL),
+                                            store_index_node->GetInAnchor(0UL)));
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(store_index_node->GetOutAnchor(0UL),
+                                            workspace_pre_index_node_out->GetInAnchor(0UL)));
+
+  // 删除原始的ArgMax节点，避免"not visited"错误
+  // 输入边已被重定向到argmax_phase1_node
+  // 输出边将在PartitionByReduce中重定向到new_reduce_node
+  auto compute_graph = ge::AscGraphUtils::GetComputeGraph(phase_graph);
+  GE_ASSERT_GRAPH_SUCCESS(ge::GraphUtils::RemoveNodeWithoutRelink(compute_graph, argmax_node));
+
+  return ge::GRAPH_SUCCESS;
+}
+
+// 已保存的节点属性（封装属性指针和属性值）
+struct SavedNodeAttrInfo {
+  const ge::AscNodeAttr *attr_ptr;  // 属性指针
+  ge::AscNodeAttr attr_value;        // 属性值
+};
+
+// ArgMax的index路径节点
+struct ArgMaxIndexNodes {
+  ge::AscNodePtr workspace_post_index_node;  // index workspace节点
+  ge::AscNodePtr load_index_node;            // index load节点
+};
+
+// Phase1节点集合结构体
+struct Phase1Nodes {
+  ge::AscNodePtr store_node;          // store节点
+  ge::AscNodePtr workspace_pre_node;  // workspace pre节点
+};
+
+// Phase2节点集合结构体
+struct Phase2Nodes {
+  ge::AscNodePtr workspace_post_node;  // workspace post节点
+  ge::AscNodePtr load_node;            // load节点
+  ge::AscNodePtr new_reduce_node;      // Phase2的reduce节点
+};
+
+// 图上下文结构体
+struct ArgMaxPartitionGraphContext {
+  ascir::ImplGraph &impl_graph;              // 图
+  std::vector<ge::AscNodePtr> &node_order;   // 节点顺序
+  std::string graph_name;                    // 图名称（使用值而非引用，避免悬空引用）
+};
+
+// 设置ArgMax Phase2的所有属性
+static Status SetupArgMaxPhase2Attrs(const SavedNodeAttrInfo &saved_attr,
+                                     const Phase2Nodes &phase2_nodes,
+                                     const ge::AscTensorAttr &reduce_input_attr,
+                                     const ge::AscTensorAttr &reduce_output_attr,
+                                     const ArgMaxIndexNodes &index_nodes) {
+  // 复制节点级别的属性到new_reduce_node
+  if (saved_attr.attr_ptr != nullptr) {
+    auto op_desc = phase2_nodes.new_reduce_node->GetOpDesc();
+    auto dst_asc_node_attr = op_desc->GetOrCreateAttrsGroup<ge::AscNodeAttr>();
+    if (dst_asc_node_attr != nullptr) {
+      dst_asc_node_attr->sched = saved_attr.attr_value.sched;
+      if (saved_attr.attr_value.ir_attr) {
+        dst_asc_node_attr->ir_attr = saved_attr.attr_value.ir_attr->Clone();
+      }
+    }
+  }
+
+  // 设置输出（index）：shape和reduce输出相同，dtype为DT_INT64
+  {
+    auto op_desc = phase2_nodes.new_reduce_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    *tensor_attr_group = reduce_output_attr;
+    tensor_attr_group->dtype = ge::DT_INT64;
+  }
+
+  // ArgMax特殊处理：先设置workspace和load的输出dtype
+  {
+    // 设置workspace_post和load的输出dtype为value类型
+    auto op_desc = phase2_nodes.workspace_post_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    tensor_attr_group->dtype = reduce_input_attr.dtype;
+
+    op_desc = phase2_nodes.load_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    tensor_attr_group->dtype = reduce_input_attr.dtype;
+  }
+  {
+    // 设置workspace_post_index和load_index的输出dtype为DT_INT64
+    auto op_desc = index_nodes.workspace_post_index_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    auto tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    tensor_attr_group->dtype = ge::DT_INT64;
+
+    op_desc = index_nodes.load_index_node->GetOpDesc();
+    GE_CHECK_NOTNULL(op_desc->MutableOutputDesc(0));
+    tensor_attr_group = op_desc->MutableOutputDesc(0)->GetOrCreateAttrsGroup<ge::AscTensorAttr>();
+    GE_ASSERT_NOTNULL(tensor_attr_group);
+    tensor_attr_group->dtype = ge::DT_INT64;
+  }
+
+  return ge::GRAPH_SUCCESS;
+}
+
+// 连接ArgMax Phase2的所有边
+// 参数：1.输出锚点 2.输出边 3.Phase2节点集合 4.index workspace节点 5.index load节点
+static Status ConnectArgMaxPhase2Edges(ge::OutDataAnchorPtr argmax_out_anchor,
+                                     const std::vector<ge::InDataAnchorPtr> &argmax_out_edges,
+                                     const Phase2Nodes &phase2_nodes,
+                                     const ge::AscNodePtr &workspace_post_index_node,
+                                     const ge::AscNodePtr &load_index_node) {
+  // 重定向原始ArgMax的输出边到new_reduce_node（ArgMaxMultiRPhase2）
+  for (const auto &peer_in_anchor : argmax_out_edges) {
+    // 移除原始边（虽然reduce_node已被删除，但移除边的操作应该还能执行）
+    GE_CHK_STATUS_RET(ge::GraphUtils::RemoveEdge(argmax_out_anchor, peer_in_anchor));
+    // 添加新边：从new_reduce_node的输出0到下游节点
+    // ArgMaxMultiRPhase2只有1个输出（最终的index），所以输出索引是0
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(phase2_nodes.new_reduce_node->GetOutAnchor(0UL),
+                                              peer_in_anchor));
+  }
+
+  // 连接Phase2的所有边
+  // Phase2 value路径：workspace_post -> load -> new_reduce[输入0]
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(phase2_nodes.workspace_post_node->GetOutAnchor(0UL),
+                                            phase2_nodes.load_node->GetInAnchor(0UL)));
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(phase2_nodes.load_node->GetOutAnchor(0UL),
+                                            phase2_nodes.new_reduce_node->GetInAnchor(0UL)));
+
+  // Phase2 index路径：workspace_post_index -> load_index -> new_reduce[输入1]
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(workspace_post_index_node->GetOutAnchor(0UL),
+                                            load_index_node->GetInAnchor(0UL)));
+  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(load_index_node->GetOutAnchor(0UL),
+                                            phase2_nodes.new_reduce_node->GetInAnchor(1UL)));
+
+  return ge::GRAPH_SUCCESS;
+}
+
+// 处理ArgMax在R轴分核时的完整逻辑
+// 包括：创建index路径节点、替换为Phase1算子、设置属性、连接边等
+static Status HandleArgMaxPartition(const ge::AscNodePtr &reduce_node,
+                                     Phase1Nodes &phase1_nodes,
+                                     Phase2Nodes &phase2_nodes,
+                                     const ArgMaxPartitionGraphContext &ctx) {
+  // ArgMax特殊处理：需要额外的workspace用于index
+  ge::ascir_op::Workspace workspace_pre_index((ctx.graph_name + "_workspace_index").c_str());
+  ge::ascir_op::Workspace workspace_post_index((ctx.graph_name + "_workspace_index").c_str());
+
+  // 为index路径创建额外的workspace和load节点
+  ge::AscNodePtr workspace_pre_index_node = ctx.impl_graph.AddNode(workspace_pre_index);
+  ctx.node_order.emplace_back(workspace_pre_index_node);
+  ge::AscNodePtr workspace_post_index_node = ctx.impl_graph.AddNode(workspace_post_index);
+
+  ge::ascir_op::Load load_index((ctx.graph_name + "_load_index").c_str());
+  ge::AscNodePtr load_index_node = ctx.impl_graph.AddNode(load_index);
+  // 参考load_node的处理方式，不复制属性（避免从Phase1节点复制错误的sched.axis）
+
+  const auto &reduce_input_attr = reduce_node->inputs[0].attr;
+  const auto &reduce_output_attr = reduce_node->outputs[0].attr;
+
+  // 保存ArgMax的输出边，用于后续重定向到new_reduce_node
+  ge::OutDataAnchorPtr argmax_out_anchor = reduce_node->GetOutDataAnchor(0UL);
+  std::vector<ge::InDataAnchorPtr> argmax_out_edges;
+  if (argmax_out_anchor != nullptr) {
+    for (const auto &peer_in_anchor : argmax_out_anchor->GetPeerInDataAnchors()) {
+      GE_ASSERT_NOTNULL(peer_in_anchor);
+      argmax_out_edges.push_back(peer_in_anchor);
+    }
+  }
+
+  // 复制节点级别的属性（sched、ir_attr等）
+  // 在调用ReplaceArgMaxInPhase1之前保存，因为调用后reduce_node将被删除
+  auto src_asc_node_attr = reduce_node->GetOpDesc()->GetOrCreateAttrsGroup<ge::AscNodeAttr>();
+  ge::AscNodeAttr saved_node_attr;
+  if (src_asc_node_attr != nullptr) {
+    saved_node_attr = *src_asc_node_attr;
+  }
+
+  // 在阶段1替换为ArgMaxMultiRPhase1，并处理额外的index输出
+  GE_CHK_STATUS_RET(ReplaceArgMaxInPhase1(ctx.impl_graph, reduce_node, phase1_nodes.store_node,
+                                            phase1_nodes.workspace_pre_node, workspace_pre_index_node));
+
+  // 设置ArgMax Phase2的所有属性
+  SavedNodeAttrInfo saved_attr_info = {src_asc_node_attr, saved_node_attr};
+  ArgMaxIndexNodes index_nodes = {workspace_post_index_node, load_index_node};
+  GE_CHK_STATUS_RET(SetupArgMaxPhase2Attrs(saved_attr_info, phase2_nodes, reduce_input_attr,
+                                            reduce_output_attr, index_nodes));
+
+  // 复制Phase2的workspace属性，与Phase1的workspace通过相同名称关联到同一buffer
+  // 注意：在设置dtype之后调用，避免覆盖正确的dtype
+  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(phase2_nodes.load_node, phase2_nodes.workspace_post_node));
+  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(load_index_node, workspace_post_index_node));
+
+  // 连接ArgMax Phase2的所有边
+  GE_CHK_STATUS_RET(ConnectArgMaxPhase2Edges(argmax_out_anchor, argmax_out_edges,
+                                            phase2_nodes, workspace_post_index_node,
+                                            load_index_node));
+
+  return ge::GRAPH_SUCCESS;
+}
+
+// R轴分核时，为ArgMax创建额外的workspace和load节点用于index
 Status RMulticorePhase2Graph::PartitionByReduce(ascir::ImplGraph &impl_graph,
                                                 ReduceType &phase2graph_reduce,
                                                 std::vector<ge::AscNodePtr> &node_order) {
@@ -726,10 +1100,12 @@ Status RMulticorePhase2Graph::PartitionByReduce(ascir::ImplGraph &impl_graph,
   ge::ascir_op::Workspace workspace_post((phase2graph.GetName() + "_workspace").c_str());
   ge::ascir_op::Load load((phase2graph.GetName() + "_load").c_str());
   ge::ascir_op::Store store((phase1graph.GetName() + "Store").c_str());
+
   ge::AscNodePtr new_reduce_node;
   std::visit([&new_reduce_node, &impl_graph](auto&& reduce_op) {
     new_reduce_node = impl_graph.AddNode(reduce_op);
   }, phase2graph_reduce);
+
   auto workspace_pre_node = impl_graph.AddNode(workspace_pre);
   node_order.emplace_back(workspace_pre_node);
   auto workspace_post_node = impl_graph.AddNode(workspace_post);
@@ -737,32 +1113,43 @@ Status RMulticorePhase2Graph::PartitionByReduce(ascir::ImplGraph &impl_graph,
   GE_ASSERT_NOTNULL(load_node);
   auto store_node = impl_graph.AddNode(store);
   GE_ASSERT_NOTNULL(store_node);
-  GE_ASSERT_GRAPH_SUCCESS(DoCopyAscNodeTensorAttr(reduce_node, new_reduce_node));
-  GE_ASSERT_GRAPH_SUCCESS(DoCopyAscNodeTensorAttr(reduce_node, store_node));
-  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(reduce_node, workspace_pre_node));
-  GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(load_node, workspace_post_node));
-  for (const auto &reduce_out_anchor : reduce_node->GetAllOutDataAnchors()) {
-    GE_ASSERT_NOTNULL(reduce_out_anchor);
-    for (const auto &peer_in_anchor : reduce_out_anchor->GetPeerInDataAnchors()) {
-      GE_ASSERT_NOTNULL(peer_in_anchor);
-      auto reduce_out_node = peer_in_anchor->GetOwnerNode();
-      GE_ASSERT_NOTNULL(reduce_out_node);
-      GE_CHK_STATUS_RET(ge::GraphUtils::RemoveEdge(reduce_node->GetOutAnchor(reduce_out_anchor->GetIdx()),
-                                                   reduce_out_node->GetInAnchor(peer_in_anchor->GetIdx())));
-      GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(new_reduce_node->GetOutAnchor(reduce_out_anchor->GetIdx()),
-                                                reduce_out_node->GetInAnchor(peer_in_anchor->GetIdx())));
+
+  if (reduce_node->GetType() == "ArgMax") {
+    // ArgMax特殊处理：调用专用函数处理双路径（value和index）逻辑
+    Phase1Nodes phase1_nodes = {store_node, workspace_pre_node};
+    Phase2Nodes phase2_nodes = {workspace_post_node, load_node, new_reduce_node};
+    ArgMaxPartitionGraphContext ctx = {impl_graph, node_order, phase2graph.GetName()};
+    GE_CHK_STATUS_RET(HandleArgMaxPartition(reduce_node, phase1_nodes, phase2_nodes, ctx));
+  } else {
+    // 普通reduce算子的处理逻辑
+    GE_ASSERT_GRAPH_SUCCESS(DoCopyAscNodeTensorAttr(reduce_node, new_reduce_node));
+    GE_ASSERT_GRAPH_SUCCESS(DoCopyAscNodeTensorAttr(reduce_node, store_node));
+    GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(reduce_node, workspace_pre_node));
+    GE_ASSERT_GRAPH_SUCCESS(DoCopyWorkspaceTensorAttr(load_node, workspace_post_node));
+    for (const auto &reduce_out_anchor : reduce_node->GetAllOutDataAnchors()) {
+      GE_ASSERT_NOTNULL(reduce_out_anchor);
+      for (const auto &peer_in_anchor : reduce_out_anchor->GetPeerInDataAnchors()) {
+        GE_ASSERT_NOTNULL(peer_in_anchor);
+        auto reduce_out_node = peer_in_anchor->GetOwnerNode();
+        GE_ASSERT_NOTNULL(reduce_out_node);
+        GE_CHK_STATUS_RET(ge::GraphUtils::RemoveEdge(reduce_node->GetOutAnchor(reduce_out_anchor->GetIdx()),
+                                                    reduce_out_node->GetInAnchor(peer_in_anchor->GetIdx())));
+        GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(new_reduce_node->GetOutAnchor(reduce_out_anchor->GetIdx()),
+                                                  reduce_out_node->GetInAnchor(peer_in_anchor->GetIdx())));
+      }
     }
+    // add reduce->store->workspace_pre_node
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(reduce_node->GetOutAnchor(0UL),
+                                              store_node->GetInAnchor(0UL)));
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(store_node->GetOutAnchor(0UL),
+                                              workspace_pre_node->GetInAnchor(0UL)));
+    // add workspace_post_node->load->new reduce
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(workspace_post_node->GetOutAnchor(0UL),
+                                              load_node->GetInAnchor(0UL)));
+    GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(load_node->GetOutAnchor(0UL),
+                                              new_reduce_node->GetInAnchor(0UL)));
   }
-  // add reduce->store->workspace_pre_node
-  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(reduce_node->GetOutAnchor(0UL),
-                                            store_node->GetInAnchor(0UL)));
-  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(store_node->GetOutAnchor(0UL),
-                                            workspace_pre_node->GetInAnchor(0UL)));
-  // add workspace_post_node->load->new reduce
-  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(workspace_post_node->GetOutAnchor(0UL),
-                                            load_node->GetInAnchor(0UL)));
-  GE_CHK_STATUS_RET(ge::GraphUtils::AddEdge(load_node->GetOutAnchor(0UL),
-                                            new_reduce_node->GetInAnchor(0UL)));
+
   return ge::GRAPH_SUCCESS;
 }
 
